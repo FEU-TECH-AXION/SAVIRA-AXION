@@ -37,14 +37,14 @@ const COMPLAINANT_LINKS = [
 ];
 
 const CASE_OFFICER_LINKS = [
-  { href: "/case-officer/dashboard", label: "Home" },
+  { href: "/dashboard", label: "Home" },
   { href: "/case-officer/cases",     label: "Cases" },
   { href: "/case-officer/projects",  label: "Projects" },
   { href: "/case-officer/insights", label: "Insights" },
 ];
 
 const ADMIN_LINKS = [
-  { href: "/admin/Dashboard", label: "Home" },
+  { href: "/dashboard", label: "Home" },
   { href: "/admin/users",     label: "Users" },
   { href: "/admin/cases",     label: "Cases" },
   { href: "/admin/projects",     label: "Projects" },
