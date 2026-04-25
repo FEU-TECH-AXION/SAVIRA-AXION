@@ -83,7 +83,7 @@ export default function Landing() {
             <span className={styles.eyebrowLine} /> What We Do
           </p>
           <div className={styles.commitmentHeader}>
-            <h2 className={styles.sectionTitle}>Our Commitment</h2>
+            <h2 className={styles.sectionTitle}>Our <span className={styles.howTitleAccent}>Commitment</span></h2>
             <a href="/about" className={styles.learnMoreBtn}>
               Learn More <FiArrowRight />
             </a>
@@ -177,7 +177,7 @@ export default function Landing() {
           </p>
           <div className={styles.initiativeHeader}>
             <h2 className={styles.initiativeTitle}>
-              The <span className={styles.initiativeTitleAccent}>SASHA</span> Initiative
+              The SASHA <span className={styles.initiativeTitleAccent}>Initiative</span> 
             </h2>
             <a href="/about" className={styles.learnMoreBtn}>
               Learn More <FiArrowRight />
