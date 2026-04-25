@@ -29,17 +29,6 @@
   background: linear-gradient(#037F81CC, #FFFFFFCC);
 }
 
-.logo {
-  position: absolute;
-  top: 0.1rem;
-  left: 1rem;
-  z-index: 10;
-}
-
-.logo img {
-  width: 30%;
-}
-
 /* ── Right panel ── */
 .right {
   width: 50%;

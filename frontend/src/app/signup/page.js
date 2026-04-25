@@ -31,21 +31,13 @@ export default function SignUp() {
   return (
     <div className={styles.wrapper}>
 
-      {/* ── Left: hero image + overlay + logo ── */}
+      {/* ── Left: hero image + overlay*/}
       <div className={styles.left}>
         <img
           src="sasha-bg-1.png"
           alt="SASHA community"
         />
         <div className={styles.leftOverlay} />
-
-        {/* Logo */}
-        <div className={styles.logo}>
-          <img
-            src="sasha-logo-white.png"
-            alt="SASHA logo"
-          />
-        </div>
       </div>
 
       {/* ── Right: sign-up form ── */}
