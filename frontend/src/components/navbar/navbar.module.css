@@ -290,8 +290,8 @@
     margin-left: 0;
   }
 
-  /* Hide desktop links */
-  .navLinks {
+  /* Hide desktop links and login button */
+  .navLinks, .navLoginBtn {
     display: none;
   }
 }
