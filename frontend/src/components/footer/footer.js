@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FaXTwitter, FaInstagram, FaYoutube, FaLinkedin } from "react-icons/fa6";
 import styles from "./footer.module.css";
 
@@ -57,6 +58,10 @@ function getQuickLinks(user) {
 
 export default function Footer({ user = null }) {
   const quickLinks = getQuickLinks(user);
+  const pathname = usePathname();
+
+  const isActive = (href) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <footer className={styles.footer}>
@@ -78,13 +83,18 @@ export default function Footer({ user = null }) {
           </div>
         </div>
 
-        {/* ── Quick links column ── */}
+        {/* Quick links */}
         <div className={styles.footerCol}>
           <h4 className={styles.footerColTitle}>Quick Links</h4>
           <ul className={styles.footerList}>
             {quickLinks.map(({ href, label }) => (
               <li key={href}>
-                <Link href={href}>{label}</Link>
+                <Link
+                  href={href}
+                  className={isActive(href) ? styles.footerLinkActive : styles.footerLink}
+                >
+                  {label}
+                </Link>
               </li>
             ))}
           </ul>
