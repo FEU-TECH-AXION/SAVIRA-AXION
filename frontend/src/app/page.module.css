@@ -568,6 +568,134 @@
   text-align: center;
 }
 
+/* ══════════════════════════════
+   RESPONSIVE BREAKPOINTS
+══════════════════════════════ */
+
+/* ── Tablet: 768px – 1024px ── */
+@media (max-width: 1024px) {
+  .commitmentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stepsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .timelineRow {
+    display: none;
+  }
+
+  .howHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .footerInner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footerBrand {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Mobile: ≤ 768px ── */
+@media (max-width: 768px) {
+
+  /* HERO — single column, text first then image */
+  .heroInner {
+    flex-direction: column;
+    align-items: flex-start; /* left-align on mobile */
+    padding: 4rem 1.5rem 3.5rem;
+    gap: 2rem;
+  }
+
+  .heroContent {
+    width: 100%;
+  }
+
+  .heroEyebrow {
+    font-size: 0.75rem;
+  }
+
+  /* clamp already handles font scaling — these are safety floors */
+  .heroTitle {
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    margin-bottom: 1rem;
+  }
+
+  .heroDesc {
+    font-size: 0.9rem;
+    max-width: 100%;
+  }
+
+  .heroBtns {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .heroBtns a {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Image: full width, capped height so it doesn't dominate */
+  .heroImage {
+    width: 100%;
+    max-width: 320px;
+    /* Center the card on mobile */
+    align-self: center;
+  }
+
+  /* The overlay needs to be stronger on mobile since
+     the image covers more of the viewport */
+  .heroBgOverlay {
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.90) 0%,
+      rgba(255, 255, 255, 0.75) 60%,
+      rgba(255, 255, 255, 0.45) 100%
+    );
+  }
+
+  /* Other sections */
+  .commitmentHeader,
+  .initiativeHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .eventsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .eventsTitle::before,
+  .eventsTitle::after {
+    display: none;
+  }
+
+  .stepsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footerInner {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .footerBrand {
+    grid-column: auto;
+  }
+
+  .sectionTitle,
+  .sectionTitleLight,
+  .initiativeTitle {
+    font-size: 1.9rem;
+  }
+}
 
 /* ── Small phones: ≤ 480px ── */
 @media (max-width: 480px) {
