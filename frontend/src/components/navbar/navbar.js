@@ -10,11 +10,11 @@ import styles from "./navbar.module.css";
  * Navbar Component
  *
  * Props:
- *   user  — null (logged out) | { role: "reporter" | "case_officer" | "admin" }
+ *   user  — null (logged out) | { role: "complainant" | "case_officer" | "admin" | "legal" | "sasha_officer" }
  *
  * Usage:
  *   <Navbar user={null} />               ← public visitor
- *   <Navbar user={{ role: "reporter" }} /> ← logged-in reporter
+ *   <Navbar user={{ role: "complainant" }} /> ← logged-in complainant
  */
 
 // ── Link definitions per role ────────────────────────────────────────────────
@@ -27,32 +27,40 @@ const PUBLIC_LINKS = [
   { href: "/volunteer", label: "Volunteer" },
 ];
 
-const REPORTER_LINKS = [
-  { href: "/dashboard",      label: "Dashboard" },
-  { href: "/report/new",     label: "File a Report" },
-  { href: "/report/history", label: "My Reports" },
+const COMPLAINANT_LINKS = [
+  { href: "/dashboard",      label: "Home" },
+  { href: "/about",   label: "About" },
+  { href: "/report",     label: "Report" },
+  { href: "/volunteer", label: "Volunteer" },
+  { href: "/contact", label: "Contact" },
   { href: "/events",         label: "Events" },
 ];
 
 const CASE_OFFICER_LINKS = [
-  { href: "/officer/dashboard", label: "Dashboard" },
-  { href: "/officer/cases",     label: "Cases" },
-  { href: "/officer/assigned",  label: "Assigned to Me" },
+  { href: "/case-officer/dashboard", label: "Home" },
+  { href: "/case-officer/cases",     label: "Cases" },
+  { href: "/case-officer/projects",  label: "Projects" },
+  { href: "/case-officer/insights", label: "Insights" },
 ];
 
 const ADMIN_LINKS = [
-  { href: "/admin/dashboard", label: "Dashboard" },
+  { href: "/admin/dashboard", label: "Home" },
   { href: "/admin/users",     label: "Users" },
-  { href: "/admin/cases",     label: "All Cases" },
+  { href: "/admin/cases",     label: "Cases" },
+  { href: "/admin/projects",     label: "Projects" },
+  { href: "/admin/volunteers", label: "Volunteers" },
+  { href: "/admin/heatmap", label: "Heatmap" },
   { href: "/admin/reports",   label: "Reports" },
 ];
 
 function getLinks(user) {
   if (!user) return PUBLIC_LINKS;
   switch (user.role) {
-    case "reporter":      return REPORTER_LINKS;
+    case "complainant":   return COMPLAINANT_LINKS;
     case "case_officer":  return CASE_OFFICER_LINKS;
     case "admin":         return ADMIN_LINKS;
+    case "legal":         return LEGAL_LINKS;
+    case "sasha_officer": return SASHA_OFFICER_LINKS;
     default:              return PUBLIC_LINKS;
   }
 }
