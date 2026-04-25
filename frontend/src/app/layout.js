@@ -41,7 +41,7 @@ async function getCurrentUser() {
   return null;
 
   // To test a logged-in reporter, uncomment:
-  // return { role: "reporter", firstName: "Maria", lastName: "Santos" };
+  return { role: "complainant", firstName: "Maria", lastName: "Santos" };
 
   // To test a case officer:
   // return { role: "case_officer", firstName: "Juan", lastName: "Cruz" };
@@ -76,6 +76,20 @@ export default async function RootLayout({ children }) {
   //       <Navbar user={adminUser} />
   //     <main>{children}</main>
   //     <Footer user={adminUser} />
+  //     </body>
+  //   </html>
+  // );
+  // const complainantUser = {
+  //   role: "complainant",
+  //   firstName: "Maria",
+  //   lastName: "Santos"
+  // };
+  // return (
+  //   <html lang="en">
+  //     <body>
+  //       <Navbar user={complainantUser} />
+  //     <main>{children}</main>
+  //     <Footer user={complainantUser} />
   //     </body>
   //   </html>
   // );
