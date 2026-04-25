@@ -23,36 +23,41 @@ const PUBLIC_QUICK_LINKS = [
   { href: "/login",     label: "Log In" },
 ];
 
-const REPORTER_QUICK_LINKS = [
-  { href: "/dashboard",       label: "Dashboard" },
-  { href: "/report/new",      label: "File a Report" },
-  { href: "/report/history",  label: "My Reports" },
-  { href: "/events",          label: "Events" },
-  { href: "/profile",         label: "My Profile" },
+const COMPLAINANT_QUICK_LINKS = [
+  { href: "/dashboard",      label: "Home" },
+  { href: "/about",   label: "About" },
+  { href: "/report",     label: "Report" },
+  { href: "/volunteer", label: "Volunteer" },
+  { href: "/contact", label: "Contact" },
+  { href: "/events",         label: "Events" },
 ];
 
-const OFFICER_QUICK_LINKS = [
-  { href: "/officer/dashboard", label: "Dashboard" },
-  { href: "/officer/cases",     label: "All Cases" },
-  { href: "/officer/assigned",  label: "Assigned to Me" },
-  { href: "/profile",           label: "My Profile" },
+const CASE_OFFICER_QUICK_LINKS = [
+  { href: "/dashboard", label: "Home" },
+  { href: "/case-officer/cases",     label: "Cases" },
+  { href: "/case-officer/projects",  label: "Projects" },
+  { href: "/case-officer/insights", label: "Insights" },
 ];
 
 const ADMIN_QUICK_LINKS = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/users",     label: "Manage Users" },
-  { href: "/admin/cases",     label: "All Cases" },
+  { href: "/dashboard", label: "Home" },
+  { href: "/admin/users",     label: "Users" },
+  { href: "/admin/cases",     label: "Cases" },
+  { href: "/admin/projects",     label: "Projects" },
+  { href: "/admin/volunteers", label: "Volunteers" },
+  { href: "/admin/heatmap", label: "Heatmap" },
   { href: "/admin/reports",   label: "Reports" },
-  { href: "/profile",         label: "My Profile" },
 ];
 
 function getQuickLinks(user) {
   if (!user) return PUBLIC_QUICK_LINKS;
   switch (user.role) {
-    case "reporter":     return REPORTER_QUICK_LINKS;
-    case "case_officer": return OFFICER_QUICK_LINKS;
-    case "admin":        return ADMIN_QUICK_LINKS;
-    default:             return PUBLIC_QUICK_LINKS;
+    case "complainant":   return COMPLAINANT_QUICK_LINKS;
+    case "case_officer":  return CASE_OFFICER_QUICK_LINKS;
+    case "admin":         return ADMIN_QUICK_LINKS;
+    case "legal":         return LEGAL_QUICK_LINKS;
+    case "sasha_officer": return SASHA_OFFICER_QUICK_LINKS;
+    default:              return PUBLIC_QUICK_LINKS;
   }
 }
 
