@@ -37,50 +37,6 @@ export default function Landing() {
   return (
     <div className={styles.pageWrapper}>
 
-      {/* ── NAVBAR ── */}
-      <nav className={styles.navbar}>
-        <div className={styles.navInner}>
-          
-          {/* Burger button — mobile only */}
-          <button
-            className={styles.burgerBtn}
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-          </button>
-          
-          <a href="/" className={styles.navLogo}>
-            <img src="/sasha-logo-white.png" alt="SASHA logo" />
-          </a>
-
-          {/* Desktop links */}
-          <ul className={styles.navLinks}>
-            <li><a href="/" className={styles.navLinkActive}>Home</a></li>
-            <li><a href="/about" className={styles.navLink}>About</a></li>
-            <li><a href="/events" className={styles.navLink}>Events</a></li>
-            <li><a href="/contact" className={styles.navLink}>Contact</a></li>
-            <li><a href="/volunteer" className={styles.navLink}>Volunteer</a></li>
-          </ul>
-
-          <a href="/login" className={styles.navLoginBtn}>Log In</a>
-        </div>
-
-        {/* Mobile dropdown */}
-        {menuOpen && (
-          <div className={styles.mobileMenu}>
-            <ul className={styles.mobileLinks}>
-              <li><a href="/" className={styles.mobileLinkActive} onClick={() => setMenuOpen(false)}>Home</a></li>
-              <li><a href="/about" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>About</a></li>
-              <li><a href="/events" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Events</a></li>
-              <li><a href="/contact" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Contact</a></li>
-              <li><a href="/volunteer" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Volunteer</a></li>
-            </ul>
-            <a href="/login" className={styles.mobileLoginBtn} onClick={() => setMenuOpen(false)}>Log In</a>
-          </div>
-        )}
-      </nav>
-
       {/* ── HERO ── */}
       <section className={styles.hero}>
         <div className={styles.heroBg}>
@@ -268,60 +224,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
-      {/* ── FOOTER ── */}
-      <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <div className={styles.footerBrand}>
-            <img src="/sasha-logo-white.png" alt="SASHA" className={styles.footerLogo} />
-            <p className={styles.footerBrandDesc}>
-              This platform is designed for secure case reporting and
-              organizational management. Unauthorized access, misuse, or
-              reproduction of content is strictly prohibited.
-            </p>
-            <div className={styles.footerSocials}>
-            <a href="#" aria-label="X / Twitter">
-              <FaXTwitter />
-            </a>
-
-            <a href="#" aria-label="Instagram">
-              <FaInstagram />
-            </a>
-
-            <a href="#" aria-label="YouTube">
-              <FaYoutube />
-            </a>
-
-            <a href="#" aria-label="LinkedIn">
-              <FaLinkedin />
-            </a>
-          </div>
-          </div>
-          <div className={styles.footerCol}>
-            <h4 className={styles.footerColTitle}>Quick Links</h4>
-            <ul className={styles.footerList}>
-              <li><a href="/">Home</a></li>
-              <li><a href="/about">About</a></li>
-              <li><a href="/volunteer">Volunteer</a></li>
-              <li><a href="/events">Events</a></li>
-              <li><a href="/contact">Contact</a></li>
-              <li><a href="/login">Log In</a></li>
-            </ul>
-          </div>
-          <div className={styles.footerCol}>
-            <h4 className={styles.footerColTitle}>Support &amp; Information</h4>
-            <ul className={styles.footerList}>
-              <li><a href="#">Frequently Asked Questions</a></li>
-              <li><a href="#">Code of Conduct</a></li>
-              <li><a href="#">Data Privacy Policy</a></li>
-              <li><a href="#">Terms of Use</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className={styles.footerBottom}>
-          <p>© 2026 Scouts Against Sexual Harassment and Abuse</p>
-        </div>
-      </footer>
 
     </div>
   );
