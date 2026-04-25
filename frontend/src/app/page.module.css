@@ -6,141 +6,6 @@
 }
 
 /* ══════════════════════════════
-   NAVBAR
-══════════════════════════════ */
-.navbar {
-  background: var(--sasha-teal);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.navInner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-
-.navLogo img {
-  height: 36px;
-  width: auto;
-}
-
-.navLinks {
-  list-style: none;
-  display: flex;
-  gap: 0.25rem;
-  margin-left: 1rem;
-  flex: 1;
-}
-
-.navLink,
-.navLinkActive {
-  color: var(--sasha-white);
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  transition: background 0.2s;
-}
-
-.navLinkActive {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.navLink:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.navLoginBtn {
-  background: var(--sasha-orange);
-  color: var(--sasha-white);
-  text-decoration: none;
-  font-weight: 800;
-  font-size: 0.9rem;
-  padding: 0.5rem 1.4rem;
-  border-radius: 999px;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
-
-.navLoginBtn:hover {
-  background: var(--sasha-orange-dark);
-}
-
-/* ── Burger button ── */
-.burgerBtn {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--sasha-white);
-  cursor: pointer;
-  padding: 0.25rem;
-  margin-left: auto;
-  line-height: 1;
-}
-
-/* ── Mobile dropdown menu ── */
-.mobileMenu {
-  background: var(--sasha-teal-dark);
-  padding: 1rem 2rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
-
-.mobileLinks {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.mobileLink,
-.mobileLinkActive {
-  display: block;
-  color: var(--sasha-white);
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.6rem 0.85rem;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.mobileLinkActive {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.mobileLink:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.mobileLoginBtn {
-  display: inline-block;
-  margin-top: 0.75rem;
-  background: var(--sasha-orange);
-  color: var(--sasha-white);
-  text-decoration: none;
-  font-weight: 800;
-  font-size: 0.95rem;
-  padding: 0.65rem 1.5rem;
-  border-radius: 999px;
-  text-align: center;
-  transition: background 0.2s;
-}
-
-.mobileLoginBtn:hover {
-  background: var(--sasha-orange-dark);
-}
-
-/* ══════════════════════════════
    SHARED SECTION UTILITIES
 ══════════════════════════════ */
 .sectionInner {
@@ -231,7 +96,7 @@
   padding: 0.75rem 1.75rem;
   border-radius: 999px;
   border: 2.5px solid var(--sasha-teal);
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .btnOutline:hover {
@@ -282,38 +147,14 @@
    HERO
 ══════════════════════════════ */
 .hero {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3rem;
-  padding: 5rem 2rem;
   position: relative;
   overflow: hidden;
-
-  width: 100%;
-}
-
-.heroInner {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-
+  min-height: 100svh;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 3rem;
-
-  position: relative;
-  z-index: 1;
 }
 
-.heroContent,
-.heroImage {
-  position: relative;
-  z-index: 1;
-}
-
+/* Background layer */
 .heroBg {
   position: absolute;
   inset: 0;
@@ -324,35 +165,56 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6rem 2rem 5rem;
+
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+/* Text column */
+.heroContent {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .heroEyebrow {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--sasha-muted);
   margin-bottom: 1rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .heroLine {
   display: inline-block;
-  width: 32px;
+  width: 28px;
   height: 3px;
   background: var(--sasha-orange);
   border-radius: 2px;
   flex-shrink: 0;
 }
 
+/* clamp(min, preferred, max) — scales smoothly with viewport width */
 .heroTitle {
-  font-size: 3.2rem;
+  font-size: clamp(2rem, 5vw, 3.4rem);
   font-weight: 800;
   color: var(--sasha-teal);
   line-height: 1.15;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .heroTitleAccent {
@@ -360,10 +222,11 @@
 }
 
 .heroDesc {
-  font-size: 1rem;
+  font-size: clamp(0.88rem, 1.5vw, 1rem);
   color: var(--sasha-muted);
-  line-height: 1.7;
+  line-height: 1.75;
   margin-bottom: 2rem;
+  max-width: 520px;
 }
 
 .heroBtns {
@@ -372,9 +235,10 @@
   flex-wrap: wrap;
 }
 
+/* Image column */
 .heroImage {
-  flex-shrink: 0;
-  width: 340px;
+  flex: 0 0 auto;
+  width: clamp(220px, 30vw, 340px); /* fluid between 220–340px */
 }
 
 .heroImage img {
@@ -387,9 +251,6 @@
    COMMITMENT
 ══════════════════════════════ */
 .commitment {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
   background: var(--sasha-offwhite);
   padding: 5rem 0;
 }
@@ -463,9 +324,6 @@
    HOW IT WORKS
 ══════════════════════════════ */
 .howItWorks {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
   position: relative;
   padding: 5rem 0;
   overflow: hidden;
@@ -508,7 +366,6 @@
   color: var(--sasha-orange);
 }
 
-/* TIMELINE STYLES */
 .timelineRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -534,7 +391,8 @@
   z-index: 1;
 }
 
-.stepBadge, .stepBadgeActive {
+.stepBadge,
+.stepBadgeActive {
   background: white;
   color: #037F81;
   padding: 6px 20px;
@@ -544,7 +402,7 @@
 }
 
 .stepBadgeActive {
-  background: #FF8A65; /* orange */
+  background: #FF8A65;
   color: white;
 }
 
@@ -553,10 +411,8 @@
   top: -1rem;
   right: -7rem;
   opacity: 0.7;
-
-  width: 100%; 
+  width: 100%;
   height: 100%;
-  
   color: var(--sasha-white);
 }
 
@@ -566,7 +422,6 @@
   display: block;
 }
 
-/* CARD STYLES */
 .stepsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -601,9 +456,6 @@
    INITIATIVE
 ══════════════════════════════ */
 .initiative {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
   padding: 5rem 0;
   background: var(--sasha-white);
 }
@@ -638,9 +490,6 @@
    EVENTS
 ══════════════════════════════ */
 .events {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
   padding: 5rem 0;
   background: var(--sasha-offwhite);
 }
@@ -677,13 +526,13 @@
   background: var(--sasha-white);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .eventCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .eventImgWrap {
@@ -820,15 +669,27 @@
 }
 
 /* ══════════════════════════════
-   RESPONSIVE
+   RESPONSIVE BREAKPOINTS
 ══════════════════════════════ */
+
+/* ── Tablet: 768px – 1024px ── */
 @media (max-width: 1024px) {
-  .stepsRow {
+  .commitmentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stepsGrid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .stepArrow {
+  .timelineRow {
     display: none;
+  }
+
+  .howHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
   }
 
   .footerInner {
@@ -840,76 +701,73 @@
   }
 }
 
+/* ── Mobile: ≤ 768px ── */
 @media (max-width: 768px) {
-  /* Show burger, hide desktop nav */
-  .burgerBtn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
 
-  .navLinks {
-    display: none;
-  }
-
-  .navLoginBtn {
-    display: none;
-  }
-
-  /* Hero */
-  .hero {
+  /* HERO — single column, text first then image */
+  .heroInner {
     flex-direction: column;
-    padding: 3rem 1.5rem;
-    text-align: center;
-    justify-content: center;
+    align-items: flex-start; /* left-align on mobile */
+    padding: 4rem 1.5rem 3.5rem;
+    gap: 2rem;
+  }
+
+  .heroContent {
+    width: 100%;
   }
 
   .heroEyebrow {
-    justify-content: center;
+    font-size: 0.75rem;
   }
 
+  /* clamp already handles font scaling — these are safety floors */
   .heroTitle {
-    font-size: 2.2rem;
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    margin-bottom: 1rem;
+  }
+
+  .heroDesc {
+    font-size: 0.9rem;
+    max-width: 100%;
   }
 
   .heroBtns {
-    justify-content: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
   }
 
+  .heroBtns a {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Image: full width, capped height so it doesn't dominate */
   .heroImage {
     width: 100%;
     max-width: 320px;
+    /* Center the card on mobile */
+    align-self: center;
   }
 
-/* Badge Styles (Keep your existing colors) */
-.stepBadge {
-  background: rgba(255, 255, 255, 1);
-  color: #333;
-  padding: 0.4rem 1.2rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-.stepBadge:hover {
-  background: var(--sasha-orange);
-  color: white;
-}
-
-  /* Commitment */
-  .commitmentGrid {
-    grid-template-columns: 1fr;
+  /* The overlay needs to be stronger on mobile since
+     the image covers more of the viewport */
+  .heroBgOverlay {
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.90) 0%,
+      rgba(255, 255, 255, 0.75) 60%,
+      rgba(255, 255, 255, 0.45) 100%
+    );
   }
 
+  /* Other sections */
   .commitmentHeader,
-  .howHeader,
   .initiativeHeader {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  /* Events */
   .eventsGrid {
     grid-template-columns: 1fr;
   }
@@ -919,12 +777,10 @@
     display: none;
   }
 
-  /* Steps */
-  .stepsRow {
+  .stepsGrid {
     grid-template-columns: 1fr;
   }
 
-  /* Footer */
   .footerInner {
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -932,16 +788,6 @@
 
   .footerBrand {
     grid-column: auto;
-  }
-}
-
-@media (max-width: 480px) {
-  .stepsGrid {
-    grid-template-columns: 1fr; /* 1 per row on very small screens if preferred */
-  }
-
-  .heroTitle {
-    font-size: 1.8rem;
   }
 
   .sectionTitle,
@@ -951,34 +797,35 @@
   }
 }
 
-@media (max-width: 992px) {
+/* ── Small phones: ≤ 480px ── */
+@media (max-width: 480px) {
+  .heroInner {
+    padding: 3.5rem 1.25rem 3rem;
+  }
+
+  .heroTitle {
+    font-size: clamp(1.55rem, 8vw, 1.9rem);
+  }
+
+  .sectionTitle,
+  .sectionTitleLight,
+  .initiativeTitle {
+    font-size: 1.65rem;
+  }
+
   .stepsGrid {
-    grid-template-columns: repeat(2, 1fr); /* 2 per row */
-  }
-
-  .timelineRow {
-    display: none; /* The horizontal line usually breaks on multi-row layouts */
-  }
-
-  .howHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
+    grid-template-columns: 1fr;
   }
 }
 
-@media (min-width: 1600px) {
+/* ── Wide screens ── */
+@media (min-width: 1400px) {
   .heroInner {
-    max-width: 1400px;
+    max-width: 1300px;
+    padding: 7rem 2rem 6rem;
   }
 
-  .hero {
-    padding: 7rem 4rem;
-  }
-}
-
-@media (min-width: 1920px) {
-  .heroInner {
-    max-width: 1600px;
+  .heroImage {
+    width: 380px;
   }
 }
