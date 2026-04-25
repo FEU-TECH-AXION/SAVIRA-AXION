@@ -5,6 +5,7 @@ import Navbar from "@/components/navbar/navbar";
 import styles from "./ComplainantDashboard.module.css";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { useRouter } from "next/navigation";
 
 // ── Action Card (Submit Report / Apply as Volunteer) ─────────────────────────
 function ActionCard({ icon, title, description, onView }) {
@@ -187,6 +188,8 @@ export default function ComplainantDashboard({
 }) {
   const [calDate, setCalDate] = useState(new Date());
 
+  const router = useRouter();
+
   // TODO: replace with real auth / session data
   const user = { role: "complainant", firstName: "Complainant", lastName: "User" };
 
@@ -264,7 +267,7 @@ export default function ComplainantDashboard({
                 icon=<img src="FileAReportIcon.png" alt="" className={styles.actionIconImg} />
                 title="Submit a Report"
                 description="Report safely and securely."
-                onView={() => {/* navigate to /report */}}
+                onView={() => router.push("/report")}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -272,7 +275,7 @@ export default function ComplainantDashboard({
                 icon=<img src="VolunteerIcon.png" alt="" className={styles.actionIconImg} />
                 title="Apply as Volunteer"
                 description="Join our mission to support survivors."
-                onView={() => {/* navigate to /volunteer */}}
+                onView={() => router.push("/volunteer")}
               />
             </div>
           </div>
