@@ -1,6 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --sasha-teal: #037F81;
+  --sasha-teal-dark: #025f61;
+  --sasha-orange: #E06030;
+  --sasha-orange-dark: #c94e1f;
+  --sasha-white: #ffffff;
+  --sasha-offwhite: #f7f7f7;
+  --sasha-text: #222222;
+  --sasha-muted: #555555;
 }
 
 @media (prefers-color-scheme: dark) {
