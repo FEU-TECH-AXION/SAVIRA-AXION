@@ -32,8 +32,11 @@
 .logo {
   position: absolute;
   top: 0.1rem;
-  left: 0.5rem;
+  left: 1rem;
   z-index: 10;
+}
+
+.logo img {
   width: 30%;
 }
 
@@ -54,10 +57,10 @@
 
 /* ── Typography ── */
 .title {
-    font-family: Poppins, sans-serif;
+    font-family: poppins, sans-serif;
   font-size: 2.4rem;
   font-weight: 800;
-  color: #007A7A;
+  color: #037F81;
   margin-bottom: 0.3rem;
 }
 
@@ -68,7 +71,7 @@
 }
 
 .loginLink a {
-  color: #007A7A;
+  color: #037F81;
   font-weight: 700;
   text-decoration: underline;
 }
@@ -79,6 +82,29 @@
   margin-bottom: 0.3rem;
   font-size: 0.95rem;
   display: block;
+}
+
+/* ── Form field grouping (replaces mb-3 / mb-4) ── */
+.nameRow {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nameField {
+  flex: 1;
+}
+
+.fieldGroup {
+  margin-bottom: 1rem;
+}
+
+.fieldGroupLg {
+  margin-bottom: 1.5rem;
+}
+
+.termsGroup {
+  margin-bottom: 1.5rem;
 }
 
 /* ── Inputs ── */
@@ -95,7 +121,7 @@
 }
 
 .input:focus {
-  box-shadow: 0 0 0 2.5px #007A7A55;
+  box-shadow: 0 0 0 2.5px #037F8155;
   background: #e8f4f4;
 }
 
@@ -123,10 +149,11 @@
   color: #888;
   padding: 0;
   line-height: 1;
+  font-size: 1.1rem;
 }
 
 .eyeBtn:hover {
-  color: #007A7A;
+  color: #037F81;
 }
 
 /* ── Checkbox ── */
@@ -142,26 +169,27 @@
 .checkbox {
   width: 20px;
   height: 20px;
-  accent-color: #007A7A;
+  accent-color: #037F81;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .checkboxLabel a {
-  color: #007A7A;
+  color: #037F81;
   font-weight: 700;
   text-decoration: underline;
 }
 
 /* ── Submit button ── */
 .btn {
-  background: #E06030;
+  background: #E96433;
   color: #fff;
   border: none;
   border-radius: 10px;
   padding: 0.85rem;
+  font-family: Poppins, sans-serif;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 500;
   width: 100%;
   cursor: pointer;
   letter-spacing: 0.5px;
@@ -195,6 +223,11 @@
 
   .title {
     font-size: 1.9rem;
+  }
+
+  .nameRow {
+    flex-direction: column;
+    gap: 0.75rem;
   }
 }
 

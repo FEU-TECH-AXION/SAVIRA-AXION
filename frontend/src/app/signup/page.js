@@ -60,8 +60,8 @@ export default function SignUp() {
           <form onSubmit={handleSubmit} noValidate>
 
             {/* First + Last Name */}
-            <div className="row g-3 mb-3">
-              <div className="col-6">
+            <div className={styles.nameRow}>
+              <div className={styles.nameField}>
                 <label className={styles.label}>First Name</label>
                 <input
                   className={styles.input}
@@ -73,7 +73,7 @@ export default function SignUp() {
                   required
                 />
               </div>
-              <div className="col-6">
+              <div className={styles.nameField}>
                 <label className={styles.label}>Last Name</label>
                 <input
                   className={styles.input}
@@ -88,7 +88,7 @@ export default function SignUp() {
             </div>
 
             {/* Email */}
-            <div className="mb-3">
+            <div className={styles.fieldGroup}>
               <label className={styles.label}>E-mail</label>
               <input
                 className={styles.input}
@@ -102,7 +102,7 @@ export default function SignUp() {
             </div>
 
             {/* Password */}
-            <div className="mb-4">
+            <div className={styles.fieldGroupLg}>
               <label className={styles.label}>Password</label>
               <div className={styles.passwordWrap}>
                 <input
@@ -126,7 +126,7 @@ export default function SignUp() {
             </div>
 
             {/* Terms checkbox */}
-            <div className="mb-4">
+            <div className={styles.termsGroup}>
               <label className={styles.checkboxLabel}>
                 <input
                   type="checkbox"
