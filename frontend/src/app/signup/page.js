@@ -42,7 +42,7 @@ export default function SignUp() {
         {/* Logo */}
         <div className={styles.logo}>
           <img
-            src="sasha-logo.png"
+            src="sasha-logo-white.png"
             alt="SASHA logo"
           />
         </div>
