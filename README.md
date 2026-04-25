@@ -34,6 +34,36 @@ SAVIRA is an automated, centralized case management system designed to facilitat
 - **Firebase Cloud Messaging (FCM)** - Push notifications
 - **GROQ API (Llama 3.8B)** - NLP for narrative analysis
 
+### File Structure
+```text
+SAVIRA/
+├── backend/
+│   ├── src/
+│   │   ├── routes/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   └── index.js
+│   ├── .env
+│   ├── .env.example
+│   ├── .gitignore
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── layout.js
+│   │   │   └── page.js
+│   │   ├── components/
+│   │   └── lib/
+│   │       └── api.js
+│   ├── .env.local
+│   ├── .env.example
+│   └── package.json
+├── .gitignore
+├── package.json
+└── README.md
+```
+
 ## Getting Started
 
 ### Prerequisites
