@@ -421,7 +421,7 @@
 .commitmentImgWrap {
   border-radius: 16px;
   overflow: hidden;
-  height: 280px;
+  width: 100%;
 }
 
 .commitmentImgWrap img {
