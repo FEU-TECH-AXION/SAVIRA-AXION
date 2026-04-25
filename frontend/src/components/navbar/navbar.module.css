@@ -3,9 +3,10 @@
 ══════════════════════════════ */
 .navbar {
   background: var(--sasha-teal);
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 100;
+  width: 100%;
 }
 
 .navInner {
