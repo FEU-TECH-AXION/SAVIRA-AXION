@@ -44,7 +44,7 @@ const CASE_OFFICER_LINKS = [
 ];
 
 const ADMIN_LINKS = [
-  { href: "/admin/dashboard", label: "Home" },
+  { href: "/admin/Dashboard", label: "Home" },
   { href: "/admin/users",     label: "Users" },
   { href: "/admin/cases",     label: "Cases" },
   { href: "/admin/projects",     label: "Projects" },
@@ -171,7 +171,7 @@ function UserMenu({ user }) {
   const [open, setOpen] = useState(false);
 
   const ROLE_LABEL = {
-    reporter:     "Reporter",
+    complainant:     "Complainant",
     case_officer: "Case Officer",
     admin:        "Admin",
   };
