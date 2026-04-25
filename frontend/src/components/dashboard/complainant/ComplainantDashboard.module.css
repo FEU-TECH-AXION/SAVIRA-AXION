@@ -77,12 +77,6 @@
   overflow: visible;
 }
 
-/* No-op wrapper — keeps JSX clean, dot is abs on the card */
-.statDotWrap {
-  display: contents;
-}
-
-/* Orange dot: top-right of the card, half-overlapping the top edge */
 .statDot {
   position: absolute;
   top: -1.5rem;
@@ -95,7 +89,6 @@
   pointer-events: none;
 }
 
-/* Big number on the LEFT */
 .statNum {
   color: var(--sasha-white);
   font-size: 3.5rem;
@@ -105,7 +98,6 @@
   flex-shrink: 0;
 }
 
-/* Label to the RIGHT of the number */
 .statLabel {
   color: var(--sasha-white);
   font-size: 1.05rem;
@@ -141,42 +133,231 @@
 }
 
 /* ════════════════════════════════════════
-   OVERVIEW CARDS
+   ACTION CARDS  (Submit Report / Apply as Volunteer)
    ════════════════════════════════════════ */
-.overviewCard {
+.actionCard {
   background: var(--sasha-white);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
-  overflow: hidden;
+  padding: 1.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  position: relative;
+  margin-top: 1rem;
+}
+
+.actionIconWrap {
+  width: 10%;
+  height: 10%;
+  border-radius: 50%;
+  background: var(--sasha-teal-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  border: 1px solid var(--sasha-border);
+  position: absolute;
+  top: 0rem;
+}
+
+.actionIcon {
+  font-size: 1.4rem;
+}
+
+.actionIconImg {
+  width: 100%;
   height: 100%;
 }
 
-.overviewCardHeader {
+.actionTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0;
+  margin-top: 1.5rem;
+}
+
+.actionDesc {
+  font-size: 1.1rem;
+  color: var(--sasha-muted);
+  margin: 0;
+  margin-top: 0.5rem;
+  flex: 1;
+}
+
+/* ════════════════════════════════════════
+   SHARED CARD HEADER  (teal bar + optional View btn)
+   ════════════════════════════════════════ */
+.statusCardHeader {
   background: var(--sasha-teal);
   padding: 0.55rem 1rem;
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--sasha-white);
+  border-radius: var(--sasha-card-radius) var(--sasha-card-radius) 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.overviewCardBody {
-  padding: 1rem 1.1rem 1.1rem;
+.headerViewBtn {
+  background: var(--sasha-white);
+  color: var(--sasha-teal);
+  border: none;
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
 
-.overviewLabel {
+.headerViewBtn:hover { opacity: 0.85; }
+
+/* ════════════════════════════════════════
+   STATUS CARDS  (Report + Volunteer)
+   ════════════════════════════════════════ */
+.statusCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+}
+
+.statusCardBody {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.statusMeta {
   font-size: 0.82rem;
-  color: var(--sasha-muted);
+  color: var(--sasha-text);
   margin: 0 0 0.2rem;
 }
 
-.overviewCount {
-  font-size: 2.75rem;
-  font-weight: 800;
+/* ── Stepper ── */
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  position: relative;
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+}
+
+/* Horizontal connector line */
+.stepLine {
+  position: absolute;
+  top: 10px; /* vertically centered with dot */
+  left: calc(-50%);
+  right: 50%;
+  height: 2px;
+  background: var(--sasha-border);
+  z-index: 0;
+  width: 100%;
+}
+
+.stepLineDone {
+  background: var(--sasha-teal);
+}
+
+.stepDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--sasha-border);
+  border: 2px solid var(--sasha-border);
+  z-index: 1;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.stepDotDone {
+  background: var(--sasha-teal);
+  border-color: var(--sasha-teal);
+}
+
+.stepDotActive {
+  background: var(--sasha-orange) !important;
+  border-color: var(--sasha-orange) !important;
+  box-shadow: 0 0 0 3px rgba(232,102,58,0.2);
+}
+
+.stepLabel {
+  font-size: 0.72rem;
+  color: var(--sasha-muted);
+  margin-top: 0.4rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.stepLabelActive {
   color: var(--sasha-text);
-  line-height: 1;
+  font-weight: 700;
+}
+
+/* ════════════════════════════════════════
+   NOTIFICATIONS CARD
+   ════════════════════════════════════════ */
+.notifCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.notifBody {
+  padding: 0.75rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.notifItem {
+  background: var(--sasha-offwhite);
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+}
+
+.notifText {
+  font-size: 0.8rem;
+  color: var(--sasha-text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.notifEmpty {
+  font-size: 0.82rem;
+  color: var(--sasha-muted);
   margin: 0;
 }
 
+.notifViewRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+/* ════════════════════════════════════════
+   SHARED VIEW BUTTON
+   ════════════════════════════════════════ */
 .viewBtn {
   display: inline-flex;
   align-items: center;
@@ -199,29 +380,59 @@
 }
 
 /* ════════════════════════════════════════
-   CALENDAR CARD  (react-calendar)
+   HEATMAP CARD
    ════════════════════════════════════════ */
-.calendarCard {
+.heatmapCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  padding: 1.25rem;
+  height: 100%;
+}
+
+.heatmapTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  margin: 0 0 0.9rem;
+}
+
+.heatmapPreview {
+  border-radius: 10px;
+  overflow: hidden;
+  height: 210px;
+  position: relative;
+}
+
+.heatmapPlaceholder {
+  height: 100%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+/* ════════════════════════════════════════
+   EVENTS CARD  (calendar + upcoming)
+   ════════════════════════════════════════ */
+.eventsCard {
   background: var(--sasha-white);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   overflow: hidden;
   height: 100%;
-}
-
-.calendarCardHeader {
-  background: var(--sasha-teal);
-  padding: 0.55rem 1rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--sasha-white);
+  display: flex;
+  flex-direction: column;
 }
 
 .calendarBody {
-  padding: 0.75rem;
+  padding: 1rem;
 }
 
-/* Make react-calendar fill its container and adopt SASHA colours */
+/* react-calendar SASHA theme */
 .calendarBody :global(.react-calendar) {
   width: 100%;
   border: none;
@@ -259,7 +470,6 @@
   padding: 4px 0;
 }
 
-/* Remove the default underline on abbr */
 .calendarBody :global(.react-calendar__month-view__weekdays__weekday abbr) {
   text-decoration: none;
 }
@@ -296,50 +506,19 @@
   color: #d1d5db;
 }
 
-/* ════════════════════════════════════════
-   HEATMAP CARD
-   ════════════════════════════════════════ */
-.heatmapCard {
-  background: var(--sasha-white);
-  border-radius: var(--sasha-card-radius);
-  border: 1px solid var(--sasha-border);
-  padding: 1.25rem;
-  height: 100%;
+.eventsListSection {
+  padding: 1.5rem 1rem 1rem;
+  border-top: 1px solid var(--sasha-border);
 }
 
-.heatmapTitle {
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--sasha-text);
-  margin: 0 0 0.9rem;
-}
-
-.heatmapPreview {
-  border-radius: 10px;
-  overflow: hidden;
-  height: 210px;
-  position: relative;
-}
-
-/* ════════════════════════════════════════
-   UPCOMING DEADLINES
-   ════════════════════════════════════════ */
-.deadlinesCard {
-  background: var(--sasha-white);
-  border-radius: var(--sasha-card-radius);
-  border: 1px solid var(--sasha-border);
-  padding: 1.25rem;
-  height: 100%;
-}
-
-.deadlinesTitle {
+.upcomingEventsTitle {
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--sasha-teal);
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
 }
 
-.deadlineItem {
+.eventsItem {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -347,12 +526,12 @@
   border-bottom: 1px solid var(--sasha-border);
 }
 
-.deadlineItem:last-child {
+.eventsItem:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.deadlineThumb {
+.eventsThumb {
   width: 42px;
   height: 42px;
   border-radius: 8px;
@@ -362,9 +541,16 @@
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
+  overflow: hidden;
 }
 
-.deadlineTitle {
+.eventsThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.eventsItemTitle {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--sasha-text);
@@ -374,7 +560,7 @@
   text-overflow: ellipsis;
 }
 
-.deadlineDate {
+.eventsDate {
   font-size: 0.75rem;
   color: var(--sasha-muted);
   margin: 2px 0 0;
@@ -424,9 +610,7 @@
 .socialBtn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.55); }
 
 .footerCol { display: flex; flex-direction: column; gap: 0.35rem; }
-
 .footerColTitle { font-size: 0.88rem; font-weight: 700; color: var(--sasha-white); margin: 0 0 0.4rem; }
-
 .footerLink { color: rgba(255,255,255,0.65); font-size: 0.82rem; text-decoration: none; transition: color 0.15s; }
 .footerLink:hover { color: var(--sasha-white); }
 
@@ -451,5 +635,5 @@
   .heroTitle   { font-size: 1.5rem; margin-bottom: 1.25rem; }
   .footerInner { grid-template-columns: 1fr; gap: 1.5rem; }
   .footerBrand { grid-column: auto; }
-  .overviewCount { font-size: 2.25rem; }
+  .stepper     { flex-wrap: nowrap; overflow-x: auto; }
 }
