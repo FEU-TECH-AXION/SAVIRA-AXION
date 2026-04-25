@@ -63,4 +63,20 @@ export default async function RootLayout({ children }) {
       </body>
     </html>
   );
+  
+  // For testing, you can hardcode a user object here instead of calling getCurrentUser():
+  // const adminUser = {
+  //   role: "admin",
+  //   firstName: "Admin",
+  //   lastName: "User"
+  // };
+  // return (
+  //   <html lang="en">
+  //     <body>
+  //       <Navbar user={adminUser} />
+  //     <main>{children}</main>
+  //     <Footer user={adminUser} />
+  //     </body>
+  //   </html>
+  // );
 }

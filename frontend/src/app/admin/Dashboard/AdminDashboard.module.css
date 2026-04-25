@@ -1,0 +1,523 @@
+/* ════════════════════════════════════════
+   SASHA Design tokens
+   ════════════════════════════════════════ */
+:root {
+  --sasha-teal:         #037F81;
+  --sasha-teal-dark:    #025f61;
+  --sasha-teal-light:   #e1f5f5;
+  --sasha-orange:       #E8663A;
+  --sasha-orange-dark:  #c44e24;
+  --sasha-white:        #ffffff;
+  --sasha-offwhite:     #f5f7f8;
+  --sasha-text:         #1a1a1a;
+  --sasha-muted:        #6b7280;
+  --sasha-border:       #e5e7eb;
+  --sasha-card-radius:  14px;
+}
+
+/* ════════════════════════════════════════
+   PAGE WRAPPER
+   ════════════════════════════════════════ */
+.pageWrapper {
+  background: var(--sasha-offwhite);
+  min-height: 100vh;
+  color: var(--sasha-text);
+}
+
+/* ════════════════════════════════════════
+   HERO BANNER
+   ════════════════════════════════════════ */
+.heroBanner {
+  position: relative;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+/* The Teal-ish Gradient Overlay from the image */
+.heroContent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(3, 127, 129, 0.9) 0%, rgba(3, 127, 129, 0.7) 100%);
+  z-index: -1;
+  border-radius: 1rem;
+}
+
+.heroContent {
+  background-image: url('/sasha-bg-1.png'); /* Ensure this is in your public folder */
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 3;
+  text-align: center; /* Centers the "Welcome" text and cards */
+  border-radius: 1rem;
+  padding: 5rem;
+  margin-top: 6rem;
+}
+
+.heroTitle {
+  color: var(--sasha-white);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+}
+
+/* Stat Cards - Rounded and Semi-Transparent */
+.statCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  padding: 2rem 1.5rem;
+  backdrop-filter: blur(10px);
+  height: 100%;
+}
+
+.statDot {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--sasha-orange);
+  flex-shrink: 0;
+}
+
+.statText {
+  text-align: left;
+}
+
+.statNum {
+  color: var(--sasha-white);
+  font-size: 3.5rem; /* Larger font for the numbers */
+  font-weight: 800;
+  line-height: 1;
+  margin: 0;
+}
+
+.statLabel {
+  color: var(--sasha-white);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 0.5rem;
+}
+
+/* ════════════════════════════════════════
+   SECTION HEADING
+   ════════════════════════════════════════ */
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.headingLine {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, var(--sasha-orange), transparent);
+  border-radius: 2px;
+}
+
+/* ════════════════════════════════════════
+   OVERVIEW CARDS
+   ════════════════════════════════════════ */
+.overviewCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+  height: 100%;
+}
+
+.overviewCardHeader {
+  background: var(--sasha-teal);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+}
+
+.overviewCardBody {
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.overviewLabel {
+  font-size: 0.82rem;
+  color: var(--sasha-muted);
+  margin: 0 0 0.2rem;
+}
+
+.overviewCount {
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  line-height: 1;
+  margin: 0;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--sasha-orange);
+  color: var(--sasha-white);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 16px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.85rem;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: var(--sasha-orange-dark);
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════════════════
+   MINI CALENDAR
+   ════════════════════════════════════════ */
+.calendarCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+  height: 100%;
+}
+
+.calendarCardHeader {
+  background: var(--sasha-teal);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+}
+
+.calBody {
+  padding: 0.9rem 1rem;
+}
+
+.calNav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calNavBtn {
+  background: none;
+  border: 1px solid var(--sasha-border);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--sasha-muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.calNavBtn:hover {
+  background: var(--sasha-offwhite);
+}
+
+.calSelect {
+  background: var(--sasha-offwhite);
+  border: 1px solid var(--sasha-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 0.78rem;
+  color: var(--sasha-text);
+  cursor: pointer;
+  flex: 1;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.calDayName {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sasha-muted);
+  padding: 4px 0;
+}
+
+.calDay {
+  font-size: 0.78rem;
+  padding: 5px 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--sasha-text);
+  position: relative;
+  transition: background 0.12s;
+}
+
+.calDay:hover {
+  background: var(--sasha-teal-light);
+}
+
+.calDayOther {
+  color: #d1d5db;
+}
+
+.calDayToday {
+  background: var(--sasha-teal);
+  color: var(--sasha-white) !important;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.calDayToday:hover {
+  background: var(--sasha-teal-dark);
+}
+
+.calEventDot {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--sasha-orange);
+  margin: 1px auto 0;
+}
+
+/* ════════════════════════════════════════
+   HEATMAP CARD
+   ════════════════════════════════════════ */
+.heatmapCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  padding: 1.25rem;
+  height: 100%;
+}
+
+.heatmapTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  margin: 0 0 0.9rem;
+}
+
+.heatmapPreview {
+  border-radius: 10px;
+  overflow: hidden;
+  height: 210px;
+  position: relative;
+}
+
+.heatmapSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ════════════════════════════════════════
+   UPCOMING DEADLINES
+   ════════════════════════════════════════ */
+.deadlinesCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  padding: 1.25rem;
+  height: 100%;
+}
+
+.deadlinesTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0 0 1rem;
+}
+
+.deadlineItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--sasha-border);
+}
+
+.deadlineItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.deadlineThumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--sasha-teal-light);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.deadlineTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--sasha-text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deadlineDate {
+  font-size: 0.75rem;
+  color: var(--sasha-muted);
+  margin: 2px 0 0;
+}
+
+/* ════════════════════════════════════════
+   FOOTER
+   ════════════════════════════════════════ */
+.footer {
+  background: var(--sasha-teal);
+  margin-top: 3rem;
+}
+
+.footerInner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 2.5rem;
+  padding-top: 2.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.footerBrand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.footerLogo {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--sasha-white);
+  margin: 0;
+}
+
+.footerBrandDesc {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 240px;
+  margin: 0;
+}
+
+.socialRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 0.25rem;
+}
+
+.socialBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.socialBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.footerCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.footerColTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+  margin: 0 0 0.4rem;
+}
+
+.footerLink {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.82rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footerLink:hover {
+  color: var(--sasha-white);
+}
+
+.footerBottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  text-align: center;
+  padding: 1.1rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════ */
+@media (max-width: 991.98px) {
+  .footerInner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footerBrand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .heroBanner {
+    padding: 2rem 0;
+  }
+
+  .heroTitle {
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .footerInner {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .footerBrand {
+    grid-column: auto;
+  }
+
+  .overviewCount {
+    font-size: 2.25rem;
+  }
+}
