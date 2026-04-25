@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./ComplainantDashboard.module.css";
 import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
 
 // ── Overview stat card ───────────────────────────────────────────────────────
 function OverviewCard({ category, label, count, showView = false }) {
@@ -26,14 +27,14 @@ function OverviewCard({ category, label, count, showView = false }) {
 // ── Heatmap Placeholder ──────────────────────────────────────────────────────
 function HeatmapPreview() {
   return (
-    <div style={{ 
-      height: "200px", 
-      background: "#f0f0f0", 
-      display: "flex", 
-      alignItems: "center", 
+    <div style={{
+      height: "200px",
+      background: "#f0f0f0",
+      display: "flex",
+      alignItems: "center",
       justifyContent: "center",
       borderRadius: "8px",
-      color: "#666" 
+      color: "#666"
     }}>
       Heatmap Visualization (Coming Soon)
     </div>
@@ -55,8 +56,17 @@ function DeadlineItem({ emoji, title, date }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function ComplainantDashboard() {
-  // TODO: replace with real auth / session data (e.g. useSession from next-auth)
-  const user = { role: "complainant", firstName: "Maria", lastName: "Santos" };
+  const [calDate, setCalDate] = useState(new Date());
+
+  // TODO: replace with real auth / session data
+  const user = { role: "complainant", firstName: "Complainant", lastName: "User" };
+
+  // hasNew drives the orange dot — set to false to hide it
+  const stats = [
+    { num: 13, label: "Total Projects", hasNew: false },
+    { num: 67, label: "Total Users",    hasNew: true  },
+    { num: 12, label: "Total Cases",    hasNew: true  },
+  ];
 
   const overviewCards = [
     { category: "Case",      label: "Unassigned Cases",       count: 2,  showView: true  },
@@ -86,18 +96,12 @@ export default function ComplainantDashboard() {
               </h1>
 
               <div className="row g-3 justify-content-center">
-                {[
-                  { num: 13, label: "Total Projects" },
-                  { num: 67, label: "Total Users"    },
-                  { num: 12, label: "Total Cases"    },
-                ].map(({ num, label }) => (
+                {stats.map(({ num, label, hasNew }) => (
                   <div key={label} className="col-12 col-md-4">
                     <div className={styles.statCard}>
-                      <div className={styles.statDot} />
-                      <div className={styles.statText}>
-                        <p className={styles.statNum}>{num}</p>
-                        <p className={styles.statLabel}>{label}</p>
-                      </div>
+                      {hasNew && <span className={styles.statDot} />}
+                      <p className={styles.statNum}>{num}</p>
+                      <p className={styles.statLabel}>{label}</p>
                     </div>
                   </div>
                 ))}
@@ -115,7 +119,7 @@ export default function ComplainantDashboard() {
           </div>
 
           <div className="row g-3">
-            {/* 2×2 overview cards — left 8 cols */}
+            {/* 2×2 overview cards */}
             <div className="col-12 col-lg-8">
               <div className="row g-3">
                 {overviewCards.map((card, i) => (
@@ -126,13 +130,19 @@ export default function ComplainantDashboard() {
               </div>
             </div>
 
-            {/* Calendar — right 4 cols */}
+            {/* Calendar */}
             <div className="col-12 col-lg-4">
               <div className={styles.calendarCard}>
                 <div className={styles.calendarCardHeader}>
                   <span>Your Events</span>
                 </div>
-                <Calendar />
+                <div className={styles.calendarBody}>
+                  <Calendar
+                    onChange={setCalDate}
+                    value={calDate}
+                    locale="en-US"
+                  />
+                </div>
               </div>
             </div>
           </div>
