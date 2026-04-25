@@ -35,7 +35,8 @@ SAVIRA is an automated, centralized case management system designed to facilitat
 - **GROQ API (Llama 3.8B)** - NLP for narrative analysis
 
 ### File Structure
-root/
+```text
+SAVIRA/
 ├── backend/
 │   ├── src/
 │   │   ├── routes/
@@ -61,6 +62,7 @@ root/
 ├── .gitignore
 ├── package.json
 └── README.md
+```
 
 ## Getting Started
 
