@@ -550,6 +550,367 @@
   }
 }
 
+/* ════════════════════════════════════════════════════════
+   MODAL
+   ════════════════════════════════════════════════════════ */
+
+/* ── Modal overlay ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* ── Modal box ── */
+.modalBox {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  width: 100%;
+  max-width: 540px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: modalIn 0.18s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Modal header ── */
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.4rem 1rem;
+  border-bottom: 1px solid var(--sasha-border);
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sasha-muted);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.modalClose:hover {
+  background: var(--sasha-teal-light);
+  color: var(--sasha-teal);
+}
+
+/* ── Modal body ── */
+.modalBody {
+  padding: 1.25rem 1.4rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── Modal footer ── */
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--sasha-border);
+  margin-top: 1.25rem;
+}
+
+/* ── Form elements ── */
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.formLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--sasha-text);
+}
+
+.formInput {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: var(--sasha-text);
+  background: var(--sasha-white);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.formInput:focus {
+  border-color: var(--sasha-teal);
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+}
+
+.errorMsg {
+  font-size: 0.78rem;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+/* ── Radio group ── */
+.radioGroup {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--sasha-text);
+  cursor: pointer;
+}
+
+.radioInput {
+  accent-color: var(--sasha-teal);
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Buttons ── */
+.btnPrimary {
+  background: var(--sasha-teal);
+  color: var(--sasha-white);
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btnPrimary:hover {
+  background: var(--sasha-teal-dark);
+  transform: translateY(-1px);
+}
+
+.btnSecondary {
+  background: var(--sasha-white);
+  color: var(--sasha-text);
+  border: 1px solid var(--sasha-border);
+  border-radius: 999px;
+  padding: 0.5rem 1.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.btnSecondary:hover {
+  background: var(--sasha-offwhite);
+  border-color: var(--sasha-muted);
+}
+
+.btnDanger {
+  background: #ef4444;
+  color: var(--sasha-white);
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btnDanger:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* ── View details grid ── */
+.viewGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.viewRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--sasha-border);
+}
+
+.viewRow:last-child {
+  border-bottom: none;
+}
+
+.viewKey {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--sasha-muted);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.viewVal {
+  font-size: 0.88rem;
+  color: var(--sasha-text);
+}
+
+/* ── Delete modal body ── */
+.deleteBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.deleteIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.deleteMsg {
+  font-size: 0.95rem;
+  color: var(--sasha-text);
+  line-height: 1.6;
+  max-width: 340px;
+  margin: 0;
+}
+
+/* ── Inline table action buttons ── */
+.actionBtns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tblBtnView,
+.tblBtnEdit,
+.tblBtnDelete {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.12s, transform 0.1s;
+}
+
+.tblBtnView {
+  background: var(--sasha-teal-light);
+  color: var(--sasha-teal-dark);
+}
+
+.tblBtnEdit {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tblBtnDelete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tblBtnView:hover,
+.tblBtnEdit:hover,
+.tblBtnDelete:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+/* ── Toast notification ── */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  animation: toastIn 0.2s ease;
+  max-width: 360px;
+}
+
+.toast--success {
+  background: var(--sasha-teal);
+  color: var(--sasha-white);
+}
+
+.toast--danger {
+  background: #dc2626;
+  color: var(--sasha-white);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Responsive modals ── */
+@media (max-width: 575.98px) {
+  .modalBox {
+    max-width: 100%;
+    border-radius: 1rem 1rem 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 92vh;
+  }
+
+  .modalOverlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .actionBtns {
+    flex-direction: column;
+  }
+}
+
 /* ════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════ */
