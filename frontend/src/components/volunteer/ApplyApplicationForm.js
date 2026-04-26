@@ -136,7 +136,7 @@ function StepApplicantInfo({ data, onChange }) {
 
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Consent</h3>
-      <Field label="Willingness to be interviewed by a SASHA Representative and a SASHA paralegal and/or lawyer">
+      <Field label="Willingness to be interviewed by a SASHA Representative">
         <RadioGroup
           name="interview"
           options={["Yes", "No"]}
