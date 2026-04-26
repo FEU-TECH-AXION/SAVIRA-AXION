@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./UserManagement.module.css";
+import { FiSearch } from "react-icons/fi";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPABASE INTEGRATION
@@ -323,7 +324,7 @@ export default function AdminDashboard() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
-                <span className={styles.searchIcon}>🔍</span>
+                <span className={styles.searchIcon}><FiSearch /></span>
               </div>
             </div>
  
