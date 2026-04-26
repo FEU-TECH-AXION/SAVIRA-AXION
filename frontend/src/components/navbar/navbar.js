@@ -43,6 +43,22 @@ const CASE_OFFICER_LINKS = [
   { href: "/case-officer/insights", label: "Insights" },
 ];
 
+const STAFF_LINKS = [
+  { href: "/dashboard",     label: "Home" },
+  { href: "/applications",  label: "Applications" },
+  { href: "/projects",      label: "Projects" },
+  { href: "/heatmap",       label: "Heatmap" },
+  { href: "/reports",       label: "Reports" },
+];
+
+const LEGAL_LINKS = [
+  { href: "/dashboard",     label: "Home" },
+  { href: "/legalReviews",  label: "Legal Review" },
+  { href: "/cases",         label: "Cases" },
+  { href: "/heatmap",       label: "Heatmap" },
+  { href: "/reports",       label: "Reports" },
+];
+
 const ADMIN_LINKS = [
   { href: "/dashboard", label: "Home" },
   { href: "/users",     label: "Users" },
