@@ -47,8 +47,9 @@ const ADMIN_LINKS = [
   { href: "/dashboard", label: "Home" },
   { href: "/users",     label: "Users" },
   { href: "/cases",     label: "Cases" },
+  { href: "/legalReviews",     label: "Legal Review" },
   { href: "/projects",     label: "Projects" },
-  { href: "/volunteers", label: "Volunteers" },
+  { href: "/volunteer", label: "Volunteers" },
   { href: "/heatmap", label: "Heatmap" },
   { href: "/reports",   label: "Reports" },
 ];
