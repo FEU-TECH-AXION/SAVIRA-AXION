@@ -3,7 +3,6 @@
 import { useState } from "react";
 import styles from "./page.module.css";
 import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
-import { FaXTwitter, FaInstagram, FaYoutube, FaLinkedin } from "react-icons/fa6";
 
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
