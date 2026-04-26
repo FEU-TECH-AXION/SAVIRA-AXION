@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 const { v4: uuidv4 } = require('uuid')
 const UserModel = require('../models/users.model')
 
@@ -43,4 +44,39 @@ const signup = async (req, res) => {
     }
 }
 
-module.exports = { signup }
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body
+
+        // 1. Validate fields
+        if (!email || !password)
+            return res.status(400).json({ error: 'All fields are required.' })
+
+        // 2. Find user by email
+        const user = await UserModel.findByEmail(email)
+        console.log('User found:', user)
+        if (!user)
+            return res.status(401).json({ error: 'Invalid email or password.' })
+
+        // 3. Compare password
+        const isMatch = await bcrypt.compare(password, user.password)
+        if (!isMatch)
+            return res.status(401).json({ error: 'Invalid email or password.' })
+
+        // 4. Generate JWT
+        const token = jwt.sign(
+            { id: user.user_id, role: user.role_id },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        )
+
+        // 5. Return token and safe user data (never return password)
+        const { password: _, ...safeUser } = user
+        res.status(200).json({ token, user: safeUser })
+
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+module.exports = { signup, login }

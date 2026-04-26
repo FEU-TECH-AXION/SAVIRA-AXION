@@ -18,10 +18,37 @@ export default function Login() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", form);
+    
     // TODO: connect to backend API
+        try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email:    form.email,
+          password: form.password,
+        }),
+      });
+
+      const data = await res.json();
+      console.log('Status:', res.status);
+      console.log('Response:', data);
+
+      if (!res.ok) {
+        alert(data.error || "Login failed.");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.href = "/dashboard";
+
+    } catch (err) {
+      alert("Something went wrong. Please try again.");
+      console.error(err);
+    }
   };
 
   return (

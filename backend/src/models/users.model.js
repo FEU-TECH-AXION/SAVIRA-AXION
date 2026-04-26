@@ -25,7 +25,7 @@ const create = async (payload) => {
 const findByEmail = async (email) => {
     const { data, error } = await supabase
         .from('users')
-        .select('user_id')
+        .select('*')
         .eq('email', email)
         .single()
     if (error && error.code !== 'PGRST116') throw error
