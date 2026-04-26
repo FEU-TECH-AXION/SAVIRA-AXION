@@ -1,0 +1,591 @@
+/* ════════════════════════════════════════
+   SASHA Design tokens
+   ════════════════════════════════════════ */
+:root {
+  --sasha-teal:         #037F81;
+  --sasha-teal-dark:    #025f61;
+  --sasha-teal-light:   #e1f5f5;
+  --sasha-orange:       #E8663A;
+  --sasha-orange-dark:  #c44e24;
+  --sasha-white:        #ffffff;
+  --sasha-offwhite:     #f5f7f8;
+  --sasha-text:         #292929;
+  --sasha-muted:        #6b7280;
+  --sasha-border:       #e5e7eb;
+  --sasha-card-radius:  14px;
+}
+
+/* ════════════════════════════════════════
+   PAGE WRAPPER
+   ════════════════════════════════════════ */
+.pageWrapper {
+  background: var(--sasha-offwhite);
+  min-height: 100vh;
+  color: var(--sasha-text);
+}
+
+/* ════════════════════════════════════════
+   HERO BANNER
+   ════════════════════════════════════════ */
+.heroBanner {
+  position: relative;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.heroContent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(3,127,129,0.9) 0%, rgba(3,127,129,0.7) 100%);
+  z-index: -1;
+  border-radius: 1rem;
+}
+
+.heroContent {
+  background-image: url('/sasha-bg-1.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  border-radius: 1rem;
+  padding: 5rem;
+  margin-top: 6rem;
+}
+
+.heroTitle {
+  color: var(--sasha-white);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+}
+
+/* ── Stat Cards ── */
+.statCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  padding: 2rem 1.75rem;
+  backdrop-filter: blur(10px);
+  height: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+/* No-op wrapper — keeps JSX clean, dot is abs on the card */
+.statDotWrap {
+  display: contents;
+}
+
+/* Orange dot: top-right of the card, half-overlapping the top edge */
+.statDot {
+  position: absolute;
+  top: -1.5rem;
+  left: 2rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--sasha-orange);
+  border: 3px solid rgba(255,255,255,0.4);
+  pointer-events: none;
+}
+
+/* Big number on the LEFT */
+.statNum {
+  color: var(--sasha-white);
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Label to the RIGHT of the number */
+.statLabel {
+  color: var(--sasha-white);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0;
+  text-align: left;
+}
+
+/* ════════════════════════════════════════
+   SECTION HEADING
+   ════════════════════════════════════════ */
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sectionTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.headingLine {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, var(--sasha-orange), transparent);
+  border-radius: 2px;
+}
+
+/* ════════════════════════════════════════
+   ACTION CARDS
+   ════════════════════════════════════════ */
+.actionCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  padding: 1.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+  position: relative;
+  margin: 1rem 0rem;
+}
+
+.actionIconWrap {
+  width: 10%;
+  height: 10%;
+  min-width: 60px;
+  min-height: 60px;
+  border-radius: 50%;
+  background: var(--sasha-teal-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  border: 1px solid var(--sasha-border);
+  position: absolute;
+  top: -1rem;
+}
+
+.actionIcon {
+  font-size: 1.4rem;
+}
+
+.actionIconImg {
+  width: 100%;
+  height: 100%;
+}
+
+.actionTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0;
+  margin-top: 1.5rem;
+}
+
+.actionDesc {
+  font-size: 1.1rem;
+  color: var(--sasha-muted);
+  margin: 0;
+  margin-top: 0.5rem;
+  flex: 1;
+}
+
+.ViewRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+/* ════════════════════════════════════════
+   OVERVIEW CARDS
+   ════════════════════════════════════════ */
+.overviewCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+  height: 100%;
+}
+
+.overviewCardHeader {
+  background: var(--sasha-teal);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+}
+
+.overviewCardBody {
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.overviewLabel {
+  font-size: 0.82rem;
+  color: var(--sasha-muted);
+  margin: 0 0 0.2rem;
+}
+
+.overviewCount {
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  line-height: 1;
+  margin: 0;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--sasha-orange);
+  color: var(--sasha-white);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 16px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.85rem;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: var(--sasha-orange-dark);
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════════════════
+   Inherits SASHA design tokens from
+   UserManagement.module.css via :root
+   ════════════════════════════════════════ */
+
+/* ── Section wrapper ── */
+.allList {
+  padding: 2rem 0 4rem;
+}
+
+/* ── Section heading (same pattern as UserManagement) ── */
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.headingLine {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, var(--sasha-orange), transparent);
+  border-radius: 2px;
+}
+
+/* ── Two-column layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ── Table ── */
+.tableWrap {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.table thead tr {
+  background: var(--sasha-teal);
+}
+
+.table thead th {
+  color: var(--sasha-white);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--sasha-border);
+  transition: background 0.12s;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--sasha-offwhite);
+}
+
+.table tbody td {
+  padding: 0.65rem 1rem;
+  color: var(--sasha-text);
+  font-size: 0.84rem;
+}
+
+/* ── Status badges ── */
+.badgeActive,
+.badgeInactive,
+.badgeSubmitted, 
+.badgeUnassigned, 
+.badgeVerifiedTrue, 
+.badgeVerifiedFalse {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.badgeActive {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badgeInactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badgeSubmitted {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badgeVerifiedTrue {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badgeVerifiedFalse {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badgeUnassigned {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Empty / loading ── */
+.emptyState,
+.loadingState {
+  text-align: center;
+  padding: 2.5rem;
+  color: var(--sasha-muted);
+  font-size: 0.88rem;
+}
+
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 1rem;
+  border-top: 1px solid var(--sasha-border);
+}
+
+.pageBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--sasha-border);
+  background: var(--sasha-white);
+  color: var(--sasha-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pageBtn:hover {
+  border-color: var(--sasha-teal);
+  color: var(--sasha-teal);
+}
+
+.pageBtnActive {
+  background: var(--sasha-teal) !important;
+  color: var(--sasha-white) !important;
+  border-color: var(--sasha-teal) !important;
+}
+
+.pageArrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--sasha-teal);
+  color: var(--sasha-white);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.pageArrow:hover:not(:disabled) {
+  background: var(--sasha-teal-dark);
+}
+
+.pageArrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sidebarBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sidebarLabel {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-orange);
+  margin: 0;
+}
+
+/* Search input */
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--sasha-text);
+  background: var(--sasha-white);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.searchInput:focus {
+  border-color: var(--sasha-teal);
+}
+
+.searchIcon {
+  position: absolute;
+  right: 0.6rem;
+  font-size: 0.85rem;
+  pointer-events: none;
+  color: var(--sasha-muted);
+}
+
+/* Role filter buttons */
+.roleList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.roleBtn {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: var(--sasha-white);
+  color: var(--sasha-text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.roleBtn:hover {
+  border-color: var(--sasha-teal);
+  background: var(--sasha-teal-light);
+  color: var(--sasha-teal);
+}
+
+.roleBtnActive {
+  background: var(--sasha-teal) !important;
+  color: var(--sasha-white) !important;
+  border-color: var(--sasha-teal) !important;
+  font-weight: 700;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767.98px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    order: -1;
+  }
+
+  .sectionTitle {
+    font-size: 1.5rem;
+  }
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════ */
+@media (max-width: 991.98px) {
+  .footerInner { grid-template-columns: 1fr 1fr; }
+  .footerBrand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 767.98px) {
+  .heroBanner  { padding: 2rem 0; }
+  .heroTitle   { font-size: 1.5rem; margin-bottom: 1.25rem; }
+  .footerInner { grid-template-columns: 1fr; gap: 1.5rem; }
+  .footerBrand { grid-column: auto; }
+  .overviewCount { font-size: 2.25rem; }
+}
