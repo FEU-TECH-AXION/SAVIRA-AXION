@@ -23,4 +23,21 @@ const createItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem }
+const loginUser = async (req, res) => {
+    try {
+    const { email, password } = req.body;
+    if (!email || !password)
+        return res.status(400).json({ error: 'Email and password are required' });
+
+    const user = await UserModel.login(email, password);
+
+    // Remove password from response
+    const { password: _, ...safeUser } = user;
+
+    res.json({ user: safeUser });
+    } catch (err) {
+    res.status(401).json({ error: err.message });
+    }
+};
+
+module.exports = { getItems, createItem, loginUser }

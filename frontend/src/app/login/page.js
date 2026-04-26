@@ -3,6 +3,7 @@
 import { useState } from "react";
 import styles from "./login.module.css";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,15 +15,32 @@ export default function Login() {
     password: "",
   });
 
+  const router = useRouter();
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", form);
-    // TODO: connect to backend API
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: form.email, password: form.password }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
+  // TODO: Replace localStorage with httpOnly cookie for security
+  // Save user to localStorage so other pages can access it
+  localStorage.setItem('user', JSON.stringify(data.user));
+  router.push('/dashboard');
+};
 
   return (
     <div className={styles.wrapper}>

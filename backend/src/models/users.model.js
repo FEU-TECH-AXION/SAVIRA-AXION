@@ -1,12 +1,9 @@
 const supabase = require('../config/supabase')
+const bcrypt = require('bcrypt')
 
 const getAll = async () => {
     const { data, error } = await supabase.from('users').select('*')
-
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
     if (error) throw error
-
     return data
 }
 
@@ -14,12 +11,29 @@ const create = async (payload) => {
     const { data, error } = await supabase
         .from('users')
         .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
+        .select()
     if (error) throw error
-
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
     return data[0]
 }
 
-module.exports = { getAll, create }
+const login = async (email, password) => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*, roles(role_name)')
+        .eq('email', email)
+        .single();
+
+    console.log('DATA:', JSON.stringify(data));
+    console.log('ERROR:', JSON.stringify(error));
+
+    if (error || !data) throw new Error('Invalid email or password');
+
+    const match = await bcrypt.compare(password, data.password);
+    console.log('MATCH:', match);
+
+    if (!match) throw new Error('Invalid email or password');
+
+    return data;
+};
+
+module.exports = { getAll, create, login }
