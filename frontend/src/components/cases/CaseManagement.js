@@ -3,96 +3,56 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./CaseManagement.module.css";
-import { FiSearch } from "react-icons/fi";
+import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUPABASE INTEGRATION
-// Uncomment and configure when ready:
-//
-// import { createClient } from "@supabase/supabase-js";
-// const supabase = createClient(
-//   process.env.NEXT_PUBLIC_SUPABASE_URL,
-//   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-// );
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── PLACEHOLDER DATA ────────────────────────────────────────────────────────
+const REGIONS = ["NCR", "Region I", "Region II", "Region III", "Region IV-A", "Region V", "Region VI", "Region VII"];
+const OFFICERS = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
+const STATUSES = ["Submitted", "Active", "Unassigned", "Verified True", "Verified False", "Dismissed"];
 
-// ── Placeholder data (replace with Supabase fetch) ───────────────────────────
-const PLACEHOLDER_CASES = [
-  { id: 1,  caseId: "00112233", reporterId: "12345678", region: "NCR", status: "Submitted",  assignedOfficer: "Alexa Gagan" },
-  { id: 2,  caseId: "00112234", reporterId: "12345679", region: "NCR", status: "Active",      assignedOfficer: "Marco Santos" },
-  { id: 3,  caseId: "00112235", reporterId: "12345680", region: "Region III", status: "Unassigned", assignedOfficer: "—" },
-  { id: 4,  caseId: "00112236", reporterId: "12345681", region: "Region IV", status: "Verified True", assignedOfficer: "Ryan Dela Paz" },
-  { id: 5,  caseId: "00112237", reporterId: "12345682", region: "NCR", status: "Dismissed",   assignedOfficer: "Sofia Reyes" },
-  { id: 6,  caseId: "00112238", reporterId: "12345683", region: "Region VII", status: "Submitted", assignedOfficer: "James Tan" },
-  { id: 7,  caseId: "00112239", reporterId: "12345684", region: "NCR", status: "Active",      assignedOfficer: "Maria Bautista" },
-  { id: 8,  caseId: "00112240", reporterId: "12345685", region: "Region I", status: "Unassigned", assignedOfficer: "—" },
-  { id: 9,  caseId: "00112241", reporterId: "12345686", region: "NCR", status: "Verified False", assignedOfficer: "Diana Flores" },
-  { id: 10, caseId: "00112242", reporterId: "12345687", region: "Region VI", status: "Active", assignedOfficer: "Ben Mercado" },
-  { id: 11, caseId: "00112243", reporterId: "12345688", region: "NCR", status: "Submitted",   assignedOfficer: "Trisha Abad" },
-  { id: 12, caseId: "00112244", reporterId: "12345689", region: "Region XI", status: "Dismissed", assignedOfficer: "Noel Ramos" },
-];
+function makeCase(id) {
+  return {
+    id,
+    caseId:   "00" + String(100000 + id).slice(-6),
+    reporterId: String(10000000 + id * 7).slice(0, 8),
+    region:   REGIONS[id % REGIONS.length],
+    status:   STATUSES[id % STATUSES.length],
+    officer:  OFFICERS[id % OFFICERS.length],
+    dateSubmitted: `0${(id % 9) + 1}/0${(id % 7) + 1}/2026`,
+    description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+  };
+}
 
-const STATUS_FILTERS = [
-  "All",
-  "Unassigned",
-  "Verified True",
-  "Verified False",
-  "Active",
-  "Dismissed",
-];
+const PLACEHOLDER_CASES = Array.from({ length: 28 }, (_, i) => makeCase(i + 1));
+const STATUS_FILTERS = ["Unassigned", "Verified True", "Verified False", "Active", "Dismissed"];
+const PAGE_SIZE = 11;
 
-const PAGE_SIZE = 8;
-
-// ── Status badge ─────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
-  const badgeClass =
-    status === "Active"       ? styles.badgeActive :
-    status === "Dismissed"    ? styles.badgeInactive :
-    status === "Verified True"? styles.badgeVerifiedTrue :
-    status === "Verified False"? styles.badgeVerifiedFalse :
-    status === "Unassigned"   ? styles.badgeUnassigned :
-    styles.badgeSubmitted ? styles.badgeSubmitted : "";
-
+  const map = {
+    "Submitted":      styles.badgeSubmitted,
+    "Active":         styles.badgeActive,
+    "Unassigned":     styles.badgeUnassigned,
+    "Verified True":  styles.badgeVerifiedTrue,
+    "Verified False": styles.badgeVerifiedFalse,
+    "Dismissed":      styles.badgeDismissed,
+  };
   return (
-    <span className={badgeClass}>
+    <span className={`${styles.badge} ${map[status] || styles.badgeSubmitted}`}>
       <span className={styles.badgeDot} />
       {status}
     </span>
   );
 }
 
-// ── Pagination ────────────────────────────────────────────────────────────────
 function Pagination({ current, total, onChange }) {
-  const pages = Array.from({ length: total }, (_, i) => i + 1);
   return (
     <div className={styles.pagination}>
-      <button
-        className={styles.pageArrow}
-        onClick={() => onChange(current - 1)}
-        disabled={current === 1}
-        aria-label="Previous page"
-      >
-        ←
-      </button>
-
-      {pages.map((p) => (
-        <button
-          key={p}
-          className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`}
-          onClick={() => onChange(p)}
-        >
-          {p}
-        </button>
+      <button className={styles.pageArrow} onClick={() => onChange(current - 1)} disabled={current === 1}>←</button>
+      {Array.from({ length: total }, (_, i) => i + 1).map((p) => (
+        <button key={p} className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`} onClick={() => onChange(p)}>{p}</button>
       ))}
-
-      <button
-        className={styles.pageArrow}
-        onClick={() => onChange(current + 1)}
-        disabled={current === total}
-        aria-label="Next page"
-      >
-        →
-      </button>
+      <button className={styles.pageArrow} onClick={() => onChange(current + 1)} disabled={current === total}>→</button>
     </div>
   );
 }
@@ -117,89 +77,279 @@ function ActionCard({ icon, title, description, onView }) {
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-export default function CaseManagement() {
+// ══════════════════════════════════════════════════════════════════
+// MODAL SHELL
+// ══════════════════════════════════════════════════════════════════
+function Modal({ open, onClose, title, children }) {
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>{title}</h2>
+          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
+        </div>
+        <div className={styles.modalBody}>{children}</div>
+      </div>
+    </div>
+  );
+}
 
-  // TODO: replace with real auth / session data
+// ── View Case Modal ───────────────────────────────────────────────
+function ViewCaseModal({ open, onClose, caseData }) {
+  if (!caseData) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Case Details">
+      <div className={styles.viewGrid}>
+        {[
+          ["Case ID", caseData.caseId],
+          ["Reporter ID", caseData.reporterId],
+          ["Region", caseData.region],
+          ["Status", <StatusBadge status={caseData.status} />],
+          ["Assigned Officer", caseData.officer],
+          ["Date Submitted", caseData.dateSubmitted],
+          ["Description", caseData.description],
+        ].map(([k, v]) => (
+          <div key={k} className={styles.viewRow}>
+            <span className={styles.viewKey}>{k}</span>
+            <span className={styles.viewVal}>{v}</span>
+          </div>
+        ))}
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnPrimary} onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Assign Case Modal ─────────────────────────────────────────────
+function AssignCaseModal({ open, onClose, caseData, onSave }) {
+  const [officer, setOfficer] = useState("");
+  const [error, setError]     = useState("");
+
+  useEffect(() => { if (caseData) setOfficer(caseData.officer || ""); }, [caseData]);
+
+  function handleSave() {
+    if (!officer.trim()) { setError("Please select or enter an officer."); return; }
+    onSave({ ...caseData, officer, status: "Active" });
+    setError("");
+    onClose();
+  }
+
+  if (!caseData) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Assign Case">
+      <div className={styles.formGrid}>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Case ID</label>
+          <input className={styles.formInput} value={caseData.caseId} readOnly />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Assign to Officer *</label>
+          <select className={`${styles.formInput} ${error ? styles.inputError : ""}`} value={officer} onChange={(e) => setOfficer(e.target.value)}>
+            <option value="">— Select Officer —</option>
+            {OFFICERS.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {error && <span className={styles.errorMsg}>{error}</span>}
+        </div>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave}>Assign Case</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Manage Status Modal ───────────────────────────────────────────
+function ManageStatusModal({ open, onClose, caseData, onSave }) {
+  const [status, setStatus] = useState("");
+  useEffect(() => { if (caseData) setStatus(caseData.status || ""); }, [caseData]);
+
+  function handleSave() {
+    onSave({ ...caseData, status });
+    onClose();
+  }
+
+  if (!caseData) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Manage Case Status">
+      <div className={styles.formGrid}>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Case ID</label>
+          <input className={styles.formInput} value={caseData.caseId} readOnly />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Status</label>
+          <div className={styles.radioGroup}>
+            {STATUSES.map((s) => (
+              <label key={s} className={styles.radioLabel}>
+                <input type="radio" name="case-status" value={s} checked={status === s} onChange={() => setStatus(s)} className={styles.radioInput} />
+                {s}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave}>Save Status</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Verify Case Modal ─────────────────────────────────────────────
+function VerifyCaseModal({ open, onClose, caseData, onSave }) {
+  const [verdict, setVerdict] = useState("Verified True");
+  const [notes, setNotes]     = useState("");
+  useEffect(() => { if (caseData) { setVerdict("Verified True"); setNotes(""); } }, [caseData]);
+
+  if (!caseData) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Verify Case">
+      <div className={styles.formGrid}>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Case ID</label>
+          <input className={styles.formInput} value={caseData.caseId} readOnly />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Verification Result</label>
+          <div className={styles.radioGroup}>
+            {["Verified True", "Verified False"].map((v) => (
+              <label key={v} className={styles.radioLabel}>
+                <input type="radio" name="verdict" value={v} checked={verdict === v} onChange={() => setVerdict(v)} className={styles.radioInput} />
+                {v}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Notes</label>
+          <textarea className={styles.formInput} rows={3} placeholder="Add verification notes…" value={notes} onChange={(e) => setNotes(e.target.value)} style={{ resize: "vertical" }} />
+        </div>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={() => { onSave({ ...caseData, status: verdict }); onClose(); }}>Submit Verification</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── View All Cases Modal ──────────────────────────────────────────
+function ViewAllCasesModal({ open, onClose, cases, onView, onAssign, onStatus, onVerify }) {
+  const [q, setQ] = useState("");
+  const filtered  = useMemo(() => cases.filter((c) =>
+    c.caseId.includes(q) || c.officer.toLowerCase().includes(q.toLowerCase()) || c.region.toLowerCase().includes(q.toLowerCase())
+  ), [cases, q]);
+
+  return (
+    <Modal open={open} onClose={onClose} title="All Cases">
+      <div className={styles.searchWrap} style={{ marginBottom: "1rem" }}>
+        <input className={styles.searchInput} type="text" placeholder="Search by Case ID, officer, region…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <span className={styles.searchIcon}><FiSearch /></span>
+      </div>
+      <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+        <table className={styles.table}>
+          <thead><tr><th>Case ID</th><th>Region</th><th>Status</th><th>Officer</th><th>Actions</th></tr></thead>
+          <tbody>
+            {filtered.length === 0
+              ? <tr><td colSpan={5} className={styles.emptyState}>No cases found.</td></tr>
+              : filtered.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.caseId}</td>
+                  <td>{c.region}</td>
+                  <td><StatusBadge status={c.status} /></td>
+                  <td>{c.officer}</td>
+                  <td>
+                    <div className={styles.actionBtns}>
+                      <button className={styles.tblBtnView}   onClick={() => { onView(c);   onClose(); }}>View</button>
+                      <button className={styles.tblBtnEdit}   onClick={() => { onAssign(c); onClose(); }}>Assign</button>
+                      <button className={styles.tblBtnStatus} onClick={() => { onStatus(c); onClose(); }}>Status</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnPrimary} onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ══════════════════════════════════════════════════════════════════
+export default function CaseManagement() {
   const user = { role: "admin", firstName: "Admin", lastName: "User" };
 
-  // hasNew drives the orange dot — set to true to show it
-  const stats = [
-    { num: 6,  label: "Unassigned Cases", hasNew: true },
-    { num: 6,  label: "Active Cases",     hasNew: true },
-    { num: 12, label: "Total Cases",      hasNew: true },
-  ];
-
   const [cases, setCases]           = useState(PLACEHOLDER_CASES);
-  const [loading, setLoading]       = useState(false);
   const [search, setSearch]         = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState(null);
   const [page, setPage]             = useState(1);
+  const [modal, setModal]           = useState(null);
+  const [selected, setSelected]     = useState(null);
+  const [toast, setToast]           = useState(null);
 
-  // ── Supabase fetch (swap placeholder above with this when ready) ────────────
-  // useEffect(() => {
-  //   async function fetchCases() {
-  //     setLoading(true);
-  //     const { data, error } = await supabase
-  //       .from("cases")
-  //       .select("id, case_id, reporter_id, region, status, assigned_officer")
-  //       .order("created_at", { ascending: false });
-  //
-  //     if (!error && data) {
-  //       setCases(
-  //         data.map((c) => ({
-  //           id:              c.id,
-  //           caseId:          c.case_id,
-  //           reporterId:      c.reporter_id,
-  //           region:          c.region,
-  //           status:          c.status,
-  //           assignedOfficer: c.assigned_officer,
-  //         }))
-  //       );
-  //     }
-  //     setLoading(false);
-  //   }
-  //   fetchCases();
-  // }, []);
+  function showToast(msg, type = "success") {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  }
 
-  // ── Filter + search ──────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    return cases.filter((c) => {
-      const matchFilter = activeFilter === "All" || c.status === activeFilter;
-      const matchSearch =
-        c.caseId.toLowerCase().includes(search.toLowerCase()) ||
-        c.reporterId.toLowerCase().includes(search.toLowerCase()) ||
-        c.region.toLowerCase().includes(search.toLowerCase()) ||
-        c.assignedOfficer.toLowerCase().includes(search.toLowerCase());
-      return matchFilter && matchSearch;
-    });
-  }, [cases, activeFilter, search]);
+  const stats = useMemo(() => [
+    { num: cases.filter((c) => c.status === "Unassigned").length, label: "Unassigned Cases" },
+    { num: cases.filter((c) => c.status === "Active").length,     label: "Active Cases"     },
+    { num: cases.length,                                            label: "Total Cases"      },
+  ], [cases]);
 
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, activeFilter]);
+  function updateCase(updated) {
+    setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+    showToast(`Case ${updated.caseId} updated successfully.`);
+  }
 
+  const filtered = useMemo(() => cases.filter((c) => {
+    const matchSearch = !search || c.caseId.includes(search) || c.officer.toLowerCase().includes(search.toLowerCase()) || c.region.toLowerCase().includes(search.toLowerCase());
+    const matchFilter = !activeFilter || c.status === activeFilter;
+    return matchSearch && matchFilter;
+  }), [cases, search, activeFilter]);
+
+  useEffect(() => setPage(1), [search, activeFilter]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function openView(c)   { setSelected(c); setModal("view"); }
+  function openAssign(c) { setSelected(c); setModal("assign"); }
+  function openStatus(c) { setSelected(c); setModal("status"); }
+  function openVerify(c) { setSelected(c); setModal("verify"); }
+  function closeModal()  { setModal(null); }
 
   return (
     <>
       <Navbar user={user} />
 
-      <main className={styles.pageWrapper}>
+      {toast && <div className={`${styles.toast} ${styles[`toast--${toast.type}`]}`}>{toast.msg}</div>}
 
-        {/* ── Hero Banner ── */}
+      <main className={styles.pageWrapper}>
+        {/* Hero */}
         <section className={styles.heroBanner}>
           <div className="container-xl">
             <div className={styles.heroContent}>
-              <h1 className={styles.heroTitle}>
-                Case Management
-              </h1>
-
+              <h1 className={styles.heroTitle}>Case Management</h1>
               <div className="row g-3 justify-content-center">
-                {stats.map(({ num, label, hasNew }) => (
+                {stats.map(({ num, label }) => (
                   <div key={label} className="col-12 col-md-4">
                     <div className={styles.statCard}>
-                      {hasNew && <span className={styles.statDot} />}
+                      <span className={styles.statDot} />
                       <p className={styles.statNum}>{num}</p>
                       <p className={styles.statLabel}>{label}</p>
                     </div>
@@ -210,148 +360,123 @@ export default function CaseManagement() {
           </div>
         </section>
 
-        {/* ── What would you like to do ── */}
+        {/* Action Cards */}
         <div className="container-xl py-4">
-
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>What would you like to do?</h2>
             <div className={styles.headingLine} />
           </div>
-
           <div className="row g-3 mb-4">
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="CaseIconView.png" alt="" className={styles.actionIconImg} />}
                 title="View Cases"
-                description="Browse and review all submitted cases, including their current status, assigned officers, and reporter details."
-                onView={() => router.push("/cases/view")}
+                description="Browse all submitted cases and their current statuses."
+                onView={() => setModal("viewAll")}
               />
             </div>
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="CaseIconAssign.png" alt="" className={styles.actionIconImg} />}
                 title="Assign Cases"
-                description="Assign unhandled cases to the appropriate case officers based on region, expertise, and availability."
-                onView={() => router.push("/cases/assign")}
+                description="Assign unassigned cases to available case officers."
+                onView={() => setModal("viewAll")}
               />
             </div>
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="CaseIconManage.png" alt="" className={styles.actionIconImg} />}
                 title="Manage Case Status"
-                description="Update the status of ongoing cases — mark them as active, resolved, dismissed, or escalated as needed."
-                onView={() => router.push("/cases/manage")}
+                description="Update the status of active or submitted cases."
+                onView={() => setModal("viewAll")}
               />
             </div>
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="CaseIconVerify.png" alt="" className={styles.actionIconImg} />}
                 title="Verify Cases"
-                description="Review and verify the authenticity of submitted case reports before they are processed or escalated."
-                onView={() => router.push("/cases/verify")}
+                description="Review and verify the authenticity of reported cases."
+                onView={() => setModal("viewAll")}
               />
             </div>
           </div>
         </div>
 
-        {/* ── All List ── */}
+        {/* Table Section */}
         <section className={styles.allList}>
           <div className="container-xl">
-
-            {/* Section heading */}
             <div className={styles.sectionHeading}>
               <h2 className={styles.sectionTitle}>All the List of Cases</h2>
               <div className={styles.headingLine} />
             </div>
-
             <div className={styles.layout}>
-
-              {/* ── Table ── */}
               <div className={styles.tableWrap}>
-                {loading ? (
-                  <div className={styles.loadingState}>Loading cases…</div>
-                ) : (
-                  <>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Case ID</th>
-                          <th>Reporter ID</th>
-                          <th>Region</th>
-                          <th>Status</th>
-                          <th>Assigned Officer</th>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Case ID</th>
+                      <th>Reporter ID</th>
+                      <th>Region</th>
+                      <th>Status</th>
+                      <th>Assigned Officer</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginated.length === 0
+                      ? <tr><td colSpan={6} className={styles.emptyState}>No cases found.</td></tr>
+                      : paginated.map((c) => (
+                        <tr key={c.id}>
+                          <td>{c.caseId}</td>
+                          <td>{c.reporterId}</td>
+                          <td>{c.region}</td>
+                          <td><StatusBadge status={c.status} /></td>
+                          <td>{c.officer}</td>
+                          <td>
+                            <div className={styles.actionBtns}>
+                              <button className={styles.tblBtnView}   onClick={() => openView(c)}>View</button>
+                              <button className={styles.tblBtnEdit}   onClick={() => openAssign(c)}>Assign</button>
+                              <button className={styles.tblBtnStatus} onClick={() => openStatus(c)}>Status</button>
+                              <button className={styles.tblBtnVerify} onClick={() => openVerify(c)}>Verify</button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {paginated.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className={styles.emptyState}>
-                              No cases found.
-                            </td>
-                          </tr>
-                        ) : (
-                          paginated.map((c) => (
-                            <tr key={c.id}>
-                              <td>{c.caseId}</td>
-                              <td>{c.reporterId}</td>
-                              <td>{c.region}</td>
-                              <td><StatusBadge status={c.status} /></td>
-                              <td>{c.assignedOfficer}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-
-                    <Pagination
-                      current={page}
-                      total={totalPages}
-                      onChange={setPage}
-                    />
-                  </>
-                )}
+                      ))
+                    }
+                  </tbody>
+                </table>
+                <Pagination current={page} total={totalPages} onChange={setPage} />
               </div>
 
-              {/* ── Sidebar ── */}
+              {/* Sidebar */}
               <aside className={styles.sidebar}>
-
-                {/* Search */}
                 <div className={styles.sidebarBlock}>
                   <h3 className={styles.sidebarLabel}>Search</h3>
                   <div className={styles.searchWrap}>
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
+                    <input className={styles.searchInput} type="text" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
                     <span className={styles.searchIcon}><FiSearch /></span>
                   </div>
                 </div>
-
-                {/* Sort By / Filter */}
                 <div className={styles.sidebarBlock}>
                   <h3 className={styles.sidebarLabel}>Sort By</h3>
-                  <div className={styles.roleList}>
-                    {STATUS_FILTERS.filter((f) => f !== "All").map((filter) => (
-                      <button
-                        key={filter}
-                        className={`${styles.roleBtn} ${activeFilter === filter ? styles.roleBtnActive : ""}`}
-                        onClick={() => setActiveFilter(activeFilter === filter ? "All" : filter)}
-                      >
-                        {filter}
-                      </button>
+                  <div className={styles.filterList}>
+                    {STATUS_FILTERS.map((f) => (
+                      <button key={f} className={`${styles.filterBtn} ${activeFilter === f ? styles.filterBtnActive : ""}`} onClick={() => setActiveFilter(activeFilter === f ? null : f)}>{f}</button>
                     ))}
                   </div>
                 </div>
-
               </aside>
             </div>
           </div>
         </section>
-
       </main>
+
+      {/* Modals */}
+      <ViewCaseModal      open={modal === "view"}    onClose={closeModal} caseData={selected} />
+      <AssignCaseModal    open={modal === "assign"}  onClose={closeModal} caseData={selected} onSave={updateCase} />
+      <ManageStatusModal  open={modal === "status"}  onClose={closeModal} caseData={selected} onSave={updateCase} />
+      <VerifyCaseModal    open={modal === "verify"}  onClose={closeModal} caseData={selected} onSave={updateCase} />
+      <ViewAllCasesModal  open={modal === "viewAll"} onClose={closeModal} cases={cases} onView={openView} onAssign={openAssign} onStatus={openStatus} onVerify={openVerify} />
     </>
   );
 }
