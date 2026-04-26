@@ -23,17 +23,32 @@ const login = async (email, password) => {
         .eq('email', email)
         .single();
 
-    console.log('DATA:', JSON.stringify(data));
-    console.log('ERROR:', JSON.stringify(error));
-
     if (error || !data) throw new Error('Invalid email or password');
 
     const match = await bcrypt.compare(password, data.password);
-    console.log('MATCH:', match);
-
     if (!match) throw new Error('Invalid email or password');
 
     return data;
 };
 
-module.exports = { getAll, create, login }
+const findByEmail = async (email) => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+}
+
+const findByUsername = async (username) => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('user_name', username)
+        .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+}
+
+module.exports = { getAll, create, login, findByEmail, findByUsername }

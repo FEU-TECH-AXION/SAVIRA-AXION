@@ -58,5 +58,9 @@ app.use('/api/user_case_logs', userCaseLogsRouter)
 
 
 // --------------------------------------------------------
-// ROUTES FOR USER RELATED TABLES
+// ROUTES FOR PAGES
 // --------------------------------------------------------
+
+// Route for auth (signup/login)
+const authRoutes = require('./routes/auth.routes');
+app.use('/api/auth', authRoutes);
