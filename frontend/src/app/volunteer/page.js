@@ -1,6 +1,6 @@
 import { getUserRole } from "@/lib/auth";
 import Volunteer from "@/components/volunteer/landing";
-import AdminDashboard from "@/components/dashboard/admin/AdminDashboard";
+import VolunteerManagement from "@/components/volunteer/VolunteerManagement";
 import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficerDashboard";
 import VolunteerDashboard from "@/components/dashboard/volunteer/VolunteerDashboard";
 
@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const role = await getUserRole();
 
   // Main system roles
-  if (role === "admin") return <ApplicationManagement />;
+  if (role === "admin") return <VolunteerManagement />;
 //   if (role === "case_officer") return <CaseOfficerDashboard />;
 //   if (role === "volunteer") return <VolunteerDashboard />;
   if (role === "complainant") return <ApplyApplicationForm />;
