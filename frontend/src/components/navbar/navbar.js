@@ -45,12 +45,12 @@ const CASE_OFFICER_LINKS = [
 
 const ADMIN_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/admin/users",     label: "Users" },
-  { href: "/admin/cases",     label: "Cases" },
-  { href: "/admin/projects",     label: "Projects" },
-  { href: "/admin/volunteers", label: "Volunteers" },
-  { href: "/admin/heatmap", label: "Heatmap" },
-  { href: "/admin/reports",   label: "Reports" },
+  { href: "/users",     label: "Users" },
+  { href: "/cases",     label: "Cases" },
+  { href: "/projects",     label: "Projects" },
+  { href: "/volunteers", label: "Volunteers" },
+  { href: "/heatmap", label: "Heatmap" },
+  { href: "/reports",   label: "Reports" },
 ];
 
 function getLinks(user) {
