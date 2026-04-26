@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./LegalReviewManagement.module.css";
-import { FiSearch, FiX } from "react-icons/fi";
+import { FiSearch, FiX } from "react-icons/fi"; 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPABASE INTEGRATION — uncomment when ready

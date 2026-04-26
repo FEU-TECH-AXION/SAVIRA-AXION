@@ -56,7 +56,7 @@ const ADMIN_LINKS = [
 
 function getLinks(user) {
   if (!user) return PUBLIC_LINKS;
-  switch (user.role) {
+  switch (user.role?.toLowerCase()) {
     case "complainant":   return COMPLAINANT_LINKS;
     case "case_officer":  return CASE_OFFICER_LINKS;
     case "admin":         return ADMIN_LINKS;

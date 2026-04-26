@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
 import Calendar from "react-calendar";
@@ -57,9 +57,18 @@ function DeadlineItem({ emoji, title, date }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [calDate, setCalDate] = useState(new Date());
+  const [user, setUser] = useState({ role: "admin", firstName: "Admin", lastName: "User" });
 
-  // TODO: replace with real auth / session data
-  const user = { role: "admin", firstName: "Admin", lastName: "User" };
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (storedUser) {
+      setUser({
+        role: storedUser.roles?.role_name,
+        firstName: storedUser.first_name,
+        lastName: storedUser.last_name,
+      });
+    }
+  }, []);
 
   // hasNew drives the orange dot — set to false to hide it
   const stats = [
