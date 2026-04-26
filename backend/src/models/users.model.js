@@ -22,4 +22,25 @@ const create = async (payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create }
+const findByEmail = async (email) => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('email', email)
+        .single()
+    if (error && error.code !== 'PGRST116') throw error
+    // PGRST116 = no rows found — that's fine, means email is available
+    return data
+}
+
+const findByUsername = async (username) => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('user_name', username)
+        .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+}
+
+module.exports = { getAll, create, findByEmail, findByUsername }

@@ -18,14 +18,41 @@ export default function SignUp() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!agreed) {
       alert("Please agree to the Terms & Conditions.");
       return;
     }
-    console.log("Form submitted:", form);
-    // TODO: connect to backend API
+    
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName:  form.lastName,
+          email:     form.email,
+          password:  form.password,
+        }),
+    });
+
+    const data = await res.json();
+    console.log('Status:', res.status);
+    console.log('Response:', data); 
+
+    if (!res.ok) {
+      alert(data.message || data.error || "Signup failed.");
+      return;
+    }
+
+    // Save token and redirect
+    localStorage.setItem("token", data.token);
+    window.location.href = "/dashboard"; // or wherever
+  } catch (err) {
+    alert("Something went wrong. Please try again.");
+    console.error(err);
+  }
   };
 
   return (
@@ -134,6 +161,8 @@ export default function SignUp() {
             <button type="submit" className={styles.btn}>
               Create Account
             </button>
+
+            
 
           </form>
         </div>
