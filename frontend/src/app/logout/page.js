@@ -1,9 +1,14 @@
-// src/app/logout/route.js
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export async function GET() {
-  // clear your session cookie here, e.g.:
-  cookies().delete("session");
-  redirect("/");
+export default function LogoutPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    localStorage.removeItem('user');
+    router.push('/login');
+  }, []);
+
+  return <p>Logging out...</p>;
 }
