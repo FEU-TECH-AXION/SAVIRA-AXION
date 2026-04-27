@@ -24,7 +24,7 @@ export default function AboutPage() {
           <div className={styles.photoStack}>
             <div className={styles.photoCard}>
               <img
-                src="/about-photo-1.jpg"
+                src="/about-photo-1.png"
                 alt="SASHA members"
                 className={styles.photo}
               />
@@ -32,7 +32,7 @@ export default function AboutPage() {
             </div>
             <div className={styles.photoCardSmall}>
               <img
-                src="/about-photo-2.jpg"
+                src="/about-photo-2.png"
                 alt="SASHA activity"
                 className={styles.photo}
               />
