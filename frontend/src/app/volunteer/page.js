@@ -1,22 +1,19 @@
-import { getUserRole } from "@/lib/auth";
-import Volunteer from "@/components/volunteer/landing";
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import VolunteerManagement from "@/components/volunteer/VolunteerManagement";
-import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficerDashboard";
-import VolunteerDashboard from "@/components/dashboard/volunteer/VolunteerDashboard";
 
-// VolunteerApplication-related pages (you can rename based on your structure)
-import ApplyApplicationForm from "@/components/volunteer/ApplyApplicationForm";
-// import ApplicationStatus from "@/components/volunteer/ApplicationStatus";
-// import ApplicationManagement from "@/components/volunteer/ApplicationManagement";
+export default function VolunteerPage() {
+  const [role, setRole] = useState(null);
+  const router = useRouter();
 
-export default async function DashboardPage() {
-  const role = await getUserRole();
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) { router.push('/login'); return; }
+    setRole(user.roles?.role_name?.toLowerCase());
+  }, []);
 
-  // Main system roles
+  if (!role) return <p>Loading...</p>;
   if (role === "admin") return <VolunteerManagement />;
-//   if (role === "case_officer") return <CaseOfficerDashboard />;
-//   if (role === "volunteer") return <VolunteerDashboard />;
-  if (role === "complainant") return <ApplyApplicationForm />;
-
   return <p>Unauthorized</p>;
 }
