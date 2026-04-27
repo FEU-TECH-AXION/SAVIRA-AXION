@@ -15,5 +15,6 @@ export default function ProjectsPage() {
 
   if (!role) return <p>Loading...</p>;
   if (role === "admin") return <ProjectManagement />;
+  if (role === "staff") return <ProjectManagement />;
   return <p>Unauthorized</p>;
 }
