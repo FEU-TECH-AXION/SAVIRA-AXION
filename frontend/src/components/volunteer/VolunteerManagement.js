@@ -238,7 +238,18 @@ function SelectApplicantModal({ open, onClose, applicants, title, filterStatus, 
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function VolunteerManagement() {
-  const user = { role: "admin", firstName: "Admin", lastName: "User" };
+  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (storedUser) {
+      setUser({
+        role: storedUser.roles?.role_name,
+        firstName: storedUser.first_name,
+        lastName: storedUser.last_name,
+      });
+    }
+  }, []);
 
   const [applicants, setApplicants] = useState(PLACEHOLDER_APPLICANTS);
   const [search, setSearch] = useState("");

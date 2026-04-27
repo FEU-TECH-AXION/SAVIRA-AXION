@@ -291,7 +291,18 @@ function ViewAllCasesModal({ open, onClose, cases, onView, onAssign, onStatus, o
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function CaseManagement() {
-  const user = { role: "admin", firstName: "Admin", lastName: "User" };
+  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (storedUser) {
+      setUser({
+        role: storedUser.roles?.role_name,
+        firstName: storedUser.first_name,
+        lastName: storedUser.last_name,
+      });
+    }
+  }, []);
 
   const [cases, setCases]           = useState(PLACEHOLDER_CASES);
   const [search, setSearch]         = useState("");

@@ -309,7 +309,18 @@ function SelectProjectModal({ open, onClose, projects, title, actionLabel, actio
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function ProjectManagement() {
-  const user = { role: "admin", firstName: "Admin", lastName: "User" };
+  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (storedUser) {
+      setUser({
+        role: storedUser.roles?.role_name,
+        firstName: storedUser.first_name,
+        lastName: storedUser.last_name,
+      });
+    }
+  }, []);
 
   const [projects, setProjects] = useState(PLACEHOLDER_PROJECTS);
   const [search, setSearch] = useState("");

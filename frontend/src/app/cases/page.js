@@ -14,8 +14,9 @@ export default function CasesPage() {
   }, []);
 
   if (!role) return <p>Loading...</p>;
-  if (role === "admin") return <CaseManagement />;
-  if (role === "admin") return <CaseManagement />;
-  if (role === "admin") return <CaseManagement />;
+  if (role === "admin")          return <CaseManagement />;
+  if (role === "case officer")   return <CaseManagement />;
+  if (role === "legal personnel") return <CaseManagement />;
+
   return <p>Unauthorized</p>;
 }
