@@ -1,0 +1,551 @@
+/* frontend/src/components/volunteer/landing.module.css */
+/* Matches the SASHA design system: teal (#1a6b5a) + orange (#e86c2c) accents */
+
+/* ── CSS Variables ─────────────────────────────────────────────────────────── */
+.page {
+  --teal: #1a6b5a;
+  --teal-dark: #14523f;
+  --orange: #e86c2c;
+  --orange-light: #f4813f;
+  --white: #ffffff;
+  --off-white: #f7f8f6;
+  --text-dark: #1a1a1a;
+  --text-muted: #5a6872;
+  --border: #dce3de;
+  --card-bg: #ffffff;
+
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--text-dark);
+  background: var(--white);
+}
+
+/* ── Shared Layout ─────────────────────────────────────────────────────────── */
+.sectionInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.sectionLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--orange);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.sectionLabel::before {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  height: 2px;
+  background: var(--orange);
+  border-radius: 2px;
+}
+
+.sectionTitle {
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  font-weight: 800;
+  color: var(--text-dark);
+  margin: 0 0 2.5rem;
+  line-height: 1.15;
+}
+
+.heroAccent {
+  color: var(--orange);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btnPrimary {
+  display: inline-block;
+  background: var(--orange);
+  color: var(--white);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.8rem 2rem;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.18s ease, transform 0.15s ease;
+}
+
+.btnPrimary:hover {
+  background: var(--orange-light);
+  transform: translateY(-1px);
+  color: var(--white);
+  text-decoration: none;
+}
+
+.btnSecondary {
+  display: inline-block;
+  border: 2px solid var(--teal);
+  color: var(--teal);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.8rem;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.btnSecondary:hover {
+  background: var(--teal);
+  color: var(--white);
+  text-decoration: none;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  background: var(--teal);
+  overflow: hidden;
+  padding: 0;
+}
+
+.heroBgOverlay {
+  position: absolute;
+  inset: 0;
+  background: url("/images/hero-volunteer-bg.jpg") center/cover no-repeat;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.heroInner {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 6rem 2rem 5rem;
+}
+
+.heroContent {
+  max-width: 600px;
+}
+
+.heroEyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 1rem;
+}
+
+.heroTitle {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 900;
+  color: var(--white);
+  line-height: 1.1;
+  margin: 0 0 1.25rem;
+}
+
+.heroDesc {
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.7;
+  margin: 0 0 2rem;
+  max-width: 520px;
+}
+
+.heroBtns {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Who Can Join ──────────────────────────────────────────────────────────── */
+.whoSection {
+  padding: 5rem 0;
+  background: var(--white);
+}
+
+.whoCard {
+  background: var(--white);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+  padding: 2.5rem;
+}
+
+.whoImageWrapper {
+  flex-shrink: 0;
+  width: 220px;
+  height: 180px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--teal);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.whoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+
+.whoImagePlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.whoPlaceholderLogo {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.05em;
+}
+
+.whoList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  flex: 1;
+}
+
+.whoItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.975rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+}
+
+.whoDot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--teal);
+  margin-top: 5px;
+}
+
+/* ── What You Will Do ──────────────────────────────────────────────────────── */
+.responsibilitiesSection {
+  padding: 5rem 0;
+  background: var(--teal);
+  position: relative;
+  overflow: hidden;
+}
+
+.responsibilitiesSection::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/images/responsibilities-bg.jpg") center/cover no-repeat;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.responsibilitiesSection .sectionLabel {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.responsibilitiesSection .sectionLabel::before {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.responsibilitiesSection .sectionTitle {
+  color: var(--white);
+}
+
+.responsibilitiesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.responsibilityCard {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 1.75rem;
+  backdrop-filter: blur(4px);
+}
+
+.responsibilityNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--orange);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--white);
+  margin-bottom: 0.9rem;
+}
+
+.responsibilityTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--white);
+  margin: 0 0 0.5rem;
+}
+
+.responsibilityDesc {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* ── How To Apply ──────────────────────────────────────────────────────────── */
+.howSection {
+  padding: 5rem 0;
+  background: var(--off-white);
+}
+
+.timelineLabel {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--teal);
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+}
+
+.timelineLabel::before,
+.timelineLabel::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 60px;
+  background: var(--teal);
+  border-radius: 2px;
+}
+
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timelineLine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+/* Left-side content: content | dot | image */
+.timelineLeft .timelineContent {
+  grid-column: 1;
+  grid-row: 1;
+  text-align: right;
+}
+
+.timelineLeft .timelineDot {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.timelineLeft .timelineImage {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* Right-side content: image | dot | content */
+.timelineRight .timelineImage {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.timelineRight .timelineDot {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.timelineRight .timelineContent {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: left;
+}
+
+.timelineContent {
+  padding: 0 0.5rem;
+}
+
+.timelineStepBadge {
+  display: inline-block;
+  background: var(--orange);
+  color: var(--white);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 0.6rem;
+}
+
+.timelineStepTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--teal);
+  margin: 0 0 0.4rem;
+  line-height: 1.3;
+}
+
+.timelineStepDesc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.timelineDot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 4px solid var(--off-white);
+  box-shadow: 0 0 0 2px var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  position: relative;
+  justify-self: center;
+}
+
+.timelineDot span {
+  color: var(--white);
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.timelineImage {
+  height: 130px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.timelineImagePlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #c8ddd8, #a8c5be);
+  border-radius: 10px;
+}
+
+.howCta {
+  text-align: center;
+  margin-top: 3.5rem;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .whoCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .whoImageWrapper {
+    width: 100%;
+    height: 200px;
+  }
+
+  .responsibilitiesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroInner {
+    padding: 4rem 1.5rem 3.5rem;
+  }
+
+  .heroBtns {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heroBtns a {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Stack timeline vertically on mobile */
+  .timelineLine {
+    display: none;
+  }
+
+  .timelineRow {
+    grid-template-columns: 1fr;
+    padding: 1rem 0;
+    gap: 0.75rem;
+  }
+
+  .timelineLeft .timelineContent,
+  .timelineRight .timelineContent {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .timelineLeft .timelineDot,
+  .timelineRight .timelineDot {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: flex-start;
+  }
+
+  .timelineLeft .timelineImage,
+  .timelineRight .timelineImage {
+    display: none;
+  }
+
+  .sectionTitle {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sectionInner {
+    padding: 0 1.25rem;
+  }
+
+  .whoCard {
+    padding: 1.5rem;
+  }
+
+  .whoSection,
+  .responsibilitiesSection,
+  .howSection {
+    padding: 3.5rem 0;
+  }
+}

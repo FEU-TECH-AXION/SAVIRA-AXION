@@ -1,1 +1,231 @@
-export default function Volunteer() {}
+// frontend/src/components/volunteer/landing.js
+// Shown to: public viewers (not logged in) and complainants (logged in).
+// Complainants see an "Apply Now" button that links to /volunteer/apply.
+// Public viewers see a "Log In to Apply" button instead.
+
+import Link from "next/link";
+import styles from "./landing.module.css";
+
+// ── Section: Hero ─────────────────────────────────────────────────────────────
+function HeroSection({ isComplainant }) {
+  return (
+    <section className={styles.hero}>
+      <div className={styles.heroBgOverlay} />
+      <div className={styles.heroInner}>
+        <div className={styles.heroContent}>
+          <span className={styles.heroEyebrow}>Volunteering</span>
+          <h1 className={styles.heroTitle}>
+            Join the <span className={styles.heroAccent}>Movement</span>
+          </h1>
+          <p className={styles.heroDesc}>
+            SASHA welcomes individuals aged 13 to 35 who believe in gender
+            equality and the protection of vulnerable communities. Volunteers
+            play a crucial role in advocacy campaigns, educational initiatives,
+            and organizational activities.
+          </p>
+          <div className={styles.heroBtns}>
+            {isComplainant ? (
+              <Link href="/volunteer/apply" className={styles.btnPrimary}>
+                Apply Now
+              </Link>
+            ) : (
+              <Link href="/login" className={styles.btnPrimary}>
+                Log In to Apply
+              </Link>
+            )}
+            <a href="#how-to-apply" className={styles.btnSecondary}>
+              Learn More
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Section: Who Can Join ─────────────────────────────────────────────────────
+const WHO_ITEMS = [
+  "Youth aged 13 to 35 (Regular Members)",
+  "Below 13 (Provisional Members)",
+  "Above 35 (Honorary Members)",
+  "Both current and former Scouts",
+  "Affiliate organizations aligned with SASHA's mission",
+];
+
+function WhoCanJoin() {
+  return (
+    <section className={styles.whoSection}>
+      <div className={styles.sectionInner}>
+        <div className={styles.sectionLabel}>Who Can Join?</div>
+        <div className={styles.whoCard}>
+          <div className={styles.whoImageWrapper}>
+            {/* Replace src with your actual image */}
+            <img
+              src="/images/volunteer-group.jpg"
+              alt="SASHA volunteers"
+              className={styles.whoImage}
+            />
+            <div className={styles.whoImagePlaceholder}>
+              <span className={styles.whoPlaceholderLogo}>SASHA</span>
+            </div>
+          </div>
+          <ul className={styles.whoList}>
+            {WHO_ITEMS.map((item) => (
+              <li key={item} className={styles.whoItem}>
+                <span className={styles.whoDot} />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Section: What You Will Do ─────────────────────────────────────────────────
+const RESPONSIBILITIES = [
+  {
+    num: "01",
+    title: "Promote",
+    desc: "Help educate others about harassment prevention and safe spaces.",
+  },
+  {
+    num: "02",
+    title: "Participate",
+    desc: "Join initiatives that promote equality and accountability for campaign advocacies.",
+  },
+  {
+    num: "03",
+    title: "Support",
+    desc: "Assist in strengthening and expanding local SASHA chapters.",
+  },
+  {
+    num: "04",
+    title: "Uphold",
+    desc: "Respect privacy and follow proper case-handling guidelines.",
+  },
+];
+
+function WhatYouWillDo() {
+  return (
+    <section className={styles.responsibilitiesSection}>
+      <div className={styles.sectionInner}>
+        <div className={styles.sectionLabel}>Responsibilities</div>
+        <h2 className={styles.sectionTitle}>What You Will Do</h2>
+        <div className={styles.responsibilitiesGrid}>
+          {RESPONSIBILITIES.map((r) => (
+            <div key={r.num} className={styles.responsibilityCard}>
+              <div className={styles.responsibilityNum}>{r.num}</div>
+              <h3 className={styles.responsibilityTitle}>{r.title}</h3>
+              <p className={styles.responsibilityDesc}>{r.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Section: How To Apply ─────────────────────────────────────────────────────
+const STEPS = [
+  {
+    num: 1,
+    title: "Create an account",
+    desc: "Register to begin your volunteer application process.",
+    side: "right",
+  },
+  {
+    num: 2,
+    title: "Complete the volunteer application form",
+    desc: "Provide the necessary details about your background and interest in volunteering.",
+    side: "left",
+  },
+  {
+    num: 3,
+    title: "Submit required personal information",
+    desc: "Upload and confirm the documents needed for verification.",
+    side: "right",
+  },
+  {
+    num: 4,
+    title: "Undergo evaluation and screening",
+    desc: "Your application will be reviewed to ensure suitability and readiness.",
+    side: "left",
+  },
+  {
+    num: 5,
+    title: "Await approval and chapter assignment",
+    desc: "Receive confirmation and be assigned to a local SASHA chapter.",
+    side: "right",
+  },
+];
+
+function HowToApply({ isComplainant }) {
+  return (
+    <section id="how-to-apply" className={styles.howSection}>
+      <div className={styles.sectionInner}>
+        <div className={styles.sectionLabel}>How to Volunteer</div>
+        <h2 className={styles.sectionTitle}>
+          How To <span className={styles.heroAccent}>Apply</span>
+        </h2>
+
+        <div className={styles.timelineLabel}>Step by Step</div>
+
+        <div className={styles.timeline}>
+          <div className={styles.timelineLine} />
+          {STEPS.map((step) => (
+            <div
+              key={step.num}
+              className={`${styles.timelineRow} ${
+                step.side === "left" ? styles.timelineLeft : styles.timelineRight
+              }`}
+            >
+              {/* Content block */}
+              <div className={styles.timelineContent}>
+                <div className={styles.timelineStepBadge}>Step {step.num}</div>
+                <h3 className={styles.timelineStepTitle}>{step.title}</h3>
+                <p className={styles.timelineStepDesc}>{step.desc}</p>
+              </div>
+
+              {/* Center dot */}
+              <div className={styles.timelineDot}>
+                <span>{step.num}</span>
+              </div>
+
+              {/* Image block */}
+              <div className={styles.timelineImage}>
+                <div className={styles.timelineImagePlaceholder} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA at the bottom */}
+        <div className={styles.howCta}>
+          {isComplainant ? (
+            <Link href="/volunteer/apply" className={styles.btnPrimary}>
+              Apply Now
+            </Link>
+          ) : (
+            <Link href="/login" className={styles.btnPrimary}>
+              Log In to Apply
+            </Link>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Root Export ───────────────────────────────────────────────────────────────
+export default function VolunteerLanding({ isComplainant = false }) {
+  return (
+    <div className={styles.page}>
+      <HeroSection isComplainant={isComplainant} />
+      <WhoCanJoin />
+      <WhatYouWillDo />
+      <HowToApply isComplainant={isComplainant} />
+    </div>
+  );
+}
