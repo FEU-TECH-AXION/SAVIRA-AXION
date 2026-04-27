@@ -12,7 +12,7 @@ const EVENTS = [
     slug: "safe-spaces-summit",
     title: "Safe Spaces Summit",
     status: "Happening Soon",
-    image: "/events/safe-spaces-summit.jpg",
+    image: "/safe-spaces-summit.png",
     description:
       "A scout community discussion on preventing sexual harassment in schools and organizations. Participants will learn about reporting procedures and how to create safer environments.",
   },
@@ -21,7 +21,7 @@ const EVENTS = [
     slug: "youth-against-abuse-summit",
     title: "Youth Against Abuse Summit",
     status: null,
-    image: "/events/youth-summit.jpg",
+    image: "/youth-summit.png",
     description:
       "A leadership summit empowering young advocates to stand against harassment and discrimination. The event features talks, workshops, and collaborative planning sessions.",
   },
@@ -30,7 +30,7 @@ const EVENTS = [
     slug: "know-your-rights-workshop",
     title: "Know Your Rights Workshop",
     status: null,
-    image: "/events/rights-workshop.jpg",
+    image: "/rights-workshop.png",
     description:
       "An educational session focused on understanding legal protections against sexual harassment. Attendees will gain practical knowledge on reporting processes and survivor support.",
   },
@@ -39,7 +39,7 @@ const EVENTS = [
     slug: "campus-awareness-campaign",
     title: "Campus Awareness Campaign",
     status: null,
-    image: "/events/campus-campaign.jpg",
+    image: "/campus-campaign.png",
     description:
       "A movement-driven event promoting respect, consent, and accountability within academic institutions. Volunteers and members will help spread awareness through organized activities.",
   },
@@ -53,9 +53,9 @@ const CATEGORIES = [
 ];
 
 const RECENT_POSTS = [
-  { title: "SASHA believes that…", date: "March 1, 2026", image: "/events/post-1.jpg" },
-  { title: "SASHA Awareness on…", date: "August 18, 2026", image: "/events/post-2.jpg" },
-  { title: "Youth Empowerment a…", date: "April 1, 2026", image: "/events/post-3.jpg" },
+  { title: "SASHA believes that…", date: "March 1, 2026", image: "/post-1.png" },
+  { title: "SASHA Awareness on…", date: "August 18, 2026", image: "/post-2.png" },
+  { title: "Youth Empowerment a…", date: "April 1, 2026", image: "/post-3.png" },
 ];
 
 export default function EventsPage() {
@@ -68,7 +68,7 @@ export default function EventsPage() {
           SASHA <span className={styles.accent}>Initiatives</span>
         </h1>
         <div className={styles.heroBanner}>
-          <img src="/events/hero-banner.jpg" alt="SASHA advocacy event" className={styles.heroBannerImg} />
+          <img src="/hero-banner.png" alt="SASHA advocacy event" className={styles.heroBannerImg} />
         </div>
       </section>
 
