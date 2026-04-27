@@ -38,7 +38,7 @@ const COMPLAINANT_LINKS = [
 
 const CASE_OFFICER_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/cases",     label: "Cases" },,
+  { href: "/cases",     label: "Cases" },
   { href: "/heatmap", label: "Heatmap" },
 ];
 
@@ -70,12 +70,13 @@ const ADMIN_LINKS = [
 function getLinks(user) {
   if (!user) return PUBLIC_LINKS;
   switch (user.role?.toLowerCase()) {
-    case "complainant":   return COMPLAINANT_LINKS;
-    case "case_officer":  return CASE_OFFICER_LINKS;
-    case "admin":         return ADMIN_LINKS;
-    case "legal":         return LEGAL_LINKS;
-    case "sasha_officer": return SASHA_OFFICER_LINKS;
-    default:              return PUBLIC_LINKS;
+    case "admin":            return ADMIN_LINKS;
+    case "staff":            return STAFF_LINKS;
+    case "case officer":     return CASE_OFFICER_LINKS;
+    case "legal personnel":  return LEGAL_LINKS;
+    case "complainant":      return COMPLAINANT_LINKS;
+    case "user":             return COMPLAINANT_LINKS;
+    default:                 return PUBLIC_LINKS;
   }
 }
 
@@ -184,11 +185,14 @@ export default function Navbar({ user = null }) {
 function UserMenu({ user }) {
   const [open, setOpen] = useState(false);
 
-  const ROLE_LABEL = {
-    complainant:     "Complainant",
-    case_officer: "Case Officer",
-    admin:        "Admin",
-  };
+const ROLE_LABEL = {
+  admin:            "Admin",
+  staff:            "Staff",
+  "case officer":   "Case Officer",
+  "legal personnel": "Legal Personnel",
+  complainant:      "Complainant",
+  user:             "User",
+};
 
   return (
     <div className={styles.userMenu}>
