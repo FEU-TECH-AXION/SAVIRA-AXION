@@ -27,11 +27,11 @@
 /* ── Hero ────────────────────────────────────────────────────────────────────── */
 .hero {
   position: relative;
-  min-height: 200px;
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url("/hero-bg.jpg") center/cover no-repeat, var(--gray-100);
+  background: url("/hero-bg-2.png") center/cover no-repeat, var(--gray-100);
 }
 
 .heroOverlay {
@@ -47,7 +47,7 @@
   color: var(--teal);
   text-align: center;
   margin: 0;
-  padding: 2.5rem 1rem;
+  padding: 3rem 1rem;
 }
 
 /* ── Intro ───────────────────────────────────────────────────────────────────── */

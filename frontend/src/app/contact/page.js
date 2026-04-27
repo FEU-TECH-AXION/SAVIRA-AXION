@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import styles from "./contact.module.css";
+import { FaXTwitter, FaInstagram, FaYoutube, FaLinkedin } from "react-icons/fa6";
+
 
 export default function ContactPage() {
   const [form, setForm] = useState({
@@ -142,9 +144,7 @@ export default function ContactPage() {
               <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Address</h4>
               <p className={styles.infoText}>
-                2nd Floor, Community Development
-                <br />
-                Quezon City, Metro Manila, 1101
+                Mandaluyong City
               </p>
             </div>
 
@@ -172,11 +172,10 @@ export default function ContactPage() {
               <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Stay Connected</h4>
               <div className={styles.socials}>
-                {["𝕏", "IG", "YT", "in"].map((s) => (
-                  <a key={s} href="#" className={styles.socialBtn} aria-label={s}>
-                    {s}
-                  </a>
-                ))}
+                <a href="#" aria-label="X / Twitter"><FaXTwitter /></a>
+                <a href="#" aria-label="Instagram"><FaInstagram /></a>
+                <a href="#" aria-label="YouTube"><FaYoutube /></a>
+                <a href="#" aria-label="LinkedIn"><FaLinkedin /></a>
               </div>
             </div>
           </div>
