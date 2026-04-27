@@ -38,25 +38,22 @@ const COMPLAINANT_LINKS = [
 
 const CASE_OFFICER_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/case-officer/cases",     label: "Cases" },
-  { href: "/case-officer/projects",  label: "Projects" },
-  { href: "/case-officer/insights", label: "Insights" },
+  { href: "/cases",     label: "Cases" },,
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const STAFF_LINKS = [
-  { href: "/dashboard",     label: "Home" },
-  { href: "/applications",  label: "Applications" },
-  { href: "/projects",      label: "Projects" },
-  { href: "/heatmap",       label: "Heatmap" },
-  { href: "/reports",       label: "Reports" },
+  { href: "/dashboard", label: "Home" },
+  { href: "/projects",     label: "Projects" },
+  { href: "/volunteer", label: "Volunteers" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const LEGAL_LINKS = [
-  { href: "/dashboard",     label: "Home" },
-  { href: "/legalReviews",  label: "Legal Review" },
-  { href: "/cases",         label: "Cases" },
-  { href: "/heatmap",       label: "Heatmap" },
-  { href: "/reports",       label: "Reports" },
+  { href: "/dashboard", label: "Home" },
+  { href: "/cases",     label: "Cases" },
+  { href: "/legalReviews",     label: "Legal Review" },
+  { href: "/projects",     label: "Projects" },
 ];
 
 const ADMIN_LINKS = [
