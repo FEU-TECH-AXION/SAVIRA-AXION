@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import VolunteerManagement from "@/components/volunteer/VolunteerManagement";
-import VolunteerLanding from "@/components/volunteer/landing";
+import VolunteerLanding from "@/components/volunteer/VolunteerLanding";
 
 export default function VolunteerPage() {
   const [role, setRole] = useState(null);
