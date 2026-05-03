@@ -104,7 +104,7 @@ const handleSubmit = async (e) => {
             </div>
 
             {/* Terms checkbox */}
-            <div className={styles.termsGroup}>
+            <div className={styles.auxiliaryGroup}>
               <label className={styles.checkboxLabel}>
                 <input
                   type="checkbox"
@@ -114,6 +114,9 @@ const handleSubmit = async (e) => {
                 />
                 Recognize this device for 30 days
               </label>
+              <a href="/forgotPassword" className={styles.forgotPassword}>
+                Forgot Password?
+              </a>
             </div>
 
             {/* Submit */}
