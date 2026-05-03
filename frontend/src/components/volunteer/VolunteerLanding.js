@@ -4,7 +4,7 @@
 // Public viewers see a "Log In to Apply" button instead.
 
 import Link from "next/link";
-import styles from "./landing.module.css";
+import styles from "./VolunteerLanding.module.css";
 
 // ── Section: Hero ─────────────────────────────────────────────────────────────
 function HeroSection({ isComplainant }) {
