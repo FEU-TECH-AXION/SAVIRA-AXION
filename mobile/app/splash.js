@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, ImageBackground, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function Splash() {
@@ -9,7 +9,6 @@ export default function Splash() {
     const timer = setTimeout(() => {
       router.replace('/(auth)/login');
     }, 3000);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -34,6 +33,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   logo: {
     width: 250,
     height: 150,

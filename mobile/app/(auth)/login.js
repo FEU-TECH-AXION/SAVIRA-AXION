@@ -4,137 +4,136 @@ import {
   Text,
   TextInput,
   Pressable,
+  Alert,
+  ScrollView,
   Image,
-  ImageBackground,
-  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import styles from './login.style';
 
 export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(true);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [show, setShow] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert('Error', data.error || 'Login failed.');
+        return;
+      }
+
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+      const role = data.user?.roles?.role_name?.toLowerCase();
+
+      if (role === 'user' || role === 'complainant') {
+        router.replace('/(complainant)/dashboard');
+      } else {
+        Alert.alert('Unauthorized', 'This app is for complainants only.');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Something went wrong.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
 
-      {/* HERO */}
       <View style={styles.hero}>
-        <ImageBackground
+        <Image
           source={require('../../assets/sasha-bg-2.png')}
           style={styles.heroBg}
-          imageStyle={{ opacity: 0.35 }}
+          resizeMode="cover"
         />
-
         <Image
-          source={require('../../assets/sasha-logo-white.png')}
-          style={styles.logo}
-          resizeMode="contain"
+        source={require('../../assets/sasha-logo-white.png')}
+        style={styles.heroLogo}
+        resizeMode="contain"
         />
       </View>
 
-      {/* CARD */}
       <View style={styles.card}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+        <Text style={styles.title}>Welcome Back!</Text>
 
-        <TextInput placeholder="Email" style={styles.input} />
-
-        <View style={styles.passwordBox}>
-          <TextInput
-            placeholder="Password"
-            secureTextEntry={!show}
-            style={{ flex: 1 }}
-          />
-          <Pressable onPress={() => setShow(!show)}>
-            <Ionicons name={show ? "eye" : "eye-off"} size={20} />
+        <View style={styles.signupRow}>
+          <Text style={styles.signupText}>Don't have an account yet? </Text>
+          <Pressable onPress={() => router.push('/(auth)/signup')}>
+            <Text style={styles.signupLink}>Sign Up</Text>
           </Pressable>
         </View>
 
-        <Pressable style={styles.button}>
-          <Text style={styles.buttonText}>Log In</Text>
-        </Pressable>
+        <Text style={styles.label}>E-mail</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="E-mail"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-        <Pressable onPress={() => router.push('/(auth)/signup')}>
-          <Text style={styles.link}>Create account</Text>
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.passwordWrap}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+
+          <Pressable onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons
+              name={showPassword ? 'eye' : 'eye-off'}
+              size={22}
+              color="#888"
+            />
+          </Pressable>
+        </View>
+
+        <View style={styles.checkRow}>
+          <Pressable
+            style={[styles.checkbox, rememberDevice && styles.checkboxChecked]}
+            onPress={() => setRememberDevice(!rememberDevice)}
+          >
+            {rememberDevice && <Text style={styles.checkmark}>✓</Text>}
+          </Pressable>
+          <Text style={styles.checkLabel}>
+            Recognize this device for 30 days
+          </Text>
+        </View>
+
+        <Pressable
+          style={styles.btn}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>
+            {loading ? 'Logging in...' : 'Log In'}
+          </Text>
         </Pressable>
       </View>
-
-    </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#037F81',
-  },
-
-  hero: {
-    height: 220,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  heroBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  logo: {
-    width: 170,
-    height: 70,
-  },
-
-  card: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 24,
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#037F81',
-  },
-
-  subtitle: {
-    marginBottom: 20,
-    color: '#666',
-  },
-
-  input: {
-    backgroundColor: '#eee',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-
-  passwordBox: {
-    flexDirection: 'row',
-    backgroundColor: '#eee',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  button: {
-    backgroundColor: '#E96433',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-
-  buttonText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-
-  link: {
-    marginTop: 15,
-    textAlign: 'center',
-    color: '#037F81',
-  },
-});
