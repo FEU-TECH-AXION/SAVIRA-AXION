@@ -15,15 +15,21 @@ SAVIRA is an automated, centralized case management system designed to facilitat
 
 ## Technology Stack
 
-### Frontend
+### Web — Frontend
 - **Next.js** - React framework
 - **React** - UI library
 - **Bootstrap** - Styling
 
-### Backend
+### Web — Backend
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web framework
 - **CORS** - Cross-origin resource sharing
+
+### Mobile
+- **React Native** - Mobile framework
+- **Expo** - Development platform
+- **NativeWind** - Styling (Tailwind for React Native)
+- **Expo Router** - Navigation
 
 ### Database & Auth
 - **Supabase PostgreSQL** - Database
@@ -34,82 +40,70 @@ SAVIRA is an automated, centralized case management system designed to facilitat
 - **Firebase Cloud Messaging (FCM)** - Push notifications
 - **GROQ API (Llama 3.8B)** - NLP for narrative analysis
 
-### File Structure
-```text
-SAVIRA/
-├── backend/
-│   ├── src/
-│   │   ├── routes/
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── models/
-│   │   └── index.js
-│   ├── .env
-│   ├── .env.example
-│   ├── .gitignore
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.js
-│   │   │   └── page.js
-│   │   ├── components/
-│   │   └── lib/
-│   │       └── api.js
-│   ├── .env.local
-│   ├── .env.example
-│   └── package.json
-├── .gitignore
-├── package.json
-└── README.md
-```
-
 ## Getting Started
 
 ### Prerequisites
 - Node.js 18+
 - npm
+- Expo Go app (for mobile testing on Android)
 - A Supabase project (get your URL and keys at supabase.com)
 - A Mapbox account (get your token at mapbox.com)
 - A GROQ API key (get yours at groq.com)
 
 ### 1. Clone the repository
 ```bash
-git clone <repo-url>
+git clone
 cd SAVIRA
 ```
 
 ### 2. Install all dependencies
 ```bash
-npm install
-npm install --prefix backend
-npm install --prefix frontend
+npm run install:all
 ```
 
 ### 3. Set up environment variables
 
-**Backend** — create a `.env` file inside `backend/`:
+**Backend** — create a `.env` file inside `web/backend/`:
 
-PORT=5000
-FRONTEND_URL=http://localhost:3000
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your_service_role_key
+**Frontend** — create a `.env.local` file inside `web/frontend/`:
 
-**Frontend** — create a `.env.local` file inside `frontend/`:
+**Mobile** — create a `.env` file inside `mobile/`:
 
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token
+### 4. Run the project
 
-### 4. Run both servers
-
+Run everything (web + mobile):
 ```bash
 npm run dev
 ```
-- Frontend → http://localhost:3000
-- Backend → http://localhost:5000
+
+Run web only:
+```bash
+npm run dev:web
+```
+
+Run mobile only:
+```bash
+npm run dev:mobile
+```
+
+### 5. Accessing the app
+
+- Web Frontend → http://localhost:3000
+- Web Backend → http://localhost:5000
+- Mobile → Scan the QR code with **Expo Go** app on your Android device
+
+## Test Accounts
+
+| Email | Role | Password |
+|-------|------|----------|
+| admin@test.com | Admin | test1234 |
+| staff@test.com | Staff | test1234 |
+| user@test.com | User | test1234 |
+| legal@test.com | Legal Personnel | test1234 |
+| caseofficer@test.com | Case Officer | test1234 |
+
+> ⚠️ For development and testing purposes only. Do not use in production.
 
 ## License
 
-FEU Institute of Technology
+FEU Institute of Technology - AXION
