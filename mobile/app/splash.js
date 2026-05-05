@@ -1,22 +1,23 @@
 import { useEffect } from 'react';
-import { View, ImageBackground, Image, StyleSheet } from 'react-native';
+import { View, Text, ImageBackground, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function Splash() {
   const router = useRouter();
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       router.replace('/(auth)/login');
-    }, 2500);
+    }, 3000);
 
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <ImageBackground
       source={require('../assets/sasha-bg-1.png')}
-      style={styles.bg}
+      style={styles.container}
+      resizeMode="cover"
     >
       <Image
         source={require('../assets/sasha-logo-white.png')}
@@ -28,13 +29,13 @@ export default function Splash() {
 }
 
 const styles = StyleSheet.create({
-  bg: {
+  container: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
-    width: 180,
-    height: 70,
+    width: 250,
+    height: 150,
   },
 });
