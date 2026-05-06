@@ -7,68 +7,76 @@ import {
   Image,
   StyleSheet,
   Modal,
+  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons, Feather } from '@expo/vector-icons';
 
 // ── Side Nav ─────────────────────────────────────────────────────────────────
 function SideNav({ open, onClose }) {
   const router = useRouter();
   const links = [
-    { label: 'Home',      href: '/(complainant)/dashboard' },
-    { label: 'Report',    href: '/(complainant)/report' },
-    { label: 'Volunteer', href: '/(complainant)/volunteer' },
-    { label: 'About',     href: '/(complainant)/about' },
-    { label: 'Contact',   href: '/(complainant)/contact' },
-    { label: 'Events',    href: '/(complainant)/events' },
+    { label: 'Home',      href: '/(complainant)/dashboard', icon: 'home-outline' },
+    { label: 'Report',    href: '/(complainant)/report',    icon: 'document-text-outline' },
+    { label: 'Volunteer', href: '/(complainant)/volunteer', icon: 'people-outline' },
+    { label: 'About',     href: '/(complainant)/about',     icon: 'information-circle-outline' },
+    { label: 'Contact',   href: '/(complainant)/contact',   icon: 'call-outline' },
+    { label: 'Events',    href: '/(complainant)/events',    icon: 'calendar-outline' },
   ];
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={nav.overlay} onPress={onClose} />
-      <View style={nav.drawer}>
-        <View style={nav.drawerHeader}>
-          <Text style={nav.drawerTitle}>SAVIRA</Text>
-          <Pressable onPress={onClose}>
-            <Text style={nav.closeBtn}>✕</Text>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        {/* Drawer */}
+        <View style={nav.drawer}>
+          <View style={nav.drawerHeader}>
+            <Image
+              source={require('../../assets/sasha-logo-white.png')}
+              style={nav.drawerLogo}
+              resizeMode="contain"
+            />
+            <Pressable onPress={onClose}>
+              <Ionicons name="close" size={24} color="#6b7280" />
+            </Pressable>
+          </View>
+
+          {links.map((l) => (
+            <Pressable
+              key={l.label}
+              style={nav.drawerItem}
+              onPress={() => { router.push(l.href); onClose(); }}
+            >
+              <Ionicons name={l.icon} size={20} color="#037F81" />
+              <Text style={nav.drawerItemText}>{l.label}</Text>
+            </Pressable>
+          ))}
+
+          <Pressable
+            style={nav.logoutBtn}
+            onPress={() => { router.replace('/(auth)/login'); onClose(); }}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#fff" />
+            <Text style={nav.logoutText}>Log Out</Text>
           </Pressable>
         </View>
-        {links.map((l) => (
-          <Pressable
-            key={l.label}
-            style={nav.drawerItem}
-            onPress={() => { router.push(l.href); onClose(); }}
-          >
-            <Text style={nav.drawerItemText}>{l.label}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          style={nav.logoutBtn}
-          onPress={() => { router.replace('/(auth)/login'); onClose(); }}
-        >
-          <Text style={nav.logoutText}>Log Out</Text>
-        </Pressable>
+
+        {/* Tap outside to close */}
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
       </View>
     </Modal>
   );
 }
 
 const nav = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
     width: 260,
     backgroundColor: '#fff',
-    paddingTop: 48,
+    paddingTop: 52,
     paddingHorizontal: 20,
+    paddingBottom: 32,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 10,
   },
@@ -78,22 +86,20 @@ const nav = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  drawerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#037F81',
-  },
-  closeBtn: {
-    fontSize: 20,
-    color: '#6b7280',
+  drawerLogo: {
+    width: 100,
+    height: 36,
   },
   drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   drawerItemText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#1a1a1a',
     fontWeight: '600',
   },
@@ -102,7 +108,10 @@ const nav = StyleSheet.create({
     backgroundColor: '#E96433',
     borderRadius: 10,
     padding: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   logoutText: {
     color: '#fff',
@@ -116,13 +125,19 @@ function Navbar({ onBurger }) {
   return (
     <View style={s.navbar}>
       <Pressable onPress={onBurger} style={s.burgerBtn}>
-        <Text style={s.burgerIcon}>☰</Text>
+        <Ionicons name="menu" size={26} color="#fff" />
       </Pressable>
-      <Text style={s.navTitle}>S🎀SHA</Text>
+      <Image
+        source={require('../../assets/sasha-logo-white.png')}
+        style={s.navLogo}
+        resizeMode="contain"
+      />
       <View style={s.navRight}>
-        <Text style={s.navIcon}>🔍</Text>
-        <Text style={s.navIcon}>🔔</Text>
-        <View style={s.avatar}><Text style={s.avatarText}>U</Text></View>
+        <Feather name="search" size={20} color="#fff" />
+        <Ionicons name="notifications-outline" size={20} color="#fff" />
+        <View style={s.avatar}>
+          <Text style={s.avatarText}>U</Text>
+        </View>
       </View>
     </View>
   );
@@ -131,12 +146,22 @@ function Navbar({ onBurger }) {
 // ── Hero Banner ───────────────────────────────────────────────────────────────
 function HeroBanner({ firstName, lastName, totalNotifications }) {
   return (
-    <View style={s.heroBanner}>
-      <Text style={s.heroTitle}>Welcome, {firstName} {lastName}!</Text>
-      <View style={s.statCard}>
-        <View style={s.statDot} />
-        <Text style={s.statNum}>{totalNotifications}</Text>
-        <Text style={s.statLabel}>New{'\n'}Notifications</Text>
+    <View style={s.heroBannerWrap}>
+      <View style={s.heroCard}>
+        <ImageBackground
+          source={require('../../assets/mob-hero-1.png')}
+          style={s.heroBg}
+          imageStyle={{ borderRadius: 16 }}
+        >
+          <View style={s.heroOverlay}>
+            <Text style={s.heroTitle}>Welcome, {firstName} {lastName}!</Text>
+            <View style={s.statCard}>
+              <View style={s.statDot} />
+              <Text style={s.statNum}>{totalNotifications}</Text>
+              <Text style={s.statLabel}>New{'\n'}Notifications</Text>
+            </View>
+          </View>
+        </ImageBackground>
       </View>
     </View>
   );
@@ -154,11 +179,11 @@ function SectionHeading({ title }) {
 }
 
 // ── Action Card ───────────────────────────────────────────────────────────────
-function ActionCard({ icon, title, description, onPress }) {
+function ActionCard({ iconSource, title, description, onPress }) {
   return (
     <View style={s.actionCard}>
       <View style={s.actionIconWrap}>
-        <Text style={s.actionIconText}>{icon}</Text>
+        <Image source={iconSource} style={s.actionIconImg} resizeMode="contain" />
       </View>
       <Text style={s.actionTitle}>{title}</Text>
       <Text style={s.actionDesc}>{description}</Text>
@@ -308,13 +333,13 @@ export default function ComplainantDashboard() {
           <SectionHeading title="What would you like to do?" />
 
           <ActionCard
-            icon="👤"
+            iconSource={require('../../assets/FileAReportIcon.png')}
             title="Submit a Report"
             description="Report safely and securely."
             onPress={() => router.push('/(complainant)/report')}
           />
           <ActionCard
-            icon="🤝"
+            iconSource={require('../../assets/VolunteerIcon.png')}
             title="Apply as Volunteer"
             description="Join our mission to support survivors."
             onPress={() => router.push('/(complainant)/volunteer')}
@@ -348,7 +373,6 @@ export default function ComplainantDashboard() {
           />
 
           <HeatmapPreview />
-
           <EventsCard events={events} />
 
         </View>
@@ -375,24 +399,33 @@ const s = StyleSheet.create({
     paddingBottom: 12,
   },
   burgerBtn: { padding: 4 },
-  burgerIcon: { fontSize: 22, color: '#fff' },
-  navTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  navRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  navIcon: { fontSize: 18 },
+  navLogo: { width: 90, height: 32 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 30, height: 30, borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Hero
-  heroBanner: {
+  heroBannerWrap: {
     backgroundColor: TEAL,
-    backgroundImage: undefined,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
     paddingTop: 8,
+  },
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  heroBg: {
+    width: '100%',
+  },
+  heroOverlay: {
+    backgroundColor: 'rgba(3,127,129,0.6)',
+    padding: 20,
+    borderRadius: 16,
   },
   heroTitle: {
     color: '#fff',
@@ -465,7 +498,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER,
   },
-  actionIconText: { fontSize: 22 },
+  actionIconImg: { width: 28, height: 28 },
   actionTitle: { fontSize: 20, fontWeight: '800', color: TEAL, marginBottom: 4 },
   actionDesc: { fontSize: 14, color: '#6b7280', marginBottom: 12 },
 
