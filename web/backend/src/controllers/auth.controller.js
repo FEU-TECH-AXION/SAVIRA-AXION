@@ -8,10 +8,6 @@ const signup = async (req, res) => {
     try {
         const { firstName, lastName, email, password } = req.body
 
-        // 1. Validate required fields
-        if (!firstName || !lastName || !email || !password)
-            return res.status(400).json({ error: 'All fields are required.' })
-
         // 2. Check duplicate email
         const existingEmail = await UserModel.findByEmail(email)
         if (existingEmail)
