@@ -30,7 +30,7 @@ const PUBLIC_LINKS = [
 const COMPLAINANT_LINKS = [
   { href: "/dashboard",      label: "Home" },
   { href: "/about",   label: "About" },
-  { href: "/report",     label: "Report" },
+  { href: "/cases",     label: "Report" },
   { href: "/volunteer", label: "Volunteer" },
   { href: "/contact", label: "Contact" },
   { href: "/events",         label: "Events" },

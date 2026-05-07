@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CaseManagement from "@/components/cases/CaseManagement";
+import CreateReport from "@/components/report/CreateReport";
 
 export default function CasesPage() {
   const [role, setRole] = useState(null);
@@ -17,6 +18,7 @@ export default function CasesPage() {
   if (role === "admin")          return <CaseManagement />;
   if (role === "case officer")   return <CaseManagement />;
   if (role === "legal personnel") return <CaseManagement />;
+  if (role === "user") return <CreateReport />;
 
   return <p>Unauthorized</p>;
 }
