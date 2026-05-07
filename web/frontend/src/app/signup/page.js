@@ -13,18 +13,20 @@ export default function SignUp() {
     email: "",
     password: "",
   });
+  const [errors, setErrors] = useState([]); 
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  
+  const getError = (field) => errors.find((e) => e.path === field)?.msg;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!agreed) {
-      alert("Please agree to the Terms & Conditions.");
-      return;
-    }
-    
+
+    setErrors([]); 
+
     try {
       const res = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
@@ -34,25 +36,29 @@ export default function SignUp() {
           lastName:  form.lastName,
           email:     form.email,
           password:  form.password,
+          agreed:    agreed,
         }),
-    });
+      });
 
-    const data = await res.json();
-    console.log('Status:', res.status);
-    console.log('Response:', data); 
+      const data = await res.json();
+      console.log('Status:', res.status);
+      console.log('Response:', data);
 
-    if (!res.ok) {
-      alert(data.message || data.error || "Signup failed.");
-      return;
+      if (!res.ok) {
+        if (data.errors) {
+          setErrors(data.errors);
+        } else {
+          setErrors([{ path: 'general', msg: data.error || 'Signup failed.' }]);
+        }
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setErrors([{ path: 'general', msg: 'Something went wrong. Please try again.' }]);
+      console.error(err);
     }
-
-    // Save token and redirect
-    localStorage.setItem("token", data.token);
-    window.location.href = "/dashboard"; // or wherever
-  } catch (err) {
-    alert("Something went wrong. Please try again.");
-    console.error(err);
-  }
   };
 
   return (
@@ -60,10 +66,7 @@ export default function SignUp() {
 
       {/* ── Left: hero image + overlay*/}
       <div className={styles.left}>
-        <img
-          src="sasha-bg-1.png"
-          alt="SASHA community"
-        />
+        <img src="sasha-bg-1.png" alt="SASHA community" />
         <div className={styles.leftOverlay} />
       </div>
 
@@ -78,6 +81,13 @@ export default function SignUp() {
 
           <form onSubmit={handleSubmit} noValidate>
 
+            {/* General error e.g. "Email already in use" */}
+            {getError('general') && (
+              <p style={{ color: 'red', fontSize: '13px', marginBottom: '8px' }}>
+                {getError('general')}
+              </p>
+            )}
+
             {/* First + Last Name */}
             <div className={styles.nameRow}>
               <div className={styles.nameField}>
@@ -89,8 +99,11 @@ export default function SignUp() {
                   placeholder="First Name"
                   value={form.firstName}
                   onChange={handleChange}
-                  required
                 />
+                {/* 👇 Error text shown under input */}
+                {getError('firstName') && (
+                  <p style={{ color: 'red', fontSize: '12px' }}>{getError('firstName')}</p>
+                )}
               </div>
               <div className={styles.nameField}>
                 <label className={styles.label}>Last Name</label>
@@ -101,8 +114,10 @@ export default function SignUp() {
                   placeholder="Last Name"
                   value={form.lastName}
                   onChange={handleChange}
-                  required
                 />
+                {getError('lastName') && (
+                  <p style={{ color: 'red', fontSize: '12px' }}>{getError('lastName')}</p>
+                )}
               </div>
             </div>
 
@@ -116,8 +131,10 @@ export default function SignUp() {
                 placeholder="E-mail"
                 value={form.email}
                 onChange={handleChange}
-                required
               />
+              {getError('email') && (
+                <p style={{ color: 'red', fontSize: '12px' }}>{getError('email')}</p>
+              )}
             </div>
 
             {/* Password */}
@@ -131,7 +148,6 @@ export default function SignUp() {
                   placeholder="Password"
                   value={form.password}
                   onChange={handleChange}
-                  required
                 />
                 <button
                   type="button"
@@ -142,6 +158,9 @@ export default function SignUp() {
                   {showPassword ? <FiEye /> : <FiEyeOff />}
                 </button>
               </div>
+              {getError('password') && (
+                <p style={{ color: 'red', fontSize: '12px' }}>{getError('password')}</p>
+              )}
             </div>
 
             {/* Terms checkbox */}
@@ -155,14 +174,18 @@ export default function SignUp() {
                 />
                 I agree to <a href="/terms">Terms &amp; Condition</a>
               </label>
+              {/* 👇 Error shown directly under the checkbox */}
+              {getError('agreed') && (
+                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+                  {getError('agreed')}
+                </p>
+  )}
             </div>
 
             {/* Submit */}
             <button type="submit" className={styles.btn}>
               Create Account
             </button>
-
-            
 
           </form>
         </div>

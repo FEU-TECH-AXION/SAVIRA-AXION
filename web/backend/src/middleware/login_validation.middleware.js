@@ -16,8 +16,21 @@ const loginRules = [
 ];
 
 const signupRules = [
-  body('firstName').notEmpty().withMessage('First name is required'),
-  body('lastName').notEmpty().withMessage('Last name is required'),
+body('firstName')
+  .notEmpty().withMessage('First name is required')
+  .isLength({ min: 2 }).withMessage('First name must be at least 2 characters')
+  .isLength({ max: 50 }).withMessage('First name must not exceed 50 characters')
+  .matches(/^[a-zA-Z\-]+$/).withMessage('First name can only contain letters and hyphens')
+  .not().matches(/^-|-$/).withMessage('First name cannot start or end with a hyphen')
+  .not().matches(/--/).withMessage('First name cannot have consecutive hyphens'),
+
+body('lastName')
+  .notEmpty().withMessage('Last name is required')
+  .isLength({ min: 2 }).withMessage('Last name must be at least 2 characters')
+  .isLength({ max: 50 }).withMessage('Last name must not exceed 50 characters')
+  .matches(/^[a-zA-Z\-]+$/).withMessage('Last name can only contain letters and hyphens')
+  .not().matches(/^-|-$/).withMessage('Last name cannot start or end with a hyphen')
+  .not().matches(/--/).withMessage('Last name cannot have consecutive hyphens'),
 
   body('email')
     .notEmpty().withMessage('Email is required')
@@ -30,6 +43,9 @@ const signupRules = [
     .matches(/[a-zA-Z]/).withMessage('Password must contain at least one letter')
     .matches(/[0-9]/).withMessage('Password must contain at least one number')
     .matches(/[!@#$%^&*(),.?":{}|<>]/).withMessage('Password must contain at least one special character'),
+
+    body('agreed')
+    .equals('true').withMessage('You must agree to the Terms & Conditions.'),
 ];
 
 // Check the rules and return errors if any
