@@ -1,3 +1,5 @@
+// TODO: RLS not working 
+
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
