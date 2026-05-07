@@ -11,7 +11,15 @@ const signup = async (req, res) => {
         // 2. Check duplicate email
         const existingEmail = await UserModel.findByEmail(email)
         if (existingEmail)
-            return res.status(409).json({ error: 'Email already in use.' })
+            return res.status(409).json({
+                errors: [
+                    {
+                        path: 'email',
+                        msg: 'Email is already registered. Please try again or',
+                        link: { href: '/login', label: 'sign in' },
+                    },
+                ],
+            })
 
         // 3. Auto-generate username and check for duplicates
         let username = `${email.split('@')[0]}${Math.floor(Math.random() * 10000)}`

@@ -19,8 +19,8 @@ export default function SignUp() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  
   const getError = (field) => errors.find((e) => e.path === field)?.msg;
+  const getErrorLink = (field) => errors.find((e) => e.path === field)?.link;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -133,7 +133,17 @@ export default function SignUp() {
                 onChange={handleChange}
               />
               {getError('email') && (
-                <p style={{ color: 'red', fontSize: '12px' }}>{getError('email')}</p>
+                <p style={{ color: 'red', fontSize: '12px' }}>
+                  {getError('email')}
+                  {getErrorLink('email') && (
+                    <a
+                      href={getErrorLink('email').href}
+                      style={{ marginLeft: 4, color: 'red', textDecoration: 'underline' }}
+                    >
+                      {getErrorLink('email').label}
+                    </a>
+                  )}
+                </p>
               )}
             </div>
 
