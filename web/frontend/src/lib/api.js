@@ -15,7 +15,7 @@ export async function signupUser(form) {
 
     const data = await res.json();
 
-    console.log('Status:', res.status);   // 👈 add this
+    console.log('Status:', res.status);
     console.log('Data:', data);  
 
     if (!res.ok) {
@@ -23,5 +23,18 @@ export async function signupUser(form) {
         throw data.errors || [{ path: 'general', msg: data.error || 'Signup failed.' }];
     }
 
+    return data;
+}
+
+export async function loginUser(form) {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        throw data.errors || [{ path: 'general', msg: data.error || 'Login failed.' }];
+    }
     return data;
 }

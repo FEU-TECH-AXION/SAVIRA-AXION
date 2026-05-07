@@ -9,11 +9,10 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
     email: "",
     password: "",
   });
+  const [errors, setErrors] = useState([]); // 👈 added
 
   const router = useRouter();
 
@@ -21,40 +20,53 @@ export default function Login() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const getError = (field) => errors.find((e) => e.path === field)?.msg; // 👈 added
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: form.email, password: form.password }),
-  });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrors([]); // 👈 clear previous errors
 
-  const data = await res.json();
+    const fieldErrors = [];
+    if (!form.email.trim()) fieldErrors.push({ path: 'email', msg: 'Email is required' });
+    if (!form.password) fieldErrors.push({ path: 'password', msg: 'Password is required' });
+    if (!form.password) fieldErrors.push({ path: 'password', msg: 'Password is required' });
+    if (fieldErrors.length) {
+      setErrors(fieldErrors);
+      return;
+    }
 
-  if (!res.ok) {
-    alert(data.error);
-    return;
-  }
-  // TODO: Replace localStorage with httpOnly cookie for security
-  // Save user to localStorage so other pages can access it
-  localStorage.setItem('user', JSON.stringify(data.user));
-  router.push('/dashboard');
-};
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: form.email, password: form.password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      // 👇 replaced alert with setErrors
+      if (data.errors) {
+        setErrors(data.errors);
+      } else {
+        setErrors([{ path: 'general', msg: data.error || 'Login failed.' }]);
+      }
+      return;
+    }
+
+    localStorage.setItem('user', JSON.stringify(data.user));
+    router.push('/dashboard');
+  };
 
   return (
     <div className={styles.wrapper}>
 
       {/* ── Left: hero image + overlay*/}
       <div className={styles.left}>
-        <img
-          src="sasha-bg-1.png"
-          alt="SASHA community"
-        />
+        <img src="sasha-bg-1.png" alt="SASHA community" />
         <div className={styles.leftOverlay} />
       </div>
 
-      {/* ── Right: sign-up form ── */}
+      {/* ── Right: login form ── */}
       <div className={styles.right}>
         <div className={styles.formBox}>
           <h1 className={styles.title}>Welcome Back!</h1>
@@ -64,6 +76,13 @@ const handleSubmit = async (e) => {
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
+
+            {/* General error e.g. "Invalid email or password" */}
+            {getError('general') && (
+              <p style={{ color: 'red', fontSize: '13px', marginBottom: '8px' }}>
+                {getError('general')}
+              </p>
+            )}
 
             {/* Email */}
             <div className={styles.fieldGroup}>
@@ -75,8 +94,13 @@ const handleSubmit = async (e) => {
                 placeholder="E-mail"
                 value={form.email}
                 onChange={handleChange}
-                required
               />
+              {/* 👇 Error shown under email */}
+              {getError('email') && (
+                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+                  {getError('email')}
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -90,7 +114,6 @@ const handleSubmit = async (e) => {
                   placeholder="Password"
                   value={form.password}
                   onChange={handleChange}
-                  required
                 />
                 <button
                   type="button"
@@ -101,9 +124,15 @@ const handleSubmit = async (e) => {
                   {showPassword ? <FiEye /> : <FiEyeOff />}
                 </button>
               </div>
+              {/* 👇 Error shown under password */}
+              {getError('password') && (
+                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+                  {getError('password')}
+                </p>
+              )}
             </div>
 
-            {/* Terms checkbox */}
+            {/* Remember device + Forgot Password */}
             <div className={styles.auxiliaryGroup}>
               <label className={styles.checkboxLabel}>
                 <input

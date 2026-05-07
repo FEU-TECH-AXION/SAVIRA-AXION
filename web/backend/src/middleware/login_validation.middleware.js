@@ -60,4 +60,4 @@ const validateLogin = (req, res, next) => {
   next(); // ✅ Passes to controller ONLY if valid
 };
 
-module.exports = { loginRules, signupRules,validateLogin };
+module.exports = { loginRules, signupRules, validateLogin };
