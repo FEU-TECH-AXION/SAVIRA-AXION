@@ -34,21 +34,23 @@ const login = async (email, password) => {
 const findByEmail = async (email) => {
     const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('*, roles(role_name)')
         .eq('email', email)
         .single()
-    if (error && error.code !== 'PGRST116') throw error
-    return data
+    if (error || !data) return null;
+
+    return { ...data, role_name: data.roles?.role_name };
 }
 
 const findByUsername = async (username) => {
     const { data, error } = await supabase
         .from('users')
-        .select('user_id')
+        .select('*, roles(role_name)')
         .eq('user_name', username)
         .single()
-    if (error && error.code !== 'PGRST116') throw error
-    return data
+    if (error || !data) return null;
+
+    return { ...data, role_name: data.roles?.role_name };
 }
 
 module.exports = { getAll, create, login, findByEmail, findByUsername }

@@ -45,7 +45,7 @@ body('lastName')
 ];
 
 // Check the rules and return errors if any
-const validateLogin = (req, res, next) => {
+const validateInput = (req, res, next) => {
   const errors = validationResult(req);
 
   // console.log('Errors found:', errors.array()); 
@@ -56,4 +56,4 @@ const validateLogin = (req, res, next) => {
   next(); // ✅ Passes to controller ONLY if valid
 };
 
-module.exports = { loginRules, signupRules, validateLogin };
+module.exports = { loginRules, signupRules, validateInput };
