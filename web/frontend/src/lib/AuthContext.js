@@ -1,3 +1,8 @@
+
+// ── AuthContext: Global authentication state management ──
+// Manages user login/logout using httpOnly cookies and provides auth context to all pages.
+// Reads user data from cookies and makes it available via useAuth() hook throughout the app.
+
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";

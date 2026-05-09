@@ -8,8 +8,7 @@
 //   Once you have a real auth system, swap the mock below.
 
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './globals.css';
-import Navbar from '@/components/navbar/navbar';
+import './globals.css';import Navbar from '@/components/navbar/navbar';
 import Footer from '@/components/footer/footer';
 import {AuthProvider } from "@/lib/AuthContext";
 // import NavbarWrapper from '@/components/navbar/NavbarWrapper';
