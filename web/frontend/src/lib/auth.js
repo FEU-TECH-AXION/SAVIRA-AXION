@@ -1,10 +1,17 @@
 // TODO: Replace with server-side session/cookie once auth is fully set up
 
-export async function getUserRole() {
+const getCookie = (name) => {
   if (typeof window === 'undefined') return null; // server side guard
 
-  const user = JSON.parse(localStorage.getItem('user'));
-  if (!user) return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+};
 
-  return user.roles?.role_name || null;
+export async function getUserRole() {
+  const userCookie = getCookie('user');
+  if (!userCookie) return null;
+
+  const user = JSON.parse(userCookie);
+  return user.role_name || null;
 }
