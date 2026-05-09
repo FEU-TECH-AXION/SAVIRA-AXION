@@ -5,6 +5,12 @@ import Navbar from "@/components/navbar/navbar";
 import styles from "./VolunteerManagement.module.css";
 import { FiSearch, FiX } from "react-icons/fi";
 
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPABASE INTEGRATION — uncomment when ready
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,12 +247,13 @@ export default function VolunteerManagement() {
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) {
+    const userCookie = getCookie('user');
+    if (userCookie) {
+      const parsedUser = JSON.parse(userCookie);
       setUser({
-        role: storedUser.roles?.role_name,
-        firstName: storedUser.first_name,
-        lastName: storedUser.last_name,
+        role: parsedUser.role_name,
+        firstName: parsedUser.first_name,
+        lastName: parsedUser.last_name,
       });
     }
   }, []);

@@ -4,6 +4,7 @@ import { useState } from "react";
 import styles from "./login.module.css";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useRouter } from 'next/navigation';
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,7 +15,7 @@ export default function Login() {
   });
   const [errors, setErrors] = useState([]); // 👈 added
 
-  const router = useRouter();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -35,26 +36,12 @@ export default function Login() {
       return;
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: form.email, password: form.password }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      // 👇 replaced alert with setErrors
-      if (data.errors) {
-        setErrors(data.errors);
-      } else {
-        setErrors([{ path: 'general', msg: data.error || 'Login failed.' }]);
-      }
-      return;
+    try {
+      await login(form.email, form.password);
+    } catch (err) {
+      // login throws errors as array
+      setErrors(err);
     }
-
-    localStorage.setItem('user', JSON.stringify(data.user));
-    router.push('/dashboard');
   };
 
   return (
