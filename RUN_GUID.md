@@ -74,7 +74,7 @@ Press `a` in the terminal once the emulator is fully booted
 cd SAVIRA
 npm run dev
 ```
-Runs backend + frontend + mobile all together! 
+Runs backend + frontend + mobile all together!
 
 ---
 
