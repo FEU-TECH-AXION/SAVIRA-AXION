@@ -2,7 +2,7 @@ const supabase = require('../config/supabase')
 const bcrypt = require('bcrypt')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('users').select('*')
+    const { data, error } = await supabase.from('users').select('*, roles(role_name)')
     if (error) throw error
     return data
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./UserManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
+import { fetchUsers } from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPABASE INTEGRATION
@@ -15,27 +16,6 @@ import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
 //   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 // );
 // ─────────────────────────────────────────────────────────────────────────────
-
-const PLACEHOLDER_USERS = [
-  { id: 1,  name: "Alexa Gagan",    role: "Case Officer",             status: "Active",   dateCreated: "02/26/2026", email: "alexa.gagan@sasha.org",    phone: "09171234567" },
-  { id: 2,  name: "Marco Santos",   role: "Admin - Executive Officer", status: "Active",   dateCreated: "02/20/2026", email: "marco.santos@sasha.org",   phone: "09179876543" },
-  { id: 3,  name: "Lena Cruz",      role: "Member",                   status: "Inactive", dateCreated: "01/15/2026", email: "lena.cruz@sasha.org",      phone: "09182345678" },
-  { id: 4,  name: "Ryan Dela Paz",  role: "Legal",                    status: "Active",   dateCreated: "03/01/2026", email: "ryan.delapaz@sasha.org",   phone: "09193456789" },
-  { id: 5,  name: "Sofia Reyes",    role: "Complainants",             status: "Active",   dateCreated: "02/10/2026", email: "sofia.reyes@sasha.org",    phone: "09204567890" },
-  { id: 6,  name: "James Tan",      role: "Case Officer",             status: "Inactive", dateCreated: "01/28/2026", email: "james.tan@sasha.org",      phone: "09215678901" },
-  { id: 7,  name: "Maria Bautista", role: "Member",                   status: "Active",   dateCreated: "03/05/2026", email: "maria.bautista@sasha.org", phone: "09226789012" },
-  { id: 8,  name: "Carlo Navarro",  role: "Volunteers",               status: "Active",   dateCreated: "02/14/2026", email: "carlo.navarro@sasha.org",  phone: "09237890123" },
-  { id: 9,  name: "Diana Flores",   role: "Complainants",             status: "Inactive", dateCreated: "01/09/2026", email: "diana.flores@sasha.org",   phone: "09248901234" },
-  { id: 10, name: "Ben Mercado",    role: "Case Officer",             status: "Active",   dateCreated: "03/10/2026", email: "ben.mercado@sasha.org",    phone: "09259012345" },
-  { id: 11, name: "Trisha Abad",    role: "Admin - Executive Officer", status: "Active",  dateCreated: "02/02/2026", email: "trisha.abad@sasha.org",    phone: "09260123456" },
-  { id: 12, name: "Noel Ramos",     role: "Legal",                    status: "Inactive", dateCreated: "01/22/2026", email: "noel.ramos@sasha.org",     phone: "09271234567" },
-  { id: 13, name: "Grace Ocampo",   role: "Volunteers",               status: "Active",   dateCreated: "03/08/2026", email: "grace.ocampo@sasha.org",   phone: "09282345678" },
-  { id: 14, name: "Andrei Lim",     role: "Complainants",             status: "Active",   dateCreated: "02/27/2026", email: "andrei.lim@sasha.org",     phone: "09293456789" },
-  { id: 15, name: "Camille Torres", role: "Case Officer",             status: "Active",   dateCreated: "01/30/2026", email: "camille.torres@sasha.org", phone: "09304567890" },
-  { id: 16, name: "Hans Garcia",    role: "Member",                   status: "Inactive", dateCreated: "03/03/2026", email: "hans.garcia@sasha.org",    phone: "09315678901" },
-  { id: 17, name: "Issa Valdez",    role: "Volunteers",               status: "Active",   dateCreated: "02/18/2026", email: "issa.valdez@sasha.org",    phone: "09326789012" },
-  { id: 18, name: "Leo Aquino",     role: "Complainants",             status: "Active",   dateCreated: "01/11/2026", email: "leo.aquino@sasha.org",     phone: "09337890123" },
-];
 
 const ROLES = [
   "All",
@@ -59,7 +39,34 @@ function today() {
 }
 
 function nextId(users) {
-  return users.length ? Math.max(...users.map((u) => u.id)) + 1 : 1;
+  return users.length ? Math.max(...users.map((u) => u.id || 0)) + 1 : 1;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return value;
+  return date.toLocaleDateString("en-US", {
+    month: "2-digit", day: "2-digit", year: "numeric",
+  });
+}
+
+function normalizeUser(raw) {
+  const name = [raw.first_name, raw.last_name].filter(Boolean).join(" ") || raw.name || raw.user_name || raw.email || "Unnamed";
+  const role = raw.role_name || raw.role || raw.role_id?.role_name || raw.roles?.role_name || "Unknown";
+  const status = raw.status ?? (raw.is_active === false ? "Inactive" : raw.is_active === true ? "Active" : "Active");
+  const dateCreated = formatDate(raw.created_at || raw.date_created || raw.dateCreated);
+
+  return {
+    ...raw,
+    id: raw.id ?? raw.user_id ?? raw.uid ?? raw.user?.id,
+    name,
+    role,
+    status,
+    dateCreated,
+    email: raw.email ?? "—",
+    phone: raw.phone ?? raw.contact ?? "—",
+  };
 }
 
 // ── Status Badge ─────────────────────────────────────────────────────────────
@@ -533,8 +540,9 @@ function ViewAllModal({ open, onClose, users, onEdit, onDelete, onView, defaultA
 export default function AdminDashboard() {
   const user = { role: "admin", firstName: "Admin", lastName: "User" };
 
-  const [users, setUsers]           = useState(PLACEHOLDER_USERS);
-  const [loading, setLoading]       = useState(false);
+  const [users, setUsers]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
   const [search, setSearch]         = useState("");
   const [activeRole, setActiveRole] = useState("All");
   const [page, setPage]             = useState(1);
@@ -546,6 +554,25 @@ export default function AdminDashboard() {
 
   // Toast notification
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    async function loadUsers() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const data = await fetchUsers();
+        setUsers(Array.isArray(data) ? data.map(normalizeUser) : []);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+        setError(err.message || "Unable to load users.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUsers();
+  }, []);
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
@@ -686,6 +713,8 @@ export default function AdminDashboard() {
               <div className={styles.tableWrap}>
                 {loading ? (
                   <div className={styles.loadingState}>Loading users…</div>
+                ) : error ? (
+                  <div className={styles.errorState}>Error loading users: {error}</div>
                 ) : (
                   <>
                     <table className={styles.table}>
