@@ -3,11 +3,26 @@
 // Complainants see an "Apply Now" button that links to /volunteer/apply.
 // Public viewers see a "Log In to Apply" button instead.
 
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./VolunteerLanding.module.css";
+import { useAuth } from "@/lib/AuthContext";
 
 // ── Section: Hero ─────────────────────────────────────────────────────────────
-function HeroSection({ isComplainant }) {
+function HeroSection() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleApplyClick = () => {
+    if (user) {
+      router.push("/volunteer/apply");
+    } else {
+      router.push("/login");
+    }
+  };
+
   return (
     <section className={styles.hero}>
       <div className={styles.heroBgOverlay} />
@@ -24,15 +39,9 @@ function HeroSection({ isComplainant }) {
             and organizational activities.
           </p>
           <div className={styles.heroBtns}>
-            {isComplainant ? (
-              <Link href="/volunteer/apply" className={styles.btnPrimary}>
-                Apply Now
-              </Link>
-            ) : (
-              <Link href="/login" className={styles.btnPrimary}>
-                Log In to Apply
-              </Link>
-            )}
+            <button onClick={handleApplyClick} className={styles.btnPrimary}>
+              {user ? "Apply Now" : "Log In to Apply"}
+            </button>
             <a href="#how-to-apply" className={styles.btnSecondary}>
               Learn More
             </a>
@@ -161,7 +170,18 @@ const STEPS = [
   },
 ];
 
-function HowToApply({ isComplainant }) {
+function HowToApply() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleApplyClick = () => {
+    if (user) {
+      router.push("/volunteer/apply");
+    } else {
+      router.push("/login");
+    }
+  };
+
   return (
     <section id="how-to-apply" className={styles.howSection}>
       <div className={styles.sectionInner}>
@@ -203,15 +223,9 @@ function HowToApply({ isComplainant }) {
 
         {/* CTA at the bottom */}
         <div className={styles.howCta}>
-          {isComplainant ? (
-            <Link href="/volunteer/apply" className={styles.btnPrimary}>
-              Apply Now
-            </Link>
-          ) : (
-            <Link href="/login" className={styles.btnPrimary}>
-              Log In to Apply
-            </Link>
-          )}
+          <button onClick={handleApplyClick} className={styles.btnPrimary}>
+            {user ? "Apply Now" : "Log In to Apply"}
+          </button>
         </div>
       </div>
     </section>
@@ -219,13 +233,13 @@ function HowToApply({ isComplainant }) {
 }
 
 // ── Root Export ───────────────────────────────────────────────────────────────
-export default function VolunteerLanding({ isComplainant = false }) {
+export default function VolunteerLanding() {
   return (
     <div className={styles.page}>
-      <HeroSection isComplainant={isComplainant} />
+      <HeroSection />
       <WhoCanJoin />
       <WhatYouWillDo />
-      <HowToApply isComplainant={isComplainant} />
+      <HowToApply />
     </div>
   );
 }
