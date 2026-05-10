@@ -28,25 +28,30 @@ function HeroSection() {
       <div className={styles.heroBgOverlay} />
       <div className={styles.heroInner}>
         <div className={styles.heroContent}>
-          <span className={styles.heroEyebrow}>Volunteering</span>
           <h1 className={styles.heroTitle}>
             Join the <span className={styles.heroAccent}>Movement</span>
           </h1>
-          <p className={styles.heroDesc}>
-            SASHA welcomes individuals aged 13 to 35 who believe in gender
-            equality and the protection of vulnerable communities. Volunteers
-            play a crucial role in advocacy campaigns, educational initiatives,
-            and organizational activities.
-          </p>
-          <div className={styles.heroBtns}>
-            <button onClick={handleApplyClick} className={styles.btnPrimary}>
-              {user ? "Apply Now" : "Log In to Apply"}
-            </button>
-            <a href="#how-to-apply" className={styles.btnSecondary}>
-              Learn More
-            </a>
-          </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Section: Advocacy Events and Activities ───────────────────────────────────
+function AdvocacySection({ onApplyClick, isUserLoggedIn }) {
+  return (
+    <section className={styles.advocacySection}>
+      <div className={styles.sectionInner}>
+        <div className={styles.sectionLabel}>Volunteering</div>
+        <h2 className={styles.sectionTitle}>
+          Advocacy Events <span className={styles.heroAccent}>and Activities</span>
+        </h2>
+        <p className={styles.advocacyDesc}>
+          SASHA welcomes individuals aged 13 to 35 who believe in gender equality and the protection of vulnerable communities. Volunteers play a crucial role in advocacy campaigns, educational initiatives, and organizational activities.
+        </p>
+        <button onClick={onApplyClick} className={styles.btnPrimary}>
+          {isUserLoggedIn ? "Apply Now" : "Log In to Apply"}
+        </button>
       </div>
     </section>
   );
@@ -65,12 +70,11 @@ function WhoCanJoin() {
   return (
     <section className={styles.whoSection}>
       <div className={styles.sectionInner}>
-        <div className={styles.sectionLabel}>Who Can Join?</div>
         <div className={styles.whoCard}>
+          <div className={styles.sectionLabel}>Who Can Join?</div>
           <div className={styles.whoImageWrapper}>
-            {/* Replace src with your actual image */}
             <img
-              src="/images/volunteer-group.jpg"
+              src="/sasha-bg-1.png"
               alt="SASHA volunteers"
               className={styles.whoImage}
             />
@@ -143,45 +147,39 @@ const STEPS = [
     title: "Create an account",
     desc: "Register to begin your volunteer application process.",
     side: "right",
+    image: "/step-1-create-account.png",
   },
   {
     num: 2,
     title: "Complete the volunteer application form",
     desc: "Provide the necessary details about your background and interest in volunteering.",
     side: "left",
+    image: "/step-2-application-form.png",
   },
   {
     num: 3,
     title: "Submit required personal information",
     desc: "Upload and confirm the documents needed for verification.",
     side: "right",
+    image: "/step-3-submit-documents.png",
   },
   {
     num: 4,
     title: "Undergo evaluation and screening",
     desc: "Your application will be reviewed to ensure suitability and readiness.",
     side: "left",
+    image: "/step-4-evaluation.png",
   },
   {
     num: 5,
     title: "Await approval and chapter assignment",
     desc: "Receive confirmation and be assigned to a local SASHA chapter.",
     side: "right",
+    image: "/step-5-approval.png",
   },
 ];
 
 function HowToApply() {
-  const { user } = useAuth();
-  const router = useRouter();
-
-  const handleApplyClick = () => {
-    if (user) {
-      router.push("/volunteer/apply");
-    } else {
-      router.push("/login");
-    }
-  };
-
   return (
     <section id="how-to-apply" className={styles.howSection}>
       <div className={styles.sectionInner}>
@@ -215,17 +213,18 @@ function HowToApply() {
 
               {/* Image block */}
               <div className={styles.timelineImage}>
-                <div className={styles.timelineImagePlaceholder} />
+                {step.image ? (
+                  <img
+                    src={step.image}
+                    alt={step.title}
+                    className={styles.timelineImg}
+                  />
+                ) : (
+                  <div className={styles.timelineImagePlaceholder} />
+                )}
               </div>
             </div>
           ))}
-        </div>
-
-        {/* CTA at the bottom */}
-        <div className={styles.howCta}>
-          <button onClick={handleApplyClick} className={styles.btnPrimary}>
-            {user ? "Apply Now" : "Log In to Apply"}
-          </button>
         </div>
       </div>
     </section>
@@ -234,12 +233,32 @@ function HowToApply() {
 
 // ── Root Export ───────────────────────────────────────────────────────────────
 export default function VolunteerLanding() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleApplyClick = () => {
+    if (user) {
+      router.push("/volunteer/apply");
+    } else {
+      router.push("/login");
+    }
+  };
+
   return (
     <div className={styles.page}>
       <HeroSection />
+      <AdvocacySection onApplyClick={handleApplyClick} isUserLoggedIn={!!user} />
       <WhoCanJoin />
       <WhatYouWillDo />
       <HowToApply />
+      {/* Apply Now CTA Section */}
+      <section className={styles.ctaSection}>
+        <div className={styles.sectionInner}>
+          <button onClick={handleApplyClick} className={styles.btnPrimary}>
+            {user ? "Apply Now" : "Log In to Apply"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

@@ -140,11 +140,12 @@ export default function ContactPage() {
 
           {/* ── Right: info ── */}
           <div className={styles.infoPanel}>
+            <div className={styles.infoOverlay} />
             <div className={styles.infoBlock}>
               <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Address</h4>
               <p className={styles.infoText}>
-                Mandaluyong City
+                270A ML Quezon Street, Buli, Muntinlupa City
               </p>
             </div>
 
@@ -152,9 +153,9 @@ export default function ContactPage() {
               <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Contact</h4>
               <p className={styles.infoText}>
-                Email: info@sasha-ph.org
+                Email: sasha@oneamaps.com
                 <br />
-                Contact Number: +63 9 1234 5678
+                Contact Number: 0977 319 6087
               </p>
             </div>
 

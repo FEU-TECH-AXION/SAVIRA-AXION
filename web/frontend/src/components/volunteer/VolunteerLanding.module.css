@@ -67,9 +67,11 @@
   font-weight: 700;
   font-size: 0.95rem;
   padding: 0.8rem 2rem;
+  border: none;
   border-radius: 6px;
   text-decoration: none;
   transition: background 0.18s ease, transform 0.15s ease;
+  cursor: pointer;
 }
 
 .btnPrimary:hover {
@@ -100,16 +102,21 @@
 /* ── Hero ──────────────────────────────────────────────────────────────────── */
 .hero {
   position: relative;
-  background: var(--teal);
-  overflow: hidden;
-  padding: 0;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url("/hero-bg-2.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
 }
 
 .heroBgOverlay {
   position: absolute;
   inset: 0;
-  background: url("/images/hero-volunteer-bg.jpg") center/cover no-repeat;
-  opacity: 0.18;
+  background: rgba(255, 255, 255, 0.65);
   pointer-events: none;
 }
 
@@ -117,11 +124,13 @@
   position: relative;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 6rem 2rem 5rem;
+  padding: 4rem 2rem 3rem;
+  text-align: center;
 }
 
 .heroContent {
   max-width: 600px;
+  margin: 0 auto;
 }
 
 .heroEyebrow {
@@ -137,7 +146,7 @@
 .heroTitle {
   font-size: clamp(2.2rem, 5vw, 3.4rem);
   font-weight: 900;
-  color: var(--white);
+  color: var(--teal);
   line-height: 1.1;
   margin: 0 0 1.25rem;
 }
@@ -155,6 +164,20 @@
   gap: 1rem;
   flex-wrap: wrap;
   align-items: center;
+}
+
+/* ── Advocacy Section ──────────────────────────────────────────────────────── */
+.advocacySection {
+  padding: 4rem 0 5rem;
+  background: var(--white);
+}
+
+.advocacyDesc {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin: 1.5rem 0;
+  max-width: 700px;
 }
 
 /* ── Who Can Join ──────────────────────────────────────────────────────────── */
@@ -250,8 +273,8 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: url("/images/responsibilities-bg.jpg") center/cover no-repeat;
-  opacity: 0.1;
+  background: url("/responsibilities-bg.png") center/cover no-repeat;
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -332,7 +355,7 @@
   content: "";
   display: block;
   height: 2px;
-  width: 60px;
+  width: 30%;
   background: var(--teal);
   border-radius: 2px;
 }
@@ -450,9 +473,17 @@
 }
 
 .timelineImage {
-  height: 130px;
+  height: 240px;
   border-radius: 10px;
   overflow: hidden;
+  background: var(--off-white);
+}
+
+.timelineImg {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .timelineImagePlaceholder {
@@ -465,6 +496,14 @@
 .howCta {
   text-align: center;
   margin-top: 3.5rem;
+  display: none;
+}
+
+/* ── CTA Section ───────────────────────────────────────────────────────────── */
+.ctaSection {
+  padding: 4rem 0;
+  background: var(--off-white);
+  text-align: center;
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────────── */
