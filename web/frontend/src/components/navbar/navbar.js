@@ -241,7 +241,7 @@ function UserMenu({ user, logout }) {
           </Link>
 
           <Link
-            href="/settings"
+            href="/profile?tab=security"
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >

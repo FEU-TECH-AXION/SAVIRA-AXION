@@ -1,0 +1,508 @@
+/* ============================================================
+   Profile & Settings — profile.module.css
+   Brand: --sasha-teal #037F81 | --sasha-orange #E06030
+   ============================================================ */
+
+/* ── Page shell ─────────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  background: #f4f6f8;
+  padding-bottom: 4rem;
+  padding-top: 4rem;
+}
+
+/* ── Hero strip ─────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, #025f61 0%, #037F81 60%, #048f92 100%);
+  padding: 2.5rem 1rem 3.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: #f4f6f8;
+  clip-path: ellipse(55% 100% at 50% 100%);
+}
+
+.heroInner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+}
+
+/* Avatar */
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255,255,255,0.7);
+}
+
+.avatarInitials {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: 3px solid rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.avatarEdit {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #E06030;
+  border: 2px solid #fff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.avatarEdit:hover {
+  background: #c94e1f;
+}
+
+/* Hero text */
+.heroMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.heroName {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.2rem;
+  line-height: 1.2;
+}
+
+.heroSub {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.78);
+  margin: 0 0 0.55rem;
+}
+
+.roleBadge {
+  display: inline-block;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Completion card */
+.completionCard {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.completionHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.completionBar {
+  height: 6px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.55rem;
+}
+
+.completionFill {
+  height: 100%;
+  background: #E06030;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.completionHint {
+  font-size: 0.74rem;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── Body ───────────────────────────────────────────────────── */
+.body {
+  max-width: 900px;
+  margin: -24px auto 0;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+  background: #fff;
+  border-radius: 12px 12px 0 0;
+  padding: 0.5rem 0.75rem 0;
+  border-bottom: 1px solid #e8ecf0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #666;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: #037F81;
+  background: #f0fafa;
+}
+
+.tabActive {
+  color: #037F81;
+  border-bottom-color: #037F81;
+  font-weight: 600;
+}
+
+/* ── Flash messages ─────────────────────────────────────────── */
+.flashSuccess,
+.flashError {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0.75rem 0;
+  animation: slideDown 0.25s ease;
+}
+
+.flashSuccess { background: #e6f9f5; color: #037F81; border: 1px solid #a7e9d8; }
+.flashError   { background: #fff0ef; color: #c0392b; border: 1px solid #f5c6c2; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Form card ──────────────────────────────────────────────── */
+.formCard {
+  background: #fff;
+  border-radius: 0 0 14px 14px;
+  padding: 1.75rem 2rem 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+}
+
+.sectionTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #037F81;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.sectionDesc {
+  font-size: 0.875rem;
+  color: #666;
+  margin: -0.5rem 0 1.25rem;
+  line-height: 1.5;
+}
+
+/* ── Grid layouts ───────────────────────────────────────────── */
+.grid1 { display: grid; gap: 1.1rem; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.1rem; margin-bottom: 1.1rem; }
+
+@media (max-width: 640px) {
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+}
+
+/* ── Field ──────────────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.required {
+  color: #E06030;
+}
+
+.badge {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #888;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid #dde3ea;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #222;
+  background: #fafafa;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  background: #fff;
+}
+
+.fieldHint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.fieldError {
+  font-size: 0.75rem;
+  color: #c0392b;
+  margin: 0;
+}
+
+/* ── Password field ─────────────────────────────────────────── */
+.pwWrap {
+  position: relative;
+}
+
+.pwWrap input {
+  padding-right: 2.5rem;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.eyeBtn:hover { color: #037F81; }
+
+/* ── Password strength ──────────────────────────────────────── */
+.strengthRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.strengthBars {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.strengthBar {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  transition: background 0.25s;
+}
+
+/* ── Form actions ───────────────────────────────────────────── */
+.formActions {
+  margin-top: 1.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btnPrimary {
+  padding: 0.65rem 2rem;
+  background: #037F81;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #025f61;
+  transform: translateY(-1px);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Info grid (security tab) ───────────────────────────────── */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #edf2f7;
+}
+
+.infoItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: #037F81;
+}
+
+.infoLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  margin: 0 0 0.1rem;
+}
+
+.infoValue {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+}
+
+/* ── Notifications tab ──────────────────────────────────────── */
+.notifList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.notifRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  gap: 1rem;
+}
+
+.notifRow:last-child { border-bottom: none; }
+
+.notifLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 0.15rem;
+}
+
+.notifDesc {
+  font-size: 0.78rem;
+  color: #777;
+  margin: 0;
+}
+
+/* Toggle switch */
+.toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: #d4d8dd;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.toggleOn { background: #037F81; }
+
+.toggleKnob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggleOn .toggleKnob { transform: translateX(20px); }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .heroInner { gap: 1rem; }
+  .completionCard { max-width: 100%; min-width: 100%; }
+  .formCard { padding: 1.25rem 1rem; }
+  .tabs { overflow-x: auto; }
+  .tab { white-space: nowrap; }
+}
