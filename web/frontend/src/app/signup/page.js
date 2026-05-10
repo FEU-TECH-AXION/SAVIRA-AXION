@@ -308,7 +308,7 @@ export default function SignUp() {
               </div>
 
               {/* Match indicator */}
-              {form.confirmPassword && form.password && (
+              {/* {form.confirmPassword && form.password && (
                 <p className={
                   form.confirmPassword === form.password
                     ? styles.matchOk
@@ -318,7 +318,7 @@ export default function SignUp() {
                     ? "✓ Passwords match"
                     : "✗ Passwords do not match"}
                 </p>
-              )}
+              )} */}
             </FormField>
 
             {/* Terms */}
