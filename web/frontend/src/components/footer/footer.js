@@ -4,64 +4,79 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FaXTwitter, FaInstagram, FaYoutube, FaLinkedin } from "react-icons/fa6";
 import styles from "./footer.module.css";
-
-/**
- * Footer Component
- *
- * Props:
- *   user — null | { role: "reporter" | "case_officer" | "admin" }
- *
- * Shows different quick links depending on auth state / role.
- */
+import { useAuth } from "@/lib/AuthContext";
 
 const PUBLIC_QUICK_LINKS = [
-  { href: "/",          label: "Home" },
-  { href: "/about",     label: "About" },
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/events", label: "Events" },
+  { href: "/contact", label: "Contact" },
   { href: "/volunteer", label: "Volunteer" },
-  { href: "/events",    label: "Events" },
-  { href: "/contact",   label: "Contact" },
-  { href: "/login",     label: "Log In" },
 ];
 
 const COMPLAINANT_QUICK_LINKS = [
-  { href: "/dashboard",      label: "Home" },
-  { href: "/about",   label: "About" },
-  { href: "/report",     label: "Report" },
+  { href: "/dashboard", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/cases", label: "Report" },
   { href: "/volunteer", label: "Volunteer" },
   { href: "/contact", label: "Contact" },
-  { href: "/events",         label: "Events" },
+  { href: "/events", label: "Events" },
 ];
 
 const CASE_OFFICER_QUICK_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/case-officer/cases",     label: "Cases" },
-  { href: "/case-officer/projects",  label: "Projects" },
-  { href: "/case-officer/insights", label: "Insights" },
+  { href: "/cases", label: "Cases" },
+  { href: "/heatmap", label: "Heatmap" },
+];
+
+const STAFF_QUICK_LINKS = [
+  { href: "/dashboard", label: "Home" },
+  { href: "/projects", label: "Projects" },
+  { href: "/volunteer", label: "Volunteers" },
+  { href: "/heatmap", label: "Heatmap" },
+];
+
+const LEGAL_QUICK_LINKS = [
+  { href: "/dashboard", label: "Home" },
+  { href: "/legalReviews", label: "Legal Review" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const ADMIN_QUICK_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/admin/users",     label: "Users" },
-  { href: "/admin/cases",     label: "Cases" },
-  { href: "/admin/projects",     label: "Projects" },
-  { href: "/admin/volunteers", label: "Volunteers" },
-  { href: "/admin/heatmap", label: "Heatmap" },
-  { href: "/admin/reports",   label: "Reports" },
+  { href: "/users", label: "Users" },
+  { href: "/cases", label: "Cases" },
+  { href: "/legalReviews", label: "Legal Review" },
+  { href: "/projects", label: "Projects" },
+  { href: "/volunteer", label: "Volunteers" },
+  { href: "/heatmap", label: "Heatmap" },
+  { href: "/reports", label: "Reports" },
 ];
+
+const ROLE_LABEL = {
+  admin: "Admin",
+  staff: "Staff",
+  case_officer: "Case Officer",
+  legal_personnel: "Legal Personnel",
+  complainant: "Complainant",
+  user: "User",
+};
 
 function getQuickLinks(user) {
   if (!user) return PUBLIC_QUICK_LINKS;
-  switch (user.role) {
-    case "complainant":   return COMPLAINANT_QUICK_LINKS;
-    case "case_officer":  return CASE_OFFICER_QUICK_LINKS;
-    case "admin":         return ADMIN_QUICK_LINKS;
-    case "legal":         return LEGAL_QUICK_LINKS;
-    case "sasha_officer": return SASHA_OFFICER_QUICK_LINKS;
-    default:              return PUBLIC_QUICK_LINKS;
+  switch (user.role_name?.toLowerCase()) {
+    case "admin":          return ADMIN_QUICK_LINKS;
+    case "staff":          return STAFF_QUICK_LINKS;
+    case "case officer":   return CASE_OFFICER_QUICK_LINKS;
+    case "legal personnel":return LEGAL_QUICK_LINKS;
+    case "complainant":
+    case "user":           return COMPLAINANT_QUICK_LINKS;
+    default:               return PUBLIC_QUICK_LINKS;
   }
 }
 
-export default function Footer({ user = null }) {
+export default function Footer() {
+  const { user } = useAuth();
   const quickLinks = getQuickLinks(user);
   const pathname = usePathname();
 

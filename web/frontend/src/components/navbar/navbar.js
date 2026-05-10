@@ -43,9 +43,8 @@ const STAFF_LINKS = [
 
 const LEGAL_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/cases", label: "Cases" },
   { href: "/legalReviews", label: "Legal Review" },
-  { href: "/projects", label: "Projects" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const ADMIN_LINKS = [
@@ -71,36 +70,25 @@ const ROLE_LABEL = {
 function getLinks(user) {
   if (!user) return PUBLIC_LINKS;
 
-  switch (user.role?.toLowerCase()) {
-    case "admin":
-      return ADMIN_LINKS;
-
-    case "staff":
-      return STAFF_LINKS;
-
-    case "case_officer":
-      return CASE_OFFICER_LINKS;
-
-    case "legal_personnel":
-      return LEGAL_LINKS;
-
+  switch (user.role_name?.toLowerCase()) {   // ← use role_name
+    case "admin":          return ADMIN_LINKS;
+    case "staff":          return STAFF_LINKS;
+    case "case officer":   return CASE_OFFICER_LINKS;
+    case "legal personnel":return LEGAL_LINKS;
     case "complainant":
-    case "user":
-      return COMPLAINANT_LINKS;
-
-    default:
-      return PUBLIC_LINKS;
+    case "user":           return COMPLAINANT_LINKS;
+    default:               return PUBLIC_LINKS;
   }
 }
 
 // ── Component ─────────────────────────────────────────────
 
-export default function Navbar({ user = null }) {
+export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const pathname = usePathname();
 
-  const { logout } = useAuth(); // ✅ use logout directly
+  const { user, logout } = useAuth();
 
   const links = getLinks(user);
 
@@ -185,7 +173,7 @@ export default function Navbar({ user = null }) {
           {user ? (
             <div className={styles.mobileUserSection}>
               <span className={styles.mobileUserName}>
-                {user.firstName ?? "Account"}
+                {user.first_name ?? "Account"}
               </span>
 
               <button
@@ -227,19 +215,19 @@ function UserMenu({ user, logout }) {
         aria-expanded={open}
       >
         <span>
-          {user.firstName?.[0] ?? "U"}
-          {user.lastName?.[0] ?? ""}
+          {user.first_name?.[0] ?? "U"}
+          {user.last_name?.[0] ?? ""}
         </span>
       </button>
 
       {open && (
         <div className={styles.userDropdown}>
           <p className={styles.dropdownName}>
-            {user.firstName} {user.lastName}
+            {user.first_name} {user.last_name}
           </p>
 
           <p className={styles.dropdownRole}>
-            {ROLE_LABEL[user.role?.toLowerCase()]}
+            {ROLE_LABEL[user.role_name?.toLowerCase()]}
           </p>
 
           <hr className={styles.dropdownDivider} />

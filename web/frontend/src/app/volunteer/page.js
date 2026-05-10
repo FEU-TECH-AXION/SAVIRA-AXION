@@ -27,7 +27,7 @@ export default function VolunteerPage() {
   if (!loaded) return <p>Loading...</p>;
   if (role === "admin") return <VolunteerManagement />;
   if (role === "staff") return <VolunteerManagement />;
-  if (role === "complainant") return <VolunteerLanding isComplainant={true} />;
+  if (role === "user") return <VolunteerLanding isComplainant={true} />;
   if (!role) return <VolunteerLanding isComplainant={false} />;
 
   return <p>Unauthorized</p>;
