@@ -9,95 +9,104 @@ import styles from "./navbar.module.css";
 
 /**
  * Navbar Component
- *
- * Props:
- *   user  — null (logged out) | { role: "complainant" | "case_officer" | "admin" | "legal" | "sasha_officer" }
- *
- * Usage:
- *   <Navbar user={null} />               ← public visitor
- *   <Navbar user={{ role: "complainant" }} /> ← logged-in complainant
  */
 
-// ── Link definitions per role ────────────────────────────────────────────────
-
 const PUBLIC_LINKS = [
-  { href: "/",          label: "Home" },
-  { href: "/about",     label: "About" },
-  { href: "/events",    label: "Events" },
-  { href: "/contact",   label: "Contact" },
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/events", label: "Events" },
+  { href: "/contact", label: "Contact" },
   { href: "/volunteer", label: "Volunteer" },
 ];
 
 const COMPLAINANT_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/about",     label: "About" },
-  { href: "/cases",     label: "Report" },
+  { href: "/about", label: "About" },
+  { href: "/cases", label: "Report" },
   { href: "/volunteer", label: "Volunteer" },
-  { href: "/contact",   label: "Contact" },
-  { href: "/events",    label: "Events" },
+  { href: "/contact", label: "Contact" },
+  { href: "/events", label: "Events" },
 ];
 
 const CASE_OFFICER_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/cases",     label: "Cases" },
-  { href: "/heatmap",   label: "Heatmap" },
+  { href: "/cases", label: "Cases" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const STAFF_LINKS = [
   { href: "/dashboard", label: "Home" },
-  { href: "/projects",  label: "Projects" },
+  { href: "/projects", label: "Projects" },
   { href: "/volunteer", label: "Volunteers" },
-  { href: "/heatmap",   label: "Heatmap" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const LEGAL_LINKS = [
-  { href: "/dashboard",    label: "Home" },
-  { href: "/cases",        label: "Cases" },
+  { href: "/dashboard", label: "Home" },
+  { href: "/cases", label: "Cases" },
   { href: "/legalReviews", label: "Legal Review" },
-  { href: "/projects",     label: "Projects" },
+  { href: "/projects", label: "Projects" },
 ];
 
 const ADMIN_LINKS = [
-  { href: "/dashboard",    label: "Home" },
-  { href: "/users",        label: "Users" },
-  { href: "/cases",        label: "Cases" },
+  { href: "/dashboard", label: "Home" },
+  { href: "/users", label: "Users" },
+  { href: "/cases", label: "Cases" },
   { href: "/legalReviews", label: "Legal Review" },
-  { href: "/projects",     label: "Projects" },
-  { href: "/volunteer",    label: "Volunteers" },
-  { href: "/heatmap",      label: "Heatmap" },
-  { href: "/reports",      label: "Reports" },
+  { href: "/projects", label: "Projects" },
+  { href: "/volunteer", label: "Volunteers" },
+  { href: "/heatmap", label: "Heatmap" },
+  { href: "/reports", label: "Reports" },
 ];
 
 const ROLE_LABEL = {
-  admin:             "Admin",
-  staff:             "Staff",
-  "case officer":    "Case Officer",
-  "legal personnel": "Legal Personnel",
-  complainant:       "Complainant",
-  user:              "User",
+  admin: "Admin",
+  staff: "Staff",
+  case_officer: "Case Officer",
+  legal_personnel: "Legal Personnel",
+  complainant: "Complainant",
+  user: "User",
 };
 
 function getLinks(user) {
   if (!user) return PUBLIC_LINKS;
+
   switch (user.role?.toLowerCase()) {
-    case "admin":            return ADMIN_LINKS;
-    case "staff":            return STAFF_LINKS;
-    case "case officer":     return CASE_OFFICER_LINKS;
-    case "legal personnel":  return LEGAL_LINKS;
+    case "admin":
+      return ADMIN_LINKS;
+
+    case "staff":
+      return STAFF_LINKS;
+
+    case "case_officer":
+      return CASE_OFFICER_LINKS;
+
+    case "legal_personnel":
+      return LEGAL_LINKS;
+
     case "complainant":
-    case "user":             return COMPLAINANT_LINKS;
-    default:                 return PUBLIC_LINKS;
+    case "user":
+      return COMPLAINANT_LINKS;
+
+    default:
+      return PUBLIC_LINKS;
   }
 }
 
 // ── Component ─────────────────────────────────────────────
 
-export default function Navbar({ user = null, onLogout }) {  // ✅ accept onLogout
+export default function Navbar({ user = null }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const links    = getLinks(user);
 
-  const isActive  = (href) => href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const pathname = usePathname();
+
+  const { logout } = useAuth(); // ✅ use logout directly
+
+  const links = getLinks(user);
+
+  const isActive = (href) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+
   const closeMenu = () => setMenuOpen(false);
 
   return (
@@ -125,7 +134,11 @@ export default function Navbar({ user = null, onLogout }) {  // ✅ accept onLog
             <li key={href}>
               <Link
                 href={href}
-                className={isActive(href) ? styles.navLinkActive : styles.navLink}
+                className={
+                  isActive(href)
+                    ? styles.navLinkActive
+                    : styles.navLink
+                }
               >
                 {label}
               </Link>
@@ -133,12 +146,15 @@ export default function Navbar({ user = null, onLogout }) {  // ✅ accept onLog
           ))}
         </ul>
 
-        {/* Right: login or user menu */}
+        {/* Right side */}
         <div className={styles.navRight}>
-          {user
-            ? <UserMenu user={user} onLogout={onLogout} />   // ✅ pass onLogout
-            : <Link href="/login" className={styles.navLoginBtn}>Log In</Link>
-          }
+          {user ? (
+            <UserMenu user={user} logout={logout} />
+          ) : (
+            <Link href="/login" className={styles.navLoginBtn}>
+              Log In
+            </Link>
+          )}
         </div>
 
       </div>
@@ -151,7 +167,11 @@ export default function Navbar({ user = null, onLogout }) {  // ✅ accept onLog
               <li key={href}>
                 <Link
                   href={href}
-                  className={isActive(href) ? styles.mobileLinkActive : styles.mobileLink}
+                  className={
+                    isActive(href)
+                      ? styles.mobileLinkActive
+                      : styles.mobileLink
+                  }
                   onClick={closeMenu}
                 >
                   {label}
@@ -167,16 +187,23 @@ export default function Navbar({ user = null, onLogout }) {  // ✅ accept onLog
               <span className={styles.mobileUserName}>
                 {user.firstName ?? "Account"}
               </span>
-              {/* ✅ button instead of Link — calls onLogout */}
+
               <button
                 className={styles.mobileLogoutBtn}
-                onClick={() => { closeMenu(); onLogout?.(); }}
+                onClick={() => {
+                  closeMenu();
+                  logout();
+                }}
               >
                 Log Out
               </button>
             </div>
           ) : (
-            <Link href="/login" className={styles.mobileLoginBtn} onClick={closeMenu}>
+            <Link
+              href="/login"
+              className={styles.mobileLoginBtn}
+              onClick={closeMenu}
+            >
               Log In
             </Link>
           )}
@@ -186,9 +213,9 @@ export default function Navbar({ user = null, onLogout }) {  // ✅ accept onLog
   );
 }
 
-// ── UserMenu (desktop dropdown) ───────────────────────────
+// ── UserMenu ─────────────────────────────────────────────
 
-function UserMenu({ user, onLogout }) {   // ✅ accept onLogout
+function UserMenu({ user, logout }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -199,21 +226,48 @@ function UserMenu({ user, onLogout }) {   // ✅ accept onLogout
         aria-label="Account menu"
         aria-expanded={open}
       >
-        <span>{user.firstName?.[0] ?? "U"}{user.lastName?.[0] ?? ""}</span>
+        <span>
+          {user.firstName?.[0] ?? "U"}
+          {user.lastName?.[0] ?? ""}
+        </span>
       </button>
 
       {open && (
         <div className={styles.userDropdown}>
-          <p className={styles.dropdownName}>{user.firstName} {user.lastName}</p>
-          <p className={styles.dropdownRole}>{ROLE_LABEL[user.role?.toLowerCase()]}</p>
+          <p className={styles.dropdownName}>
+            {user.firstName} {user.lastName}
+          </p>
+
+          <p className={styles.dropdownRole}>
+            {ROLE_LABEL[user.role?.toLowerCase()]}
+          </p>
+
           <hr className={styles.dropdownDivider} />
-          <Link href="/profile"  className={styles.dropdownItem} onClick={() => setOpen(false)}>My Profile</Link>
-          <Link href="/settings" className={styles.dropdownItem} onClick={() => setOpen(false)}>Settings</Link>
+
+          <Link
+            href="/profile"
+            className={styles.dropdownItem}
+            onClick={() => setOpen(false)}
+          >
+            My Profile
+          </Link>
+
+          <Link
+            href="/settings"
+            className={styles.dropdownItem}
+            onClick={() => setOpen(false)}
+          >
+            Settings
+          </Link>
+
           <hr className={styles.dropdownDivider} />
-          {/* ✅ button instead of Link — calls onLogout */}
+
           <button
             className={`${styles.dropdownItem} ${styles.dropdownLogout}`}
-            onClick={() => { setOpen(false); onLogout?.(); }}
+            onClick={() => {
+              setOpen(false);
+              logout();
+            }}
           >
             Log Out
           </button>
