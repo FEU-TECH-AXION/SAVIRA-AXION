@@ -70,8 +70,8 @@ function WhoCanJoin() {
   return (
     <section className={styles.whoSection}>
       <div className={styles.sectionInner}>
+        <div className={styles.sectionLabel}>Who Can Join?</div>
         <div className={styles.whoCard}>
-          <div className={styles.sectionLabel}>Who Can Join?</div>
           <div className={styles.whoImageWrapper}>
             <img
               src="/sasha-bg-1.png"
