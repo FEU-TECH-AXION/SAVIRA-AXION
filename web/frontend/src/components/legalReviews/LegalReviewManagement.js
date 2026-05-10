@@ -310,6 +310,24 @@ function SelectCaseModal({ open, onClose, cases, title, filterStatus, actionLabe
   );
 }
 
+// ── Cookies ─────────────────────────────────────────────────────────────────────
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  return null;
+}
+
+// ── Cookies ─────────────────────────────────────────────────────────────────────
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  return null;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
@@ -317,15 +335,16 @@ export default function LegalReviewManagement() {
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) {
-      setUser({
-        role: storedUser.roles?.role_name,
-        firstName: storedUser.first_name,
-        lastName: storedUser.last_name,
-      });
-    }
-  }, []);
+  const userCookie = getCookie('user');
+  if (userCookie) {
+    const storedUser = JSON.parse(userCookie);
+    setUser({
+      role: storedUser.role_name,
+      firstName: storedUser.first_name,
+      lastName: storedUser.last_name,
+    });
+  }
+}, []);
 
   const [cases, setCases] = useState(PLACEHOLDER_CASES);
   const [search, setSearch] = useState("");

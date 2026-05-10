@@ -6,8 +6,13 @@ export default function LogoutPage() {
   const router = useRouter();
 
   useEffect(() => {
-    localStorage.removeItem('user');
-    router.push('/login');
+    // Call backend to clear httpOnly cookie
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).finally(() => {
+      router.push('/login');
+    });
   }, []);
 
   return <p>Logging out...</p>;

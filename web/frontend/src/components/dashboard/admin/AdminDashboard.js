@@ -54,16 +54,26 @@ function DeadlineItem({ emoji, title, date }) {
   );
 }
 
+// ── Cookies ─────────────────────────────────────────────────────────────────────
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  return null;
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [calDate, setCalDate] = useState(new Date());
   const [user, setUser] = useState({ role: "admin", firstName: "Admin", lastName: "User" });
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) {
+    const userCookie = getCookie('user');  // ← NEW
+    if (userCookie) {
+      const storedUser = JSON.parse(userCookie);
       setUser({
-        role: storedUser.roles?.role_name,
+        role: storedUser.role_name,        // ← note: role_name not roles?.role_name
         firstName: storedUser.first_name,
         lastName: storedUser.last_name,
       });

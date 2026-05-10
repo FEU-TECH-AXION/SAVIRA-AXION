@@ -43,20 +43,30 @@ function DeadlineItem({ emoji, title, date }) {
   );
 }
 
+// ── Cookies ─────────────────────────────────────────────────────────────────────
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  return null;
+}
+
 export default function StaffDashboard() {
   const [calDate, setCalDate] = useState(new Date());
   const [user, setUser] = useState({ role: "staff", firstName: "Staff", lastName: "User" });
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) {
-      setUser({
-        role: storedUser.roles?.role_name,
-        firstName: storedUser.first_name,
-        lastName: storedUser.last_name,
-      });
-    }
-  }, []);
+  const userCookie = getCookie('user');
+  if (userCookie) {
+    const storedUser = JSON.parse(userCookie);
+    setUser({
+      role: storedUser.role_name,
+      firstName: storedUser.first_name,
+      lastName: storedUser.last_name,
+    });
+  }
+}, []);
 
   const stats = [
     { num: 5,  label: "New Applications Today", hasNew: true  },
