@@ -2,6 +2,7 @@
 
 /* ── Layout ── */
 .wrapper {
+  padding-top: 2rem;
   min-height: 100vh;
   display: flex;
   flex-direction: row;
@@ -29,6 +30,27 @@
   background: linear-gradient(#037F81CC, #FFFFFFCC);
 }
 
+.leftContent {
+  position: absolute;
+  bottom: 3rem;
+  left: 2.5rem;
+  right: 2.5rem;
+}
+
+.leftQuote {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.leftSub {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.85);
+}
+
 /* ── Right panel ── */
 .right {
   width: 50%;
@@ -46,7 +68,7 @@
 
 /* ── Typography ── */
 .title {
-    font-family: poppins, sans-serif;
+  font-family: Poppins, sans-serif;
   font-size: 2.4rem;
   font-weight: 800;
   color: #037F81;
@@ -73,7 +95,11 @@
   display: block;
 }
 
-/* ── Form field grouping (replaces mb-3 / mb-4) ── */
+.required {
+  color: #e53e3e;
+}
+
+/* ── Form field grouping ── */
 .nameRow {
   display: flex;
   gap: 1rem;
@@ -99,26 +125,33 @@
 /* ── Inputs ── */
 .input {
   background: #f0f0f0;
-  border: none;
+  border: 1.5px solid transparent;
   border-radius: 10px;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   color: #333;
   width: 100%;
   outline: none;
-  transition: box-shadow 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
 }
 
 .input:focus {
-  box-shadow: 0 0 0 2.5px #037F8155;
+  box-shadow: 0 0 0 2.5px #037F8133;
   background: #e8f4f4;
+  border-color: #037F81;
 }
 
 .input::placeholder {
   color: #aaa;
 }
 
+.inputError {
+  border-color: #e53e3e !important;
+  background: #fff5f5 !important;
+}
+
 /* ── Password field ── */
+/* FIX: class name is passwordWrap to match the CSS selector used in JSX */
 .passwordWrap {
   position: relative;
 }
@@ -138,11 +171,146 @@
   color: #888;
   padding: 0;
   line-height: 1;
-  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
 }
 
 .eyeBtn:hover {
   color: #037F81;
+}
+
+/* ── Strength bar ── */
+.strengthRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.strengthBars {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.strengthBar {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  transition: background 0.25s;
+}
+
+.strengthLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ── Password rules popover ── */
+/* Redesigned: appears as a clean inline card below the strength bar,
+   only while the field is focused or not all rules are satisfied.
+   No more permanent awkward list on the page. */
+.pwRulesPopover {
+  margin-top: 0.5rem;
+  background: #f8fffe;
+  border: 1px solid #c8eaea;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pwRulesTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #037F81;
+  margin: 0 0 0.45rem;
+}
+
+.pwRules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 1rem;
+}
+
+.ruleOk,
+.ruleFail {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.ruleIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ruleOk {
+  color: #276749;
+}
+
+.ruleOk .ruleIcon {
+  color: #38a169;
+}
+
+.ruleFail {
+  color: #888;
+}
+
+.ruleFail .ruleIcon {
+  color: #ccc;
+}
+
+/* ── Match indicator ── */
+.matchOk {
+  font-size: 0.8rem;
+  color: #276749;
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.matchFail {
+  font-size: 0.8rem;
+  color: #e53e3e;
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ── Field errors ── */
+.fieldError {
+  font-size: 0.82rem;
+  color: #e53e3e;
+  margin-top: 0.25rem;
+}
+
+.alertError {
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 8px;
+  color: #c53030;
+  font-size: 0.88rem;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 1rem;
 }
 
 /* ── Checkbox ── */
@@ -182,15 +350,20 @@
   width: 100%;
   cursor: pointer;
   letter-spacing: 0.5px;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s, transform 0.1s, opacity 0.2s;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
   background: #c94e1f;
 }
 
 .btn:active {
   transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* ── Responsive ── */
@@ -217,6 +390,10 @@
   .nameRow {
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .pwRules {
+    grid-template-columns: 1fr;
   }
 }
 
