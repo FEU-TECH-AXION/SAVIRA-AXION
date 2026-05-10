@@ -474,7 +474,7 @@ export default function CreateApplication({
             <div className={styles.heroContent}>
               <p className={styles.heroEyebrow}>
                 <span className={styles.heroLine} />
-                Submit a Application
+                Submit an Application
               </p>
               <h1 className={styles.heroTitle}>
                 We're Here
