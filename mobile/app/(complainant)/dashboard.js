@@ -147,22 +147,20 @@ function Navbar({ onBurger }) {
 function HeroBanner({ firstName, lastName, totalNotifications }) {
   return (
     <View style={s.heroBannerWrap}>
-      <View style={s.heroCard}>
-        <ImageBackground
-          source={require('../../assets/mob-hero-1.png')}
-          style={s.heroBg}
-          imageStyle={{ borderRadius: 16 }}
-        >
-          <View style={s.heroOverlay}>
-            <Text style={s.heroTitle}>Welcome, {firstName} {lastName}!</Text>
-            <View style={s.statCard}>
-              <View style={s.statDot} />
-              <Text style={s.statNum}>{totalNotifications}</Text>
-              <Text style={s.statLabel}>New{'\n'}Notifications</Text>
-            </View>
+      <ImageBackground
+        source={require('../../assets/mob-hero-1.png')}
+        style={s.heroCard}
+        imageStyle={{ borderRadius: 16 }}
+      >
+        <View style={s.heroOverlay}>
+          <Text style={s.heroTitle}>Welcome, {firstName} {lastName}!</Text>
+          <View style={s.statCard}>
+            <View style={s.statDot} />
+            <Text style={s.statNum}>{totalNotifications}</Text>
+            <Text style={s.statLabel}>New{'\n'}Notifications</Text>
           </View>
-        </ImageBackground>
-      </View>
+        </View>
+      </ImageBackground>
     </View>
   );
 }
@@ -409,24 +407,21 @@ const s = StyleSheet.create({
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Hero
-  heroBannerWrap: {
-    backgroundColor: TEAL,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 8,
-  },
-  heroCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  heroBg: {
-    width: '100%',
-  },
-  heroOverlay: {
-    backgroundColor: 'rgba(3,127,129,0.6)',
-    padding: 20,
-    borderRadius: 16,
-  },
+heroBannerWrap: {
+  backgroundColor: '#fff',
+  paddingHorizontal: 16,
+  paddingVertical: 16,
+},
+heroCard: {
+  borderRadius: 16,
+  overflow: 'hidden',
+  width: '100%',
+},
+heroOverlay: {
+  backgroundColor: 'rgba(3,127,129,0.6)',
+  padding: 20,
+  borderRadius: 16,
+},
   heroTitle: {
     color: '#fff',
     fontSize: 22,
