@@ -17,8 +17,8 @@ function SideNav({ open, onClose }) {
   const router = useRouter();
   const links = [
     { label: 'Home',      href: '/(complainant)/dashboard', icon: 'home-outline' },
-    { label: 'Report',    href: '/(complainant)/report',    icon: 'document-text-outline' },
-    { label: 'Volunteer', href: '/(complainant)/volunteer', icon: 'people-outline' },
+    { label: 'Report',    href: '/(complainant)/reports',    icon: 'document-text-outline' },
+    { label: 'Volunteer', href: '/(complainant)/volunteer-application', icon: 'people-outline' },
     { label: 'About',     href: '/(complainant)/about',     icon: 'information-circle-outline' },
     { label: 'Contact',   href: '/(complainant)/contact',   icon: 'call-outline' },
     { label: 'Events',    href: '/(complainant)/events',    icon: 'calendar-outline' },
