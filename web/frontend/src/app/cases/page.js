@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CaseManagement from "@/components/cases/CaseManagement";
-import CreateReport from "@/components/report/CreateReport";
+import CreateReport from "@/components/cases/CreateReport";
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
