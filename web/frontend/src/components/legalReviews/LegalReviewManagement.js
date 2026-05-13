@@ -1,59 +1,88 @@
 "use client";
-
 import { useState, useEffect, useMemo } from "react";
-import Navbar from "@/components/navbar/navbar";
 import styles from "./LegalReviewManagement.module.css";
-import { FiSearch, FiX } from "react-icons/fi"; 
+import { FiSearch, FiX, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiAlertTriangle } from "react-icons/fi";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUPABASE INTEGRATION — uncomment when ready
+// CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LEGAL_STATUSES = ["Under Review", "Insufficient Context", "For Legal Action", "Referred", "Dismissed"];
-
-const PLACEHOLDER_CASES = [
-  { id: "00112233", reporterId: "12345678", region: "NCR",         legalStatus: "Under Review",        assignedOfficer: "Ryan Dela Paz", endorsed: true,  dateReported: "03/01/2026", referralNotes: "" },
-  { id: "00112234", reporterId: "12345679", region: "NCR",         legalStatus: "For Legal Action",    assignedOfficer: "Noel Ramos",    endorsed: true,  dateReported: "03/02/2026", referralNotes: "" },
-  { id: "00112235", reporterId: "12345680", region: "Region III",  legalStatus: "Insufficient Context",assignedOfficer: "",              endorsed: false, dateReported: "03/03/2026", referralNotes: "Needs more evidence." },
-  { id: "00112236", reporterId: "12345681", region: "NCR",         legalStatus: "Referred",            assignedOfficer: "Ryan Dela Paz", endorsed: true,  dateReported: "03/04/2026", referralNotes: "Referred to NBI." },
-  { id: "00112237", reporterId: "12345682", region: "Region IV-A", legalStatus: "Dismissed",           assignedOfficer: "Noel Ramos",    endorsed: false, dateReported: "02/28/2026", referralNotes: "" },
-  { id: "00112238", reporterId: "12345683", region: "NCR",         legalStatus: "Under Review",        assignedOfficer: "",              endorsed: false, dateReported: "03/05/2026", referralNotes: "" },
-  { id: "00112239", reporterId: "12345684", region: "Region VII",  legalStatus: "For Legal Action",    assignedOfficer: "Ryan Dela Paz", endorsed: true,  dateReported: "02/25/2026", referralNotes: "" },
-  { id: "00112240", reporterId: "12345685", region: "NCR",         legalStatus: "Under Review",        assignedOfficer: "",              endorsed: false, dateReported: "03/06/2026", referralNotes: "" },
-  { id: "00112241", reporterId: "12345686", region: "Region I",    legalStatus: "Referred",            assignedOfficer: "Noel Ramos",    endorsed: true,  dateReported: "03/07/2026", referralNotes: "Referred to CHR." },
-  { id: "00112242", reporterId: "12345687", region: "NCR",         legalStatus: "Dismissed",           assignedOfficer: "Ryan Dela Paz", endorsed: false, dateReported: "02/20/2026", referralNotes: "" },
-  { id: "00112243", reporterId: "12345688", region: "NCR",         legalStatus: "Under Review",        assignedOfficer: "",              endorsed: false, dateReported: "03/08/2026", referralNotes: "" },
-  { id: "00112244", reporterId: "12345689", region: "Region VI",   legalStatus: "For Legal Action",    assignedOfficer: "Ryan Dela Paz", endorsed: true,  dateReported: "03/09/2026", referralNotes: "" },
+const LEGAL_CASE_STATUSES = [
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
+  "Perpetrator Convicted",
 ];
 
-const LEGAL_OFFICERS = ["Ryan Dela Paz", "Noel Ramos", "Lena Cruz"];
+const ENDORSEMENT_BODIES = [
+  "DSWD",
+  "PNP Women and Children Protection Desk",
+  "BSP/GSP Mechanism",
+  "School/Workplace CODI",
+  "Court (with lawyer)",
+];
+
+const LEGAL_OFFICERS = ["Ryan Dela Paz", "Noel Ramos", "Lena Cruz", "Mia Villanueva"];
+const PARALEGALS = ["Sofia Reyes", "Carlo Tan", "Tricia Bautista"];
 const PAGE_SIZE = 8;
 
-// ── Status Badge ──────────────────────────────────────────────────────────────
-function LegalBadge({ status }) {
-  const map = {
-    "Under Review":         { bg: "#dbeafe", color: "#1e40af" },
-    "Insufficient Context": { bg: "#fef3c7", color: "#92400e" },
-    "For Legal Action":     { bg: "#fce7f3", color: "#9d174d" },
-    "Referred":             { bg: "#d1fae5", color: "#065f46" },
-    "Dismissed":            { bg: "#fee2e2", color: "#991b1b" },
-  };
-  const style = map[status] || { bg: "#f3f4f6", color: "#374151" };
+// ─────────────────────────────────────────────────────────────────────────────
+// PLACEHOLDER DATA
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PLACEHOLDER_CASES = [
+  { id: "SASHA-00001", reporterId: "12345678", region: "NCR",         status: "Under Case Evaluation", assignedLegalOfficer: "Ryan Dela Paz", assignedParalegal: "Sofia Reyes",  dateReported: "03/01/2026", pendingApproval: null, endorsedTo: null, endorsementDetails: null, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [{ status: "Under Case Evaluation", date: "03/01/2026", by: "Camille Torres", notes: "Case forwarded to legal." }] },
+  { id: "SASHA-00002", reporterId: "12345679", region: "NCR",         status: "Case Filed",            assignedLegalOfficer: "Noel Ramos",    assignedParalegal: "",             dateReported: "03/02/2026", pendingApproval: null, endorsedTo: "PNP Women and Children Protection Desk", endorsementDetails: { "Station": "QCPD-WCPD", "Blotter No.": "BLO-2026-042", "Investigator": "SPO1 Cruz", "Sworn Statements": "Yes", "Medico-Legal Advised": "Yes", "Forwarded to Prosecutor": "Pending" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [{ status: "Case Filed", date: "03/02/2026", by: "Noel Ramos", notes: "Filed with PNP WCPD." }] },
+  { id: "SASHA-00003", reporterId: "12345680", region: "NCR",         status: "Investigation Ongoing", assignedLegalOfficer: "Ryan Dela Paz", assignedParalegal: "Carlo Tan",    dateReported: "02/15/2026", pendingApproval: null, endorsedTo: "DSWD", endorsementDetails: { "Receiving Office": "DSWD-NCR", "Reference No.": "DSWD-2026-009", "Follow-up Date": "05/20/2026", "Survivor Contacted": "Yes", "Services Provided": "Counseling, temporary shelter" }, paralegalRecord: { organizedBy: "Carlo Tan", date: "02/20/2026", documents: "Sworn statement, photos, timeline" }, lawyerRecord: { assessedBy: "Atty. Reyes", date: "02/25/2026", recommendation: "Refer to PNP and DSWD simultaneously." }, monitoringLog: [{ date: "03/15/2026", by: "Ryan Dela Paz", update: "DSWD confirmed receipt. Counseling started." }], statusHistory: [] },
+  { id: "SASHA-00004", reporterId: "12345681", region: "Region III",  status: "Under Case Evaluation", assignedLegalOfficer: "",              assignedParalegal: "",             dateReported: "03/05/2026", pendingApproval: null, endorsedTo: null, endorsementDetails: null, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
+  { id: "SASHA-00005", reporterId: "12345682", region: "Region IV-A", status: "Hearing Ongoing",       assignedLegalOfficer: "Lena Cruz",     assignedParalegal: "Tricia Bautista", dateReported: "01/10/2026", pendingApproval: null, endorsedTo: "Court (with lawyer)", endorsementDetails: { "Case No.": "Criminal Case 2026-1234", "Court Branch": "RTC Branch 42, QC", "Filing Date": "01/20/2026", "Counsel": "Atty. Marcos", "Next Hearing": "05/28/2026", "Postponements": "1 (April 10, 2026)" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
+  { id: "SASHA-00006", reporterId: "12345683", region: "NCR",         status: "Dismissed",             assignedLegalOfficer: "Noel Ramos",    assignedParalegal: "",             dateReported: "12/05/2025", pendingApproval: null, endorsedTo: "School/Workplace CODI", endorsementDetails: { "CODI Focal Person": "Dr. Santos", "Receipt Confirmed": "Yes", "Investigation Schedule": "Jan–Feb 2026", "Final Decision": "Dismissed — insufficient evidence", "Anti-Retaliation Confirmed": "Yes" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
+  { id: "SASHA-00007", reporterId: "12345684", region: "NCR",         status: "Perpetrator Convicted", assignedLegalOfficer: "Ryan Dela Paz", assignedParalegal: "Sofia Reyes",  dateReported: "10/01/2025", pendingApproval: null, endorsedTo: "Court (with lawyer)", endorsementDetails: { "Case No.": "Criminal Case 2025-0987", "Court Branch": "RTC Branch 14, Manila", "Judgment": "Guilty — 6–12 years reclusion temporal", "Sanctions": "Imprisonment + damages", "Survivor Support": "Ongoing counseling" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
+  { id: "SASHA-00008", reporterId: "12345685", region: "Region I",    status: "Under Case Evaluation", assignedLegalOfficer: "Lena Cruz",     assignedParalegal: "",             dateReported: "04/01/2026", pendingApproval: { proposedStatus: "Case Filed", submittedBy: "Lena Cruz", date: "04/05/2026", notes: "Recommends filing with PNP WCPD. Evidence sufficient." }, endorsedTo: null, endorsementDetails: null, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS COLORS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATUS_COLORS = {
+  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" },
+  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" },
+  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" },
+  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" },
+  "Dismissed":             { bg: "#f1f5f9", color: "#475569" },
+  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITY COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }) {
+  const s = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.78rem", fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: style.bg, color: style.color }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.74rem", fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: s.bg, color: s.color, whiteSpace: "nowrap" }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
       {status}
     </span>
   );
 }
 
-// ── Pagination ─────────────────────────────────────────────────────────────────
+function PendingBadge() {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.72rem", fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: "#fef3c7", color: "#92400e", border: "1px dashed #f59e0b" }}>
+      <FiClock size={11} /> Pending Approval
+    </span>
+  );
+}
+
 function Pagination({ current, total, onChange }) {
-  const pages = Array.from({ length: total }, (_, i) => i + 1);
   return (
     <div className={styles.pagination}>
       <button className={styles.pageArrow} onClick={() => onChange(current - 1)} disabled={current === 1}>←</button>
-      {pages.map((p) => (
+      {Array.from({ length: total }, (_, i) => i + 1).map((p) => (
         <button key={p} className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`} onClick={() => onChange(p)}>{p}</button>
       ))}
       <button className={styles.pageArrow} onClick={() => onChange(current + 1)} disabled={current === total}>→</button>
@@ -61,33 +90,31 @@ function Pagination({ current, total, onChange }) {
   );
 }
 
-// ── Action Card ───────────────────────────────────────────────────────────────
-function ActionCard({ icon, title, description, onView }) {
+function ActionCard({ icon, title, description, onView, badge }) {
   return (
     <div className={styles.actionCard}>
       <div className={styles.actionIconWrap}><span className={styles.actionIcon}>{icon}</span></div>
       <div className={styles.actionBody}>
         <h3 className={styles.actionTitle}>{title}</h3>
+        {badge && <div style={{ marginBottom: "0.25rem" }}>{badge}</div>}
         <p className={styles.actionDesc}>{description}</p>
       </div>
       <div className={styles.ViewRow}>
-        <button className={styles.viewBtn} onClick={onView}>View &rarr;</button>
+        <button className={styles.viewBtn} onClick={onView}>Open →</button>
       </div>
     </div>
   );
 }
 
-// ── Modal Shell ───────────────────────────────────────────────────────────────
-function Modal({ open, onClose, title, children }) {
+function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
+    document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
   if (!open) return null;
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className={styles.modalBox} style={wide ? { maxWidth: 700 } : {}} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{title}</h2>
           <button className={styles.modalClose} onClick={onClose}><FiX /></button>
@@ -98,21 +125,42 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
-// ── View Case Modal ───────────────────────────────────────────────────────────
-function ViewCaseModal({ open, onClose, caseData }) {
-  if (!caseData) return null;
+function FormGroup({ label, required, hint, error, children }) {
   return (
-    <Modal open={open} onClose={onClose} title="Legal Case Details">
+    <div className={styles.formGroup}>
+      <label className={styles.formLabel}>{label}{required && <span style={{ color: "#ef4444" }}> *</span>}</label>
+      {children}
+      {hint && !error && <span className={styles.formHint}>{hint}</span>}
+      {error && <span className={styles.errorMsg}>{error}</span>}
+    </div>
+  );
+}
+function FInput({ error, ...props }) { return <input className={`${styles.formInput} ${error ? styles.inputError : ""}`} {...props} />; }
+function FTextarea({ error, ...props }) { return <textarea className={`${styles.formInput} ${error ? styles.inputError : ""}`} rows={3} style={{ resize: "vertical" }} {...props} />; }
+function FSelect({ error, children, ...props }) { return <select className={`${styles.formInput} ${error ? styles.inputError : ""}`} {...props}>{children}</select>; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VIEW CASE MODAL — full detail
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ViewCaseModal({ open, onClose, caseData }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const [showMonitoring, setShowMonitoring] = useState(false);
+  if (!caseData) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Legal Case — ${caseData.id}`} wide>
       <div className={styles.viewGrid}>
         {[
-          ["Case ID",          caseData.id],
-          ["Reporter ID",      caseData.reporterId],
-          ["Region",           caseData.region],
-          ["Legal Status",     <LegalBadge status={caseData.legalStatus} />],
-          ["Assigned Officer", caseData.assignedOfficer || "Unassigned"],
-          ["Endorsed",         caseData.endorsed ? "Yes" : "No"],
-          ["Date Reported",    caseData.dateReported],
-          ["Referral Notes",   caseData.referralNotes || "—"],
+          ["Case ID",              caseData.id],
+          ["Reporter ID",          caseData.reporterId],
+          ["Region",               caseData.region],
+          ["Status",               <StatusBadge status={caseData.status} />],
+          ["Legal Officer",        caseData.assignedLegalOfficer || "Unassigned"],
+          ["Paralegal",            caseData.assignedParalegal || "Unassigned"],
+          ["Date Reported",        caseData.dateReported],
+          ["Endorsed To",          caseData.endorsedTo || "—"],
+          ...(caseData.pendingApproval ? [["Pending Change", <PendingBadge />]] : []),
         ].map(([k, v]) => (
           <div key={k} className={styles.viewRow}>
             <span className={styles.viewKey}>{k}</span>
@@ -120,6 +168,87 @@ function ViewCaseModal({ open, onClose, caseData }) {
           </div>
         ))}
       </div>
+
+      {/* Endorsement Details */}
+      {caseData.endorsementDetails && (
+        <div className={styles.detailBlock}>
+          <h4 className={styles.detailTitle}>📁 Endorsement / Filing Details</h4>
+          {Object.entries(caseData.endorsementDetails).map(([k, v]) => v ? (
+            <div key={k} className={styles.viewRow}>
+              <span className={styles.viewKey}>{k}</span>
+              <span className={styles.viewVal}>{v}</span>
+            </div>
+          ) : null)}
+        </div>
+      )}
+
+      {/* Paralegal Record */}
+      {caseData.paralegalRecord && (
+        <div className={styles.detailBlock}>
+          <h4 className={styles.detailTitle}>📋 Paralegal Support Record</h4>
+          <div className={styles.viewRow}><span className={styles.viewKey}>Organized by</span><span className={styles.viewVal}>{caseData.paralegalRecord.organizedBy}</span></div>
+          <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.paralegalRecord.date}</span></div>
+          <div className={styles.viewRow}><span className={styles.viewKey}>Documents</span><span className={styles.viewVal}>{caseData.paralegalRecord.documents}</span></div>
+        </div>
+      )}
+
+      {/* Lawyer Record */}
+      {caseData.lawyerRecord && (
+        <div className={styles.detailBlock}>
+          <h4 className={styles.detailTitle}>⚖️ Lawyer Consultation Record</h4>
+          <div className={styles.viewRow}><span className={styles.viewKey}>Assessed by</span><span className={styles.viewVal}>{caseData.lawyerRecord.assessedBy}</span></div>
+          <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.lawyerRecord.date}</span></div>
+          <div className={styles.viewRow}><span className={styles.viewKey}>Recommendation</span><span className={styles.viewVal}>{caseData.lawyerRecord.recommendation}</span></div>
+        </div>
+      )}
+
+      {/* Monitoring log */}
+      {(caseData.monitoringLog?.length > 0) && (
+        <>
+          <button className={styles.historyToggle} onClick={() => setShowMonitoring(!showMonitoring)}>
+            {showMonitoring ? <FiChevronUp /> : <FiChevronDown />}
+            {showMonitoring ? "Hide" : "Show"} Monitoring Log ({caseData.monitoringLog.length} entries)
+          </button>
+          {showMonitoring && (
+            <div className={styles.historyList}>
+              {caseData.monitoringLog.map((m, i) => (
+                <div key={i} className={styles.historyItem}>
+                  <div className={styles.historyDot} />
+                  <div className={styles.historyContent}>
+                    <span className={styles.historyMeta}>{m.date} · {m.by}</span>
+                    <p className={styles.historyNotes}>{m.update}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Status history */}
+      {(caseData.statusHistory?.length > 0) && (
+        <>
+          <button className={styles.historyToggle} onClick={() => setShowHistory(!showHistory)}>
+            {showHistory ? <FiChevronUp /> : <FiChevronDown />}
+            {showHistory ? "Hide" : "Show"} Status History ({caseData.statusHistory.length} entries)
+          </button>
+          {showHistory && (
+            <div className={styles.historyList}>
+              {caseData.statusHistory.map((h, i) => (
+                <div key={i} className={styles.historyItem}>
+                  <div className={styles.historyDot} />
+                  <div className={styles.historyContent}>
+                    <StatusBadge status={h.status} />
+                    <span className={styles.historyMeta}>{h.date} · {h.by}</span>
+                    {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       <div className={styles.modalFooter}>
         <button className={styles.btnPrimary} onClick={onClose}>Close</button>
       </div>
@@ -127,179 +256,567 @@ function ViewCaseModal({ open, onClose, caseData }) {
   );
 }
 
-// ── Paralegal Support Modal ───────────────────────────────────────────────────
-function ParalegalModal({ open, onClose, caseData, onSave }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// ASSIGN LEGAL OFFICER / PARALEGAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AssignPersonnelModal({ open, onClose, caseData, onSave }) {
   const [officer, setOfficer] = useState("");
-  useEffect(() => { if (caseData) setOfficer(caseData.assignedOfficer || ""); }, [caseData]);
+  const [paralegal, setParalegal] = useState("");
+  useEffect(() => { if (caseData) { setOfficer(caseData.assignedLegalOfficer || ""); setParalegal(caseData.assignedParalegal || ""); } }, [caseData]);
   if (!caseData) return null;
-  function handleSubmit() {
-    onSave({ ...caseData, assignedOfficer: officer });
-    onClose();
-  }
+
   return (
-    <Modal open={open} onClose={onClose} title="Paralegal Support — Assign Officer">
+    <Modal open={open} onClose={onClose} title="Assign Legal Personnel">
       <div className={styles.formGrid}>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Case ID</label>
-          <input className={styles.formInput} value={caseData.id} disabled />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Assign Legal Officer *</label>
-          <select className={styles.formInput} value={officer} onChange={(e) => setOfficer(e.target.value)}>
+        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+        <FormGroup label="Assign Legal Officer">
+          <FSelect value={officer} onChange={(e) => setOfficer(e.target.value)}>
             <option value="">— Select Legal Officer —</option>
             {LEGAL_OFFICERS.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </div>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Assign Paralegal">
+          <FSelect value={paralegal} onChange={(e) => setParalegal(e.target.value)}>
+            <option value="">— Select Paralegal (optional) —</option>
+            {PARALEGALS.map((p) => <option key={p} value={p}>{p}</option>)}
+          </FSelect>
+        </FormGroup>
       </div>
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit} disabled={!officer}>Assign</button>
+        <button className={styles.btnPrimary} onClick={() => { onSave({ ...caseData, assignedLegalOfficer: officer, assignedParalegal: paralegal }); onClose(); }}>Assign</button>
       </div>
     </Modal>
   );
 }
 
-// ── Request Legal Advice / Update Status Modal ────────────────────────────────
-function LegalAdviceModal({ open, onClose, caseData, onSave }) {
-  const [legalStatus, setLegalStatus] = useState("Under Review");
-  const [referralNotes, setReferralNotes] = useState("");
-  useEffect(() => { if (caseData) { setLegalStatus(caseData.legalStatus); setReferralNotes(caseData.referralNotes || ""); } }, [caseData]);
-  if (!caseData) return null;
-  function handleSubmit() {
-    onSave({ ...caseData, legalStatus, referralNotes });
-    onClose();
-  }
-  return (
-    <Modal open={open} onClose={onClose} title="Request Legal Advice / Update Status">
-      <div className={styles.formGrid}>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Case ID</label>
-          <input className={styles.formInput} value={caseData.id} disabled />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Legal Status</label>
-          <select className={styles.formInput} value={legalStatus} onChange={(e) => setLegalStatus(e.target.value)}>
-            {LEGAL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Referral Notes</label>
-          <textarea className={styles.formInput} rows={3} placeholder="Notes on legal advice or referral details…" value={referralNotes} onChange={(e) => setReferralNotes(e.target.value)} style={{ resize: "vertical" }} />
-        </div>
-      </div>
-      <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit}>Save</button>
-      </div>
-    </Modal>
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// PARALEGAL SUPPORT MODAL — organize case facts and documents
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Track Referrals / Endorse Modal ──────────────────────────────────────────
-function ReferralModal({ open, onClose, caseData, onSave }) {
-  const [endorsed, setEndorsed] = useState(false);
-  const [referralNotes, setReferralNotes] = useState("");
-  useEffect(() => { if (caseData) { setEndorsed(caseData.endorsed); setReferralNotes(caseData.referralNotes || ""); } }, [caseData]);
+function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
+  const [form, setForm] = useState({ documents: [], timeline: "", swornStatement: "", screenshots: "", idDocuments: "", incidentDetails: "", otherNotes: "" });
+  useEffect(() => { if (open && caseData) {
+    const r = caseData.paralegalRecord;
+    setForm({ documents: r?.documents?.split(", ") || [], timeline: r?.timeline || "", swornStatement: r?.swornStatement || "", screenshots: r?.screenshots || "", idDocuments: r?.idDocuments || "", incidentDetails: r?.incidentDetails || "", otherNotes: r?.otherNotes || "" });
+  }}, [open, caseData]);
   if (!caseData) return null;
-  function handleSubmit() {
-    onSave({ ...caseData, endorsed, referralNotes, legalStatus: endorsed ? "Referred" : caseData.legalStatus });
+
+  const DOCS = ["Sworn statement", "Incident timeline", "Screenshots / digital evidence", "Complainant ID / identity documents", "Medical or medico-legal report", "Witness statements", "Correspondence / messages", "Photographs"];
+
+  const toggle = (d) => setForm((p) => ({ ...p, documents: p.documents.includes(d) ? p.documents.filter((x) => x !== d) : [...p.documents, d] }));
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  function handleSave() {
+    const record = { organizedBy: actorName, date: new Date().toLocaleDateString(), documents: form.documents.join(", "), timeline: form.timeline, swornStatement: form.swornStatement, screenshots: form.screenshots, idDocuments: form.idDocuments, incidentDetails: form.incidentDetails, otherNotes: form.otherNotes };
+    onSave({ ...caseData, paralegalRecord: record });
     onClose();
   }
+
   return (
-    <Modal open={open} onClose={onClose} title="Track Referral / Endorse Case">
+    <Modal open={open} onClose={onClose} title="Paralegal Support — Case File Organization" wide>
+      <p className={styles.formDesc}>As a paralegal, organize and document the facts, evidence, and supporting materials for this case. This record will inform lawyer consultation and referral decisions.</p>
       <div className={styles.formGrid}>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Case ID</label>
-          <input className={styles.formInput} value={caseData.id} disabled />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Endorsed?</label>
-          <div className={styles.radioGroup}>
-            {[true, false].map((v) => (
-              <label key={String(v)} className={styles.radioLabel}>
-                <input type="radio" name="endorsed" value={String(v)} checked={endorsed === v} onChange={() => setEndorsed(v)} className={styles.radioInput} />
-                {v ? "Yes — Endorsed" : "No — Not Endorsed"}
+        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+        <FormGroup label="Documents / Evidence Organized" hint="Check all items that have been collected and organized.">
+          <div className={styles.checkGroup}>
+            {DOCS.map((d) => (
+              <label key={d} className={styles.checkLabel}>
+                <input type="checkbox" checked={form.documents.includes(d)} onChange={() => toggle(d)} className={styles.checkInput} />
+                {d}
               </label>
             ))}
           </div>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Referral Notes</label>
-          <textarea className={styles.formInput} rows={3} placeholder="e.g. Referred to NBI, CHR, etc." value={referralNotes} onChange={(e) => setReferralNotes(e.target.value)} style={{ resize: "vertical" }} />
-        </div>
+        </FormGroup>
+        <FormGroup label="Incident Timeline Summary" hint="Summarize the chronological sequence of events.">
+          <FTextarea placeholder="e.g. January 5: First incident. January 12: Repeated contact. January 20: Complainant reported to supervisor..." value={form.timeline} onChange={set("timeline")} />
+        </FormGroup>
+        <FormGroup label="Sworn Statement Status">
+          <FSelect value={form.swornStatement} onChange={set("swornStatement")}>
+            <option value="">— Select —</option>
+            <option>Obtained and filed</option>
+            <option>Drafted — awaiting signature</option>
+            <option>Not yet obtained</option>
+            <option>Survivor declined</option>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Digital Evidence Notes" hint="Screenshots, messages, social media posts, etc.">
+          <FTextarea placeholder="Describe digital evidence collected and its relevance…" value={form.screenshots} onChange={set("screenshots")} />
+        </FormGroup>
+        <FormGroup label="Identity Documents">
+          <FInput placeholder="e.g. Complainant ID obtained, respondent identified" value={form.idDocuments} onChange={set("idDocuments")} />
+        </FormGroup>
+        <FormGroup label="Key Incident Details" hint="Facts that are most legally relevant.">
+          <FTextarea placeholder="Document specific acts, dates, places, witnesses…" value={form.incidentDetails} onChange={set("incidentDetails")} />
+        </FormGroup>
+        <FormGroup label="Additional Notes">
+          <FTextarea placeholder="Other paralegal observations or referral document notes…" value={form.otherNotes} onChange={set("otherNotes")} />
+        </FormGroup>
       </div>
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit}>Save Referral</button>
+        <button className={styles.btnPrimary} onClick={handleSave}>Save Paralegal Record</button>
       </div>
     </Modal>
   );
 }
 
-// ── Verify Case Modal ─────────────────────────────────────────────────────────
-function VerifyModal({ open, onClose, caseData, onSave }) {
-  const [legalStatus, setLegalStatus] = useState("Under Review");
-  useEffect(() => { if (caseData) setLegalStatus(caseData.legalStatus); }, [caseData]);
+// ─────────────────────────────────────────────────────────────────────────────
+// LAWYER CONSULTATION MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
+  const [form, setForm] = useState({ applicableLaws: [], actionType: [], evidenceGaps: "", recommendation: "", additionalNotes: "" });
+  useEffect(() => { if (open && caseData) {
+    const r = caseData.lawyerRecord;
+    setForm({ applicableLaws: r?.applicableLaws || [], actionType: r?.actionType || [], evidenceGaps: r?.evidenceGaps || "", recommendation: r?.recommendation || "", additionalNotes: r?.additionalNotes || "" });
+  }}, [open, caseData]);
   if (!caseData) return null;
-  function handleSubmit() { onSave({ ...caseData, legalStatus }); onClose(); }
+
+  const LAWS = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code — Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
+  const ACTIONS = ["Administrative action", "Civil action", "Criminal action"];
+
+  const toggleLaw = (l) => setForm((p) => ({ ...p, applicableLaws: p.applicableLaws.includes(l) ? p.applicableLaws.filter((x) => x !== l) : [...p.applicableLaws, l] }));
+  const toggleAction = (a) => setForm((p) => ({ ...p, actionType: p.actionType.includes(a) ? p.actionType.filter((x) => x !== a) : [...p.actionType, a] }));
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  function handleSave() {
+    const record = { assessedBy: actorName, date: new Date().toLocaleDateString(), applicableLaws: form.applicableLaws, actionType: form.actionType, evidenceGaps: form.evidenceGaps, recommendation: form.recommendation, additionalNotes: form.additionalNotes };
+    onSave({ ...caseData, lawyerRecord: record });
+    onClose();
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title="Verify Case — Set Legal Status">
+    <Modal open={open} onClose={onClose} title="Lawyer Consultation — Legal Assessment" wide>
+      <p className={styles.formDesc}>Assess the facts and identify applicable laws, possible courses of action, and evidence gaps. This record informs the referral decision and is documented for the survivor's benefit.</p>
       <div className={styles.formGrid}>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Case ID</label>
-          <input className={styles.formInput} value={caseData.id} disabled />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Legal Status</label>
-          <div className={styles.radioGroup} style={{ flexWrap: "wrap" }}>
-            {LEGAL_STATUSES.map((s) => (
-              <label key={s} className={styles.radioLabel}>
-                <input type="radio" name="verify-status" value={s} checked={legalStatus === s} onChange={() => setLegalStatus(s)} className={styles.radioInput} />
-                {s}
+        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+        <FormGroup label="Applicable Laws / Provisions" hint="Select all that may apply based on the facts presented.">
+          <div className={styles.checkGroup}>
+            {LAWS.map((l) => (
+              <label key={l} className={styles.checkLabel}>
+                <input type="checkbox" checked={form.applicableLaws.includes(l)} onChange={() => toggleLaw(l)} className={styles.checkInput} />
+                {l}
               </label>
             ))}
           </div>
-        </div>
+        </FormGroup>
+        <FormGroup label="Possible Courses of Action">
+          <div className={styles.checkGroup}>
+            {ACTIONS.map((a) => (
+              <label key={a} className={styles.checkLabel}>
+                <input type="checkbox" checked={form.actionType.includes(a)} onChange={() => toggleAction(a)} className={styles.checkInput} />
+                {a}
+              </label>
+            ))}
+          </div>
+        </FormGroup>
+        <FormGroup label="Evidence Gaps Identified" hint="What evidence or information is still missing?">
+          <FTextarea placeholder="e.g. No medico-legal report yet, respondent identity unconfirmed…" value={form.evidenceGaps} onChange={set("evidenceGaps")} />
+        </FormGroup>
+        <FormGroup label="Legal Recommendation" hint="What does the lawyer recommend as next steps for this case?">
+          <FTextarea placeholder="Provide clear recommendation — referral, filing, further investigation, etc." value={form.recommendation} onChange={set("recommendation")} />
+        </FormGroup>
+        <FormGroup label="Additional Notes">
+          <FTextarea placeholder="Other legal observations, risks, or notes…" value={form.additionalNotes} onChange={set("additionalNotes")} />
+        </FormGroup>
       </div>
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit}>Save</button>
+        <button className={styles.btnPrimary} onClick={handleSave}>Save Consultation Record</button>
       </div>
     </Modal>
   );
 }
 
-// ── Select Case Modal (action card → modal chaining) ──────────────────────────
-function SelectCaseModal({ open, onClose, cases, title, filterStatus, actionLabel, actionBtnClass, onAction }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDORSEMENT / REFERRAL MODAL — with full per-institution tracking
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EndorseModal({ open, onClose, caseData, onSave, actorName }) {
+  const [body, setBody] = useState("");
+  const [details, setDetails] = useState({});
+  useEffect(() => { if (open && caseData) { setBody(caseData.endorsedTo || ""); setDetails(caseData.endorsementDetails || {}); } }, [open, caseData]);
+  if (!caseData) return null;
+
+  const set = (k) => (e) => setDetails((p) => ({ ...p, [k]: e.target.value }));
+
+  function handleSave() {
+    onSave({ ...caseData, endorsedTo: body, endorsementDetails: details });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Endorse / Track Referral" wide>
+      <p className={styles.formDesc}>Record all endorsement and referral details for this case. SASHA monitors whether services were actually provided and whether the receiving institution is acting properly.</p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+        <FormGroup label="Endorse to institution" required>
+          <FSelect value={body} onChange={(e) => { setBody(e.target.value); setDetails({}); }}>
+            <option value="">— Select institution —</option>
+            {ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}
+          </FSelect>
+        </FormGroup>
+
+        {/* ── DSWD ── */}
+        {body === "DSWD" && (
+          <>
+            <div className={styles.sectionDivider}><span>DSWD Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Receiving Office / Person"><FInput placeholder="e.g. DSWD-NCR, Social Worker Dela Cruz" value={details["Receiving Office"] || ""} onChange={set("Receiving Office")} /></FormGroup>
+            <FormGroup label="Referral Reference Number"><FInput placeholder="If provided" value={details["Reference No."] || ""} onChange={set("Reference No.")} /></FormGroup>
+            <FormGroup label="Next Scheduled Follow-Up"><FInput type="date" value={details["Follow-up Date"] || ""} onChange={set("Follow-up Date")} /></FormGroup>
+            <FormGroup label="Survivor / Family Contacted?">
+              <FSelect value={details["Survivor Contacted"] || ""} onChange={set("Survivor Contacted")}>
+                <option value="">— Select —</option>
+                <option>Yes</option><option>No — pending</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Services Actually Provided" hint="What specific services has DSWD rendered so far?">
+              <FTextarea placeholder="e.g. Counseling started, temporary shelter provided, livelihood referral…" value={details["Services Provided"] || ""} onChange={set("Services Provided")} />
+            </FormGroup>
+          </>
+        )}
+
+        {/* ── PNP ── */}
+        {body === "PNP Women and Children Protection Desk" && (
+          <>
+            <div className={styles.sectionDivider}><span>PNP-WCPD Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Station and Desk Details"><FInput placeholder="e.g. QCPD Women and Children Protection Desk" value={details["Station"] || ""} onChange={set("Station")} /></FormGroup>
+            <FormGroup label="Blotter / Reference Number"><FInput placeholder="e.g. BLO-2026-042" value={details["Blotter No."] || ""} onChange={set("Blotter No.")} /></FormGroup>
+            <FormGroup label="Assigned Investigator"><FInput placeholder="Name and rank" value={details["Investigator"] || ""} onChange={set("Investigator")} /></FormGroup>
+            <FormGroup label="Sworn Statements Taken?">
+              <FSelect value={details["Sworn Statements"] || ""} onChange={set("Sworn Statements")}>
+                <option value="">— Select —</option>
+                <option>Yes</option><option>No — pending</option><option>Not applicable</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Medico-Legal / Evidence Preservation Advised?">
+              <FSelect value={details["Medico-Legal Advised"] || ""} onChange={set("Medico-Legal Advised")}>
+                <option value="">— Select —</option>
+                <option>Yes — advised and acted on</option>
+                <option>Yes — advised, pending</option>
+                <option>Not applicable</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Case Forwarded to Prosecutor?">
+              <FSelect value={details["Forwarded to Prosecutor"] || ""} onChange={set("Forwarded to Prosecutor")}>
+                <option value="">— Select —</option>
+                <option>Yes — forwarded</option>
+                <option>Pending</option>
+                <option>Not yet — investigation ongoing</option>
+              </FSelect>
+            </FormGroup>
+          </>
+        )}
+
+        {/* ── BSP/GSP ── */}
+        {body === "BSP/GSP Mechanism" && (
+          <>
+            <div className={styles.sectionDivider}><span>BSP/GSP Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Chapter / Council / Unit Involved"><FInput placeholder="e.g. Manila Council, Troop 42" value={details["Chapter/Unit"] || ""} onChange={set("Chapter/Unit")} /></FormGroup>
+            <FormGroup label="Receiving Official"><FInput placeholder="Name and position" value={details["Receiving Official"] || ""} onChange={set("Receiving Official")} /></FormGroup>
+            <FormGroup label="Fact-Finding Started?">
+              <FSelect value={details["Fact-Finding Started"] || ""} onChange={set("Fact-Finding Started")}>
+                <option value="">— Select —</option>
+                <option>Yes — ongoing</option>
+                <option>Yes — completed</option>
+                <option>No — pending</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Interim Safety Measures in Place?">
+              <FSelect value={details["Safety Measures"] || ""} onChange={set("Safety Measures")}>
+                <option value="">— Select —</option>
+                <option>Yes — measures in place</option>
+                <option>Pending implementation</option>
+                <option>None reported</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Sanctions / Inaction Noted" hint="What sanctions (if any) have been issued? Note any inaction.">
+              <FTextarea placeholder="e.g. Respondent suspended pending investigation, no action noted yet…" value={details["Sanctions/Inaction"] || ""} onChange={set("Sanctions/Inaction")} />
+            </FormGroup>
+            <FormGroup label="Closure Report Received?">
+              <FSelect value={details["Closure Report"] || ""} onChange={set("Closure Report")}>
+                <option value="">— Select —</option>
+                <option>Yes — received</option>
+                <option>No — awaiting</option>
+                <option>Not applicable</option>
+              </FSelect>
+            </FormGroup>
+          </>
+        )}
+
+        {/* ── CODI ── */}
+        {body === "School/Workplace CODI" && (
+          <>
+            <div className={styles.sectionDivider}><span>CODI Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Institution Name"><FInput placeholder="Name of school, workplace, or organization" value={details["Institution"] || ""} onChange={set("Institution")} /></FormGroup>
+            <FormGroup label="CODI Focal Person"><FInput placeholder="Name and designation" value={details["CODI Focal Person"] || ""} onChange={set("CODI Focal Person")} /></FormGroup>
+            <FormGroup label="Complaint Receipt Confirmed?">
+              <FSelect value={details["Receipt Confirmed"] || ""} onChange={set("Receipt Confirmed")}>
+                <option value="">— Select —</option>
+                <option>Yes — confirmed in writing</option>
+                <option>Yes — verbal confirmation</option>
+                <option>Pending confirmation</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Hearing / Investigation Schedule">
+              <FInput placeholder="e.g. Investigation: Jan 15–Feb 15, First hearing: Feb 20" value={details["Investigation Schedule"] || ""} onChange={set("Investigation Schedule")} />
+            </FormGroup>
+            <FormGroup label="Status Updates from CODI">
+              <FTextarea placeholder="Latest updates on investigation or hearing progress…" value={details["Status Updates"] || ""} onChange={set("Status Updates")} />
+            </FormGroup>
+            <FormGroup label="Anti-Retaliation Measures Confirmed?">
+              <FSelect value={details["Anti-Retaliation Confirmed"] || ""} onChange={set("Anti-Retaliation Confirmed")}>
+                <option value="">— Select —</option>
+                <option>Yes — confirmed in place</option>
+                <option>Pending verification</option>
+                <option>Not confirmed — flagged for follow-up</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Confidentiality Measures Confirmed?">
+              <FSelect value={details["Confidentiality Confirmed"] || ""} onChange={set("Confidentiality Confirmed")}>
+                <option value="">— Select —</option>
+                <option>Yes</option><option>Unclear</option><option>No — concern raised</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Final Administrative Decision">
+              <FTextarea placeholder="e.g. Respondent dismissed, reprimanded, cleared, case pending…" value={details["Final Decision"] || ""} onChange={set("Final Decision")} />
+            </FormGroup>
+          </>
+        )}
+
+        {/* ── Court ── */}
+        {body === "Court (with lawyer)" && (
+          <>
+            <div className={styles.sectionDivider}><span>Court Monitoring Details</span></div>
+            <div className={styles.formDesc} style={{ background: "#fef9c3", borderRadius: 8, padding: "0.75rem", border: "1px solid #fde047", color: "#713f12", marginBottom: 0 }}>
+              ⚖️ Court cases are handled in coordination with a lawyer. Record all details as provided by counsel.
+            </div>
+            <FormGroup label="Case Number and Court Branch"><FInput placeholder="e.g. Criminal Case 2026-1234, RTC Branch 42, QC" value={details["Case No."] || ""} onChange={set("Case No.")} /></FormGroup>
+            <FormGroup label="Filing Date"><FInput type="date" value={details["Filing Date"] || ""} onChange={set("Filing Date")} /></FormGroup>
+            <FormGroup label="Prosecutor / Counsel Details"><FInput placeholder="Name and contact of handling counsel" value={details["Counsel"] || ""} onChange={set("Counsel")} /></FormGroup>
+            <FormGroup label="Upcoming Hearing Dates"><FTextarea placeholder="List all scheduled hearing dates…" value={details["Hearing Dates"] || ""} onChange={set("Hearing Dates")} /></FormGroup>
+            <FormGroup label="Postponements / Changes" hint="Note any postponements with reason.">
+              <FTextarea placeholder="e.g. April 10: postponed — respondent's counsel unavailable…" value={details["Postponements"] || ""} onChange={set("Postponements")} />
+            </FormGroup>
+            <FormGroup label="Witness Preparation Needs">
+              <FTextarea placeholder="Does any witness or the complainant need preparation support?" value={details["Witness Preparation"] || ""} onChange={set("Witness Preparation")} />
+            </FormGroup>
+            <FormGroup label="Final Judgment / Resolution" hint="Fill in once the court issues a decision.">
+              <FTextarea placeholder="e.g. Guilty — 6–12 years, Acquitted, Case dismissed without prejudice…" value={details["Judgment"] || ""} onChange={set("Judgment")} />
+            </FormGroup>
+          </>
+        )}
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={!body}>Save Endorsement</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MONITORING LOG MODAL — add an update entry
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MonitoringModal({ open, onClose, caseData, onSave, actorName }) {
+  const [update, setUpdate] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  useEffect(() => { if (open) { setUpdate(""); setDate(new Date().toISOString().split("T")[0]); } }, [open]);
+  if (!caseData) return null;
+
+  function handleSave() {
+    if (!update.trim()) return;
+    const entry = { date: new Date(date).toLocaleDateString(), by: actorName, update };
+    onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Add Monitoring Update" wide>
+      <p className={styles.formDesc}>SASHA monitors whether the referral was received, whether the complainant was contacted, and whether the case is progressing. Log each follow-up here.</p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+        <FormGroup label="Current Institution"><FInput value={caseData.endorsedTo || "Not yet endorsed"} disabled /></FormGroup>
+        <FormGroup label="Date of Follow-up" required><FInput type="date" value={date} onChange={(e) => setDate(e.target.value)} /></FormGroup>
+        <FormGroup label="Update / Findings" required hint="What did SASHA find out from this follow-up? Was there progress?">
+          <FTextarea placeholder="e.g. Called PNP WCPD — investigation ongoing, next update in 2 weeks. Complainant contacted, reported feeling safe…" value={update} onChange={(e) => setUpdate(e.target.value)} rows={5} />
+        </FormGroup>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={!update.trim()}>Add Entry</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS CHANGE MODAL — with approval flow
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATUS_TRANSITIONS = {
+  "Under Case Evaluation": ["Case Filed"],
+  "Case Filed":            ["Investigation Ongoing"],
+  "Investigation Ongoing": ["Hearing Ongoing", "Dismissed"],
+  "Hearing Ongoing":       ["Dismissed", "Perpetrator Convicted"],
+};
+
+const STATUS_COLORS2 = STATUS_COLORS;
+
+function StatusChangeModal({ open, onClose, caseData, onSubmit, actorName, isAdmin }) {
+  const [selected, setSelected] = useState(null);
+  const [notes, setNotes] = useState("");
+  useEffect(() => { if (open) { setSelected(null); setNotes(""); } }, [open]);
+  if (!caseData) return null;
+
+  const available = isAdmin
+    ? LEGAL_CASE_STATUSES.filter((s) => s !== caseData.status)
+    : (STATUS_TRANSITIONS[caseData.status] || []);
+
+  function handleSubmit() {
+    if (!selected) return;
+    onSubmit(caseData, selected, {
+      submittedBy: actorName,
+      date: new Date().toLocaleDateString(),
+      notes: notes || `Status changed to ${selected}.`,
+    });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Update Status — ${caseData.id}`} wide>
+      <div className={styles.approvalNotice}>
+        <FiClock style={{ flexShrink: 0 }} />
+        <span>This change will be submitted for <strong>Admin approval</strong> before taking effect. The complainant will be informed after approval.</span>
+      </div>
+      <p className={styles.formDesc}>Current status: <StatusBadge status={caseData.status} /></p>
+      {available.length === 0 ? (
+        <p className={styles.emptyState}>No available transitions at this stage or role level.</p>
+      ) : (
+        <>
+          <p className={styles.formDesc} style={{ marginTop: "0.5rem" }}>Select the new status:</p>
+          <div className={styles.transitionGrid}>
+            {available.map((s) => {
+              const c = STATUS_COLORS2[s] || { bg: "#f3f4f6", color: "#374151" };
+              return (
+                <button
+                  key={s}
+                  className={`${styles.transitionBtn} ${selected === s ? styles.transitionBtnSelected : ""}`}
+                  style={{ background: c.bg, color: c.color, borderColor: c.color + "44" }}
+                  onClick={() => setSelected(s)}
+                >
+                  {s} →
+                </button>
+              );
+            })}
+          </div>
+          {selected && (
+            <div className={styles.formGrid} style={{ marginTop: "1rem" }}>
+              <FormGroup label="Reason / Notes" hint="Explain why the status is being changed.">
+                <FTextarea placeholder="e.g. Complaint formally filed with PNP WCPD on May 10…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </FormGroup>
+            </div>
+          )}
+        </>
+      )}
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSubmit} disabled={!selected}>Submit for Approval</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN APPROVAL MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
+  const [rejectReason, setRejectReason] = useState("");
+  const [showReject, setShowReject] = useState(false);
+  if (!caseData || !caseData.pendingApproval) return null;
+  const pa = caseData.pendingApproval;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Review Pending Status Change" wide>
+      <div className={styles.approvalReviewBlock}>
+        {[
+          ["Case ID", caseData.id],
+          ["Current Status", <StatusBadge status={caseData.status} />],
+          ["Proposed Status", <StatusBadge status={pa.proposedStatus} />],
+          ["Submitted by", pa.submittedBy],
+          ["Date", pa.date],
+          ["Notes", pa.notes],
+        ].map(([k, v]) => (
+          <div key={k} className={styles.approvalRow}>
+            <span className={styles.approvalKey}>{k}</span>
+            <span className={styles.approvalVal}>{v}</span>
+          </div>
+        ))}
+      </div>
+
+      {showReject ? (
+        <div className={styles.formGrid} style={{ marginTop: "1rem" }}>
+          <FormGroup label="Reason for rejection" required>
+            <FTextarea placeholder="Explain why this status change is being rejected…" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+          </FormGroup>
+          <div className={styles.modalFooter}>
+            <button className={styles.btnSecondary} onClick={() => setShowReject(false)}>Back</button>
+            <button className={styles.btnDanger} onClick={() => { onReject(caseData, rejectReason); onClose(); }} disabled={!rejectReason.trim()}>Confirm Rejection</button>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.modalFooter}>
+          <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+          <button className={styles.btnDanger} onClick={() => setShowReject(true)}>Reject</button>
+          <button className={styles.btnSuccess} onClick={() => { onApprove(caseData); onClose(); }}><FiCheck size={14} /> Approve &amp; Apply</button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SELECT CASE MODAL (for action cards)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, filterFn }) {
   const [q, setQ] = useState("");
   const list = useMemo(() => {
-    const base = filterStatus ? cases.filter((c) => c.legalStatus === filterStatus) : cases;
+    const base = filterFn ? cases.filter(filterFn) : cases;
     if (!q.trim()) return base;
     return base.filter((c) => c.id.includes(q) || c.region.toLowerCase().includes(q.toLowerCase()));
-  }, [cases, q, filterStatus]);
+  }, [cases, q, filterFn]);
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal open={open} onClose={onClose} title={title} wide>
       <div className={styles.searchWrap} style={{ marginBottom: "1rem" }}>
-        <input className={styles.searchInput} type="text" placeholder="Search cases…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={styles.searchInput} placeholder="Search cases…" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className={styles.searchIcon}><FiSearch /></span>
       </div>
-      <div className={styles.tableWrap} style={{ maxHeight: "55vh", overflowY: "auto" }}>
+      <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
         <table className={styles.table}>
-          <thead><tr><th>Case ID</th><th>Region</th><th>Legal Status</th><th>Action</th></tr></thead>
+          <thead><tr><th>Case ID</th><th>Region</th><th>Status</th><th>Officer</th><th>Action</th></tr></thead>
           <tbody>
-            {list.length === 0 ? (
-              <tr><td colSpan={4} className={styles.emptyState}>No cases found.</td></tr>
-            ) : (
-              list.map((c) => (
+            {list.length === 0
+              ? <tr><td colSpan={5} className={styles.emptyState}>No cases found.</td></tr>
+              : list.map((c) => (
                 <tr key={c.id}>
                   <td>{c.id}</td>
                   <td>{c.region}</td>
-                  <td><LegalBadge status={c.legalStatus} /></td>
-                  <td><button className={actionBtnClass} onClick={() => { onAction(c); onClose(); }}>{actionLabel}</button></td>
+                  <td><StatusBadge status={c.status} />{c.pendingApproval && <span style={{ marginLeft: 4 }}><PendingBadge /></span>}</td>
+                  <td>{c.assignedLegalOfficer || "—"}</td>
+                  <td><button className={styles.tblBtnEdit} onClick={() => { onAction(c); onClose(); }}>{actionLabel}</button></td>
                 </tr>
               ))
-            )}
+            }
           </tbody>
         </table>
       </div>
@@ -310,32 +827,37 @@ function SelectCaseModal({ open, onClose, cases, title, filterStatus, actionLabe
   );
 }
 
-// ── Cookies ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// COOKIES
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getCookie(name) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
   return null;
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
-// ══════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function LegalReviewManagement() {
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
   useEffect(() => {
-  const userCookie = getCookie('user');
-  if (userCookie) {
-    const storedUser = JSON.parse(userCookie);
-    setUser({
-      role: storedUser.role_name,
-      firstName: storedUser.first_name,
-      lastName: storedUser.last_name,
-    });
-  }
-}, []);
+    const userCookie = getCookie("user");
+    if (userCookie) {
+      try {
+        const stored = JSON.parse(userCookie);
+        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name });
+      } catch (_) {}
+    }
+  }, []);
+
+  const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Legal Personnel";
+  const isAdmin   = user.role?.toLowerCase() === "admin";
+  const isLegal   = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
 
   const [cases, setCases] = useState(PLACEHOLDER_CASES);
   const [search, setSearch] = useState("");
@@ -346,58 +868,81 @@ export default function LegalReviewManagement() {
   const [modal, setModal] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
 
-  function showToast(msg, type = "success") {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  }
-
+  function showToast(msg, type = "success") { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); }
   function closeModal() { setModal(null); }
-  function openView(c)       { setSelectedCase(c); setModal("view"); }
-  function openParalegal(c)  { setSelectedCase(c); setModal("paralegal"); }
-  function openAdvice(c)     { setSelectedCase(c); setModal("advice"); }
-  function openReferral(c)   { setSelectedCase(c); setModal("referral"); }
-  function openVerify(c)     { setSelectedCase(c); setModal("verify"); }
+  function open(c, m) { setSelectedCase(c); setModal(m); }
 
-  function handleUpdate(updated) {
+  function saveCase(updated) {
     setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
     showToast(`Case ${updated.id} updated.`);
   }
 
-  const stats = useMemo(() => [
-    { num: cases.filter((c) => c.legalStatus === "Under Review").length,    label: "Pending Review",  hasNew: true },
-    { num: cases.filter((c) => c.legalStatus === "For Legal Action").length, label: "Active Cases",    hasNew: true },
-    { num: cases.filter((c) => c.endorsed).length,                           label: "Endorsed Cases",  hasNew: true },
-  ], [cases]);
+  function submitForApproval(caseData, proposedStatus, changeDetails) {
+    setCases((prev) => prev.map((c) => c.id === caseData.id
+      ? { ...c, pendingApproval: { proposedStatus, ...changeDetails } }
+      : c
+    ));
+    showToast(`Status change for ${caseData.id} submitted for admin approval.`);
+  }
 
-  const filtered = useMemo(() => {
-    return cases.filter((c) => {
-      const matchSearch = !search.trim() || c.id.includes(search) || c.region.toLowerCase().includes(search.toLowerCase());
-      if (!matchSearch) return false;
-      if (activeSort) return c.legalStatus === activeSort;
-      return true;
-    });
-  }, [cases, search, activeSort]);
+  function approveChange(caseData) {
+    const pa = caseData.pendingApproval;
+    setCases((prev) => prev.map((c) => c.id === caseData.id
+      ? { ...c, status: pa.proposedStatus, pendingApproval: null, statusHistory: [...(c.statusHistory || []), { status: pa.proposedStatus, date: pa.date, by: pa.submittedBy, notes: pa.notes }] }
+      : c
+    ));
+    showToast(`Case ${caseData.id} status updated to "${pa.proposedStatus}".`);
+  }
 
-  useEffect(() => { setPage(1); }, [search, activeSort]);
+  function rejectChange(caseData, reason) {
+    setCases((prev) => prev.map((c) => c.id === caseData.id
+      ? { ...c, pendingApproval: null, statusHistory: [...(c.statusHistory || []), { status: c.status, date: new Date().toLocaleDateString(), by: "Admin", notes: `Status change REJECTED: ${reason}` }] }
+      : c
+    ));
+    showToast(`Status change for ${caseData.id} rejected.`, "danger");
+  }
+
+  const stats = useMemo(() => {
+    const pending = cases.filter((c) => c.pendingApproval).length;
+    return [
+      { num: cases.filter((c) => c.status === "Under Case Evaluation").length, label: "Under Evaluation" },
+      { num: cases.filter((c) => ["Case Filed", "Investigation Ongoing", "Hearing Ongoing"].includes(c.status)).length, label: "Active Cases" },
+      { num: cases.filter((c) => c.endorsedTo).length, label: "Endorsed Cases" },
+      ...(isAdmin ? [{ num: pending, label: "Pending Approvals", highlight: pending > 0 }] : []),
+    ];
+  }, [cases, isAdmin]);
+
+  const filtered = useMemo(() =>
+    cases.filter((c) => {
+      const ms = !search.trim() || c.id.includes(search) || c.region.toLowerCase().includes(search.toLowerCase());
+      return ms && (!activeSort || c.status === activeSort);
+    }),
+    [cases, search, activeSort]
+  );
+  useEffect(() => setPage(1), [search, activeSort]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pendingCases = useMemo(() => cases.filter((c) => c.pendingApproval), [cases]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <>
-      <Navbar user={user} />
-      {toast && <div className={`${styles.toast} ${styles[`toast--${toast.type}`]}`}>{toast.msg}</div>}
+      {toast && <div className={`${styles.toast} ${styles[`toast--${toast.type || "success"}`]}`}>{toast.msg}</div>}
 
       <main className={styles.pageWrapper}>
-        {/* ── Hero Banner ── */}
+        {/* Hero */}
         <section className={styles.heroBanner}>
           <div className="container-xl">
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Legal Review</h1>
               <div className="row g-3 justify-content-center">
-                {stats.map(({ num, label, hasNew }) => (
-                  <div key={label} className="col-12 col-md-4">
-                    <div className={styles.statCard}>
-                      {hasNew && <span className={styles.statDot} />}
+                {stats.map(({ num, label, highlight }) => (
+                  <div key={label} className="col-12 col-md-3">
+                    <div className={`${styles.statCard} ${highlight ? styles.statCardHighlight : ""}`}>
+                      <span className={styles.statDot} />
                       <p className={styles.statNum}>{num}</p>
                       <p className={styles.statLabel}>{label}</p>
                     </div>
@@ -408,33 +953,52 @@ export default function LegalReviewManagement() {
           </div>
         </section>
 
-        {/* ── Action Cards ── */}
+        {/* Action Cards */}
         <div className="container-xl py-4">
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>What would you like to do?</h2>
             <div className={styles.headingLine} />
           </div>
           <div className="row g-3 mb-4">
-            <div className="col-12 col-sm-6">
-              <ActionCard icon="⚖️" title="Paralegal Support" description="Assign a legal officer to provide paralegal support for a case." onView={() => setModal("selectParalegal")} />
+            <div className="col-12 col-sm-6 col-lg-4">
+              <ActionCard icon="📋" title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />
             </div>
-            <div className="col-12 col-sm-6">
-              <ActionCard icon="📋" title="Request Legal Advice" description="Update the legal status or add legal advice notes to a case." onView={() => setModal("selectAdvice")} />
+            <div className="col-12 col-sm-6 col-lg-4">
+              <ActionCard icon="⚖️" title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />
             </div>
-            <div className="col-12 col-sm-6">
-              <ActionCard icon="📁" title="Track Referrals" description="Mark cases as endorsed and track referral details." onView={() => setModal("selectReferral")} />
+            <div className="col-12 col-sm-6 col-lg-4">
+              <ActionCard icon="📁" title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
             </div>
-            <div className="col-12 col-sm-6">
-              <ActionCard icon="✅" title="Verify Cases" description="Set the final legal verification status for a case." onView={() => setModal("selectVerify")} />
+            <div className="col-12 col-sm-6 col-lg-4">
+              <ActionCard icon="🔭" title="Monitoring & Follow-Up" description="Log monitoring updates: whether referrals were received, services provided, complainant contacted." onView={() => setModal("selectMonitor")} />
             </div>
+            <div className="col-12 col-sm-6 col-lg-4">
+              <ActionCard icon="🔄" title="Update Case Status" description="Advance a case through Case Filed → Investigation → Hearing → Dismissed / Convicted. Requires admin approval." onView={() => setModal("selectStatus")} />
+            </div>
+            {(isAdmin || isLegal) && (
+              <div className="col-12 col-sm-6 col-lg-4">
+                <ActionCard icon="👤" title="Assign Legal Personnel" description="Assign a legal officer and paralegal to a case for support and tracking." onView={() => setModal("selectAssign")} />
+              </div>
+            )}
+            {isAdmin && (
+              <div className="col-12 col-sm-6 col-lg-4">
+                <ActionCard
+                  icon="✅"
+                  title="Approve Status Changes"
+                  description="Review and approve or reject pending status change requests."
+                  badge={pendingCases.length > 0 ? <span className={styles.pendingCount}>{pendingCases.length} pending</span> : null}
+                  onView={() => setModal("viewPending")}
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── All Cases Table ── */}
+        {/* Table */}
         <section className={styles.allList}>
           <div className="container-xl">
             <div className={styles.sectionHeading}>
-              <h2 className={styles.sectionTitle}>All the List of Cases</h2>
+              <h2 className={styles.sectionTitle}>All Legal Cases</h2>
               <div className={styles.headingLine} />
             </div>
             <div className={styles.layout}>
@@ -445,32 +1009,43 @@ export default function LegalReviewManagement() {
                       <th>Case ID</th>
                       <th>Reporter ID</th>
                       <th>Region</th>
-                      <th>Legal Status</th>
-                      <th>Assigned Officer</th>
+                      <th>Status</th>
+                      <th>Legal Officer</th>
+                      <th>Endorsed To</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {paginated.length === 0 ? (
-                      <tr><td colSpan={6} className={styles.emptyState}>No cases found.</td></tr>
-                    ) : (
-                      paginated.map((c) => (
+                    {paginated.length === 0
+                      ? <tr><td colSpan={7} className={styles.emptyState}>No cases found.</td></tr>
+                      : paginated.map((c) => (
                         <tr key={c.id}>
                           <td>{c.id}</td>
                           <td>{c.reporterId}</td>
                           <td>{c.region}</td>
-                          <td><LegalBadge status={c.legalStatus} /></td>
-                          <td>{c.assignedOfficer || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Unassigned</span>}</td>
+                          <td>
+                            <StatusBadge status={c.status} />
+                            {c.pendingApproval && <div style={{ marginTop: 3 }}><PendingBadge /></div>}
+                          </td>
+                          <td>{c.assignedLegalOfficer || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Unassigned</span>}</td>
+                          <td>{c.endorsedTo ? <span style={{ fontSize: "0.78rem" }}>{c.endorsedTo}</span> : <span style={{ color: "#9ca3af", fontStyle: "italic", fontSize: "0.78rem" }}>Not yet</span>}</td>
                           <td>
                             <div className={styles.actionBtns}>
-                              <button className={styles.tblBtnView}   onClick={() => openView(c)}>View</button>
-                              <button className={styles.tblBtnEdit}   onClick={() => openAdvice(c)}>Status</button>
-                              <button className={styles.tblBtnDelete} onClick={() => openReferral(c)}>Refer</button>
+                              <button className={styles.tblBtnView}   onClick={() => open(c, "view")}>View</button>
+                              <button className={styles.tblBtnEdit}   onClick={() => open(c, "paralegal")}>Paralegal</button>
+                              <button className={styles.tblBtnStatus} onClick={() => open(c, "endorse")}>Endorse</button>
+                              <button className={styles.tblBtnMonitor} onClick={() => open(c, "monitor")}>Monitor</button>
+                              {!c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin) && (
+                                <button className={styles.tblBtnStatusChange} onClick={() => open(c, "statusChange")}>Status</button>
+                              )}
+                              {isAdmin && c.pendingApproval && (
+                                <button className={styles.tblBtnApprove} onClick={() => open(c, "approval")}>Review</button>
+                              )}
                             </div>
                           </td>
                         </tr>
                       ))
-                    )}
+                    }
                   </tbody>
                 </table>
                 <Pagination current={page} total={totalPages} onChange={setPage} />
@@ -480,15 +1055,16 @@ export default function LegalReviewManagement() {
                 <div className={styles.sidebarBlock}>
                   <h3 className={styles.sidebarLabel}>Search</h3>
                   <div className={styles.searchWrap}>
-                    <input className={styles.searchInput} type="text" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <input className={styles.searchInput} placeholder="Case ID, region…" value={search} onChange={(e) => setSearch(e.target.value)} />
                     <span className={styles.searchIcon}><FiSearch /></span>
                   </div>
                 </div>
                 <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Sort By</h3>
-                  <div className={styles.roleList}>
-                    {LEGAL_STATUSES.map((s) => (
-                      <button key={s} className={`${styles.roleBtn} ${activeSort === s ? styles.roleBtnActive : ""}`} onClick={() => setActiveSort(activeSort === s ? null : s)}>{s}</button>
+                  <h3 className={styles.sidebarLabel}>Filter by Status</h3>
+                  <div className={styles.filterList}>
+                    <button className={`${styles.filterBtn} ${!activeSort ? styles.filterBtnActive : ""}`} onClick={() => setActiveSort(null)}>All</button>
+                    {LEGAL_CASE_STATUSES.map((s) => (
+                      <button key={s} className={`${styles.filterBtn} ${activeSort === s ? styles.filterBtnActive : ""}`} onClick={() => setActiveSort(activeSort === s ? null : s)}>{s}</button>
                     ))}
                   </div>
                 </div>
@@ -499,16 +1075,52 @@ export default function LegalReviewManagement() {
       </main>
 
       {/* ══ MODALS ══ */}
-      <SelectCaseModal open={modal === "selectParalegal"} onClose={closeModal} cases={cases} title="Select a Case for Paralegal Support" filterStatus={null}           actionLabel="Assign"  actionBtnClass={styles.tblBtnEdit}   onAction={(c) => { closeModal(); openParalegal(c); }} />
-      <SelectCaseModal open={modal === "selectAdvice"}    onClose={closeModal} cases={cases} title="Select a Case for Legal Advice"     filterStatus={null}           actionLabel="Advise"  actionBtnClass={styles.tblBtnEdit}   onAction={(c) => { closeModal(); openAdvice(c); }} />
-      <SelectCaseModal open={modal === "selectReferral"}  onClose={closeModal} cases={cases} title="Select a Case to Track Referral"    filterStatus={null}           actionLabel="Refer"   actionBtnClass={styles.tblBtnDelete} onAction={(c) => { closeModal(); openReferral(c); }} />
-      <SelectCaseModal open={modal === "selectVerify"}    onClose={closeModal} cases={cases} title="Select a Case to Verify"           filterStatus="Under Review"   actionLabel="Verify"  actionBtnClass={styles.tblBtnView}   onAction={(c) => { closeModal(); openVerify(c); }} />
+      <ViewCaseModal        open={modal === "view"}         onClose={closeModal} caseData={selectedCase} />
+      <AssignPersonnelModal open={modal === "assign"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} />
+      <ParalegalSupportModal open={modal === "paralegal"}   onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
+      <LawyerConsultModal   open={modal === "lawyer"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
+      <EndorseModal         open={modal === "endorse"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
+      <MonitoringModal      open={modal === "monitor"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
+      <StatusChangeModal    open={modal === "statusChange"} onClose={closeModal} caseData={selectedCase} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} />
+      <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
 
-      <ViewCaseModal     open={modal === "view"}      onClose={closeModal} caseData={selectedCase} />
-      <ParalegalModal    open={modal === "paralegal"} onClose={closeModal} caseData={selectedCase} onSave={handleUpdate} />
-      <LegalAdviceModal  open={modal === "advice"}    onClose={closeModal} caseData={selectedCase} onSave={handleUpdate} />
-      <ReferralModal     open={modal === "referral"}  onClose={closeModal} caseData={selectedCase} onSave={handleUpdate} />
-      <VerifyModal       open={modal === "verify"}    onClose={closeModal} caseData={selectedCase} onSave={handleUpdate} />
+      {/* Action card → select case → action */}
+      <SelectCaseModal open={modal === "selectParalegal"} onClose={closeModal} cases={cases} title="Select Case for Paralegal Support" actionLabel="Paralegal" onAction={(c) => open(c, "paralegal")} />
+      <SelectCaseModal open={modal === "selectLawyer"}    onClose={closeModal} cases={cases} title="Select Case for Lawyer Consultation" actionLabel="Consult" onAction={(c) => open(c, "lawyer")} />
+      <SelectCaseModal open={modal === "selectEndorse"}   onClose={closeModal} cases={cases} title="Select Case to Endorse / Track Referral" actionLabel="Endorse" onAction={(c) => open(c, "endorse")} />
+      <SelectCaseModal open={modal === "selectMonitor"}   onClose={closeModal} cases={cases.filter((c) => c.endorsedTo)} title="Select Case for Monitoring Update" actionLabel="Monitor" onAction={(c) => open(c, "monitor")} />
+      <SelectCaseModal open={modal === "selectStatus"}    onClose={closeModal} cases={cases.filter((c) => !c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin))} title="Select Case to Update Status" actionLabel="Update" onAction={(c) => open(c, "statusChange")} />
+      <SelectCaseModal open={modal === "selectAssign"}    onClose={closeModal} cases={cases} title="Select Case to Assign Legal Personnel" actionLabel="Assign" onAction={(c) => open(c, "assign")} />
+
+      {/* Admin: pending approvals */}
+      {modal === "viewPending" && (
+        <Modal open onClose={closeModal} title="Pending Status Approvals" wide>
+          {pendingCases.length === 0 ? (
+            <p className={styles.emptyState}>No pending status changes.</p>
+          ) : (
+            <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+              <table className={styles.table}>
+                <thead><tr><th>Case ID</th><th>Current</th><th>Proposed</th><th>By</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {pendingCases.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.id}</td>
+                      <td><StatusBadge status={c.status} /></td>
+                      <td><StatusBadge status={c.pendingApproval.proposedStatus} /></td>
+                      <td>{c.pendingApproval.submittedBy}</td>
+                      <td>{c.pendingApproval.date}</td>
+                      <td><button className={styles.tblBtnApprove} onClick={() => { setSelectedCase(c); setModal("approval"); }}>Review</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className={styles.modalFooter}>
+            <button className={styles.btnPrimary} onClick={closeModal}>Close</button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
