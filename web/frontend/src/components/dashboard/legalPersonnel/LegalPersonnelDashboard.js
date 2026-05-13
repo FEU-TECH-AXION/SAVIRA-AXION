@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { useAuth } from "@/lib/AuthContext";
 
 // TODO: Nav links for Legal Personnel are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -45,28 +46,15 @@ function DeadlineItem({ emoji, title, date }) {
 
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-  return null;
-}
-
 export default function LegalPersonnelDashboard() {
   const [calDate, setCalDate] = useState(new Date());
-  const [user, setUser] = useState({ role: "legal personnel", firstName: "Legal", lastName: "User" });
+  const { user: authUser } = useAuth();
 
-  useEffect(() => {
-    const userCookie = getCookie('user');  // ← NEW
-    if (userCookie) {
-      const storedUser = JSON.parse(userCookie);
-      setUser({
-        role: storedUser.role_name,        // ← note: role_name not roles?.role_name
-        firstName: storedUser.first_name,
-        lastName: storedUser.last_name,
-      });
-    }
-  }, []);
+  const user = authUser ? {
+    role: authUser.role_name,
+    firstName: authUser.first_name,
+    lastName: authUser.last_name,
+  } : { role: "legal personnel", firstName: "Legal", lastName: "User" };
 
   const stats = [
     { num: 2, label: "Pending Review",            hasNew: true },

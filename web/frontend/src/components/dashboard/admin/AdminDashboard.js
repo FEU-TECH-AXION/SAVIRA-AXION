@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { useAuth } from "@/lib/AuthContext";
 
 // ── Overview stat card ───────────────────────────────────────────────────────
 function OverviewCard({ category, label, count, showView = false }) {
@@ -54,31 +55,16 @@ function DeadlineItem({ emoji, title, date }) {
   );
 }
 
-// ── Cookies ─────────────────────────────────────────────────────────────────────
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-  return null;
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [calDate, setCalDate] = useState(new Date());
-  const [user, setUser] = useState({ role: "admin", firstName: "Admin", lastName: "User" });
+  const { user: authUser } = useAuth();
 
-  useEffect(() => {
-    const userCookie = getCookie('user');  // ← NEW
-    if (userCookie) {
-      const storedUser = JSON.parse(userCookie);
-      setUser({
-        role: storedUser.role_name,        // ← note: role_name not roles?.role_name
-        firstName: storedUser.first_name,
-        lastName: storedUser.last_name,
-      });
-    }
-  }, []);
+  const user = authUser ? {
+    role: authUser.role_name,
+    firstName: authUser.first_name,
+    lastName: authUser.last_name,
+  } : { role: "admin", firstName: "Admin", lastName: "User" };
 
   // hasNew drives the orange dot — set to false to hide it
   const stats = [
