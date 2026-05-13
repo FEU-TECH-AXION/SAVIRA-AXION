@@ -23,4 +23,16 @@ const createItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem }
+const getCaseStatusByName = async (name) => {
+    const { data, error } = await supabase
+        .from('case_status')
+        .select('case_status_id')
+        .eq('status_name', name)
+        .single();
+
+    if (error) throw error;
+    if (!data) throw new Error(`Case status "${name}" not found.`);
+    return data;
+}
+
+module.exports = { getItems, createItem, getCaseStatusByName };

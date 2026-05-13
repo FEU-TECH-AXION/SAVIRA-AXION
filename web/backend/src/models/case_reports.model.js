@@ -22,4 +22,37 @@ const create = async (payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create }
+async function getComplainantId(userId) {
+  // Try to find existing complainant row
+  const { data, error } = await supabase
+    .from("complainants")
+    .select("complainant_id")
+    .eq("user_id", userId)
+    .single();
+
+  // If found, return it
+  if (data) return data.complainant_id;
+
+  // If not found, create it now
+  const { data: newComplainant, error: insertError } = await supabase
+    .from("complainants")
+    .insert([{ user_id: userId }])
+    .select("complainant_id")
+    .single();
+
+  if (insertError) throw insertError;
+  return newComplainant.complainant_id;
+}
+
+async function createReport(payload) {
+  const { data, error } = await supabase
+    .from("case_reports")
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+module.exports = { getAll, create, getComplainantId, createReport }

@@ -22,4 +22,31 @@ const create = async (payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create }
+async function createOrgDetail(complainant) {
+  const isScoutOrg =
+    complainant.organization === "Boy Scouts of the Philippines (BSP)" ||
+    complainant.organization === "Girl Scouts of the Philippines (GSP)";
+  const isOthersOrg = complainant.organization === "Others";
+
+  const { data, error } = await supabase
+    .from("organization_details")
+    .insert([{
+      organization:            complainant.organization,
+      organization_type:       isOthersOrg ? complainant.organizationType       || null : null,
+      organization_type_other: isOthersOrg && complainant.organizationType === "Other"
+                                            ? complainant.organizationTypeOther || null : null,
+      council:                 isScoutOrg  ? complainant.council                || null : null,
+      region:                  isScoutOrg  ? "National Capital Region (NCR)"          : null,
+      organization_name:       isOthersOrg ? complainant.orgName                || null : null,
+      organization_city:       isOthersOrg ? complainant.orgCity                || null : null,
+      user_city:               isOthersOrg ? complainant.userCity               || null : null,
+      user_province:           "Metro Manila",
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+module.exports = { getAll, create, createOrgDetail }

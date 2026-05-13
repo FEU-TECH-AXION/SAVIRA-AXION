@@ -1009,57 +1009,26 @@ export default function CreateReport({
   notifications   = [],
   events          = [],
 }) {
-  const [step, setStep]   = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-  const [stepErrors, setStepErrors] = useState({});
+  const [step, setStep]                   = useState(0);
+  const [submitted, setSubmitted]         = useState(false);
+  const [stepErrors, setStepErrors]       = useState({});
+  const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [submissionError, setSubmissionError] = useState(null);
 
   const [complainant, setComplainant] = useState({
-    name: "",
-    age: "",
-    gender: "",
-    organization: "",
-
-    // BSP/GSP
-    council: "",
-    region: "",
-
-    // Others
-    orgName: "",
-    organizationType: "",
-    orgCity: "",
-    userCity: "",
-
-    // Contact
-    contactNumber: "",
-    email: "",
-
-    // Consent
-    interview: "",
+    name: "", age: "", gender: "", organization: "",
+    council: "", region: "",
+    orgName: "", organizationType: "", orgCity: "", userCity: "",
+    contactNumber: "", email: "", interview: "",
   });
 
   const [incident, setIncident] = useState({
-    date: "",
-    time: "",
-    incidentCity: "",
-    incidentVenue: "",
-    description: "",
-    outcome: "",
-
-    perpetratorKnown: "",
-    perpetratorName: "",
-    perpetratorOccupation: "",
-    perpetratorRelationship: "",
-    perpetratorGender: "",
-
-    witnesses: "",
-    witnessName: "",
-    witnessContact: "",
-    witnessRelationship: "",
-
-    toldAnyone: "",
-    toldAnyoneWho: "",
-    toldPolice: "",
-    policeStation: "",
+    date: "", time: "", incidentCity: "", incidentVenue: "",
+    description: "", outcome: "",
+    perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
+    perpetratorRelationship: "", perpetratorGender: "",
+    witnesses: "", witnessName: "", witnessContact: "", witnessRelationship: "",
+    toldAnyone: "", toldAnyoneWho: "", toldPolice: "", policeStation: "",
   });
 
   const [evidence, setEvidence] = useState({ files: [], anonymous: false });
@@ -1082,8 +1051,6 @@ export default function CreateReport({
 
     if (Object.keys(errors).length > 0) {
       setStepErrors(errors);
-
-      // Scroll to first error field
       setTimeout(() => {
         const firstErrorField = document.querySelector("[data-error='true']");
         if (firstErrorField) {
@@ -1091,7 +1058,6 @@ export default function CreateReport({
           firstErrorField.focus();
         }
       }, 50);
-
       return;
     }
 
@@ -1104,7 +1070,31 @@ export default function CreateReport({
     if (step > 0) setStep((s) => s - 1);
   };
 
-  const handleSubmit = () => setSubmitted(true);
+    const handleSubmit = async () => {
+    setSubmissionError(null);
+    setIsSubmitting(true);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/case_reports/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // sends the token cookie
+        body: JSON.stringify({ complainant, incident, evidence }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Unable to save report.');
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setSubmissionError(err.message || 'Failed to submit report.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const resolvedReport = reportData ?? {
     description: "Lorem Ipsum Dolor",

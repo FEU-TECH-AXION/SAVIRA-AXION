@@ -1,4 +1,7 @@
 const CaseReports = require('../models/case_reports.model')
+const { createOrgDetail }    = require("../models/organization_details.model");
+const { getComplainantId, createReport }       = require("../models/case_reports.model");
+const { getCaseStatusByName } = require('../models/case_status.model'); // add this import
 
 const getItems = async (req, res) => {
     try {
@@ -23,4 +26,78 @@ const createItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem }
+function buildPayload(complainantId, orgDetailId, complainant, incident, evidence) {
+  return {
+    complainant_id:           complainantId,
+    organization_detail_id:   orgDetailId,
+
+    name:                     complainant.name              || null,
+    age:                      parseInt(complainant.age),
+    gender_identity:          complainant.gender,
+    email:                    complainant.email,
+    contact_number:           complainant.contactNumber,
+    is_willing_for_interview: complainant.interview         === "Yes",
+
+    incident_city:            incident.incidentCity,
+    incident_province:        "Metro Manila",
+    incident_location:        incident.incidentVenue        || null,
+    incident_date:            incident.date,
+    incident_time:            incident.time                 || null,
+    incident_description:     incident.description,
+    action_requested:         incident.outcome              || null,
+
+    is_perpetrator_known:     incident.perpetratorKnown    === "Yes",
+    has_witnesses:            incident.witnesses            === "Yes",
+    reported_to_others:       incident.toldAnyone          === "Yes",
+    reported_to_police:       incident.toldPolice          === "Yes",
+    is_anonymous:             evidence.anonymous            ?? false,
+
+    perpetrator_name:         incident.perpetratorKnown === "Yes" ? incident.perpetratorName         || null : null,
+    perpetrator_gender:       incident.perpetratorKnown === "Yes" ? incident.perpetratorGender       || null : null,
+    perpetrator_occupation:   incident.perpetratorKnown === "Yes" ? incident.perpetratorOccupation   || null : null,
+    perpetrator_relationship: incident.perpetratorKnown === "Yes" ? incident.perpetratorRelationship || null : null,
+
+    witness_name:             incident.witnesses === "Yes" ? incident.witnessName         || null : null,
+    witness_contact:          incident.witnesses === "Yes" ? incident.witnessContact      || null : null,
+    witness_relationship:     incident.witnesses === "Yes" ? incident.witnessRelationship || null : null,
+
+    told_anyone_who:          incident.toldAnyone === "Yes" ? incident.toldAnyoneWho || null : null,
+    police_station:           incident.toldPolice === "Yes" ? incident.policeStation  || null : null,
+
+    case_status_id: getCaseStatusByName,
+    version_number: 1,
+    is_current:     true,
+  };
+}
+
+async function submitReport(req, res) {
+  try {
+    const { complainant, incident, evidence } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required to submit a report.' });
+    }
+
+    const complainantId = await getComplainantId(userId);
+    if (!complainantId) {
+      return res.status(404).json({ error: 'Complainant not found for authenticated user.' });
+    }
+
+    const orgDetail = await createOrgDetail(complainant);
+    const orgDetailId = orgDetail?.organization_detail_id ?? orgDetail?.org_detail_id;
+    if (!orgDetailId) {
+      throw new Error('Organization detail ID missing from created organization detail.');
+    }
+
+    const payload   = buildPayload(complainantId, orgDetailId, complainant, incident, evidence);
+    const newReport = await createReport(payload);
+
+    return res.status(201).json({ data: newReport });
+  } catch (err) {
+    console.error('[submitReport]', err?.message ?? err, err?.stack ?? '');
+    return res.status(500).json({ error: 'Failed to submit report. Please try again.' });
+  }
+}
+
+module.exports = { getItems, createItem, submitReport }
