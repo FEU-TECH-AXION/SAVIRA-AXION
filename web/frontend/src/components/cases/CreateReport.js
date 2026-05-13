@@ -1086,11 +1086,19 @@ export default function CreateReport({
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.error || 'Unable to save report.');
+        const errorMsg = errorBody?.error || `Server error (${response.status})`;
+        console.error('[CreateReport Submit Error]', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMsg,
+          body: errorBody,
+        });
+        throw new Error(errorMsg);
       }
 
       setSubmitted(true);
     } catch (err) {
+      console.error('[CreateReport Submit Exception]', err);
       setSubmissionError(err.message || 'Failed to submit report.');
     } finally {
       setIsSubmitting(false);
@@ -1192,6 +1200,12 @@ export default function CreateReport({
                 )}
               </div>
 
+              {submissionError && (
+                <div className={styles.errorAlert}>
+                  <strong>Error:</strong> {submissionError}
+                </div>
+              )}
+
               <div className={styles.formNav}>
                 {step > 0 ? (
                   <button type="button" className={styles.backBtn} onClick={handleBack}>
@@ -1200,12 +1214,12 @@ export default function CreateReport({
                 ) : <div />}
 
                 {step < totalSteps - 1 ? (
-                  <button type="button" className={styles.nextBtn} onClick={handleNext}>
+                  <button type="button" className={styles.nextBtn} onClick={handleNext} disabled={isSubmitting}>
                     Next →
                   </button>
                 ) : (
-                  <button type="button" className={styles.submitBtn} onClick={handleSubmit}>
-                    Submit Report
+                  <button type="button" className={styles.submitBtn} onClick={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit Report"}
                   </button>
                 )}
               </div>

@@ -32,7 +32,7 @@ function buildPayload(complainantId, orgDetailId, complainant, incident, evidenc
     complainant_id:           complainantId,
     organization_detail_id:   orgDetailId,
 
-    name:                     complainant.name              || null,
+    name:                     complainant.name?.trim() || "Anonymous",
     age:                      parseInt(complainant.age),
     gender_identity:          complainant.gender,
     email:                    complainant.email,
@@ -77,18 +77,18 @@ async function submitReport(req, res) {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required to submit a report.' });
+      return res.status(401).json({ error: 'Not authenticated. Please log in to submit a report.' });
     }
 
     const complainantId = await getComplainantId(userId);
     if (!complainantId) {
-      return res.status(404).json({ error: 'Complainant not found for authenticated user.' });
+      return res.status(404).json({ error: 'Your profile not found. Please complete your profile first.' });
     }
 
     const orgDetail = await createOrgDetail(complainant);
     const orgDetailId = orgDetail?.organization_detail_id ?? orgDetail?.org_detail_id;
     if (!orgDetailId) {
-      throw new Error('Organization detail ID missing from created organization detail.');
+      throw new Error('Failed to save organization details.');
     }
 
     const payload   = buildPayload(complainantId, orgDetailId, complainant, incident, evidence);
@@ -97,7 +97,8 @@ async function submitReport(req, res) {
     return res.status(201).json({ data: newReport });
   } catch (err) {
     console.error('[submitReport]', err?.message ?? err, err?.stack ?? '');
-    return res.status(500).json({ error: 'Failed to submit report. Please try again.' });
+    const errorMsg = err?.message || 'Failed to submit report. Please try again.';
+    return res.status(500).json({ error: errorMsg });
   }
 }
 
