@@ -337,6 +337,7 @@ export default function ProfilePage() {
 
       {/* ── Hero strip ────────────────────────────── */}
       <div className={styles.hero}>
+        <div className={styles.heroOverlay} />
         <div className={styles.heroInner}>
           <div className={styles.avatarWrap}>
             {form.profile_img ? (

@@ -13,10 +13,21 @@
 
 /* ── Hero strip ─────────────────────────────────────────────── */
 .hero {
-  background: linear-gradient(135deg, #025f61 0%, #037F81 60%, #048f92 100%);
+  background: url('/hero-banner.png') center/cover no-repeat;
   padding: 2.5rem 1rem 3.5rem;
   position: relative;
   overflow: hidden;
+}
+
+.heroOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #025f61 0%, #037F81 60%, #048f92 100%);
+  opacity: 0.85;
+  z-index: 0;
 }
 
 .hero::after {
@@ -28,6 +39,7 @@
   height: 40px;
   background: #f4f6f8;
   clip-path: ellipse(55% 100% at 50% 100%);
+  z-index: 2;
 }
 
 .heroInner {
@@ -37,6 +49,7 @@
   align-items: center;
   gap: 1.75rem;
   flex-wrap: wrap;
+  z-index: 2;
 }
 
 /* Avatar */
@@ -93,6 +106,7 @@
 .heroMeta {
   flex: 1;
   min-width: 0;
+  z-index: 1;
 }
 
 .heroName {
@@ -169,7 +183,7 @@
   margin: -24px auto 0;
   padding: 0 1rem;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* ── Tabs ───────────────────────────────────────────────────── */
