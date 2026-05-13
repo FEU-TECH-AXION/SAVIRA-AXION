@@ -73,4 +73,25 @@ async function getReportsByUserId(complainantId) {
   return data;
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId }
+async function getAllReports() {
+  const { data, error } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      incident_description,
+      incident_city,
+      incident_province,
+      incident_date,
+      case_status_id,
+      created_at,
+      is_current
+    `)
+    .eq('is_current', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports }

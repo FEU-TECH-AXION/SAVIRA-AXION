@@ -1157,7 +1157,66 @@ export default function CaseManagement() {
   const isCaseOfficer = user.role?.toLowerCase() === "case officer" || user.role?.toLowerCase() === "case_officer";
   const isLegal   = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
 
-  const [cases, setCases] = useState(PLACEHOLDER_CASES);
+  const [cases, setCases] = useState([]);
+const [casesLoading, setCasesLoading] = useState(true);
+
+const STATUS_STEP = {
+  1: "For Verification",
+  2: "Undergoing Review",
+  3: "Verified - True",
+  4: "Verified - False",
+  5: "Under Case Evaluation",
+  6: "Case Filed",
+  7: "Investigation Ongoing",
+  8: "Hearing Ongoing",
+  9: "Dismissed",
+  10: "Perpetrator Convicted",
+};
+
+useEffect(() => {
+  const fetchCases = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_URL}/api/case_reports/all`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch cases');
+      const { data } = await res.json();
+
+      // Map DB shape to the shape CaseManagement expects
+      const mapped = data.map((r, i) => ({
+        id:              r.case_report_id,
+        caseId:          "SASHA-" + String(r.case_report_id).padStart(5, "0"),
+        reporterId:      String(r.complainant_id),
+        region:          r.incident_province || r.incident_city || "—",
+        status:          STATUS_STEP[r.case_status_id] || "For Verification",
+        assignedOfficer: r.assigned_officer || null,
+        dateSubmitted:   new Date(r.created_at).toLocaleDateString('en-PH'),
+        violenceType:    "—",  // not in DB yet
+        description:     r.incident_description || "—",
+        endorsedTo:      null,
+        endorsementDetails: null,
+        pendingApproval: null,
+        statusHistory: [
+          {
+            status: STATUS_STEP[r.case_status_id] || "For Verification",
+            date:   new Date(r.created_at).toLocaleDateString('en-PH'),
+            by:     r.assigned_officer || "System",
+            notes:  "Report received and logged.",
+          }
+        ],
+      }));
+
+      setCases(mapped);
+    } catch (err) {
+      console.error('[CaseManagement] fetch error:', err);
+    } finally {
+      setCasesLoading(false);
+    }
+  };
+
+  fetchCases();
+}, []);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [page, setPage] = useState(1);

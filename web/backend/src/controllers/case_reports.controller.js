@@ -1,7 +1,8 @@
 const CaseReports = require('../models/case_reports.model')
 const { createOrgDetail }    = require("../models/organization_details.model");
-const { getComplainantId, createReport, getReportsByUserId }       = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports }       = require("../models/case_reports.model");
 const { getCaseStatusByName } = require('../models/case_status.model'); // add this import
+const { get } = require('../routes/case_reports.routes');
 
 const getItems = async (req, res) => {
     try {
@@ -116,5 +117,14 @@ async function getUserReports(req, res) {
   }
 }
 
+async function getAllCases(req, res) {
+  try {
+    const reports = await getAllReports();
+    return res.json({ data: reports });
+  } catch (err) {
+    console.error('[getAllCases]', err.message);
+    return res.status(500).json({ error: 'Failed to fetch cases.' });
+  }
+}
 
-module.exports = { getItems, createItem, submitReport, getUserReports }
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases }
