@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import styles from "./contact.module.css";
-import { FaXTwitter, FaInstagram, FaYoutube, FaLinkedin } from "react-icons/fa6";
+import { FaFacebook, FaInstagram} from "react-icons/fa6";
 
 
 export default function ContactPage() {
@@ -173,10 +173,10 @@ export default function ContactPage() {
               <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Stay Connected</h4>
               <div className={styles.socials}>
-                <a href="#" aria-label="X / Twitter"><FaXTwitter /></a>
-                <a href="#" aria-label="Instagram"><FaInstagram /></a>
-                <a href="#" aria-label="YouTube"><FaYoutube /></a>
-                <a href="#" aria-label="LinkedIn"><FaLinkedin /></a>
+                <a href="https://www.facebook.com/PHsasha" aria-label="Facebook"><FaFacebook /></a>
+                <a href="https://www.instagram.com/phsasha_official/?g=5" aria-label="Instagram"><FaInstagram /></a>
+                {/* <a href="#" aria-label="YouTube"><FaYoutube /></a>
+                <a href="#" aria-label="LinkedIn"><FaLinkedin /></a> */}
               </div>
             </div>
           </div>

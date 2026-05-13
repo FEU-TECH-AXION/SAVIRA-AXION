@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaXTwitter, FaInstagram, FaYoutube, FaLinkedin } from "react-icons/fa6";
+import { FaFacebook, FaInstagram} from "react-icons/fa6";
 import styles from "./footer.module.css";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -96,10 +96,10 @@ export default function Footer() {
             strictly prohibited.
           </p>
           <div className={styles.footerSocials}>
-            <a href="#" aria-label="X / Twitter"><FaXTwitter /></a>
-            <a href="#" aria-label="Instagram"><FaInstagram /></a>
-            <a href="#" aria-label="YouTube"><FaYoutube /></a>
-            <a href="#" aria-label="LinkedIn"><FaLinkedin /></a>
+            <a href="https://www.facebook.com/PHsasha" aria-label="Facebook"><FaFacebook /></a>
+            <a href="https://www.instagram.com/phsasha_official/?g=5" aria-label="Instagram"><FaInstagram /></a>
+            {/* <a href="#" aria-label="YouTube"><FaYoutube /></a>
+            <a href="#" aria-label="LinkedIn"><FaLinkedin /></a> */}
           </div>
         </div>
 
