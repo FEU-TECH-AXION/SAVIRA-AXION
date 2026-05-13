@@ -64,10 +64,16 @@ function Navbar({ onBurger }) {
       <Pressable onPress={onBurger} style={{ padding: 4 }}>
         <Ionicons name="menu" size={26} color="#fff" />
       </Pressable>
-      <Image source={require('../../assets/sasha-logo-white.png')} style={s.navLogo} resizeMode="contain" />
-      <Pressable style={s.loginBtn}>
-        <Text style={s.loginBtnText}>Log In</Text>
-      </Pressable>
+      <Image
+        source={require('../../assets/sasha-logo-white.png')}
+        style={s.navLogo}
+        resizeMode="contain"
+      />
+      <View style={s.navRight}>
+        <Feather name="search" size={20} color="#fff" />
+        <Ionicons name="notifications-outline" size={20} color="#fff" />
+        <View style={s.avatar}><Text style={s.avatarText}>U</Text></View>
+      </View>
     </View>
   );
 }
@@ -216,8 +222,13 @@ const s = StyleSheet.create({
     paddingBottom: 12,
   },
   navLogo: { width: 90, height: 32 },
-  loginBtn: { backgroundColor: ORANGE, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 6 },
-  loginBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+  width: 30, height: 30, borderRadius: 15,
+  backgroundColor: 'rgba(255,255,255,0.3)',
+  alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   hero: {
     height: 180,

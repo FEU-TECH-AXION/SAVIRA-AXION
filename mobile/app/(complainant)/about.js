@@ -1,385 +1,348 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-  Modal,
-  Image,
+  View, Text, ScrollView, Pressable, Image,
+  StyleSheet, Modal, ImageBackground,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Ionicons, Feather } from '@expo/vector-icons';
 
-const TEAL = '#037F81';
+const TEAL  = '#037F81';
 const ORANGE = '#E96433';
 const BORDER = '#e5e7eb';
+const BG    = '#f5f7f8';
 
-// ── Side Nav ─────────────────────────────────────
-// ── Side Nav ─────────────────────────────────────
+// ── Side Nav ──────────────────────────────────────────────────────────────────
 function SideNav({ open, onClose }) {
   const router = useRouter();
-
   const links = [
-    { label: 'Home', href: '/(complainant)/dashboard', icon: 'home-outline' },
-    { label: 'Report', href: '/(complainant)/reports', icon: 'document-text-outline' },
+    { label: 'Home',      href: '/(complainant)/dashboard',            icon: 'home-outline' },
+    { label: 'Report',    href: '/(complainant)/reports',               icon: 'document-text-outline' },
     { label: 'Volunteer', href: '/(complainant)/volunteer-application', icon: 'people-outline' },
-    { label: 'About', href: '/(complainant)/about', icon: 'information-circle-outline' },
-    { label: 'Contact', href: '/(complainant)/contact', icon: 'call-outline' },
-    { label: 'Events', href: '/(complainant)/events', icon: 'calendar-outline' },
-
+    { label: 'About',     href: '/(complainant)/about',                 icon: 'information-circle-outline' },
+    { label: 'Contact',   href: '/(complainant)/contact',               icon: 'call-outline' },
+    { label: 'Events',    href: '/(complainant)/events',                icon: 'calendar-outline' },
   ];
-
   return (
-    <Modal visible={open} transparent animationType="slide">
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, flexDirection: 'row' }}>
-
         <View style={nav.drawer}>
-
-          {/* Header */}
           <View style={nav.drawerHeader}>
             <Image
               source={require('../../assets/sasha-logo-white.png')}
               style={nav.drawerLogo}
               resizeMode="contain"
             />
-
             <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color="#666" />
+              <Ionicons name="close" size={24} color="#6b7280" />
             </Pressable>
           </View>
-
-          {/* Links */}
-          {links.map((item) => (
+          {links.map((l) => (
             <Pressable
-              key={item.label}
-              style={({ pressed }) => [
-                nav.drawerItem,
-                pressed && { opacity: 0.6 },
-              ]}
-              onPress={() => {
-                router.push(item.href);
-                onClose();
-              }}
+              key={l.label}
+              style={nav.drawerItem}
+              onPress={() => { router.push(l.href); onClose(); }}
             >
-              <Ionicons name={item.icon} size={20} color={TEAL} />
-              <Text style={nav.drawerText}>{item.label}</Text>
+              <Ionicons name={l.icon} size={20} color={TEAL} />
+              <Text style={nav.drawerItemText}>{l.label}</Text>
             </Pressable>
           ))}
-
-          {/* Logout */}
           <Pressable
             style={nav.logoutBtn}
-            onPress={() => {
-              router.replace('/(auth)/login');
-              onClose();
-            }}
+            onPress={() => { router.replace('/(auth)/login'); onClose(); }}
           >
             <Ionicons name="log-out-outline" size={18} color="#fff" />
             <Text style={nav.logoutText}>Log Out</Text>
           </Pressable>
-
         </View>
-
-        {/* Overlay */}
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}
-          onPress={onClose}
-        />
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
       </View>
     </Modal>
   );
 }
 
-// ── Main Page ────────────────────────────────────
-export default function AboutPage() {
+const nav = StyleSheet.create({
+  drawer: {
+    width: 260, backgroundColor: '#fff',
+    paddingTop: 52, paddingHorizontal: 20, paddingBottom: 32, elevation: 10,
+  },
+  drawerHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 32,
+  },
+  drawerLogo: { width: 100, height: 36 },
+  drawerItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  drawerItemText: { fontSize: 15, color: '#1a1a1a', fontWeight: '600' },
+  logoutBtn: {
+    marginTop: 32, backgroundColor: ORANGE, borderRadius: 10,
+    padding: 14, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 8,
+  },
+  logoutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+});
+
+// ── Navbar ────────────────────────────────────────────────────────────────────
+function Navbar({ onBurger }) {
+  return (
+    <View style={s.navbar}>
+      <Pressable onPress={onBurger} style={{ padding: 4 }}>
+        <Ionicons name="menu" size={26} color="#fff" />
+      </Pressable>
+      <Image
+        source={require('../../assets/sasha-logo-white.png')}
+        style={s.navLogo}
+        resizeMode="contain"
+      />
+      <View style={s.navRight}>
+        <Feather name="search" size={20} color="#fff" />
+        <Ionicons name="notifications-outline" size={20} color="#fff" />
+        <View style={s.avatar}><Text style={s.avatarText}>U</Text></View>
+      </View>
+    </View>
+  );
+}
+
+// ── Core Value Card ───────────────────────────────────────────────────────────
+function CoreValueCard({ number, title, description }) {
+  return (
+    <View style={s.coreCard}>
+      <View style={s.coreNumBadge}>
+        <Text style={s.coreNumText}>{String(number).padStart(2, '0')}</Text>
+      </View>
+      <View style={s.coreDivider} />
+      <Text style={s.coreTitle}>{title}</Text>
+      <Text style={s.coreDesc}>{description}</Text>
+    </View>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+const CORE_VALUES = [
+  {
+    number: 1,
+    title: 'Safe Spaces Commitment',
+    description:
+      'SASHA maintains a firm stance against all forms of sexual harassment and abuse. We advocate for prevention, survivor protection, and accountability to ensure safe and respectful spaces for everyone.',
+  },
+  {
+    number: 2,
+    title: 'Gender Equality',
+    description:
+      'SASHA upholds the equal rights, dignity, and opportunities of all genders. The organization actively challenges discrimination, harmful stereotypes, and systems that enable inequality and abuse.',
+  },
+  {
+    number: 3,
+    title: 'Youth Empowerment',
+    description:
+      'SASHA believes that young people are not only beneficiaries of protection but also leaders of change. The organization promotes youth participation in advocacy, education, and decision-making processes.',
+  },
+];
+
+export default function AboutScreen() {
   const [navOpen, setNavOpen] = useState(false);
 
   return (
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
+      <Navbar onBurger={() => setNavOpen(true)} />
 
-      {/* Navbar */}
-      <View style={s.navbar}>
-        <Pressable onPress={() => setNavOpen(true)}>
-          <Ionicons name="menu" size={26} color="#fff" />
-        </Pressable>
+      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
-        <Image
-          source={require('../../assets/sasha-logo-white.png')}
-          style={s.logo}
-          resizeMode="contain"
-        />
-
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Hero */}
         <View style={s.hero}>
-          <Text style={s.heroLabel}>
-            Know More <Text style={{ color: ORANGE }}>About SASHA</Text>
-          </Text>
-
-          <Text style={s.heroTitle}>About Us</Text>
+          <View style={s.heroOverlay}>
+            <Text style={s.heroTitle}>
+              Know More <Text style={{ color: ORANGE }}>About SASHA</Text>
+            </Text>
+          </View>
         </View>
 
-        {/* Content */}
-        <View style={s.content}>
-          <View style={s.sectionHeading}>
-            <View style={s.line} />
-            <Text style={s.sectionTitle}>About SASHA</Text>
-          </View>
-
-          <Text style={s.heading}>
-            SASHA <Text style={{ color: ORANGE }}>is:</Text>
-          </Text>
-
-          <Text style={s.paragraph}>
-            Scouts Against Sexual Harassment and Abuse (SASHA) is a Scout-led
-            organization established in 2022 to address issues of sexual
-            harassment and abuse affecting children, women, youth, and LGBTQIA+
-            individuals.
-          </Text>
-
-          {/* Mission */}
-          <View style={s.missionCard}>
-            <Text style={s.cardTitle}>Our Mission</Text>
-
-            <Text style={s.cardText}>
-              To defend and uphold the rights of vulnerable sectors against
-              sexual harassment and abuse by providing structured reporting
-              mechanisms and advocacy.
-            </Text>
-          </View>
-
-          {/* Vision */}
-          <View style={s.visionCard}>
-            <Text style={[s.cardTitle, { color: '#fff' }]}>
-              Our Vision
-            </Text>
-
-            <Text style={[s.cardText, { color: '#fff' }]}>
-              A society where safe spaces are ensured, abuse is not tolerated,
-              and survivors are supported with dignity and justice.
-            </Text>
-          </View>
-
-          {/* Values */}
-          <View style={s.sectionHeading}>
-            <View style={s.line} />
-            <Text style={s.sectionTitle}>Core Values</Text>
-          </View>
-
-          {[
-            'Safe Spaces Commitment',
-            'Gender Equality',
-            'Youth Empowerment',
-          ].map((item, index) => (
-            <View key={index} style={s.valueCard}>
-              <View style={s.numberCircle}>
-                <Text style={s.numberText}>
-                  {String(index + 1).padStart(2, '0')}
-                </Text>
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={s.valueTitle}>{item}</Text>
-
-                <Text style={s.valueText}>
-                  SASHA promotes advocacy, equality, protection, and youth-led
-                  change through awareness and support initiatives.
-                </Text>
-              </View>
+        {/* Photo collage + years badge */}
+        <View style={s.collageSection}>
+          <View style={s.collageWrap}>
+            {/* Main image placeholder */}
+            <View style={s.collageMain} />
+            {/* Overlay image placeholder */}
+            <View style={s.collageOverlay} />
+            {/* Years badge */}
+            <View style={s.yearsBadge}>
+              <Text style={s.yearsBadgeText}>3 years</Text>
             </View>
+          </View>
+        </View>
+
+        {/* SASHA Is */}
+        <View style={s.section}>
+          <View style={s.labelRow}>
+            <View style={s.labelLine} />
+            <Text style={s.labelText}>About Us</Text>
+          </View>
+          <Text style={s.pageTitle}>SASHA is:</Text>
+          <Text style={s.bodyText}>
+            Scouts Against Sexual Harassment and Abuse (SASHA) is a Scout-led organization established in 2022 to address issues of sexual harassment and abuse affecting children, women, youth, and LGBTQIA+ individuals. It unites members from different sectors who share a commitment to gender equality and social justice
+          </Text>
+        </View>
+
+        {/* Mission */}
+        <View style={s.missionSection}>
+          <Text style={s.missionLabel}>Our Mission</Text>
+          <View style={s.missionCard}>
+            <Text style={s.missionText}>
+              To defend and uphold the rights of vulnerable sectors against sexual harassment and abuse by providing structured reporting mechanisms, responsible case management, and sustained advocacy.
+            </Text>
+          </View>
+        </View>
+
+        {/* Vision */}
+        <View style={s.visionSection}>
+          <Text style={s.visionLabel}>Our Vision</Text>
+          <View style={s.visionCard}>
+            <Text style={s.visionText}>
+              A society where safe spaces are ensured, abuse is not tolerated, and survivors are supported with dignity, respect, and justice.
+            </Text>
+          </View>
+        </View>
+
+        {/* Core Values */}
+        <View style={s.section}>
+          <View style={s.labelRow}>
+            <View style={s.labelLine} />
+            <Text style={s.labelText}>What We Believe</Text>
+          </View>
+          <Text style={[s.pageTitle, { marginBottom: 4 }]}>
+            Our <Text style={{ color: ORANGE }}>Core Values</Text>
+          </Text>
+
+          {CORE_VALUES.map((cv) => (
+            <CoreValueCard key={cv.number} {...cv} />
           ))}
         </View>
+
       </ScrollView>
     </View>
   );
 }
 
-const nav = StyleSheet.create({
-  drawer: {
-    width: 260,
-    backgroundColor: '#fff',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-  },
-  logoutBtn: {
-    marginTop: 25,
-    backgroundColor: ORANGE,
-    paddingVertical: 14,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    },
-
-    logoutText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 14,
-    },
-  drawerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-    alignItems: 'center',
-  },
-  drawerLogo: {
-    width: 100,
-    height: 36,
-  },
-  drawerItem: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  drawerText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});
-
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f7f8',
-  },
+  container: { flex: 1, backgroundColor: BG },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
 
+  // Navbar
   navbar: {
     backgroundColor: TEAL,
-    paddingTop: 45,
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 44, paddingBottom: 12,
   },
+  navLogo: { width: 90, height: 32 },
 
-  logo: {
-    width: 90,
-    height: 30,
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+  width: 30, height: 30, borderRadius: 15,
+  backgroundColor: 'rgba(255,255,255,0.3)',
+  alignItems: 'center', justifyContent: 'center',
   },
+avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  hero: {
-    backgroundColor: TEAL,
-    padding: 24,
-    alignItems: 'center',
+  // Hero
+  hero: { height: 170, backgroundColor: '#b2d8d8', justifyContent: 'flex-end' },
+  heroOverlay: {
+    backgroundColor: 'rgba(3,127,129,0.4)',
+    paddingHorizontal: 20, paddingVertical: 18,
   },
+  heroTitle: { fontSize: 22, fontWeight: '900', color: '#fff' },
 
-  heroLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+  // Collage
+  collageSection: { alignItems: 'center', paddingVertical: 24, backgroundColor: '#fff' },
+  collageWrap: { width: 280, height: 200, position: 'relative' },
+  collageMain: {
+    width: 220, height: 180, borderRadius: 14,
+    backgroundColor: '#cde8e8', position: 'absolute', left: 0, top: 0,
   },
-
-  heroTitle: {
-    color: '#fff',
-    fontSize: 30,
-    fontWeight: '800',
-    marginTop: 10,
+  collageOverlay: {
+    width: 130, height: 130, borderRadius: 10,
+    backgroundColor: '#a8d5d5', position: 'absolute', right: 0, bottom: 0,
+    borderWidth: 3, borderColor: '#fff',
   },
-
-  content: {
-    padding: 16,
-    gap: 16,
+  yearsBadge: {
+    position: 'absolute', right: 10, top: 10,
+    backgroundColor: ORANGE, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
+  yearsBadgeText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
-  sectionHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  // Sections
+  section: { padding: 20 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  labelLine: { width: 24, height: 2, backgroundColor: ORANGE, borderRadius: 2 },
+  labelText: { fontSize: 13, color: '#6b7280', fontWeight: '600' },
+  pageTitle: { fontSize: 26, fontWeight: '900', color: TEAL, marginBottom: 10 },
+  bodyText: { fontSize: 14, color: '#444', lineHeight: 22 },
+
+  // Mission
+  missionSection: {
+    backgroundColor: BG,
+    paddingVertical: 28, paddingHorizontal: 20,
   },
-
-  line: {
-    width: 24,
-    height: 2,
-    backgroundColor: ORANGE,
+  missionLabel: {
+    fontSize: 28, fontWeight: '900', color: ORANGE,
+    marginBottom: 14,
   },
-
-  sectionTitle: {
-    fontWeight: '800',
-    color: '#666',
-  },
-
-  heading: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: TEAL,
-  },
-
-  paragraph: {
-    fontSize: 14,
-    lineHeight: 24,
-    color: '#444',
-  },
-
   missionCard: {
     backgroundColor: '#fff',
-    padding: 18,
-    borderLeftWidth: 5,
-    borderLeftColor: ORANGE,
-    borderRadius: 12,
-  },
-
-  visionCard: {
-    backgroundColor: TEAL,
-    padding: 20,
     borderRadius: 14,
+    borderWidth: 1, borderColor: BORDER,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
+  missionText: { fontSize: 14, color: '#333', lineHeight: 23 },
 
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: ORANGE,
-    marginBottom: 10,
+  // Vision
+  visionSection: {
+    backgroundColor: TEAL,
+    paddingVertical: 28, paddingHorizontal: 20,
   },
-
-  cardText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#555',
+  visionLabel: {
+    fontSize: 28, fontWeight: '900', color: '#fff',
+    marginBottom: 14,
   },
+  visionCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14, padding: 18,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
+  visionText: { fontSize: 14, color: '#fff', lineHeight: 23 },
 
-  valueCard: {
-    flexDirection: 'row',
-    gap: 14,
+  // Core Value Card
+  coreCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
+    borderWidth: 1, borderColor: BORDER,
+    padding: 16, marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
-
-  numberCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  coreNumBadge: {
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: ORANGE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
   },
-
-  numberText: {
-    color: '#fff',
-    fontWeight: '800',
+  coreNumText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  coreDivider: {
+    height: 2, backgroundColor: BORDER,
+    borderRadius: 2, marginBottom: 10,
   },
-
-  valueTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-
-  valueText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#666',
-  },
+  coreTitle: { fontSize: 16, fontWeight: '800', color: '#1a1a1a', marginBottom: 6 },
+  coreDesc: { fontSize: 13, color: '#555', lineHeight: 21 },
 });
