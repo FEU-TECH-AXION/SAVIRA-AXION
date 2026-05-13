@@ -15,6 +15,8 @@ export default function ForgotPassword() {
     password: "",
   });
 
+  const [message, setMessage] = useState("");
+
   const router = useRouter();
 
   const handleChange = (e) => {
@@ -32,14 +34,8 @@ const handleSubmit = async (e) => {
 
   const data = await res.json();
 
-  if (!res.ok) {
-    alert(data.error);
-    return;
-  }
-  // TODO: Replace localStorage with httpOnly cookie for security
-  // Save user to localStorage so other pages can access it
-  localStorage.setItem('user', JSON.stringify(data.user));
-  router.push('/dashboard');
+  // Even on error, show generic message to prevent email enumeration
+  setMessage("If that email exists, a reset link has been sent.");
 };
 
   return (
@@ -83,6 +79,12 @@ const handleSubmit = async (e) => {
             <button type="submit" className={styles.btn}>
               Send Email
             </button>
+
+            {message && (
+              <p className={styles.pgdescription} style={{ color: 'green', marginTop: '10px' }}>
+                {message}
+              </p>
+            )}
 
             {/* Terms checkbox */}
             <div className={styles.auxiliaryGroup}>

@@ -376,6 +376,14 @@
   margin-top: 0.1rem;
 }
 
+.radioGroupError {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #dc2626;
+  background: #fef2f2;
+  width: fit-content;
+}
+
 .radioLabel {
   display: flex;
   align-items: center;
@@ -828,4 +836,32 @@
   .wizardLabel    { font-size: 0.62rem; max-width: 60px; }
   .wizardDot      { width: 28px; height: 28px; font-size: 0.72rem; }
   .reviewLabel    { min-width: 110px; }
+}
+
+.inputError {
+  border: 1px solid #dc2626 !important;
+  background: #fef2f2;
+}
+
+.inputError:focus {
+  outline: none;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+}
+
+.fieldError {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.errorBanner {
+  margin-bottom: 1.25rem;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-weight: 500;
 }

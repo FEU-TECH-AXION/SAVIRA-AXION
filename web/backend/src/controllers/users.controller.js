@@ -40,4 +40,4 @@ const loginUser = async (req, res) => {
     }
 };
 
-module.exports = { getItems, createItem, loginUser }
+module.exports = { getItems, createItem, loginUser };

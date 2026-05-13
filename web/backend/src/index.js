@@ -19,9 +19,8 @@ app.listen(PORT, () => console.log(`Backend running on :${PORT}`));;
 // const itemsRouter = require('./routes/sample.routes')
 // app.use('/api/items', itemsRouter)
 
-// --------------------------------------------------------
-// ROUTES FOR USER RELATED TABLES
-// --------------------------------------------------------
+
+// ── ROUTES FOR USER RELATED TABLES ────────────────────────────────────────────────
 
 // Route for users tbl
 const usersRouter = require('./routes/users.routes')
@@ -59,14 +58,29 @@ app.use('/api/roles', rolesRouter)
 const userCaseLogsRouter = require('./routes/user_case_logs.routes')
 app.use('/api/user_case_logs', userCaseLogsRouter)
 
-// ======================================================================
 
+// ── ROUTES FOR CASE REPORTING RELATED TABLES ────────────────────────────────────────────────
 
-// --------------------------------------------------------
-// ROUTES FOR PAGES
-// --------------------------------------------------------
+// Route for case_reports tbl
+const caseReportsRouter = require('./routes/case_reports.routes')
+app.use('/api/case_reports', caseReportsRouter)
 
-// Route for auth (signup/login)
-const authRoutes = require('./routes/auth.routes');
-app.use('/api/auth', authRoutes);
+// Route for case_assessments tbl
+const caseAssessmentsRouter = require('./routes/case_assessments.routes')
+app.use('/api/case_assessments', caseAssessmentsRouter)
 
+// Route for evidences tbl
+const evidencesRouter = require('./routes/evidences.routes')
+app.use('/api/evidences', evidencesRouter)
+
+// Route for case_types tbl
+const caseTypesRouter = require('./routes/case_types.routes')
+app.use('/api/case_types', caseTypesRouter)
+
+// Route for case_status tbl
+const caseStatusRouter = require('./routes/case_status.routes')
+app.use('/api/case_status', caseStatusRouter)
+
+// Route for case_report_logs tbl
+const caseReportLogsRouter = require('./routes/case_report_logs.routes')
+app.use('/api/case_report_logs', caseReportLogsRouter)

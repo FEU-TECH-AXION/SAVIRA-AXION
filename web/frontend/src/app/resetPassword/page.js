@@ -1,21 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./resetPassword.module.css";
 import { IoIosArrowBack } from "react-icons/io";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useRouter } from 'next/navigation';
+import { supabase } from "@/lib/supabase";
 
 export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
     password: "",
     confirmPassword: "",
   });
+
+  const [ready, setReady] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      setReady(true); // token is valid, allow form submission
+    }
+  });
+
+  return () => subscription.unsubscribe();
+  }, []);
 
   const router = useRouter();
 
@@ -26,22 +37,26 @@ export default function ResetPassword() {
 const handleSubmit = async (e) => {
   e.preventDefault();
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/reset-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: form.password }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    alert(data.error);
+  if (form.password !== form.confirmPassword) {
+    alert("Passwords do not match.");
     return;
   }
-  // TODO: Replace localStorage with httpOnly cookie for security
-  // Save user to localStorage so other pages can access it
-  localStorage.setItem('user', JSON.stringify(data.user));
-  router.push('/dashboard');
+
+  if (form.password.length < 6) {
+    alert("Password must be at least 6 characters.");
+    return;
+  }
+
+  // ✅ Supabase uses the recovery token from the URL automatically
+  const { error } = await supabase.auth.updateUser({ password: form.password });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setMessage("Password reset successful! Redirecting to login...");
+  setTimeout(() => router.push('/login'), 2000); // redirect to login, not dashboard
 };
 
   return (

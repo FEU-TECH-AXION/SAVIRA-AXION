@@ -1,5 +1,5 @@
 import { getUserRole } from "@/lib/auth";
-import CreateReport from "@/components/report/CreateReport";
+import CreateReport from "@/components/cases/CreateReport";
 import AdminDashboard from "@/components/dashboard/admin/AdminDashboard";
 import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficerDashboard";
 import VolunteerDashboard from "@/components/dashboard/volunteer/VolunteerDashboard";
