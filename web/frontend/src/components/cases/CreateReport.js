@@ -142,13 +142,49 @@ function RadioGroup({ name, options, value, onChange, error }) {
 }
 
 // ── Validation helpers ────────────────────────────────────────────────────────
+// ── Contact & email format helpers ───────────────────────────────────────────
+const PHONE_REGEX = /^\+639\d{9}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Normalises a raw phone input into +63XXXXXXXXXX format.
+ * Accepts:  09XXXXXXXXX  |  9XXXXXXXXX  |  +639XXXXXXXXX  (with/without separators)
+ * Returns the cleaned string (may be partial — caller decides validity).
+ */
+function normalisePhone(raw) {
+  // Strip everything except digits and a leading +
+  let digits = raw.replace(/[^\d]/g, "");
+
+  // Strip a leading country-code prefix if present (63…)
+  if (digits.startsWith("63")) digits = digits.slice(2);
+
+  // Strip a leading 0 (local format 09XX…)
+  if (digits.startsWith("0")) digits = digits.slice(1);
+
+  // Cap at 10 digits (9XXXXXXXXX)
+  digits = digits.slice(0, 10);
+
+  return digits ? `+63${digits}` : "";
+}
+
 function validateStep0(data) {
   const errors = {};
 
   if (!data.age)           errors.age           = "Age is required.";
   if (!data.gender)        errors.gender        = "Gender identity is required.";
-  if (!data.contactNumber) errors.contactNumber = "Contact number is required.";
-  if (!data.email)         errors.email         = "Email is required.";
+
+  if (!data.contactNumber) {
+    errors.contactNumber = "Contact number is required.";
+  } else if (!PHONE_REGEX.test(data.contactNumber)) {
+    errors.contactNumber = "Enter a valid Philippine mobile number (must be 11 digits).";
+  }
+
+  if (!data.email) {
+    errors.email = "Email is required.";
+  } else if (!EMAIL_REGEX.test(data.email)) {
+    errors.email = "Enter a valid email address (e.g. sample@gmail.com).";
+  }
+
   if (!data.interview)     errors.interview     = "Consent to interview is required.";
   if (!data.organization)  errors.organization  = "Organization is required.";
 
@@ -180,6 +216,7 @@ function validateStep1(data) {
   const errors = {};
 
   if (!data.date)          errors.date         = "Date is required.";
+  if (!data.time)          errors.time         = "Time is required.";
   if (!data.incidentCity)  errors.incidentCity = "Incident city/municipality is required.";
   if (!data.description)   errors.description  = "Description of incident is required.";
   if (!data.perpetratorKnown) errors.perpetratorKnown = "Please indicate if the perpetrator is known.";
@@ -195,7 +232,6 @@ function validateStep1(data) {
   if (data.witnesses === "Yes") {
     if (!data.witnessName) errors.witnessName = "Witness name is required.";
     if (!data.witnessContact) errors.witnessContact = "Witness contact information is required.";
-    if (!data.witnessRelationship) errors.witnessRelationship = "Relationship to witness is required.";
   }
 
   return errors;
@@ -466,11 +502,35 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Mode of Contact</h3>
       <div className={styles.formGrid}>
-        <Field label="Contact Number" required hint="We will use this to reach you regarding your report." error={errors.contactNumber}>
-          <Input placeholder="09XX-XXX-XXXX" value={data.contactNumber} onChange={set("contactNumber")} error={errors.contactNumber} />
+        <Field
+          label="Contact Number"
+          required
+          hint="We will use this to reach you regarding your report."
+          error={errors.contactNumber}
+        >
+          <Input
+            type="tel"
+            placeholder="+639XXXXXXXXX"
+            value={data.contactNumber}
+            onChange={(e) => {
+              clearError("contactNumber");
+              const formatted = normalisePhone(e.target.value);
+              onChange({ ...data, contactNumber: formatted });
+            }}
+            error={errors.contactNumber}
+          />
         </Field>
         <Field label="Email" required hint="A confirmation and updates will be sent here." error={errors.email}>
-          <Input type="email" placeholder="sample@gmail.com" value={data.email} onChange={set("email")} error={errors.email} />
+          <Input
+            type="email"
+            placeholder="sample@gmail.com"
+            value={data.email}
+            onChange={(e) => {
+              clearError("email");
+              onChange({ ...data, email: e.target.value.trim() });
+            }}
+            error={errors.email}
+          />
         </Field>
       </div>
 
@@ -518,8 +578,8 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
         <Field label="Date" required hint="When did the incident happen?" error={errors.date}>
           <Input type="date" value={data.date} onChange={set("date")} error={errors.date} />
         </Field>
-        <Field label="Time" hint="Approximate time is fine if exact time is unknown.">
-          <Input type="time" value={data.time} onChange={set("time")} />
+        <Field label="Time" hint="Approximate time is fine if exact time is unknown." error={errors.time}>
+          <Input type="time" value={data.time} onChange={set("time")} error={errors.time} />
         </Field>
       </div>
 
@@ -628,20 +688,6 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
 
       {data.witnesses === "Yes" && (
         <div className={styles.formGrid}>
-        {/* <Field
-          label="Witness Information"
-          required
-          hint="Please provide at least their name and their relationship to you. A contact number is helpful but not required."
-          error={errors.witnessInfo}
-        >
-          <textarea
-            className={`${styles.textarea} ${errors.witnessInfo ? styles.inputError : ""}`}
-            placeholder="e.g. Juan dela Cruz, classmate, 09XX-XXX-XXXX (optional)"
-            value={data.witnessInfo || ""}
-            onChange={set("witnessInfo")}
-            rows={3}
-          />
-        </Field> */}
         <Field label="Name of Witness" required hint="Full name if known." error={errors.witnessName}>
             <Input
               placeholder="Full name"
@@ -655,6 +701,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
               placeholder="e.g. phone number, email"
               value={data.witnessContact || ""}
               onChange={set("witnessContact")}
+              error={errors.witnessContact}
             />
           </Field>
           <Field label="Relationship to Witness" hint="How do you know this person?">
@@ -795,7 +842,7 @@ function StepEvidence({ data, onChange }) {
         </div>
       </div>
 
-      <div className={styles.anonymousRow}>
+      {/* <div className={styles.anonymousRow}>
         <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
@@ -805,7 +852,7 @@ function StepEvidence({ data, onChange }) {
           />
           I would like to submit Anonymously
         </label>
-      </div>
+      </div> */}
     </div>
   );
 }
@@ -895,7 +942,7 @@ function StepReview({ complainant, incident, evidence }) {
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Supporting Evidence</h3>
-        <Row label="Anonymous submission" value={evidence.anonymous ? "Yes" : "No"} />
+        {/* <Row label="Anonymous submission" value={evidence.anonymous ? "Yes" : "No"} /> */}
         <Row
           label="Files attached"
           value={
