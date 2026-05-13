@@ -6,6 +6,7 @@ import styles from "./ComplainantDashboard.module.css";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 
 // ── Action Card (Submit Report / Apply as Volunteer) ─────────────────────────
 function ActionCard({ icon, title, description, onView }) {
@@ -189,9 +190,13 @@ export default function ComplainantDashboard({
   const [calDate, setCalDate] = useState(new Date());
 
   const router = useRouter();
+  const { user: authUser } = useAuth();
 
-  // TODO: replace with real auth / session data
-  const user = { role: "complainant", firstName: "Complainant", lastName: "User" };
+  const user = authUser ? {
+    role: authUser.role_name,
+    firstName: authUser.first_name,
+    lastName: authUser.last_name,
+  } : { role: "complainant", firstName: "Complainant", lastName: "User" };
 
   // ── Fallback demo data (only used when props are absent) ───────────────────
   const resolvedNotifications = notifications.length
