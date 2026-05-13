@@ -961,29 +961,29 @@ export default function LegalReviewManagement() {
           </div>
           <div className="row g-3 mb-4">
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon="📋" title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />
+              <ActionCard icon={<img src="LegalIconParalegal.png" alt="" className={styles.actionIconImg} />} title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />
             </div>
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon="⚖️" title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />
+              <ActionCard icon={<img src="LegalIconLawyer.png" alt="" className={styles.actionIconImg} />} title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />
             </div>
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon="📁" title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
+              <ActionCard icon={<img src="LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
             </div>
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon="🔭" title="Monitoring & Follow-Up" description="Log monitoring updates: whether referrals were received, services provided, complainant contacted." onView={() => setModal("selectMonitor")} />
+              <ActionCard icon={<img src="LegalIconMonitor.png" alt="" className={styles.actionIconImg} />} title="Monitoring & Follow-Up" description="Log monitoring updates: whether referrals were received, services provided, complainant contacted." onView={() => setModal("selectMonitor")} />
             </div>
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon="🔄" title="Update Case Status" description="Advance a case through Case Filed → Investigation → Hearing → Dismissed / Convicted. Requires admin approval." onView={() => setModal("selectStatus")} />
+              <ActionCard icon={<img src="LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Advance a case through Case Filed → Investigation → Hearing → Dismissed / Convicted. Requires admin approval." onView={() => setModal("selectStatus")} />
             </div>
             {(isAdmin || isLegal) && (
               <div className="col-12 col-sm-6 col-lg-4">
-                <ActionCard icon="👤" title="Assign Legal Personnel" description="Assign a legal officer and paralegal to a case for support and tracking." onView={() => setModal("selectAssign")} />
+                <ActionCard icon={<img src="LegalIconAssign.png" alt="" className={styles.actionIconImg} />} title="Assign Legal Personnel" description="Assign a legal officer and paralegal to a case for support and tracking." onView={() => setModal("selectAssign")} />
               </div>
             )}
             {isAdmin && (
               <div className="col-12 col-sm-6 col-lg-4">
                 <ActionCard
-                  icon="✅"
+                  icon={<img src="LegalIconApprove.png" alt="" className={styles.actionIconImg} />}
                   title="Approve Status Changes"
                   description="Review and approve or reject pending status change requests."
                   badge={pendingCases.length > 0 ? <span className={styles.pendingCount}>{pendingCases.length} pending</span> : null}
