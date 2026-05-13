@@ -333,16 +333,16 @@ export default function VolunteerManagement() {
           </div>
           <div className="row g-3 mb-4">
             <div className="col-12 col-sm-6">
-              <ActionCard icon="⏳" title="See Pending Applications" description="Review all applications currently awaiting action." onView={() => setModal("selectPending")} />
+              <ActionCard icon={<img src="VolunteerIconPending.png" alt="" className={styles.actionIconImg} />} title="See Pending Applications" description="Review all applications currently awaiting action." onView={() => setModal("selectPending")} />
             </div>
             <div className="col-12 col-sm-6">
-              <ActionCard icon="🔍" title="Under Review" description="Applications currently being reviewed by the team." onView={() => setModal("selectReviewing")} />
+              <ActionCard icon={<img src="VolunteerIconReview.png" alt="" className={styles.actionIconImg} />} title="Under Review" description="Applications currently being reviewed by the team." onView={() => setModal("selectReviewing")} />
             </div>
             <div className="col-12 col-sm-6">
-              <ActionCard icon="✅" title="Approved Application" description="View and manage approved volunteer applications." onView={() => setModal("selectApproved")} />
+              <ActionCard icon={<img src="VolunteerIconApproved.png" alt="" className={styles.actionIconImg} />} title="Approved Application" description="View and manage approved volunteer applications." onView={() => setModal("selectApproved")} />
             </div>
             <div className="col-12 col-sm-6">
-              <ActionCard icon="👥" title="View All Applicants" description="Browse the complete list of all volunteer applicants." onView={() => setModal("selectAll")} />
+              <ActionCard icon={<img src="VolunteerIconAll.png" alt="" className={styles.actionIconImg} />} title="View All Applicants" description="Browse the complete list of all volunteer applicants." onView={() => setModal("selectAll")} />
             </div>
           </div>
         </div>
