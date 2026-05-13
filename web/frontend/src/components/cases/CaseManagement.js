@@ -1365,7 +1365,7 @@ useEffect(() => {
                 {stats.map(({ num, label, highlight }) => (
                   <div key={label} className="col-12 col-md-3">
                     <div className={`${styles.statCard} ${highlight ? styles.statCardHighlight : ""}`}>
-                      <span className={styles.statDot} />
+                      {/* <span className={styles.statDot} /> */}
                       <p className={styles.statNum}>{num}</p>
                       <p className={styles.statLabel}>{label}</p>
                     </div>

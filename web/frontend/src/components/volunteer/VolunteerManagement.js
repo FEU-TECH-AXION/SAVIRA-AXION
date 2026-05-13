@@ -314,7 +314,7 @@ export default function VolunteerManagement() {
                 {stats.map(({ num, label, hasNew }) => (
                   <div key={label} className="col-12 col-md-4">
                     <div className={styles.statCard}>
-                      {hasNew && <span className={styles.statDot} />}
+                      {/* {hasNew && <span className={styles.statDot} />} */}
                       <p className={styles.statNum}>{num}</p>
                       <p className={styles.statLabel}>{label}</p>
                     </div>

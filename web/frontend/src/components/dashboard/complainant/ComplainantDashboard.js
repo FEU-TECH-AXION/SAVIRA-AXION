@@ -243,7 +243,7 @@ export default function ComplainantDashboard({
               <div className="row g-3">
                 <div className="col-12 col-md-4">
                   <div className={styles.statCard}>
-                    <span className={styles.statDot} />
+                    {/* <span className={styles.statDot} /> */}
                     <p className={styles.statNum}>{resolvedTotalNotif}</p>
                     <p className={styles.statLabel}>Total Notifications</p>
                   </div>
