@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import styles from "./CreateReport.module.css";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
@@ -978,13 +978,13 @@ function StatusStepper({ steps, current }) {
 }
 
 // ── Report Status Card ────────────────────────────────────────────────────────
-function ReportStatusCard({ reportData, onView }) {
+function ReportStatusCard({ reportData, reportNumber, onView }) {
   const steps = ["Submitted", "Under Review", "Resolved"];
   const { description = "—", location = "—", dateApplied = "—", id = "—", currentStep = 0 } = reportData ?? {};
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
-        <span>Report 2</span>
+        <span>Report {reportNumber}</span>  
         <button className={styles.headerViewBtn} onClick={onView}>View →</button>
       </div>
       <div className={styles.statusCardBody}>
@@ -1073,6 +1073,7 @@ export default function CreateReport({
     const handleSubmit = async () => {
     setSubmissionError(null);
     setIsSubmitting(true);
+    fetchUserReports();
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -1096,21 +1097,32 @@ export default function CreateReport({
     }
   };
 
-  const resolvedReport = reportData ?? {
-    description: "Lorem Ipsum Dolor",
-    location: "123 Metro Manila",
-    dateApplied: "March 3, 2026",
-    id: "00111222333",
-    currentStep: 0,
+  const [userReports, setUserReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
+
+  const STATUS_STEP = {
+    'Pending':      0,
+    'Under Review': 1,
+    'Resolved':     2,
   };
 
-  const resolvedReport2 = {
-    description: "Lorem Ipsum Dolor",
-    location: "123 Metro Manila",
-    dateApplied: "Feb 24, 2026",
-    id: "00111222333",
-    currentStep: 1,
+  const fetchUserReports = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch reports');
+      const { data } = await res.json();
+      setUserReports(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReportsLoading(false);
+    }
   };
+
+  useEffect(() => { fetchUserReports(); }, []);
 
   return (
     <main className={styles.pageWrapper}>
@@ -1219,12 +1231,29 @@ export default function CreateReport({
           </div>
 
           <div className="row g-3">
-            <div className="col-12">
-              <ReportStatusCard reportData={resolvedReport} onView={() => {}} />
-            </div>
-            <div className="col-12">
-              <ReportStatusCard reportData={resolvedReport2} onView={() => {}} />
-            </div>
+              {reportsLoading ? (
+                <p>Loading reports...</p>
+              ) : userReports.length === 0 ? (
+                <p>No reports submitted yet.</p>
+              ) : (
+                userReports.map((report, i) => (
+                  <div className="col-12" key={report.case_report_id}>
+                    <ReportStatusCard
+                      reportNumber={i + 1}
+                      reportData={{
+                        description: report.incident_description,
+                        location:    report.incident_city,
+                        dateApplied: new Date(report.incident_date).toLocaleDateString('en-PH', {
+                          year: 'numeric', month: 'long', day: 'numeric'
+                        }),
+                        id:          report.case_report_id,
+                        currentStep: STATUS_STEP[report.case_status?.status_name] ?? 0,
+                      }}
+                      onView={() => {}}
+                    />
+                  </div>
+                ))
+              )}
           </div>
         </div>
       </div>

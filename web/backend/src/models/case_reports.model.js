@@ -55,4 +55,22 @@ async function createReport(payload) {
   return data;
 }
 
-module.exports = { getAll, create, getComplainantId, createReport }
+async function getReportsByUserId(complainantId) {
+  const { data, error } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      incident_description,
+      incident_city,
+      incident_date,
+      case_status_id
+    `)
+    .eq('complainant_id', complainantId)
+    .eq('is_current', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId }

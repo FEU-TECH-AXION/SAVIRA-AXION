@@ -1,6 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
 const { createOrgDetail }    = require("../models/organization_details.model");
-const { getComplainantId, createReport }       = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId }       = require("../models/case_reports.model");
 const { getCaseStatusByName } = require('../models/case_status.model'); // add this import
 
 const getItems = async (req, res) => {
@@ -100,4 +100,21 @@ async function submitReport(req, res) {
   }
 }
 
-module.exports = { getItems, createItem, submitReport }
+async function getUserReports(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+
+    const complainantId = await getComplainantId(userId);
+    if (!complainantId) return res.status(404).json({ error: 'Complainant not found.' });
+
+    const reports = await getReportsByUserId(complainantId);
+    return res.json({ data: reports });
+  } catch (err) {
+    console.error('[getUserReports]', err.message);
+    return res.status(500).json({ error: 'Failed to fetch reports.' });
+  }
+}
+
+
+module.exports = { getItems, createItem, submitReport, getUserReports }
