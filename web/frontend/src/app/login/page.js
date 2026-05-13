@@ -39,8 +39,12 @@ export default function Login() {
     try {
       await login(form.email, form.password);
     } catch (err) {
-      // login throws errors as array
-      setErrors(err);
+      // err could be an array or a single error object
+      if (Array.isArray(err)) {
+        setErrors(err);
+      } else {
+        setErrors([{ path: 'general', msg: 'Login failed. Please try again.' }]);
+      }
     }
   };
 

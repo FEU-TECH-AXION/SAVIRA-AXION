@@ -19,6 +19,10 @@ app.listen(PORT, () => console.log(`Backend running on :${PORT}`));;
 // const itemsRouter = require('./routes/sample.routes')
 // app.use('/api/items', itemsRouter)
 
+// ── AUTH ROUTES ────────────────────────────────────────────────
+
+const authRouter = require('./routes/auth.routes')
+app.use('/api/auth', authRouter)
 
 // ── ROUTES FOR USER RELATED TABLES ────────────────────────────────────────────────
 

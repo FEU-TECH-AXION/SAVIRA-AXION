@@ -9,6 +9,7 @@
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';import Navbar from '@/components/navbar/navbar';
+import NavbarClient from '@/components/navbar/NavbarClient';
 import Footer from '@/components/footer/footer';
 import {AuthProvider } from "@/lib/AuthContext";
 // import NavbarWrapper from '@/components/navbar/NavbarWrapper';
@@ -23,7 +24,7 @@ export default function RootLayout({ children }) {
     <html lang="en" data-scroll-behavior="smooth">
       <body>
         <AuthProvider>
-          <Navbar />
+          <NavbarClient />
           <main>{children}</main>
           <Footer />
         </AuthProvider>
