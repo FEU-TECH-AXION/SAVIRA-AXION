@@ -165,6 +165,14 @@
 
 .actionIcon { font-size: 1.4rem; }
 
+.actionIconImg {
+  width: 10%;
+  height: 10%;
+  min-width: 60px;
+  min-height: 60px;
+  border-radius: 100%;
+}
+
 .actionBody { margin-top: 2rem; flex: 1; }
 
 .actionTitle {

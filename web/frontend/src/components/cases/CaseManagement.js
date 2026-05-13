@@ -1363,7 +1363,7 @@ export default function CaseManagement() {
             {(isCaseOfficer || isAdmin) && (
               <div className="col-12 col-sm-6 col-lg-3">
                 <ActionCard
-                  icon="📋"
+                  icon={<img src="CaseIconEvaluate.png" alt="" className={styles.actionIconImg} />}
                   title="Case Evaluation"
                   description="Assess verified cases and identify best pathways for referral or action."
                   onView={() => setModal("viewAll_eval")}
@@ -1375,7 +1375,7 @@ export default function CaseManagement() {
             {(isLegal || isAdmin) && (
               <div className="col-12 col-sm-6 col-lg-3">
                 <ActionCard
-                  icon="⚖️"
+                  icon={<img src="CaseIconLegal.png" alt="" className={styles.actionIconImg} />}
                   title="Legal Case Progress"
                   description="Advance cases through filing, investigation, hearing, and final resolution."
                   onView={() => setModal("viewAll_legal")}

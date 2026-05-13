@@ -415,16 +415,16 @@ export default function ProjectManagement() {
           </div>
           <div className="row g-3 mb-4">
             <div className="col-12 col-sm-6">
-              <ActionCard icon="➕" title="Create a Project" description="Start a new SASHA project or campaign." onView={() => setModal("create")} />
+              <ActionCard icon={<img src="ProjectIconCreate.png" alt="" className={styles.actionIconImg} />} title="Create a Project" description="Start a new SASHA project or campaign." onView={() => setModal("create")} />
             </div>
             <div className="col-12 col-sm-6">
-              <ActionCard icon="🗑️" title="Delete a Project" description="Permanently remove an existing project." onView={() => setModal("selectDelete")} />
+              <ActionCard icon={<img src="ProjectIconDelete.png" alt="" className={styles.actionIconImg} />} title="Delete a Project" description="Permanently remove an existing project." onView={() => setModal("selectDelete")} />
             </div>
             <div className="col-12 col-sm-6">
-              <ActionCard icon="✏️" title="Update Project Information" description="Edit details of an existing project." onView={() => setModal("selectEdit")} />
+              <ActionCard icon={<img src="ProjectIconEdit.png" alt="" className={styles.actionIconImg} />} title="Update Project Information" description="Edit details of an existing project." onView={() => setModal("selectEdit")} />
             </div>
             <div className="col-12 col-sm-6">
-              <ActionCard icon="🔍" title="View All Projects" description="Browse all active, upcoming, and completed projects." onView={() => setModal("selectView")} />
+              <ActionCard icon={<img src="ProjectIconView.png" alt="" className={styles.actionIconImg} />} title="View All Projects" description="Browse all active, upcoming, and completed projects." onView={() => setModal("selectView")} />
             </div>
           </div>
         </div>
