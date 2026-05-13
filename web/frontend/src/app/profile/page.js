@@ -10,6 +10,75 @@ import {
 } from "react-icons/fi";
 import styles from "./profile.module.css";
 
+// ── NCR Data ──────────────────────────────────────────────────────────────────
+const NCR_CITIES = [
+  "Caloocan",
+  "Las Piñas",
+  "Makati",
+  "Malabon",
+  "Mandaluyong",
+  "Manila",
+  "Marikina",
+  "Muntinlupa",
+  "Navotas",
+  "Parañaque",
+  "Pasay",
+  "Pasig",
+  "Pateros",
+  "Quezon City",
+  "San Juan",
+  "Taguig",
+  "Valenzuela",
+];
+
+// ── Validation helpers ────────────────────────────────────────────────────────
+const PHONE_REGEX = /^\+639\d{9}$/;
+
+/**
+ * Normalises a raw phone input into +63XXXXXXXXXX format.
+ * Accepts:  09XXXXXXXXX  |  9XXXXXXXXX  |  +639XXXXXXXXX  (with/without separators)
+ * Returns the cleaned string (may be partial — caller decides validity).
+ */
+function normalisePhone(raw) {
+  // Strip everything except digits and a leading +
+  let digits = raw.replace(/[^\d]/g, "");
+
+  // Strip a leading country-code prefix if present (63…)
+  if (digits.startsWith("63")) digits = digits.slice(2);
+
+  // Strip a leading 0 (local format 09XX…)
+  if (digits.startsWith("0")) digits = digits.slice(1);
+
+  // Cap at 10 digits (9XXXXXXXXX)
+  digits = digits.slice(0, 10);
+
+  return digits ? `+63${digits}` : "";
+}
+
+function validateProfile(data) {
+  const errors = {};
+
+  if (!data.contact_number) {
+    errors.contact_number = "Contact number is required.";
+  } else if (!PHONE_REGEX.test(data.contact_number)) {
+    errors.contact_number = "Enter a valid Philippine mobile number (must be 11 digits).";
+  }
+
+  if (!data.city) {
+    errors.city = "City is required.";
+  } else if (!NCR_CITIES.includes(data.city)) {
+    errors.city = "City must be from Metro Manila/NCR.";
+  }
+
+  if (!data.province) {
+    errors.province = "Province is required.";
+  } else if (data.province !== "National Capital Region (NCR)") {
+    errors.province = "Province must be National Capital Region (NCR).";
+  }
+
+  return errors;
+}
+
 // ── Completion helpers ────────────────────────────────────────
 function getCompletionFields(user) {
   return [
@@ -49,6 +118,7 @@ export default function ProfilePage() {
   const [saving,    setSaving]    = useState(false);
   const [success,   setSuccess]   = useState("");
   const [error,     setError]     = useState("");
+  const [formErrors, setFormErrors] = useState({});
 
   // ── Profile form ──────────────────────────────────────────
   const [form, setForm] = useState({
@@ -93,7 +163,7 @@ export default function ProfilePage() {
       email:          user.email          || "",
       contact_number: user.contact_number || "",
       city:           user.city           || "",
-      province:       user.province       || "",
+      province:       user.province       || "National Capital Region (NCR)",
       profile_img:    user.profile_img    || "",
     });
   }, [user]);
@@ -112,7 +182,22 @@ export default function ProfilePage() {
   const initials = `${user?.first_name?.[0] || ""}${user?.last_name?.[0] || ""}`.toUpperCase() || "?";
 
   // ── Handlers ──────────────────────────────────────────────
-  const handleChange   = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const handleChange   = (e) => {
+    const { name, value } = e.target;
+    setFormErrors((p) => ({ ...p, [name]: "" }));
+    
+    if (name === "contact_number") {
+      const formatted = normalisePhone(value);
+      setForm((p) => ({ ...p, [name]: formatted }));
+    } else if (name === "province") {
+      // Only allow NCR
+      if (value === "" || value === "National Capital Region (NCR)") {
+        setForm((p) => ({ ...p, [name]: value }));
+      }
+    } else {
+      setForm((p) => ({ ...p, [name]: value }));
+    }
+  };
   const handlePwChange = (e) => setPwForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   const handleNotifChange = (key) => setNotifPrefs((p) => ({ ...p, [key]: !p[key] }));
 
@@ -125,6 +210,15 @@ export default function ProfilePage() {
   // Profile save
   const handleSave = async (e) => {
     e.preventDefault();
+    
+    // Validate form
+    const errors = validateProfile(form);
+    if (Object.keys(errors).length) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+    
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
@@ -243,6 +337,7 @@ export default function ProfilePage() {
 
       {/* ── Hero strip ────────────────────────────── */}
       <div className={styles.hero}>
+        <div className={styles.heroOverlay} />
         <div className={styles.heroInner}>
           <div className={styles.avatarWrap}>
             {form.profile_img ? (
@@ -383,22 +478,29 @@ export default function ProfilePage() {
               </Field>
               <Field
                 label="Contact Number"
+                required
                 hint={user.is_contact_number_verified ? "✓ Verified" : "Add a number to improve account security."}
                 hintColor={user.is_contact_number_verified ? "var(--sasha-teal)" : "#888"}
+                error={formErrors.contact_number}
               >
                 <input name="contact_number" type="tel" value={form.contact_number}
-                  onChange={handleChange} placeholder="+63 9XX XXX XXXX" />
+                  onChange={handleChange} placeholder="+639XXXXXXXXX" />
               </Field>
             </div>
 
             <div className={styles.grid2}>
-              <Field label="City">
-                <input name="city" value={form.city}
-                  onChange={handleChange} placeholder="e.g. Quezon City" />
+              <Field label="City" required error={formErrors.city}>
+                <select name="city" value={form.city}
+                  onChange={handleChange}>
+                  <option value="">Select city / municipality</option>
+                  {NCR_CITIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </Field>
-              <Field label="Province">
+              <Field label="Province" required error={formErrors.province}>
                 <input name="province" value={form.province}
-                  onChange={handleChange} placeholder="e.g. Metro Manila" />
+                  onChange={handleChange} placeholder="National Capital Region (NCR)" readOnly />
               </Field>
             </div>
 
