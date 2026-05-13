@@ -1,62 +1,54 @@
+/**
+ * web/frontend/src/app/events/page.js  (updated)
+ *
+ * Now derives events from the ProjectManagement data store.
+ * Only projects where:
+ *   visibility === "public"  &&  approvalStatus === "approved"
+ * are displayed here.
+ *
+ * In production, replace the PROJECTS import with a Supabase query:
+ *   const { data } = await supabase
+ *     .from("projects")
+ *     .select("*")
+ *     .eq("visibility", "public")
+ *     .eq("approval_status", "approved")
+ *     .order("date_start", { ascending: true });
+ */
+
 import Link from "next/link";
 import styles from "./events.module.css";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In a real app, this would come from a Supabase fetch or a shared store.
+// For now we import the same placeholder used in ProjectManagement.
+// ─────────────────────────────────────────────────────────────────────────────
+import { PLACEHOLDER_PROJECTS } from "@/components/projects/projectsData";
+
+// Filter to only public + approved
+const PUBLIC_EVENTS = PLACEHOLDER_PROJECTS.filter(
+  (p) => p.visibility === "public" && p.approvalStatus === "approved"
+);
+
+const CATEGORIES = [
+  "All",
+  "Youth Leadership Programs",
+  "Legal & Policy Education",
+  "Awareness Campaign",
+  "Community Outreach",
+  "New Projects",
+];
+
+const RECENT_POSTS = PUBLIC_EVENTS.slice(0, 3).map((p) => ({
+  title: p.title,
+  date: p.dateStart,
+  slug: p.slug || p.title.toLowerCase().replace(/\s+/g, "-"),
+  image: p.image || "/event-placeholder.png",
+}));
 
 export const metadata = {
   title: "Events | SASHA",
   description: "SASHA Initiatives — Advocacy events and activities across chapters nationwide.",
 };
-
-const EVENTS = [
-  {
-    id: 1,
-    slug: "safe-spaces-summit",
-    title: "Safe Spaces Summit",
-    status: "Happening Soon",
-    image: "/safe-spaces-summit.png",
-    description:
-      "A scout community discussion on preventing sexual harassment in schools and organizations. Participants will learn about reporting procedures and how to create safer environments.",
-  },
-  {
-    id: 2,
-    slug: "youth-against-abuse-summit",
-    title: "Youth Against Abuse Summit",
-    status: null,
-    image: "/youth-summit.png",
-    description:
-      "A leadership summit empowering young advocates to stand against harassment and discrimination. The event features talks, workshops, and collaborative planning sessions.",
-  },
-  {
-    id: 3,
-    slug: "know-your-rights-workshop",
-    title: "Know Your Rights Workshop",
-    status: null,
-    image: "/rights-workshop.png",
-    description:
-      "An educational session focused on understanding legal protections against sexual harassment. Attendees will gain practical knowledge on reporting processes and survivor support.",
-  },
-  {
-    id: 4,
-    slug: "campus-awareness-campaign",
-    title: "Campus Awareness Campaign",
-    status: null,
-    image: "/campus-campaign.png",
-    description:
-      "A movement-driven event promoting respect, consent, and accountability within academic institutions. Volunteers and members will help spread awareness through organized activities.",
-  },
-];
-
-const CATEGORIES = [
-  "Awareness Campaigns",
-  "Training & Workshops",
-  "Youth Leadership Programs",
-  "Legal & Policy Education",
-];
-
-const RECENT_POSTS = [
-  { title: "SASHA believes that…", date: "March 1, 2026", image: "/post-1.png" },
-  { title: "SASHA Awareness on…", date: "August 18, 2026", image: "/post-2.png" },
-  { title: "Youth Empowerment a…", date: "April 1, 2026", image: "/post-3.png" },
-];
 
 export default function EventsPage() {
   return (
@@ -97,37 +89,50 @@ export default function EventsPage() {
           <div className={styles.contentGrid}>
             {/* Events list */}
             <div className={styles.eventsList}>
-              {EVENTS.map((ev) => (
-                <article key={ev.id} className={styles.eventCard}>
-                  <div className={styles.eventImageWrap}>
-                    <img
-                      src={ev.image}
-                      alt={ev.title}
-                      className={styles.eventImage}
-                    />
-                    {ev.status && (
-                      <span className={styles.eventBadge}>{ev.status}</span>
-                    )}
-                  </div>
-                  <div className={styles.eventBody}>
-                    <h3 className={styles.eventTitle}>{ev.title}</h3>
-                    <p className={styles.eventDesc}>{ev.description}</p>
-                    <Link
-                      href={`/events/${ev.slug}`}
-                      className={styles.eventBtn}
-                    >
-                      View Event
-                    </Link>
-                  </div>
-                </article>
-              ))}
+              {PUBLIC_EVENTS.length === 0 ? (
+                <p style={{ color: "#6b7280" }}>No public events available at this time.</p>
+              ) : (
+                PUBLIC_EVENTS.map((ev) => {
+                  const slug = ev.slug || ev.title.toLowerCase().replace(/\s+/g, "-");
+                  const isUpcoming = ev.status === "Upcoming";
+                  const isActive   = ev.status === "Active";
+                  return (
+                    <article key={ev.id} className={styles.eventCard}>
+                      <div className={styles.eventImageWrap}>
+                        <img
+                          src={ev.image || "/event-placeholder.png"}
+                          alt={ev.title}
+                          className={styles.eventImage}
+                        />
+                        {isUpcoming && <span className={styles.eventBadge}>Happening Soon</span>}
+                        {isActive   && <span className={`${styles.eventBadge} ${styles.eventBadgeActive}`}>Ongoing</span>}
+                      </div>
+                      <div className={styles.eventBody}>
+                        <div className={styles.eventMeta}>
+                          <span className={styles.eventCategory}>{ev.category}</span>
+                          <span className={styles.eventMode}>{ev.activityMode}</span>
+                        </div>
+                        <h3 className={styles.eventTitle}>{ev.title}</h3>
+                        {ev.tagline && <p className={styles.eventTagline}>{ev.tagline}</p>}
+                        <p className={styles.eventDesc}>{ev.description}</p>
+                        <div className={styles.eventDetails}>
+                          <span>📅 {ev.dateStart}{ev.dateEnd ? ` – ${ev.dateEnd}` : ""}</span>
+                          {ev.venue && <span>📍 {ev.venue}</span>}
+                          {ev.targetParticipants && <span>👥 {ev.targetParticipants}</span>}
+                        </div>
+                        <Link href={`/events/${slug}`} className={styles.eventBtn}>
+                          View Event
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
 
-              {/* Pagination */}
+              {/* Pagination placeholder */}
               <div className={styles.pagination}>
                 <button className={styles.pageBtn} aria-label="Previous">←</button>
-                <button className={styles.pageNum}>1</button>
-                <button className={`${styles.pageNum} ${styles.pageNumActive}`}>2</button>
-                <button className={styles.pageNum}>3</button>
+                <button className={`${styles.pageNum} ${styles.pageNumActive}`}>1</button>
                 <button className={styles.pageBtn} aria-label="Next">→</button>
               </div>
             </div>
@@ -138,24 +143,19 @@ export default function EventsPage() {
               <div className={styles.sidebarBlock}>
                 <h4 className={styles.sidebarTitle}>Search</h4>
                 <div className={styles.searchBox}>
-                  <input
-                    type="text"
-                    placeholder="Search"
-                    className={styles.searchInput}
-                  />
-                  <button className={styles.searchBtn} aria-label="Search">
-                    🔍
-                  </button>
+                  <input type="text" placeholder="Search events…" className={styles.searchInput} />
+                  <button className={styles.searchBtn} aria-label="Search">🔍</button>
                 </div>
               </div>
 
               {/* Categories */}
               <div className={styles.sidebarBlock}>
-                <h4 className={styles.sidebarTitle}>Popular Category</h4>
+                <h4 className={styles.sidebarTitle}>Categories</h4>
                 <ul className={styles.categoryList}>
                   {CATEGORIES.map((cat) => (
                     <li key={cat}>
-                      <Link href="#" className={styles.categoryItem}>
+                      <Link href={cat === "All" ? "/events" : `/events?category=${encodeURIComponent(cat)}`}
+                        className={styles.categoryItem}>
                         {cat}
                       </Link>
                     </li>
@@ -165,7 +165,7 @@ export default function EventsPage() {
 
               {/* Recent Posts */}
               <div className={styles.sidebarBlock}>
-                <h4 className={styles.sidebarTitle}>Recent Post</h4>
+                <h4 className={styles.sidebarTitle}>Recent Events</h4>
                 <ul className={styles.recentList}>
                   {RECENT_POSTS.map((p) => (
                     <li key={p.title} className={styles.recentItem}>

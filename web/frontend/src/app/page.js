@@ -1,36 +1,30 @@
 "use client";
 
+/**
+ * web/frontend/src/app/page.js  (updated)
+ *
+ * The "Our Latest Events" section now sources from approved public projects
+ * instead of hardcoded static data.
+ *
+ * Only shows up to 3 most recent public+approved events.
+ */
+
 import { useState } from "react";
+import Link from "next/link";
 import styles from "./page.module.css";
 import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
+import { getPublicApprovedProjects } from "@/components/projects/projectsData";
+
+const publicEvents = getPublicApprovedProjects().slice(0, 3);
 
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
+
   const steps = [
-    {
-      step: "Step 1",
-      title: "Register",
-      desc: "Create a secure account to access reporting and support features",
-      active: true,
-    },
-    {
-      step: "Step 2",
-      title: "Submit a Report",
-      desc: "Registered users may file a detailed incident report through a structured form",
-      active: false,
-    },
-    {
-      step: "Step 3",
-      title: "Case Review",
-      desc: "Case officers verify and evaluate reports following confidentiality protocols",
-      active: false,
-    },
-    {
-      step: "Step 4",
-      title: "Case Monitoring",
-      desc: "Users may track the status of their submitted reports through their dashboard",
-      active: false,
-    },
+    { step: "Step 1", title: "Register",        desc: "Create a secure account to access reporting and support features",                             active: true  },
+    { step: "Step 2", title: "Submit a Report",  desc: "Registered users may file a detailed incident report through a structured form",               active: false },
+    { step: "Step 3", title: "Case Review",      desc: "Case officers verify and evaluate reports following confidentiality protocols",                active: false },
+    { step: "Step 4", title: "Case Monitoring",  desc: "Users may track the status of their submitted reports through their dashboard",                active: false },
   ];
 
   return (
@@ -38,15 +32,10 @@ export default function Landing() {
 
       {/* ── HERO ── */}
       <section className={styles.hero}>
-
-        {/* Background image */}
         <div className={styles.heroBg}>
           <img src="/sasha-bg-2.png" alt="" aria-hidden="true" />
         </div>
-
         <div className={styles.heroInner}>
-
-          {/* Text block */}
           <div className={styles.heroContent}>
             <p className={styles.heroEyebrow}>
               <span className={styles.heroLine} />
@@ -66,12 +55,9 @@ export default function Landing() {
               <a href="/volunteer" className={styles.btnOutline}>Be a Volunteer</a>
             </div>
           </div>
-
-          {/* Hero card image */}
           <div className={styles.heroImage}>
             <img src="/sasha-hero-card.png" alt="You are safe with SASHA" />
           </div>
-
         </div>
       </section>
 
@@ -83,15 +69,12 @@ export default function Landing() {
           </p>
           <div className={styles.commitmentHeader}>
             <h2 className={styles.sectionTitle}>Our <span className={styles.howTitleAccent}>Commitment</span></h2>
-            <a href="/about" className={styles.learnMoreBtn}>
-              Learn More <FiArrowRight />
-            </a>
+            <a href="/about" className={styles.learnMoreBtn}>Learn More <FiArrowRight /></a>
           </div>
           <p className={styles.commitmentDesc}>
-            SASHA provides a platform for reporting cases of sexual harassment
-            and abuse. Beyond case handling, SASHA actively promotes gender
-            equality, youth empowerment, and accountability within and beyond
-            the Scouting movement.
+            SASHA provides a platform for reporting cases of sexual harassment and abuse.
+            Beyond case handling, SASHA actively promotes gender equality, youth empowerment,
+            and accountability within and beyond the Scouting movement.
           </p>
           <div className={styles.commitmentGrid}>
             <div className={styles.commitmentImgWrap}>
@@ -100,8 +83,8 @@ export default function Landing() {
             <div className={styles.commitmentCard}>
               <p>
                 SASHA ensures that all reports are handled with{" "}
-                <strong>confidentiality and responsibly</strong> through
-                verification, evaluation, and proper case management procedures
+                <strong>confidentiality and responsibly</strong> through verification,
+                evaluation, and proper case management procedures.
               </p>
               <div className={styles.commitmentCardIcon}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="24" height="24">
@@ -120,30 +103,20 @@ export default function Landing() {
           <img src="/sasha-bg-1.png" alt="" aria-hidden="true" />
           <div className={styles.howBgOverlay} />
         </div>
-
         <div className={styles.sectionInner}>
           <div className={styles.howHeader}>
             <div>
-              <p className={styles.sectionEyebrowLight}>
-                <span className={styles.eyebrowLineLight} /> How SASHA Works
-              </p>
-              <h2 className={styles.sectionTitleLight}>
-                How We <span className={styles.howTitleAccent}>Get It Done</span>
-              </h2>
+              <p className={styles.sectionEyebrowLight}><span className={styles.eyebrowLineLight} /> How SASHA Works</p>
+              <h2 className={styles.sectionTitleLight}>How We <span className={styles.howTitleAccent}>Get It Done</span></h2>
             </div>
-            <a href="/about" className={styles.learnMoreBtnLight}>
-              Learn More <FiArrowRight />
-            </a>
+            <a href="/about" className={styles.learnMoreBtnLight}>Learn More <FiArrowRight /></a>
           </div>
-
           <div className={styles.stepsContainer}>
             <div className={styles.timelineRow}>
               <div className={styles.timelineLine} />
               {steps.map((s, i) => (
                 <div key={`badge-${i}`} className={styles.badgeWrapper}>
-                  <span className={s.active ? styles.stepBadgeActive : styles.stepBadge}>
-                    {s.step}
-                  </span>
+                  <span className={s.active ? styles.stepBadgeActive : styles.stepBadge}>{s.step}</span>
                   {i < steps.length - 1 && (
                     <span className={styles.stepArrow}>
                       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
@@ -155,7 +128,6 @@ export default function Landing() {
                 </div>
               ))}
             </div>
-
             <div className={styles.stepsGrid}>
               {steps.map((s, i) => (
                 <div key={`card-${i}`} className={styles.stepCard}>
@@ -171,50 +143,46 @@ export default function Landing() {
       {/* ── INITIATIVE ── */}
       <section className={styles.initiative}>
         <div className={styles.sectionInner}>
-          <p className={styles.sectionEyebrow}>
-            <span className={styles.eyebrowLine} /> Advocacy and Action
-          </p>
+          <p className={styles.sectionEyebrow}><span className={styles.eyebrowLine} /> Advocacy and Action</p>
           <div className={styles.initiativeHeader}>
-            <h2 className={styles.initiativeTitle}>
-              The SASHA <span className={styles.initiativeTitleAccent}>Initiative</span> 
-            </h2>
-            <a href="/about" className={styles.learnMoreBtn}>
-              Learn More <FiArrowRight />
-            </a>
+            <h2 className={styles.initiativeTitle}>The SASHA <span className={styles.initiativeTitleAccent}>Initiative</span></h2>
+            <a href="/about" className={styles.learnMoreBtn}>Learn More <FiArrowRight /></a>
           </div>
           <p className={styles.initiativeDesc}>
-            SASHA conducts awareness campaigns, educational discussions, and
-            organizational initiatives to promote safe spaces and uphold the
-            rights of women, children, youth, and LGBTQIA+ individuals. Through
-            coordinated chapters nationwide, SASHA continues to expand its reach
-            and impact.
+            SASHA conducts awareness campaigns, educational discussions, and organizational
+            initiatives to promote safe spaces and uphold the rights of women, children,
+            youth, and LGBTQIA+ individuals. Through coordinated chapters nationwide,
+            SASHA continues to expand its reach and impact.
           </p>
         </div>
       </section>
 
-      {/* ── EVENTS ── */}
+      {/* ── EVENTS — derived from public approved projects ── */}
       <section className={styles.events}>
         <div className={styles.sectionInner}>
           <h2 className={styles.eventsTitle}>Our Latest Events</h2>
           <div className={styles.eventsGrid}>
-            {[
-              { img: "/event-1.png", tag: "Gender Gap in Science", desc: "Science belongs to everyone, yet girls still face too many hurdles in STEM. We're here to clear the path and make sure the next big discovery comes from a voice that's finally being heard." },
-              { img: "/event-2.png", tag: "Fight for Our Future", desc: "No one should ever feel unsafe in their own community, and we're drawing a line in the sand against harassment. We are standing together to build a culture of real protection and accountability for every scout." },
-              { img: "/event-3.png", tag: "Invest for Girls, Invest for Future", desc: "When we back girls, the whole world wins. By investing in their safety and growth today, we're not just helping individuals — we're building a future led by strong, empowered women." },
-            ].map((ev, i) => (
-              <div key={i} className={styles.eventCard}>
-                <div className={styles.eventImgWrap}>
-                  <img src={ev.img} alt={ev.tag} />
+            {publicEvents.length === 0 ? (
+              <p style={{ color: "#6b7280", gridColumn: "1/-1" }}>
+                No public events available yet. Check back soon.
+              </p>
+            ) : (
+              publicEvents.map((ev) => (
+                <div key={ev.id} className={styles.eventCard}>
+                  <div className={styles.eventImgWrap}>
+                    <img src={ev.image || "/event-placeholder.png"} alt={ev.title} />
+                  </div>
+                  <div className={styles.eventBody}>
+                    <h3 className={styles.eventTag}>{ev.title}</h3>
+                    {ev.tagline && <p style={{ fontSize: "0.82rem", color: "#037F81", fontStyle: "italic", margin: "0.25rem 0" }}>{ev.tagline}</p>}
+                    <p className={styles.eventDesc}>{ev.description}</p>
+                  </div>
                 </div>
-                <div className={styles.eventBody}>
-                  <h3 className={styles.eventTag}>{ev.tag}</h3>
-                  <p className={styles.eventDesc}>{ev.desc}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
           <div className={styles.eventsFooter}>
-            <a href="/events" className={styles.btnPrimary}>View All Events</a>
+            <Link href="/events" className={styles.btnPrimary}>View All Events</Link>
           </div>
         </div>
       </section>

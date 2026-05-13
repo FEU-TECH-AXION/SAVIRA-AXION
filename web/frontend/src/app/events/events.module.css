@@ -359,8 +359,8 @@
 
 .recentThumb {
   width: 54px;
-  height: 46px;
-  border-radius: 8px;
+  height: 54px;
+  border-radius: 100%;
   object-fit: cover;
   background: var(--gray-200);
   flex-shrink: 0;
