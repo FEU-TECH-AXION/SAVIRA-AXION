@@ -1353,7 +1353,7 @@ export default function CaseManagement() {
                 <ActionCard
                   icon={<img src="CaseIconManage.png" alt="" className={styles.actionIconImg} />}
                   title="Intake & Verification"
-                  description="Move cases through For Verification → Undergoing Review → Verified True/False."
+                  description="Verify new cases and update case details."
                   onView={() => setModal("viewAll_caseOfficer")}
                 />
               </div>
