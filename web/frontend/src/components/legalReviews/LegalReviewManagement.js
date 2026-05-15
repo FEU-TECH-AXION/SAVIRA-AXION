@@ -192,7 +192,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
         </div>
       )}
 
-      {/* Lawyer Record */}
+      {/* Lawyer Record
       {caseData.lawyerRecord && (
         <div className={styles.detailBlock}>
           <h4 className={styles.detailTitle}>⚖️ Lawyer Consultation Record</h4>
@@ -200,7 +200,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
           <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.lawyerRecord.date}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Recommendation</span><span className={styles.viewVal}>{caseData.lawyerRecord.recommendation}</span></div>
         </div>
-      )}
+      )} */}
 
       {/* Monitoring log */}
       {(caseData.monitoringLog?.length > 0) && (
@@ -366,69 +366,69 @@ function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
 // LAWYER CONSULTATION MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
-  const [form, setForm] = useState({ applicableLaws: [], actionType: [], evidenceGaps: "", recommendation: "", additionalNotes: "" });
-  useEffect(() => { if (open && caseData) {
-    const r = caseData.lawyerRecord;
-    setForm({ applicableLaws: r?.applicableLaws || [], actionType: r?.actionType || [], evidenceGaps: r?.evidenceGaps || "", recommendation: r?.recommendation || "", additionalNotes: r?.additionalNotes || "" });
-  }}, [open, caseData]);
-  if (!caseData) return null;
+// function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
+//   const [form, setForm] = useState({ applicableLaws: [], actionType: [], evidenceGaps: "", recommendation: "", additionalNotes: "" });
+//   useEffect(() => { if (open && caseData) {
+//     const r = caseData.lawyerRecord;
+//     setForm({ applicableLaws: r?.applicableLaws || [], actionType: r?.actionType || [], evidenceGaps: r?.evidenceGaps || "", recommendation: r?.recommendation || "", additionalNotes: r?.additionalNotes || "" });
+//   }}, [open, caseData]);
+//   if (!caseData) return null;
 
-  const LAWS = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code — Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
-  const ACTIONS = ["Administrative action", "Civil action", "Criminal action"];
+//   const LAWS = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code — Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
+//   const ACTIONS = ["Administrative action", "Civil action", "Criminal action"];
 
-  const toggleLaw = (l) => setForm((p) => ({ ...p, applicableLaws: p.applicableLaws.includes(l) ? p.applicableLaws.filter((x) => x !== l) : [...p.applicableLaws, l] }));
-  const toggleAction = (a) => setForm((p) => ({ ...p, actionType: p.actionType.includes(a) ? p.actionType.filter((x) => x !== a) : [...p.actionType, a] }));
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+//   const toggleLaw = (l) => setForm((p) => ({ ...p, applicableLaws: p.applicableLaws.includes(l) ? p.applicableLaws.filter((x) => x !== l) : [...p.applicableLaws, l] }));
+//   const toggleAction = (a) => setForm((p) => ({ ...p, actionType: p.actionType.includes(a) ? p.actionType.filter((x) => x !== a) : [...p.actionType, a] }));
+//   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  function handleSave() {
-    const record = { assessedBy: actorName, date: new Date().toLocaleDateString(), applicableLaws: form.applicableLaws, actionType: form.actionType, evidenceGaps: form.evidenceGaps, recommendation: form.recommendation, additionalNotes: form.additionalNotes };
-    onSave({ ...caseData, lawyerRecord: record });
-    onClose();
-  }
+//   function handleSave() {
+//     const record = { assessedBy: actorName, date: new Date().toLocaleDateString(), applicableLaws: form.applicableLaws, actionType: form.actionType, evidenceGaps: form.evidenceGaps, recommendation: form.recommendation, additionalNotes: form.additionalNotes };
+//     onSave({ ...caseData, lawyerRecord: record });
+//     onClose();
+//   }
 
-  return (
-    <Modal open={open} onClose={onClose} title="Lawyer Consultation — Legal Assessment" wide>
-      <p className={styles.formDesc}>Assess the facts and identify applicable laws, possible courses of action, and evidence gaps. This record informs the referral decision and is documented for the survivor's benefit.</p>
-      <div className={styles.formGrid}>
-        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
-        <FormGroup label="Applicable Laws / Provisions" hint="Select all that may apply based on the facts presented.">
-          <div className={styles.checkGroup}>
-            {LAWS.map((l) => (
-              <label key={l} className={styles.checkLabel}>
-                <input type="checkbox" checked={form.applicableLaws.includes(l)} onChange={() => toggleLaw(l)} className={styles.checkInput} />
-                {l}
-              </label>
-            ))}
-          </div>
-        </FormGroup>
-        <FormGroup label="Possible Courses of Action">
-          <div className={styles.checkGroup}>
-            {ACTIONS.map((a) => (
-              <label key={a} className={styles.checkLabel}>
-                <input type="checkbox" checked={form.actionType.includes(a)} onChange={() => toggleAction(a)} className={styles.checkInput} />
-                {a}
-              </label>
-            ))}
-          </div>
-        </FormGroup>
-        <FormGroup label="Evidence Gaps Identified" hint="What evidence or information is still missing?">
-          <FTextarea placeholder="e.g. No medico-legal report yet, respondent identity unconfirmed…" value={form.evidenceGaps} onChange={set("evidenceGaps")} />
-        </FormGroup>
-        <FormGroup label="Legal Recommendation" hint="What does the lawyer recommend as next steps for this case?">
-          <FTextarea placeholder="Provide clear recommendation — referral, filing, further investigation, etc." value={form.recommendation} onChange={set("recommendation")} />
-        </FormGroup>
-        <FormGroup label="Additional Notes">
-          <FTextarea placeholder="Other legal observations, risks, or notes…" value={form.additionalNotes} onChange={set("additionalNotes")} />
-        </FormGroup>
-      </div>
-      <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSave}>Save Consultation Record</button>
-      </div>
-    </Modal>
-  );
-}
+//   return (
+//     <Modal open={open} onClose={onClose} title="Lawyer Consultation — Legal Assessment" wide>
+//       <p className={styles.formDesc}>Assess the facts and identify applicable laws, possible courses of action, and evidence gaps. This record informs the referral decision and is documented for the survivor's benefit.</p>
+//       <div className={styles.formGrid}>
+//         <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+//         <FormGroup label="Applicable Laws / Provisions" hint="Select all that may apply based on the facts presented.">
+//           <div className={styles.checkGroup}>
+//             {LAWS.map((l) => (
+//               <label key={l} className={styles.checkLabel}>
+//                 <input type="checkbox" checked={form.applicableLaws.includes(l)} onChange={() => toggleLaw(l)} className={styles.checkInput} />
+//                 {l}
+//               </label>
+//             ))}
+//           </div>
+//         </FormGroup>
+//         <FormGroup label="Possible Courses of Action">
+//           <div className={styles.checkGroup}>
+//             {ACTIONS.map((a) => (
+//               <label key={a} className={styles.checkLabel}>
+//                 <input type="checkbox" checked={form.actionType.includes(a)} onChange={() => toggleAction(a)} className={styles.checkInput} />
+//                 {a}
+//               </label>
+//             ))}
+//           </div>
+//         </FormGroup>
+//         <FormGroup label="Evidence Gaps Identified" hint="What evidence or information is still missing?">
+//           <FTextarea placeholder="e.g. No medico-legal report yet, respondent identity unconfirmed…" value={form.evidenceGaps} onChange={set("evidenceGaps")} />
+//         </FormGroup>
+//         <FormGroup label="Legal Recommendation" hint="What does the lawyer recommend as next steps for this case?">
+//           <FTextarea placeholder="Provide clear recommendation — referral, filing, further investigation, etc." value={form.recommendation} onChange={set("recommendation")} />
+//         </FormGroup>
+//         <FormGroup label="Additional Notes">
+//           <FTextarea placeholder="Other legal observations, risks, or notes…" value={form.additionalNotes} onChange={set("additionalNotes")} />
+//         </FormGroup>
+//       </div>
+//       <div className={styles.modalFooter}>
+//         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+//         <button className={styles.btnPrimary} onClick={handleSave}>Save Consultation Record</button>
+//       </div>
+//     </Modal>
+//   );
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDORSEMENT / REFERRAL MODAL — with full per-institution tracking
@@ -963,9 +963,9 @@ export default function LegalReviewManagement() {
             <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconParalegal.png" alt="" className={styles.actionIconImg} />} title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />
             </div>
-            <div className="col-12 col-sm-6 col-lg-4">
+            {/* <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconLawyer.png" alt="" className={styles.actionIconImg} />} title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />
-            </div>
+            </div> */}
             <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
             </div>
@@ -1078,7 +1078,7 @@ export default function LegalReviewManagement() {
       <ViewCaseModal        open={modal === "view"}         onClose={closeModal} caseData={selectedCase} />
       <AssignPersonnelModal open={modal === "assign"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} />
       <ParalegalSupportModal open={modal === "paralegal"}   onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
-      <LawyerConsultModal   open={modal === "lawyer"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
+      {/* <LawyerConsultModal   open={modal === "lawyer"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} /> */}
       <EndorseModal         open={modal === "endorse"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <MonitoringModal      open={modal === "monitor"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <StatusChangeModal    open={modal === "statusChange"} onClose={closeModal} caseData={selectedCase} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} />
@@ -1086,7 +1086,7 @@ export default function LegalReviewManagement() {
 
       {/* Action card → select case → action */}
       <SelectCaseModal open={modal === "selectParalegal"} onClose={closeModal} cases={cases} title="Select Case for Paralegal Support" actionLabel="Paralegal" onAction={(c) => open(c, "paralegal")} />
-      <SelectCaseModal open={modal === "selectLawyer"}    onClose={closeModal} cases={cases} title="Select Case for Lawyer Consultation" actionLabel="Consult" onAction={(c) => open(c, "lawyer")} />
+      {/* <SelectCaseModal open={modal === "selectLawyer"}    onClose={closeModal} cases={cases} title="Select Case for Lawyer Consultation" actionLabel="Consult" onAction={(c) => open(c, "lawyer")} /> */}
       <SelectCaseModal open={modal === "selectEndorse"}   onClose={closeModal} cases={cases} title="Select Case to Endorse / Track Referral" actionLabel="Endorse" onAction={(c) => open(c, "endorse")} />
       <SelectCaseModal open={modal === "selectMonitor"}   onClose={closeModal} cases={cases.filter((c) => c.endorsedTo)} title="Select Case for Monitoring Update" actionLabel="Monitor" onAction={(c) => open(c, "monitor")} />
       <SelectCaseModal open={modal === "selectStatus"}    onClose={closeModal} cases={cases.filter((c) => !c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin))} title="Select Case to Update Status" actionLabel="Update" onAction={(c) => open(c, "statusChange")} />

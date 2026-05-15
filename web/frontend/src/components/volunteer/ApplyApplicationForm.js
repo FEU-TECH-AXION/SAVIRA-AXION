@@ -116,8 +116,8 @@ function StepApplicantInfo({ data, onChange }) {
         <Field label="Organization">
           <Select value={data.organization} onChange={set("organization")}>
             <option value="">Select organization</option>
-            <option>BSP Unit</option>
-            <option>GSPH Troop</option>
+            <option>BSP</option>
+            <option>GSP</option>
             <option>Other</option>
           </Select>
         </Field>
@@ -199,7 +199,7 @@ function StepEssay({ data, onChange }) {
 
       <div className={styles.formGrid}>
         <div>
-          <Field label="Why do you want to Volunteer with SASHA?" required>
+          <Field label="In a two to four paragraph essay, please tell us why do you want to join us and why you should be accepted?" required>
             <textarea
               className={styles.textarea}
               placeholder="Answer here..."
