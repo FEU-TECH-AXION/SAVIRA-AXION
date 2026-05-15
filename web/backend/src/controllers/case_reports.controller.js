@@ -1,8 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
-const { createOrgDetail }    = require("../models/organization_details.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports }       = require("../models/case_reports.model");
-const { getCaseStatusByName } = require('../models/case_status.model'); // add this import
-const { get } = require('../routes/case_reports.routes');
+const { findOrCreateOrganization } = require("../models/organizations.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports } = require("../models/case_reports.model");
 
 const getItems = async (req, res) => {
     try {
@@ -15,29 +13,25 @@ const getItems = async (req, res) => {
 }
 
 const createItem = async (req, res) => {
-    try {
-        // req.body is passed directly — input validation should be added here
-        // before hitting the DB (e.g. check required fields, sanitize input)
-        const item = await CaseReports.create(req.body)
-
-        // 201 instead of 200 to explicitly signal a resource was created
-        res.status(201).json(item)
-    } catch (err) {
-        res.status(500).json({ error: err.message })
-    }
+  try {
+    const item = await CaseReports.create(req.body)
+    res.status(201).json(item)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 }
 
-function buildPayload(complainantId, orgDetailId, complainant, incident, evidence) {
+function buildPayload(complainantId, organizationId, complainant, incident, evidence) {
   return {
     complainant_id:           complainantId,
-    organization_detail_id:   orgDetailId,
+    organization_id:          organizationId,
 
     name:                     complainant.name?.trim() || "Anonymous",
     age:                      parseInt(complainant.age),
     gender_identity:          complainant.gender,
     email:                    complainant.email,
     contact_number:           complainant.contactNumber,
-    is_willing_for_interview: complainant.interview         === "Yes",
+    is_willing_for_interview: complainant.interview === "Yes",
 
     incident_city:            incident.incidentCity,
     incident_province:        "Metro Manila",
@@ -65,9 +59,9 @@ function buildPayload(complainantId, orgDetailId, complainant, incident, evidenc
     told_anyone_who:          incident.toldAnyone === "Yes" ? incident.toldAnyoneWho || null : null,
     police_station:           incident.toldPolice === "Yes" ? incident.policeStation  || null : null,
 
-    case_status_id: getCaseStatusByName,
-    version_number: 1,
-    is_current:     true,
+    case_status_id:           1,
+    version_number:           1,
+    is_current:               true,
   };
 }
 
@@ -81,24 +75,19 @@ async function submitReport(req, res) {
     }
 
     const complainantId = await getComplainantId(userId);
-    if (!complainantId) {
-      return res.status(404).json({ error: 'Your profile not found. Please complete your profile first.' });
-    }
 
-    const orgDetail = await createOrgDetail(complainant);
-    const orgDetailId = orgDetail?.organization_detail_id ?? orgDetail?.org_detail_id;
-    if (!orgDetailId) {
+    const org = await findOrCreateOrganization(complainant);
+    if (!org?.organization_id) {
       throw new Error('Failed to save organization details.');
     }
 
-    const payload   = buildPayload(complainantId, orgDetailId, complainant, incident, evidence);
+    const payload   = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
     const newReport = await createReport(payload);
 
     return res.status(201).json({ data: newReport });
   } catch (err) {
     console.error('[submitReport]', err?.message ?? err, err?.stack ?? '');
-    const errorMsg = err?.message || 'Failed to submit report. Please try again.';
-    return res.status(500).json({ error: errorMsg });
+    return res.status(500).json({ error: err?.message || 'Failed to submit report. Please try again.' });
   }
 }
 
@@ -108,8 +97,6 @@ async function getUserReports(req, res) {
     if (!userId) return res.status(401).json({ error: 'Authentication required.' });
 
     const complainantId = await getComplainantId(userId);
-    if (!complainantId) return res.status(404).json({ error: 'Complainant not found.' });
-
     const reports = await getReportsByUserId(complainantId);
     return res.json({ data: reports });
   } catch (err) {
@@ -129,3 +116,5 @@ async function getAllCases(req, res) {
 }
 
 module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases }
+
+// module.exports = { getItems, createItem, submitReport }

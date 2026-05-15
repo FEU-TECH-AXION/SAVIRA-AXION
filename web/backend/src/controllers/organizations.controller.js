@@ -1,8 +1,8 @@
-const OrganizationDetailsModel = require('../models/organization_details.model')
+const OrganizationsModel = require('../models/organizations.model')
 
 const getItems = async (req, res) => {
     try {
-        const data = await OrganizationDetailsModel.getAll()
+        const data = await OrganizationsModel.getAll()
         res.json(data)
     } catch (err) {
         // 500 here because the failure is on our side (DB/Supabase), not the client's
@@ -14,7 +14,7 @@ const createItem = async (req, res) => {
     try {
         // req.body is passed directly — input validation should be added here
         // before hitting the DB (e.g. check required fields, sanitize input)
-        const item = await OrganizationDetailsModel.create(req.body)
+        const item = await OrganizationsModel.create(req.body)
 
         // 201 instead of 200 to explicitly signal a resource was created
         res.status(201).json(item)

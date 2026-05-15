@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem } = require('../controllers/organization_details.controller')
+const { getItems, createItem } = require('../controllers/organizations.controller')
 
 // Routes are kept thin or short since all the logic is in the controller
 router.get('/', getItems)

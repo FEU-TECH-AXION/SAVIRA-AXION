@@ -63,8 +63,8 @@ const userCaseLogsRouter = require('./routes/user_case_logs.routes')
 app.use('/api/user_case_logs', userCaseLogsRouter)
 
 // Route for organization_details tbl
-const organizationDetailsRouter = require('./routes/organization_details.routes')
-app.use('/api/organization_details', organizationDetailsRouter)
+const organizationsRouter = require('./routes/organizations.routes')
+app.use('/api/organizations', organizationsRouter)
 
 // ── ROUTES FOR CASE REPORTING RELATED TABLES ────────────────────────────────────────────────
 
