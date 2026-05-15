@@ -32,6 +32,14 @@ const STEPS = [
   { id: 3, label: "Review & Submit" },
 ];
 
+// ── Cookie ───────────────────────────────────────────────────────
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  return null;
+}
+
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
 function WizardStepper({ current }) {
   return (
@@ -248,6 +256,29 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
 
+  // ── Autofill from logged-in user ──────────────────────────
+  const [selfReport, setSelfReport] = useState(false);
+
+  const loggedInName = (() => {
+    try {
+      const userCookie = getCookie('user');
+      if (!userCookie) return null;
+      const u = JSON.parse(userCookie);
+      return [u.first_name, u.last_name].filter(Boolean).join(' ') || null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const handleSelfReport = (checked) => {
+    setSelfReport(checked);
+    clearError('name');
+    onChange({
+      ...data,
+      name: checked ? (loggedInName ?? '') : '',
+    });
+  };
+
   return (
     <div>
       <h2 className={styles.stepTitle}>
@@ -262,10 +293,32 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
           <Input
             placeholder="Full name"
             value={data.name}
-            onChange={set("name")}
+            onChange={(e) => {
+              // If user manually edits, uncheck the box
+              if (selfReport) setSelfReport(false);
+              set('name')(e);
+            }}
+            disabled={selfReport}
           />
+
+                    {/* ── Self-report checkbox ── */}
+          <label className={styles.checkboxLabel} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '0.875rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={selfReport}
+              onChange={(e) => handleSelfReport(e.target.checked)}
+              disabled={!loggedInName}
+            />
+            This report is for me
+            {!loggedInName && (
+              <span style={{ color: 'var(--text-muted, #999)', fontSize: '0.8rem' }}>
+                (no name found in session)
+              </span>
+            )}
+          </label>
         </Field>
 
+        {/* rest of the grid fields unchanged */}
         <Field label="Age" required error={errors.age}>
           <Input
             type="number"
