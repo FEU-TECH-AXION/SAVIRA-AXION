@@ -69,6 +69,25 @@ Press `a` in the terminal once the emulator is fully booted
 
 ---
 
+## Other Services
+
+### NLP Service
+```bash
+cd web/nlp
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt ## run this inside venv file
+python -m spacy download en_core_web_lg
+python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt'); nltk.download('punkt_tab')"
+```
+> **Note:** Mac/Linux users activate with `source venv/bin/activate` instead
+
+Copy `.env.example` to `.env` and add your `GROQ_API_KEY`
+
+NLP Service runs on → `http://localhost:8000`
+
+---
+
 ## Run Everything at Once
 ```bash
 cd SAVIRA

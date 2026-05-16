@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+groq
+presidio-analyzer
+presidio-anonymizer
+spacy
+nltk
+langdetect
+python-dotenv
+pyspellchecker

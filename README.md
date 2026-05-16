@@ -40,6 +40,18 @@ SAVIRA is an automated, centralized case management system designed to facilitat
 - **Firebase Cloud Messaging (FCM)** - Push notifications
 - **GROQ API (Llama 3.8B)** - NLP for narrative analysis
 
+### NLP Service (Python)
+- **FastAPI** - Python web framework for the NLP microservice
+- **Uvicorn** - ASGI server that runs FastAPI
+- **Groq** - Official Groq SDK for LLaMA 3.1 8B Instruct API calls
+- **Presidio Analyzer** - Microsoft PII detection (names, contacts, addresses)
+- **Presidio Anonymizer** - Masks detected PII before sending to Groq
+- **spaCy** - Tokenization and lemmatization
+- **NLTK** - Stopword removal and text processing
+- **Langdetect** - Detects Filipino-English code-switching (Taglish)
+- **Python-dotenv** - Loads environment variables from `.env`
+- **PySpellChecker** - Spelling correction during text normalization
+
 ## Getting Started
 
 ### Prerequisites
