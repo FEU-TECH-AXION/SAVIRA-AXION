@@ -5,10 +5,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Initialize Groq client ────────────────────────────────────────
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
 MODEL = "llama-3.1-8b-instant"
+
+# ── Initialize Groq client (lazy-loaded on first use) ──────────────
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY not set in environment")
+        _client = Groq(api_key=api_key)
+    return _client
 
 # ── Category and case type definitions ───────────────────────────
 PRIMARY_CATEGORIES = ["Physical", "Verbal", "Virtual"]
@@ -110,6 +119,7 @@ Respond ONLY with a valid JSON object, no explanation, no markdown, no extra tex
 # ── Groq API caller ───────────────────────────────────────────────
 def call_groq(prompt):
     """Send a prompt to Groq and return parsed JSON response."""
+    client = get_client()
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],

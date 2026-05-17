@@ -1,4 +1,4 @@
-const { create, updateAnalysisStatus } = require('../models/case_report_analysis.model');
+const { create, updateAnalysisByReportId } = require('../models/case_report_analysis.model');
 
 const NLP_URL = process.env.NLP_SERVICE_URL || 'http://localhost:8000';
 
@@ -36,9 +36,8 @@ async function runNLPAnalysis(report) {
 
         const result = await response.json();
 
-        // Step 3 — Save full results to DB
-        await create({
-            case_report_id,
+        // Step 3 — Update the pending record with full results
+        await updateAnalysisByReportId(case_report_id, {
             model_used:           result.model_used,
             language_detected:    result.language_detected,
             anonymized_text:      result.anonymized_text,
@@ -51,6 +50,7 @@ async function runNLPAnalysis(report) {
             referral_suggested:   result.referral_suggested,
             referral_notes:       result.referral_notes,
             status:               'completed',
+            analyzed_at:          new Date().toISOString(),
         });
 
         console.log(`[NLP] Analysis completed for report ${case_report_id}`);
@@ -59,7 +59,7 @@ async function runNLPAnalysis(report) {
         console.error(`[NLP] Analysis failed for report ${case_report_id}:`, err.message);
 
         // Step 4 — Mark as failed so admin knows
-        await updateAnalysisStatus(case_report_id, 'failed');
+        await updateAnalysisByReportId(case_report_id, { status: 'failed' });
     }
 }
 

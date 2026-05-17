@@ -28,9 +28,12 @@ async function getAnalysisByReportId(caseReportId) {
         .from('case_report_analysis')
         .select('*')
         .eq('case_report_id', caseReportId)
-        .single();
+        .order('analysis_id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
     if (error) throw error;
+    if (!data) throw new Error('No analysis found');
     return data;
 }
 
@@ -47,4 +50,17 @@ async function updateAnalysisStatus(caseReportId, status) {
     return data;
 }
 
-module.exports = { getAll, create, getAnalysisByReportId, updateAnalysisStatus }
+// Update analysis by report ID with full data
+async function updateAnalysisByReportId(caseReportId, updates) {
+    const { data, error } = await supabase
+        .from('case_report_analysis')
+        .update(updates)
+        .eq('case_report_id', caseReportId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+module.exports = { getAll, create, getAnalysisByReportId, updateAnalysisStatus, updateAnalysisByReportId }
