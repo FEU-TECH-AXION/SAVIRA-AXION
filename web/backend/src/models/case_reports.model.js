@@ -22,6 +22,28 @@ const create = async (payload) => {
     return data[0]
 }
 
+async function getCaseById(caseReportId) {
+  const { data, error } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      incident_description,
+      incident_city,
+      incident_province,
+      incident_date,
+      case_status_id,
+      created_at,
+      is_current
+    `)
+    .eq('case_report_id', caseReportId)
+    .eq('is_current', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 async function getComplainantId(userId) {
   // Try to find existing complainant row
   const { data, error } = await supabase
@@ -94,4 +116,4 @@ async function getAllReports() {
   return data;
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports }
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, }

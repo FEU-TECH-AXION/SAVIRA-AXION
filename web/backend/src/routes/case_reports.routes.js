@@ -1,13 +1,16 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem, submitReport, getUserReports, getAllCases } = require('../controllers/case_reports.controller')
+const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
 
-// Routes are kept thin or short since all the logic is in the controller
-router.get('/', getItems)
-router.post('/', createItem)
-router.post('/submit', verifyToken, submitReport)
+// !! IMPORTANT: specific routes must come BEFORE /:id or Express will swallow them
+router.get('/all',        verifyToken, getAllCases);
 router.get('/my-reports', verifyToken, getUserReports);
-router.get('/all', verifyToken, getAllCases); // Admin route to get all cases, can be protected with additional admin middleware if needed
+router.post('/submit',    verifyToken, submitReport);
+
+router.get('/:id/nlp', verifyToken, getNLPAnalysis);  // ← moved up
+router.get('/:id',     getCaseById);
+router.get('/',        getItems);
+router.post('/',       createItem);
 
 module.exports = router

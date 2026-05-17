@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
 
@@ -1443,6 +1444,7 @@ const STATUS_MODAL_MAP = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CaseManagement() {
+  const router = useRouter();
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
   useEffect(() => {
@@ -1797,7 +1799,7 @@ useEffect(() => {
                             <td>{c.assignedOfficer || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Unassigned</span>}</td>
                             <td>
                               <div className={styles.actionBtns}>
-                                <button className={styles.tblBtnView} onClick={() => { setSelected(c); setModal("view"); }}>View</button>
+                                <button className={styles.tblBtnView} onClick={() => router.push(`/cases/view?caseId=${c.id}`)}>View</button>
                                 {isAdmin && <button className={styles.tblBtnEdit} onClick={() => { setSelected(c); setModal("assign"); }}>Assign</button>}
                                 {(transitions.length > 0 && !c.pendingApproval) && (
                                   <button className={styles.tblBtnStatus} onClick={() => { setSelected(c); setModal("statusRouter"); }}>
@@ -1912,11 +1914,11 @@ useEffect(() => {
       <ApprovalModal open={modal === "approval"} onClose={closeModal} caseData={selected} onApprove={approveChange} onReject={rejectChange} />
 
       {/* All Cases quick browsers */}
-      <AllCasesModal open={modal === "viewAll"}            onClose={closeModal} cases={cases} onView={(c) => { setSelected(c); setModal("view"); }} />
-      <AllCasesModal open={modal === "viewAll_assign"}     onClose={closeModal} cases={cases} onView={(c) => { setSelected(c); setModal("view"); }} onAction={(c) => { setSelected(c); setModal("assign"); }} />
-      <AllCasesModal open={modal === "viewAll_caseOfficer"} onClose={closeModal} cases={cases.filter((c) => CASE_OFFICER_STATUSES.includes(c.status))} onView={(c) => { setSelected(c); setModal("view"); }} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
-      <AllCasesModal open={modal === "viewAll_eval"}       onClose={closeModal} cases={cases.filter((c) => c.status === "Verified - True")}                          onView={(c) => { setSelected(c); setModal("view"); }} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
-      <AllCasesModal open={modal === "viewAll_legal"}      onClose={closeModal} cases={cases.filter((c) => LEGAL_STATUSES_OWN.includes(c.status))}                   onView={(c) => { setSelected(c); setModal("view"); }} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
+      <AllCasesModal open={modal === "viewAll"}            onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} />
+      <AllCasesModal open={modal === "viewAll_assign"}     onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("assign"); }} />
+      <AllCasesModal open={modal === "viewAll_caseOfficer"} onClose={closeModal} cases={cases.filter((c) => CASE_OFFICER_STATUSES.includes(c.status))} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
+      <AllCasesModal open={modal === "viewAll_eval"}       onClose={closeModal} cases={cases.filter((c) => c.status === "Verified - True")}                          onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
+      <AllCasesModal open={modal === "viewAll_legal"}      onClose={closeModal} cases={cases.filter((c) => LEGAL_STATUSES_OWN.includes(c.status))}                   onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
 
       {/* Pending approvals list */}
       {modal === "viewPending" && (
@@ -1952,3 +1954,4 @@ useEffect(() => {
     </>
   );
 }
+

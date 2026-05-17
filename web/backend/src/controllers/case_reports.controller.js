@@ -1,6 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports } = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 
 const getItems = async (req, res) => {
@@ -8,7 +8,6 @@ const getItems = async (req, res) => {
         const data = await CaseReports.getAll()
         res.json(data)
     } catch (err) {
-        // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
     }
 }
@@ -19,6 +18,19 @@ const createItem = async (req, res) => {
     res.status(201).json(item)
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+}
+
+// ── GET /api/case_reports/:id ─────────────────────────────────────────────────
+async function getCaseById(req, res) {
+  try {
+    const { id } = req.params;
+    const report = await fetchCaseById(id);
+    if (!report) return res.status(404).json({ error: 'Case not found' });
+    return res.json({ data: report });
+  } catch (err) {
+    console.error('[getCaseById]', err.message);
+    return res.status(500).json({ error: 'Failed to fetch case.' });
   }
 }
 
@@ -85,7 +97,6 @@ async function submitReport(req, res) {
     const payload    = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
     const newReport  = await createReport(payload);
 
-    // ── Trigger NLP in background — does not block response ──
     runNLPAnalysis({
       case_report_id:       newReport.case_report_id,
       incident_description: newReport.incident_description,
@@ -93,7 +104,6 @@ async function submitReport(req, res) {
       incident_city:        newReport.incident_city,
       action_requested:     newReport.action_requested,
     });
-    // Note: no await — fires and forgets so user gets response immediately
 
     return res.status(201).json({ data: newReport });
   } catch (err) {
@@ -126,6 +136,21 @@ async function getAllCases(req, res) {
   }
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases }
+async function getNLPAnalysis(req, res) {
+  try {
+    const { id } = req.params;
+    const supabase = require('../config/supabase');
+    const { data, error } = await supabase
+      .from('case_report_analysis')
+      .select('*')
+      .eq('case_report_id', id)
+      .single();
 
-// module.exports = { getItems, createItem, submitReport }
+    if (error || !data) return res.status(404).json({ error: 'NLP data not available' });
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });
+  }
+}
+
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis }
