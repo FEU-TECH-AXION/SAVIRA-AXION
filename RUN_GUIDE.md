@@ -88,12 +88,16 @@ NLP Service runs on → `http://localhost:8000`
 
 ---
 
-## Run Everything at Once
+### Running the full stack
 ```bash
-cd SAVIRA
+# Terminal 1 — Web + Mobile
 npm run dev
+
+# Terminal 2 — NLP Service
+cd web/nlp
+venv\Scripts\activate
+uvicorn main:app --reload --port 8000
 ```
-Runs backend + frontend + mobile all together! 
 
 ---
 
