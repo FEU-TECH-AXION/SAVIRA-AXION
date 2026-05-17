@@ -91,3 +91,7 @@ app.use('/api/case_status', caseStatusRouter)
 // Route for case_report_logs tbl
 const caseReportLogsRouter = require('./routes/case_report_logs.routes')
 app.use('/api/case_report_logs', caseReportLogsRouter)
+
+// Route for case_report_logs tbl
+const caseReportAnalysisRouter = require('./routes/case_report_analysis.routes')
+app.use('/api/case_report_analysis', caseReportAnalysisRouter)

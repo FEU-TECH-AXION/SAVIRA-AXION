@@ -1,6 +1,7 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
 const { getComplainantId, createReport, getReportsByUserId, getAllReports } = require("../models/case_reports.model");
+const { runNLPAnalysis } = require('../services/nlp.service');
 
 const getItems = async (req, res) => {
     try {
@@ -81,8 +82,18 @@ async function submitReport(req, res) {
       throw new Error('Failed to save organization details.');
     }
 
-    const payload   = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
-    const newReport = await createReport(payload);
+    const payload    = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
+    const newReport  = await createReport(payload);
+
+    // ── Trigger NLP in background — does not block response ──
+    runNLPAnalysis({
+      case_report_id:       newReport.case_report_id,
+      incident_description: newReport.incident_description,
+      incident_location:    newReport.incident_location,
+      incident_city:        newReport.incident_city,
+      action_requested:     newReport.action_requested,
+    });
+    // Note: no await — fires and forgets so user gets response immediately
 
     return res.status(201).json({ data: newReport });
   } catch (err) {
