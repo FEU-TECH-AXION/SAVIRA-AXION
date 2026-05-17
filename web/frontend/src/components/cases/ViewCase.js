@@ -6,7 +6,10 @@ import {
   FiArrowLeft,
   FiChevronDown,
   FiChevronUp,
+  FiClock,
+  FiAlertCircle,
 } from "react-icons/fi";
+import { IoIosArrowBack } from "react-icons/io";
 import styles from "./ViewCase.module.css";
 
 // ─── Status map ───────────────────────────────────────────────────────────────
@@ -68,29 +71,43 @@ function CategoryBadge({ label }) {
 }
 
 function NLPAnalysisSection({ caseReportId, isAdmin, isCaseOfficer }) {
-  const [nlpData, setNlpData] = useState(null);
+  const [nlpData, setNlpData]       = useState(null);
   const [nlpLoading, setNlpLoading] = useState(false);
-  const [nlpError, setNlpError] = useState(null);
+  const [nlpStatus, setNlpStatus]   = useState(null); // 'processing' | 'error' | null
 
   useEffect(() => {
     if (!caseReportId || (!isAdmin && !isCaseOfficer)) return;
 
     const fetchNlp = async () => {
-      setNlpLoading(true);
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("NLP data not available");
-        const json = await res.json();
-        setNlpData(json.data || json);
-      } catch (err) {
-        setNlpError(err.message);
-      } finally {
-        setNlpLoading(false);
+    setNlpLoading(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`, {
+        credentials: "include",
+      });
+
+      console.log("NLP fetch status:", res.status);  // ← add this
+
+      if (res.status === 404) {
+        setNlpStatus('processing');
+        return;
       }
-    };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.log("NLP error body:", body);  // ← add this
+        setNlpStatus('error');
+        return;
+      }
+
+      const json = await res.json();
+      setNlpData(json.data || json);
+    } catch (err) {
+      console.error("NLP fetch threw:", err);  // ← add this
+      setNlpStatus('error');
+    } finally {
+      setNlpLoading(false);
+    }
+  };
 
     fetchNlp();
   }, [caseReportId, isAdmin, isCaseOfficer]);
@@ -104,11 +121,31 @@ function NLPAnalysisSection({ caseReportId, isAdmin, isCaseOfficer }) {
       </h2>
 
       {nlpLoading && (
-        <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Analyzing case...</p>
+        <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Loading analysis...</p>
       )}
 
-      {nlpError && (
-        <p style={{ fontSize: "0.875rem", color: "#991b1b" }}>{nlpError}</p>
+      {nlpStatus === 'processing' && !nlpLoading && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: "#fffbeb", border: "1px solid #fcd34d",
+          borderRadius: 8, padding: "12px 16px",
+          fontSize: "0.875rem", color: "#92400e",
+        }}>
+          <FiClock style={{ flexShrink: 0, fontSize: "1rem" }} />
+          NLP analysis is still processing. Refresh in a moment.
+        </div>
+      )}
+
+      {nlpStatus === 'error' && !nlpLoading && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: "#fee2e2", border: "1px solid #fca5a5",
+          borderRadius: 8, padding: "12px 16px",
+          fontSize: "0.875rem", color: "#991b1b",
+        }}>
+          <FiAlertCircle style={{ flexShrink: 0, fontSize: "1rem" }} />
+          Could not load NLP analysis. Make sure the NLP service is running.
+        </div>
       )}
 
       {nlpData && (
@@ -228,6 +265,7 @@ export default function ViewCase() {
   const [error, setError] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [user, setUser] = useState({ role: null });
+const [userLoaded, setUserLoaded] = useState(false);
 
   const isAdmin = user.role?.toLowerCase() === "admin";
   const isCaseOfficer =
@@ -235,18 +273,19 @@ export default function ViewCase() {
     user.role?.toLowerCase() === "case_officer";
 
   useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const stored = JSON.parse(userCookie);
-        setUser({
-          role: stored.role_name,
-          firstName: stored.first_name,
-          lastName: stored.last_name,
-        });
-      } catch (_) {}
-    }
-  }, []);
+  const userCookie = getCookie("user");
+  if (userCookie) {
+    try {
+      const stored = JSON.parse(userCookie);
+      setUser({
+        role: stored.role_name,
+        firstName: stored.first_name,
+        lastName: stored.last_name,
+      });
+    } catch (_) {}
+  }
+  setUserLoaded(true);
+}, []);
 
   useEffect(() => {
     if (!caseId) {
@@ -330,8 +369,8 @@ export default function ViewCase() {
   if (error || !caseData) {
     return (
       <div className={styles.pageWrapper} style={{ padding: "2rem" }}>
-        <button className={styles.backBtn} onClick={() => router.back()}>
-          <FiArrowLeft /> Back
+        <button className={styles.backBtn} onClick={() => router.push('/cases')}>
+          <IoIosArrowBack /> Back to Case Management
         </button>
         <div style={{
           background: "#fee2e2",
@@ -350,13 +389,15 @@ export default function ViewCase() {
     <div className={styles.pageWrapper}>
       <div className={styles.pageInner}>
 
-        {/* Back Button */}
-        <button className={styles.backBtn} onClick={() => router.back()}>
-          <FiArrowLeft /> Back to Cases
-        </button>
+        
 
         {/* Header card */}
         <div className={styles.headerCard}>
+          {/* Back Button */}
+          <button className={styles.backBtn} onClick={() => router.push('/cases')}>
+            <IoIosArrowBack /> Back to Case Management
+          </button>
+
           <div className={styles.headerTop}>
             <div>
               <h1 className={styles.caseTitle}>{caseData.caseId}</h1>
@@ -504,12 +545,13 @@ export default function ViewCase() {
             )}
           </section>
 
-          {/* NLP Analysis */}
+          {userLoaded && (
           <NLPAnalysisSection
             caseReportId={caseData.id}
             isAdmin={isAdmin}
             isCaseOfficer={isCaseOfficer}
           />
+        )}
 
         </div>
       </div>

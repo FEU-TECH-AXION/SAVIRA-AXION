@@ -140,15 +140,26 @@ async function getNLPAnalysis(req, res) {
   try {
     const { id } = req.params;
     const supabase = require('../config/supabase');
+
     const { data, error } = await supabase
       .from('case_report_analysis')
       .select('*')
       .eq('case_report_id', id)
-      .single();
+      .order('analyzed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (error || !data) return res.status(404).json({ error: 'NLP data not available' });
+    if (error) {
+      console.error('[getNLPAnalysis] Supabase error:', error.message);
+      return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });
+    }
+
+    // Null means the async NLP job hasn't finished yet — tell the frontend clearly.
+    if (!data) return res.status(404).json({ error: 'NLP analysis is still processing. Please check back shortly.' });
+
     return res.json({ data });
   } catch (err) {
+    console.error('[getNLPAnalysis] Unexpected error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });
   }
 }
