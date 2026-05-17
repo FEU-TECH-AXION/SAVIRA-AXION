@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   StyleSheet,
   Modal,
   ImageBackground,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Side Nav ─────────────────────────────────────────────────────────────────
 function SideNav({ open, onClose }) {
@@ -288,19 +290,101 @@ function EventsCard({ events }) {
   );
 }
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ComplainantDashboard() {
   const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
 
-  // TODO: replace with real data from AsyncStorage / API
-  const user = { firstName: 'User', lastName: 'Name' };
+  const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '' });
+  const [reports, setReports] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const notifications = [
-    { id: 1, text: 'You have a new update on your reported case. Please check...' },
-    { id: 2, text: 'A case officer has been assigned to assist you. They will con...' },
-    { id: 3, text: 'Your report has been successfully submitted. Our team will...' },
-  ];
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      // 1. Get user and token from AsyncStorage
+      const userStr = await AsyncStorage.getItem('user');
+      const token = await AsyncStorage.getItem('user_token');
+
+      if (userStr) {
+        const parsedUser = JSON.parse(userStr);
+        setUser({
+          firstName: parsedUser.first_name || 'User',
+          lastName: parsedUser.last_name || 'Name',
+          email: parsedUser.email || '',
+        });
+      }
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch reports
+      const reportsRes = await fetch(`${API_URL}/api/case_reports/my-reports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const reportsData = await reportsRes.json();
+
+      // 3. Fetch applications
+      const appsRes = await fetch(`${API_URL}/api/volunteer_applicants/my-application`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const appsData = await appsRes.json();
+
+      if (reportsRes.ok && reportsData.data) {
+        setReports(reportsData.data);
+      }
+      if (appsRes.ok && appsData.data) {
+        setApplications(appsData.data);
+      }
+
+    } catch (err) {
+      console.error('[fetchData]', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
+
+  // Dynamic notifications based on real data
+  const getNotifications = () => {
+    const list = [];
+    
+    if (reports.length === 0 && applications.length === 0) {
+      list.push({ id: 'welcome', text: 'Welcome to SAVIRA! Submit a report or volunteer application to get started.' });
+    }
+
+    reports.forEach((rep, idx) => {
+      const displayId = rep.case_report_id ? String(rep.case_report_id).slice(0, 8).toUpperCase() : `REP-${idx}`;
+      const statusText = rep.case_status_id === 3 ? 'Resolved' : rep.case_status_id === 2 ? 'Under Review' : 'Submitted';
+      list.push({
+        id: `rep-${rep.case_report_id || idx}`,
+        text: `Report #${displayId} status update: Case is currently "${statusText}".`
+      });
+    });
+
+    applications.forEach((app, idx) => {
+      const statusText = app.status || 'Pending';
+      list.push({
+        id: `app-${app.id || idx}`,
+        text: `Volunteer Application status update: Application is currently "${statusText}".`
+      });
+    });
+
+    return list.slice(0, 5); // Limit to top 5 notifications
+  };
+
+  const notifications = getNotifications();
 
   const events = [
     { id: 1, emoji: '🌞', title: 'SASHA believes that...', date: 'March 1, 2026' },
@@ -318,10 +402,14 @@ export default function ComplainantDashboard() {
         <HeroBanner
           firstName={user.firstName}
           lastName={user.lastName}
-          totalNotifications={11}
+          totalNotifications={notifications.length}
         />
 
         <View style={s.content}>
+
+          {loading && (
+            <ActivityIndicator size="large" color="#037F81" style={{ marginVertical: 20 }} />
+          )}
 
           <SectionHeading title="What would you like to do?" />
 
@@ -329,13 +417,13 @@ export default function ComplainantDashboard() {
             iconSource={require('../../assets/FileAReportIcon.png')}
             title="Submit a Report"
             description="Report safely and securely."
-            onPress={() => router.push('/(complainant)/report')}
+            onPress={() => router.push('/(complainant)/reports')}
           />
           <ActionCard
             iconSource={require('../../assets/VolunteerIcon.png')}
             title="Apply as Volunteer"
             description="Join our mission to support survivors."
-            onPress={() => router.push('/(complainant)/volunteer')}
+            onPress={() => router.push('/(complainant)/volunteer-application')}
           />
 
           <SectionHeading title="Overview" />
@@ -345,25 +433,55 @@ export default function ComplainantDashboard() {
             onView={() => {}}
           />
 
-          <StatusCard
-            title="Your report's status"
-            email="example@email.com"
-            contactNumber="+63 9 1234 5678"
-            dateApplied="March 3, 2026"
-            steps={['Submitted', 'Status 2', 'Status 3']}
-            currentStep={0}
-            onView={() => {}}
-          />
+          {/* Render Case Reports Status */}
+          {reports.length > 0 ? (
+            reports.map((rep) => {
+              const displayId = rep.case_report_id ? String(rep.case_report_id).slice(0, 8).toUpperCase() : '';
+              // map case_status_id (1 -> 0, 2 -> 1, 3 -> 2)
+              const currentStep = rep.case_status_id ? rep.case_status_id - 1 : 0;
+              return (
+                <StatusCard
+                  key={rep.case_report_id}
+                  title={`Report #${displayId} Status`}
+                  email={user.email || 'N/A'}
+                  contactNumber="Provided in Report"
+                  dateApplied={rep.incident_date ? new Date(rep.incident_date).toLocaleDateString() : 'N/A'}
+                  steps={['Submitted', 'Assessed', 'Resolved']}
+                  currentStep={currentStep >= 0 && currentStep <= 2 ? currentStep : 0}
+                  onView={() => {}}
+                />
+              );
+            })
+          ) : (
+            <View style={s.emptyCard}>
+              <Ionicons name="document-text-outline" size={32} color="#9ca3af" />
+              <Text style={s.emptyCardText}>You have not submitted any reports yet.</Text>
+            </View>
+          )}
 
-          <StatusCard
-            title="Your Volunteer Application Status"
-            email="example@email.com"
-            contactNumber="+63 9 1234 5678"
-            dateApplied="March 3, 2026"
-            steps={['Pending', 'Reviewing', 'Approved']}
-            currentStep={1}
-            onView={() => {}}
-          />
+          {/* Render Volunteer Applications Status */}
+          {applications.length > 0 ? (
+            applications.map((app) => {
+              const currentStep = app.status === 'Approved' ? 2 : app.status === 'Reviewing' ? 1 : 0;
+              return (
+                <StatusCard
+                  key={app.id}
+                  title="Your Volunteer Application Status"
+                  email={app.email || user.email || 'N/A'}
+                  contactNumber={app.contact_number || 'N/A'}
+                  dateApplied={app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A'}
+                  steps={['Pending', 'Reviewing', 'Approved']}
+                  currentStep={currentStep}
+                  onView={() => {}}
+                />
+              );
+            })
+          ) : (
+            <View style={s.emptyCard}>
+              <Ionicons name="people-outline" size={32} color="#9ca3af" />
+              <Text style={s.emptyCardText}>You have not applied as a volunteer yet.</Text>
+            </View>
+          )}
 
           <HeatmapPreview />
           <EventsCard events={events} />
@@ -616,4 +734,19 @@ heroOverlay: {
   eventThumbEmoji: { fontSize: 20 },
   eventTitle: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
   eventDate: { fontSize: 11, color: '#6b7280' },
+  emptyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  emptyCardText: {
+    color: '#6b7280',
+    fontSize: 13,
+    textAlign: 'center',
+  },
 });

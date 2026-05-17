@@ -53,4 +53,15 @@ const findByUsername = async (username) => {
     return { ...data, role_name: data.roles?.role_name };
 }
 
-module.exports = { getAll, create, login, findByEmail, findByUsername }
+const findById = async (id) => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*, roles(role_name)')
+        .eq('user_id', id)
+        .single()
+    if (error || !data) return null;
+
+    return { ...data, role_name: data.roles?.role_name };
+}
+
+module.exports = { getAll, create, login, findByEmail, findByUsername, findById }

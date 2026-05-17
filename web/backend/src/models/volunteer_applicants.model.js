@@ -32,4 +32,14 @@ const update = async (id, payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create, update }
+const getByEmail = async (email) => {
+    const { data, error } = await supabase
+        .from('volunteer_applicants')
+        .select('*')
+        .eq('email', email)
+        .order('created_at', { ascending: false });
+    if (error) throw error
+    return data
+}
+
+module.exports = { getAll, create, update, getByEmail }

@@ -36,4 +36,20 @@ const updateStatus = async (req, res) => {
   }
 };
 
-module.exports = { getItems, createItem, updateStatus };
+const getMyApplication = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Authentication required." });
+
+    const UserModel = require("../models/users.model");
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const apps = await VolunteerApplicantsModel.getByEmail(user.email);
+    res.json({ data: apps });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { getItems, createItem, updateStatus, getMyApplication };

@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 
 const TEAL = "#037F81";
 const ORANGE = "#E96433";
@@ -362,7 +363,11 @@ function StatusStepper({ steps, current }) {
 // ── Report Status Card ────────────────────────────────────────────────────────
 function ReportStatusCard({ report, index, onView }) {
   const STATUS_STEP = { Pending: 0, "Under Review": 1, Resolved: 2 };
-  const currentStep = STATUS_STEP[report.case_status?.status_name] ?? 0;
+  let currentStep = STATUS_STEP[report.case_status?.status_name];
+  if (currentStep === undefined && report.case_status_id !== undefined) {
+    currentStep = report.case_status_id - 1;
+  }
+  currentStep = currentStep >= 0 && currentStep <= 2 ? currentStep : 0;
   return (
     <View style={s.statusCard}>
       <View style={s.statusCardHeader}>
@@ -912,18 +917,61 @@ function StepIncidentDetails({ data, onChange, errors }) {
 // ── STEP 2: Supporting Evidence ───────────────────────────────────────────────
 function StepEvidence({ data, onChange }) {
   const pickFiles = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["application/pdf", "image/jpeg", "image/png", "video/mp4"],
-        multiple: true,
-        copyToCacheDirectory: true,
-      });
-      if (!result.canceled && result.assets) {
-        onChange({ ...data, files: [...(data.files || []), ...result.assets] });
-      }
-    } catch (e) {
-      Alert.alert("Error", "Could not pick file.");
-    }
+    Alert.alert(
+      "Attach Evidence",
+      "Choose where you want to select your evidence files or media from:",
+      [
+        {
+          text: "🖼️ Photo Gallery",
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== "granted") {
+                Alert.alert("Permission Denied", "We need permission to access your local gallery to attach evidence.");
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images', 'videos'],
+                allowsMultipleSelection: true,
+                quality: 1,
+              });
+              if (!result.canceled && result.assets) {
+                const mappedAssets = result.assets.map((asset) => ({
+                  name: asset.fileName || `gallery-item-${Date.now()}.${asset.uri.split(".").pop()}`,
+                  size: asset.fileSize || 0,
+                  uri: asset.uri,
+                  mimeType: asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg"),
+                }));
+                onChange({ ...data, files: [...(data.files || []), ...mappedAssets] });
+              }
+            } catch (err) {
+              Alert.alert("Error", "Could not pick images/videos from gallery.");
+            }
+          },
+        },
+        {
+          text: "📄 Documents / Google Drive",
+          onPress: async () => {
+            try {
+              const result = await DocumentPicker.getDocumentAsync({
+                type: ["application/pdf", "image/jpeg", "image/png", "video/mp4"],
+                multiple: true,
+                copyToCacheDirectory: true,
+              });
+              if (!result.canceled && result.assets) {
+                onChange({ ...data, files: [...(data.files || []), ...result.assets] });
+              }
+            } catch (e) {
+              Alert.alert("Error", "Could not pick files.");
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
   };
 
   const removeFile = (idx) => {
@@ -1215,14 +1263,21 @@ export default function ReportScreen() {
 
   const fetchReports = async () => {
     try {
+      const token = await AsyncStorage.getItem("user_token");
+      if (!token) {
+        setLoadingReports(false);
+        return;
+      }
       const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
-        credentials: "include",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!res.ok) throw new Error("Failed");
       const { data } = await res.json();
       setReports(data || []);
-    } catch {
-      /* silent */
+    } catch (err) {
+      console.error("[fetchReports]", err);
     } finally {
       setLoadingReports(false);
     }
@@ -1313,6 +1368,7 @@ export default function ReportScreen() {
       }
 
       setSubmitted(true);
+      fetchReports();
     } catch (err) {
       setSubmitError(err.message || "Failed to submit report.");
     } finally {
