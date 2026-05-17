@@ -217,64 +217,367 @@ function FSelect({ error, children, ...props }) {
 // VIEW CASE MODAL — full detail + history
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ViewCaseModal({ open, onClose, caseData }) {
+function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
   const [showHistory, setShowHistory] = useState(false);
+  const [activeTab, setActiveTab]     = useState("details");
+  const [nlpData, setNlpData]         = useState(null);
+  const [nlpLoading, setNlpLoading]   = useState(false);
+  const [nlpError, setNlpError]       = useState(null);
+
+  // ── Fetch NLP analysis when tab is opened ────────────────────
+  useEffect(() => {
+    if (activeTab !== "nlp" || !caseData) return;
+    if (nlpData) return; // already fetched
+
+    const fetchNLP = async () => {
+      setNlpLoading(true);
+      setNlpError(null);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/case_report_analysis/${caseData.id}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Analysis not found.");
+        const { data } = await res.json();
+        setNlpData(data);
+      } catch (err) {
+        setNlpError(err.message);
+      } finally {
+        setNlpLoading(false);
+      }
+    };
+
+    fetchNLP();
+  }, [activeTab, caseData]);
+
+  // Reset when modal closes or case changes
+  useEffect(() => {
+    if (!open) {
+      setActiveTab("details");
+      setNlpData(null);
+      setNlpError(null);
+      setShowHistory(false);
+    }
+  }, [open]);
+
   if (!caseData) return null;
+
+  // ── Tab styles ────────────────────────────────────────────────
+  const tabStyle = (tab) => ({
+    padding: "8px 20px",
+    border: "none",
+    borderBottom: activeTab === tab ? "2px solid #7c3aed" : "2px solid transparent",
+    background: "none",
+    color: activeTab === tab ? "#7c3aed" : "#6b7280",
+    fontWeight: activeTab === tab ? 700 : 500,
+    cursor: "pointer",
+    fontSize: "0.875rem",
+    transition: "all 0.15s",
+  });
+
+  // ── Category badge ────────────────────────────────────────────
+  const CategoryBadge = ({ label }) => {
+    const colors = {
+      Physical: { bg: "#fee2e2", color: "#991b1b" },
+      Verbal:   { bg: "#fef9c3", color: "#854d0e" },
+      Virtual:  { bg: "#dbeafe", color: "#1e40af" },
+    };
+    const s = colors[label] || { bg: "#f3f4f6", color: "#374151" };
+    return (
+      <span style={{
+        display: "inline-block",
+        padding: "3px 10px",
+        borderRadius: 999,
+        fontSize: "0.78rem",
+        fontWeight: 700,
+        background: s.bg,
+        color: s.color,
+        marginRight: 6,
+        marginBottom: 4,
+      }}>
+        {label}
+      </span>
+    );
+  };
+
+  // ── Case type badge ───────────────────────────────────────────
+  const CaseTypeBadge = ({ label }) => (
+    <span style={{
+      display: "inline-block",
+      padding: "3px 10px",
+      borderRadius: 999,
+      fontSize: "0.78rem",
+      fontWeight: 600,
+      background: "#f3e8ff",
+      color: "#6b21a8",
+      marginRight: 6,
+      marginBottom: 4,
+    }}>
+      {label}
+    </span>
+  );
+
+  // ── NLP status indicator ──────────────────────────────────────
+  const NLPStatusBadge = ({ status }) => {
+    const map = {
+      completed: { bg: "#dcfce7", color: "#166534", label: "Analysis Complete" },
+      pending:   { bg: "#fef9c3", color: "#854d0e", label: "Analysis Pending" },
+      failed:    { bg: "#fee2e2", color: "#991b1b", label: "Analysis Failed" },
+    };
+    const s = map[status] || map.pending;
+    return (
+      <span style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 10px",
+        borderRadius: 999,
+        fontSize: "0.75rem",
+        fontWeight: 700,
+        background: s.bg,
+        color: s.color,
+      }}>
+        {s.label}
+      </span>
+    );
+  };
+
   return (
     <Modal open={open} onClose={onClose} title={`Case Details — ${caseData.caseId}`} wide>
-      <div className={styles.viewGrid}>
-        {[
-          ["Case ID", caseData.caseId],
-          ["Reporter ID", caseData.reporterId],
-          ["Region", caseData.region],
-          ["Type of Violence", caseData.violenceType],
-          ["Current Status", <StatusBadge status={caseData.status} />],
-          ["Assigned Officer", caseData.assignedOfficer || "—"],
-          ["Date Submitted", caseData.dateSubmitted],
-          ["Description", caseData.description],
-          ...(caseData.endorsedTo ? [["Endorsed To", caseData.endorsedTo]] : []),
-          ...(caseData.pendingApproval ? [["Pending Change", <PendingBadge />]] : []),
-        ].map(([k, v]) => (
-          <div key={k} className={styles.viewRow}>
-            <span className={styles.viewKey}>{k}</span>
-            <span className={styles.viewVal}>{v}</span>
-          </div>
-        ))}
+
+      {/* ── Tabs ── */}
+      <div style={{ display: "flex", borderBottom: "1px solid #e5e7eb", marginBottom: "1.25rem" }}>
+        <button style={tabStyle("details")} onClick={() => setActiveTab("details")}>
+          Case Details
+        </button>
+        {(isAdmin || isCaseOfficer) && (
+          <button style={tabStyle("nlp")} onClick={() => setActiveTab("nlp")}>
+            🤖 NLP Analysis
+          </button>
+        )}
       </div>
 
-      {/* Endorsement Details */}
-      {caseData.endorsementDetails && (
-        <div className={styles.endorsementBlock}>
-          <h4 className={styles.endorsementTitle}>Endorsement / Monitoring Details</h4>
-          {Object.entries(caseData.endorsementDetails).map(([k, v]) => v ? (
-            <div key={k} className={styles.viewRow}>
-              <span className={styles.viewKey}>{k}</span>
-              <span className={styles.viewVal}>{v}</span>
+      {/* ══ TAB: CASE DETAILS ══ */}
+      {activeTab === "details" && (
+        <>
+          <div className={styles.viewGrid}>
+            {[
+              ["Case ID",          caseData.caseId],
+              ["Reporter ID",      caseData.reporterId],
+              ["Region",           caseData.region],
+              ["Type of Violence", caseData.violenceType],
+              ["Current Status",   <StatusBadge status={caseData.status} />],
+              ["Assigned Officer", caseData.assignedOfficer || "—"],
+              ["Date Submitted",   caseData.dateSubmitted],
+              ["Description",      caseData.description],
+              ...(caseData.endorsedTo ? [["Endorsed To", caseData.endorsedTo]] : []),
+              ...(caseData.pendingApproval ? [["Pending Change", <PendingBadge />]] : []),
+            ].map(([k, v]) => (
+              <div key={k} className={styles.viewRow}>
+                <span className={styles.viewKey}>{k}</span>
+                <span className={styles.viewVal}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Endorsement Details */}
+          {caseData.endorsementDetails && (
+            <div className={styles.endorsementBlock}>
+              <h4 className={styles.endorsementTitle}>Endorsement / Monitoring Details</h4>
+              {Object.entries(caseData.endorsementDetails).map(([k, v]) => v ? (
+                <div key={k} className={styles.viewRow}>
+                  <span className={styles.viewKey}>{k}</span>
+                  <span className={styles.viewVal}>{v}</span>
+                </div>
+              ) : null)}
             </div>
-          ) : null)}
-        </div>
+          )}
+
+          {/* Status History */}
+          <button
+            className={styles.historyToggle}
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            {showHistory ? <FiChevronUp /> : <FiChevronDown />}
+            {showHistory ? "Hide" : "Show"} Status History ({caseData.statusHistory?.length || 0} entries)
+          </button>
+          {showHistory && (
+            <div className={styles.historyList}>
+              {(caseData.statusHistory || []).map((h, i) => (
+                <div key={i} className={styles.historyItem}>
+                  <div className={styles.historyDot} />
+                  <div className={styles.historyContent}>
+                    <StatusBadge status={h.status} />
+                    <span className={styles.historyMeta}>{h.date} · {h.by}</span>
+                    {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Status History accordion */}
-      <button
-        className={styles.historyToggle}
-        onClick={() => setShowHistory(!showHistory)}
-      >
-        {showHistory ? <FiChevronUp /> : <FiChevronDown />}
-        {showHistory ? "Hide" : "Show"} Status History ({caseData.statusHistory?.length || 0} entries)
-      </button>
-      {showHistory && (
-        <div className={styles.historyList}>
-          {(caseData.statusHistory || []).map((h, i) => (
-            <div key={i} className={styles.historyItem}>
-              <div className={styles.historyDot} />
-              <div className={styles.historyContent}>
-                <StatusBadge status={h.status} />
-                <span className={styles.historyMeta}>{h.date} · {h.by}</span>
-                {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
-              </div>
+      {/* ══ TAB: NLP ANALYSIS ══ */}
+      {activeTab === "nlp" && (
+        <div>
+          {/* Disclaimer */}
+          <div style={{
+            background: "#f5f3ff",
+            border: "1px solid #ddd6fe",
+            borderRadius: 8,
+            padding: "10px 14px",
+            marginBottom: "1.25rem",
+            fontSize: "0.82rem",
+            color: "#5b21b6",
+            display: "flex",
+            gap: 8,
+            alignItems: "flex-start",
+          }}>
+            <span style={{ fontSize: "1rem", flexShrink: 0 }}>🤖</span>
+            <span>
+              This analysis is <strong>AI-generated</strong> and is intended as a guide only.
+              All decisions remain with the case officer and are subject to admin approval.
+            </span>
+          </div>
+
+          {/* Loading */}
+          {nlpLoading && (
+            <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
+              <p>Loading analysis...</p>
             </div>
-          ))}
+          )}
+
+          {/* Error */}
+          {nlpError && !nlpLoading && (
+            <div style={{
+              background: "#fee2e2",
+              border: "1px solid #fca5a5",
+              borderRadius: 8,
+              padding: "12px 16px",
+              color: "#991b1b",
+              fontSize: "0.875rem",
+            }}>
+              <strong>Analysis unavailable:</strong> {nlpError}
+            </div>
+          )}
+
+          {/* NLP Results */}
+          {nlpData && !nlpLoading && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+              {/* Status + analyzed at */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <NLPStatusBadge status={nlpData.status} />
+                {nlpData.analyzed_at && (
+                  <span style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                    Analyzed: {new Date(nlpData.analyzed_at).toLocaleString("en-PH")}
+                  </span>
+                )}
+              </div>
+
+              {/* Section 1 — Summary */}
+              <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
+                <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
+                  📄 Incident Summary
+                </h4>
+                <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>
+                  {nlpData.summary || "No summary available."}
+                </p>
+              </div>
+
+              {/* Section 2 — Classification */}
+              <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
+                <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
+                  🏷️ Suggested Classification
+                </h4>
+
+                <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Primary Categories
+                </p>
+                <div style={{ marginBottom: 12 }}>
+                  {nlpData.primary_categories?.length > 0
+                    ? nlpData.primary_categories.map((c) => <CategoryBadge key={c} label={c} />)
+                    : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>
+                  }
+                </div>
+
+                <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Possible Case Types
+                </p>
+                <div style={{ marginBottom: 12 }}>
+                  {nlpData.case_types?.length > 0
+                    ? nlpData.case_types.map((t) => <CaseTypeBadge key={t} label={t} />)
+                    : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>
+                  }
+                </div>
+
+                {nlpData.classification_notes && (
+                  <>
+                    <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Notes
+                    </p>
+                    <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>
+                      {nlpData.classification_notes}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Section 3 — Recommended Steps */}
+              <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
+                <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
+                  📋 Suggested Next Steps
+                </h4>
+                {nlpData.recommended_steps?.length > 0 ? (
+                  <ol style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 6 }}>
+                    {nlpData.recommended_steps.map((step, i) => (
+                      <li key={i} style={{ fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "#9ca3af" }}>No steps suggested.</p>
+                )}
+              </div>
+
+              {/* Section 4 — Referral Indicator */}
+              <div style={{
+                background: nlpData.referral_suggested ? "#fffbeb" : "#f0fdf4",
+                border: `1px solid ${nlpData.referral_suggested ? "#fcd34d" : "#86efac"}`,
+                borderRadius: 8,
+                padding: "14px 16px",
+              }}>
+                <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: nlpData.referral_suggested ? "#92400e" : "#166534" }}>
+                  {nlpData.referral_suggested ? "⚠️ Referral may be appropriate" : "✅ May be resolvable internally"}
+                </h4>
+                {nlpData.referral_notes && (
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>
+                    {nlpData.referral_notes}
+                  </p>
+                )}
+              </div>
+
+              {/* Section 5 — Technical Info (admin only, collapsible) */}
+              {isAdmin && (
+                <details style={{ fontSize: "0.78rem", color: "#6b7280" }}>
+                  <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
+                    Technical Details
+                  </summary>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8, paddingLeft: 8 }}>
+                    <span><strong>Model:</strong> {nlpData.model_used}</span>
+                    <span><strong>Language detected:</strong> {nlpData.language_detected}</span>
+                    <span><strong>PII detected and masked:</strong> {nlpData.detected_pii?.join(", ") || "None"}</span>
+                    <span><strong>Anonymized text:</strong></span>
+                    <p style={{ margin: "4px 0 0", background: "#f3f4f6", padding: "8px 10px", borderRadius: 6, lineHeight: 1.6 }}>
+                      {nlpData.anonymized_text}
+                    </p>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1547,7 +1850,13 @@ useEffect(() => {
       {/* ══ MODALS ══ */}
 
       {/* View */}
-      <ViewCaseModal open={modal === "view"} onClose={closeModal} caseData={selected} />
+      <ViewCaseModal
+        open={modal === "view"}
+        onClose={closeModal}
+        caseData={selected}
+        isAdmin={isAdmin}
+        isCaseOfficer={isCaseOfficer}
+      />
 
       {/* Assign (admin) */}
       <AssignCaseModal open={modal === "assign"} onClose={closeModal} caseData={selected} onSave={assignOfficer} />

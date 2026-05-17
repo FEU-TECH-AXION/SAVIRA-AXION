@@ -1,4 +1,5 @@
 const CaseReportAnalysisLogs = require('../models/case_report_analysis.model')
+const { getAll, create, getAnalysisByReportId } = require('../models/case_report_analysis.model')
 
 const getItems = async (req, res) => {
     try {
@@ -23,4 +24,15 @@ const createItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem }
+async function getAnalysis(req, res) {
+    try {
+        const { caseReportId } = req.params;
+        const data = await getAnalysisByReportId(caseReportId);
+        return res.json({ data });
+    } catch (err) {
+        console.error('[getAnalysis]', err.message);
+        return res.status(404).json({ error: 'Analysis not found.' });
+    }
+}
+
+module.exports = { getItems, createItem, getAnalysis }
