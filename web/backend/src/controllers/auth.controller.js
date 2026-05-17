@@ -86,7 +86,7 @@ const signup = async (req, res) => {
       .cookie('token', token, COOKIE_OPTIONS)
       .cookie('user', JSON.stringify(flatUser), USER_COOKIE_OPTIONS)
       .status(201)
-      .json({ user: flatUser });
+      .json({ user: flatUser, token });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -135,7 +135,7 @@ const login = async (req, res) => {
       .cookie('token', token, COOKIE_OPTIONS)
       .cookie('user', JSON.stringify(flatUser), USER_COOKIE_OPTIONS)
       .status(200)
-      .json({ user: flatUser });
+      .json({ user: flatUser, token });
 
   } catch (err) {
     res.status(500).json({ error: err.message });

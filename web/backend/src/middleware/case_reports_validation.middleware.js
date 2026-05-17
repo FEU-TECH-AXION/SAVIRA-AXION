@@ -9,7 +9,7 @@ const NCR_CITIES = [
 
 const VALID_ORGS       = ["Boy Scouts of the Philippines (BSP)", "Girl Scouts of the Philippines (GSP)", "Others"];
 const VALID_GENDERS    = ["Male", "Female", "Non-binary", "Prefer not to say"];
-const PHONE_REGEX      = /^\+639\d{9}$/;
+const PHONE_REGEX      = /^(?:\+63|0)9\d{9}$/;
 const EMAIL_REGEX      = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateCaseReport(req, res, next) {
@@ -27,7 +27,7 @@ function validateCaseReport(req, res, next) {
     errors.push('A valid gender identity is required.');
 
   if (!complainant.contactNumber || !PHONE_REGEX.test(complainant.contactNumber))
-    errors.push('A valid Philippine mobile number is required (+639XXXXXXXXX).');
+    errors.push('A valid Philippine mobile number is required (09XXXXXXXXX or +639XXXXXXXXX).');
 
   if (!complainant.email || !EMAIL_REGEX.test(complainant.email))
     errors.push('A valid email address is required.');

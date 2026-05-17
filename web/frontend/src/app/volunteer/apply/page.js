@@ -25,7 +25,7 @@ const NCR_CITIES = [
 ];
 
 // ── Validation helpers ────────────────────────────────────────────────────────
-const PHONE_REGEX = /^\+639\d{9}$/;
+const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
@@ -60,7 +60,7 @@ function validateStep0(data) {
   if (!data.contactNumber) {
     errors.contactNumber = "Contact number is required.";
   } else if (!PHONE_REGEX.test(data.contactNumber)) {
-    errors.contactNumber = "Enter a valid Philippine mobile number (must be 11 digits).";
+    errors.contactNumber = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
   }
 
   if (!data.email) {

@@ -29,7 +29,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/login`, {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -43,8 +43,11 @@ export default function Login() {
       }
 
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      if (data.token) {
+        await AsyncStorage.setItem('user_token', data.token);
+      }
 
-      const role = data.user?.roles?.role_name?.toLowerCase();
+      const role = (data.user?.role_name || data.user?.roles?.role_name || '').toLowerCase();
 
       if (role === 'user' || role === 'complainant') {
         router.replace('/(complainant)/dashboard');

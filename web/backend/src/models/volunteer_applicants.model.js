@@ -22,4 +22,14 @@ const create = async (payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create }
+const update = async (id, payload) => {
+    const { data, error } = await supabase
+        .from('volunteer_applicants')
+        .update(payload)
+        .eq('id', id)
+        .select()
+    if (error) throw error
+    return data[0]
+}
+
+module.exports = { getAll, create, update }

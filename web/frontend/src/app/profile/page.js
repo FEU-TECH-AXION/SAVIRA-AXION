@@ -32,7 +32,7 @@ const NCR_CITIES = [
 ];
 
 // ── Validation helpers ────────────────────────────────────────────────────────
-const PHONE_REGEX = /^\+639\d{9}$/;
+const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
 
 /**
  * Normalises a raw phone input into +63XXXXXXXXXX format.
@@ -61,7 +61,7 @@ function validateProfile(data) {
   if (!data.contact_number) {
     errors.contact_number = "Contact number is required.";
   } else if (!PHONE_REGEX.test(data.contact_number)) {
-    errors.contact_number = "Enter a valid Philippine mobile number (must be 11 digits).";
+    errors.contact_number = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
   }
 
   if (!data.city) {
