@@ -569,7 +569,6 @@ function StepScreeningQuestions({ data, onChange }) {
       {/* ── Values & Conduct ── */}
       <div className={styles.screeningGroup}>
         <div className={styles.screeningGroupHeader}>
-          <span className={styles.screeningGroupIcon}>⚖️</span>
           <h3 className={styles.screeningGroupTitle}>Values &amp; Conduct</h3>
         </div>
         <div className={styles.radioColumn}>
@@ -593,7 +592,6 @@ function StepScreeningQuestions({ data, onChange }) {
       {/* ── Advocacy & Participation ── */}
       <div className={styles.screeningGroup}>
         <div className={styles.screeningGroupHeader}>
-          <span className={styles.screeningGroupIcon}>📣</span>
           <h3 className={styles.screeningGroupTitle}>Advocacy &amp; Participation</h3>
         </div>
         <div className={styles.radioColumn}>
@@ -617,7 +615,6 @@ function StepScreeningQuestions({ data, onChange }) {
       {/* ── Learning & Awareness ── */}
       <div className={styles.screeningGroup}>
         <div className={styles.screeningGroupHeader}>
-          <span className={styles.screeningGroupIcon}>📚</span>
           <h3 className={styles.screeningGroupTitle}>Learning &amp; Awareness</h3>
         </div>
         <div className={styles.radioColumn}>
