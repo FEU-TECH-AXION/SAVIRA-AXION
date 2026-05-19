@@ -18,46 +18,6 @@ const getCookie = (name) => {
 
 const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
 
-// Replace PLACEHOLDER_APPLICANTS with a state Hook
-const [applicants, setApplicants] = useState([]);
-const [loading, setLoading] = useState(true);
-
-useEffect(() => {
-  const fetchApplicants = async () => {
-    try {
-      const res = await fetch(
-        "http://localhost:5000/api/volunteer_applicants",
-        {
-          headers: {
-            // Send cookie or admin token
-            Authorization: `Bearer ${getCookie("token")}`,
-          },
-        },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        // Standardize keys (e.g. backend snake_case to frontend camelCase if needed)
-        const mapped = data.map((app) => ({
-          id: app.application_id || app.id,
-          name: app.name,
-          email: app.email,
-          contact: app.contact_number,
-          dateApplied: new Date(app.created_at).toLocaleDateString(),
-          status: app.status || "Pending",
-          notes: app.notes || "",
-        }));
-        setApplicants(mapped);
-      }
-    } catch (err) {
-      console.error("Failed to load live volunteer applicants", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchApplicants();
-}, []);
-
 const PAGE_SIZE = 6;
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -453,7 +413,8 @@ export default function VolunteerManagement() {
     }
   }, []);
 
-  const [applicants, setApplicants] = useState(PLACEHOLDER_APPLICANTS);
+  const [applicants, setApplicants] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeSort, setActiveSort] = useState(null);
   const [page, setPage] = useState(1);
@@ -461,6 +422,43 @@ export default function VolunteerManagement() {
 
   const [modal, setModal] = useState(null);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+
+  // Fetch volunteer applicants on component mount
+  useEffect(() => {
+    const fetchApplicants = async () => {
+      try {
+        const res = await fetch(
+          "http://localhost:5000/api/volunteer_applicants",
+          {
+            headers: {
+              // Send cookie or admin token
+              Authorization: `Bearer ${getCookie("token")}`,
+            },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          // Standardize keys (e.g. backend snake_case to frontend camelCase if needed)
+          const mapped = data.map((app) => ({
+            id: app.application_id || app.id,
+            name: app.name,
+            email: app.email,
+            contact: app.contact_number,
+            dateApplied: new Date(app.created_at).toLocaleDateString(),
+            status: app.status || "Pending",
+            notes: app.notes || "",
+          }));
+          setApplicants(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load live volunteer applicants", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplicants();
+  }, []);
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
