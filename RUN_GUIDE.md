@@ -28,6 +28,8 @@ npm run dev
 ```
 Frontend runs on → `http://localhost:3000`
 
+**Note**: Mapbox token for heatmap is already configured in `.env`
+
 ---
 
 ### Run Both at Once (from root)
@@ -35,6 +37,8 @@ Frontend runs on → `http://localhost:3000`
 cd SAVIRA
 npm run dev:web
 ```
+
+Visit the heatmap at → `http://localhost:3000/heatmap` (after login)
 
 ---
 
@@ -98,6 +102,14 @@ cd web/nlp
 venv\Scripts\activate
 uvicorn main:app --reload --port 8000
 ```
+
+---
+
+### Heatmap Feature
+```bash
+cd web/frontend
+npm install
+npm run dev
 
 ---
 
