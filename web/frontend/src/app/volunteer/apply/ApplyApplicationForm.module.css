@@ -522,7 +522,120 @@
 
 .fileRemove:hover { color: var(--sasha-orange); }
 
-/* ── Anonymous checkbox ── */
+/* ── Info notice (age/membership) ── */
+.infoNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  background: var(--sasha-teal-light);
+  border: 1px solid var(--sasha-border);
+  border-left: 4px solid var(--sasha-teal);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.infoNoticeIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--sasha-teal);
+  font-style: normal;
+}
+
+.infoNoticeText {
+  font-size: 0.83rem;
+  color: var(--sasha-teal-dark);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* ── Age / Birthday card ── */
+.ageBirthdayCard {
+  background: var(--sasha-offwhite);
+  border: 1px solid var(--sasha-border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ageBirthdayHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.ageBirthdayIcon {
+  font-size: 1.1rem;
+}
+
+.ageBirthdayTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-teal);
+}
+
+/* ── Screening question groups ── */
+.screeningGroup {
+  margin-bottom: 0.25rem;
+}
+
+.screeningGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.screeningGroupIcon {
+  font-size: 1.05rem;
+}
+
+.screeningGroupTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0;
+}
+
+/* ── Availability card ── */
+.availabilityCard {
+  background: var(--sasha-offwhite);
+  border: 1px solid var(--sasha-border);
+  border-left: 4px solid var(--sasha-orange);
+  border-radius: 10px;
+  padding: 1rem 1.1rem 1rem;
+}
+
+.availabilityHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.availabilityIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.availabilityTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0 0 0.2rem;
+}
+
+.availabilityDesc {
+  font-size: 0.8rem;
+  color: var(--sasha-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Checkbox group ── */
 .anonymousRow {
   margin-top: 0.5rem;
 }

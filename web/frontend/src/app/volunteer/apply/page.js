@@ -3,102 +3,12 @@
 import { useState, useRef } from "react";
 import styles from "./ApplyApplicationForm.module.css";
 
-// ── NCR Data ──────────────────────────────────────────────────────────────────
-const NCR_CITIES = [
-  "Caloocan",
-  "Las Piñas",
-  "Makati",
-  "Malabon",
-  "Mandaluyong",
-  "Manila",
-  "Marikina",
-  "Muntinlupa",
-  "Navotas",
-  "Parañaque",
-  "Pasay",
-  "Pasig",
-  "Pateros",
-  "Quezon City",
-  "San Juan",
-  "Taguig",
-  "Valenzuela",
-];
-
-// ── Validation helpers ────────────────────────────────────────────────────────
-const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * Normalises a raw phone input into +63XXXXXXXXXX format.
- * Accepts:  09XXXXXXXXX  |  9XXXXXXXXX  |  +639XXXXXXXXX  (with/without separators)
- * Returns the cleaned string (may be partial — caller decides validity).
- */
-function normalisePhone(raw) {
-  // Strip everything except digits and a leading +
-  let digits = raw.replace(/[^\d]/g, "");
-
-  // Strip a leading country-code prefix if present (63…)
-  if (digits.startsWith("63")) digits = digits.slice(2);
-
-  // Strip a leading 0 (local format 09XX…)
-  if (digits.startsWith("0")) digits = digits.slice(1);
-
-  // Cap at 10 digits (9XXXXXXXXX)
-  digits = digits.slice(0, 10);
-
-  return digits ? `+63${digits}` : "";
-}
-
-function validateStep0(data) {
-  const errors = {};
-
-  if (!data.name) errors.name = "Name is required.";
-  if (!data.age) errors.age = "Age is required.";
-  if (!data.gender) errors.gender = "Gender identity is required.";
-  if (!data.organization) errors.organization = "Organization is required.";
-
-  if (!data.contactNumber) {
-    errors.contactNumber = "Contact number is required.";
-  } else if (!PHONE_REGEX.test(data.contactNumber)) {
-    errors.contactNumber = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
-  }
-
-  if (!data.email) {
-    errors.email = "Email is required.";
-  } else if (!EMAIL_REGEX.test(data.email)) {
-    errors.email = "Enter a valid email address (e.g. sample@gmail.com).";
-  }
-
-  if (!data.interview) errors.interview = "Consent to interview is required.";
-
-  return errors;
-}
-
-function validateStep1(data) {
-  const errors = {};
-
-  if (!data.socialStance) errors.socialStance = "This field is required.";
-  if (!data.shaKnowledge) errors.shaKnowledge = "This field is required.";
-  if (!data.openToLearn) errors.openToLearn = "This field is required.";
-  if (!data.enthusiasm) errors.enthusiasm = "This field is required.";
-  if (!data.commitment) errors.commitment = "This field is required.";
-
-  return errors;
-}
-
-function validateStep2(data) {
-  const errors = {};
-
-  if (!data.description) errors.description = "Essay response is required.";
-
-  return errors;
-}
-
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
   { id: 0, label: "Applicant's Info" },
   { id: 1, label: "Screening Questions" },
   { id: 2, label: "Essay" },
+  // { id: 3, label: "Supporting Credentials" },
   { id: 3, label: "Review & Submit" },
 ];
 
@@ -140,34 +50,40 @@ function Field({ label, children, required, hint, error }) {
       </label>
       {children}
       {hint && !error && (
-        <p className={styles.fieldHint}>
-          {hint}
-        </p>
+        <p className={styles.fieldHint}>{hint}</p>
       )}
       {error && (
-        <p className={styles.fieldError}>
-          {error}
-        </p>
+        <p className={styles.fieldError}>{error}</p>
       )}
     </div>
   );
 }
 
-function Input({ ...props }) {
-  return <input className={styles.input} {...props} />;
+function Input({ error, ...props }) {
+  return (
+    <input
+      className={`${styles.input} ${error ? styles.inputError : ""}`}
+      data-error={error ? "true" : "false"}
+      {...props}
+    />
+  );
 }
 
-function Select({ children, ...props }) {
+function Select({ children, error, ...props }) {
   return (
-    <select className={styles.select} {...props}>
+    <select
+      className={`${styles.select} ${error ? styles.inputError : ""}`}
+      data-error={error ? "true" : "false"}
+      {...props}
+    >
       {children}
     </select>
   );
 }
 
-function RadioGroup({ name, options, value, onChange }) {
+function RadioGroup({ name, options, value, onChange, error }) {
   return (
-    <div className={styles.radioGroup}>
+    <div className={`${styles.radioGroup} ${error ? styles.radioGroupError : ""}`}>
       {options.map((opt) => (
         <label key={opt} className={styles.radioLabel}>
           <input
@@ -185,19 +101,127 @@ function RadioGroup({ name, options, value, onChange }) {
   );
 }
 
-// ── Page 1 — Applicant's Information ───────────────────────────────────────
+// ── NCR Data ──────────────────────────────────────────────────────────────────
+const NCR_CITIES = [
+  "Caloocan", "Las Piñas", "Makati", "Malabon", "Mandaluyong", "Manila",
+  "Marikina", "Muntinlupa", "Navotas", "Parañaque", "Pasay", "Pasig",
+  "Pateros", "Quezon City", "San Juan", "Taguig", "Valenzuela",
+];
+
+// ── Validation helpers ────────────────────────────────────────────────────────
+const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalisePhone(raw) {
+  let digits = raw.replace(/[^\d]/g, "");
+  if (digits.startsWith("63")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  digits = digits.slice(0, 10);
+  return digits ? `+63${digits}` : "";
+}
+
+function calcAgeFromBirthday(birthday) {
+  if (!birthday) return null;
+  const today = new Date();
+  const dob = new Date(birthday);
+  if (isNaN(dob)) return null;
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+function validateStep0(data) {
+  const errors = {};
+
+  if (!data.name)   errors.name   = "Name is required.";
+  if (!data.birthday) {
+    errors.birthday = "Birthday is required.";
+  } else {
+    const computedAge = calcAgeFromBirthday(data.birthday);
+    if (computedAge !== null && computedAge < 13) {
+      errors.birthday =
+        "Applicants must be at least 13 years old. Those below 13 are not eligible to apply at this time.";
+    }
+  }
+
+  if (!data.age) {
+    errors.age = "Age is required.";
+  } else {
+    const enteredAge = parseInt(data.age, 10);
+    if (isNaN(enteredAge) || enteredAge < 13) {
+      errors.age = "The minimum age to apply is 13 years old.";
+    } else if (data.birthday) {
+      const computedAge = calcAgeFromBirthday(data.birthday);
+      if (computedAge !== null && Math.abs(computedAge - enteredAge) > 1) {
+        errors.age = `The age you entered (${enteredAge}) does not match your birthday (expected ${computedAge}). Please double-check both fields.`;
+      }
+    }
+  }
+
+  if (!data.gender) errors.gender = "Gender identity is required.";
+
+  if (!data.contactNumber) {
+    errors.contactNumber = "Contact number is required.";
+  } else if (!PHONE_REGEX.test(data.contactNumber)) {
+    errors.contactNumber = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
+  }
+
+  if (!data.email) {
+    errors.email = "Email is required.";
+  } else if (!EMAIL_REGEX.test(data.email)) {
+    errors.email = "Enter a valid email address (e.g. sample@gmail.com).";
+  }
+
+  if (!data.interview) errors.interview = "Consent to interview is required.";
+  if (!data.organization) errors.organization = "Organization is required.";
+
+  const isScoutOrg = data.organization === "BSP" || data.organization === "GSP";
+
+  if (isScoutOrg) {
+    if (!data.council) errors.council = "Council is required.";
+    if (!data.tenureInScouting) errors.tenureInScouting = "Tenure in Scouting is required.";
+    if (!data.rank) errors.rank = "Rank is required.";
+    if (!data.scoutingMembership) errors.scoutingMembership = "Scouting Membership Category is required.";
+  }
+
+  if (data.organization === "Other") {
+    if (!data.organizationType) errors.organizationType = "Organization type is required.";
+
+    const hasAffiliation =
+      data.organizationType && data.organizationType !== "No Organization / Independent";
+
+    if (hasAffiliation) {
+      if (!data.orgName) errors.orgName = "Organization name is required.";
+      if (!data.orgCity) errors.orgCity = "Organization city is required.";
+    }
+    if (!data.userCity) errors.userCity = "Your city/municipality is required.";
+  }
+
+  return errors;
+}
+
+
 function StepApplicantInfo({ data, onChange, errors, clearError }) {
   const set = (key) => (e) => {
     clearError(key);
-    const value = e.target.value;
-    if (key === "contactNumber") {
-      const formatted = normalisePhone(value);
-      onChange({ ...data, [key]: formatted });
-    } else {
-      onChange({ ...data, [key]: value });
-    }
+    onChange({ ...data, [key]: e.target.value });
   };
-  
+
+  const handleBirthdayChange = (e) => {
+    clearError("birthday");
+    clearError("age");
+    const birthday = e.target.value;
+    const computed = calcAgeFromBirthday(birthday);
+    onChange({
+      ...data,
+      birthday,
+      age: computed !== null ? String(computed) : data.age,
+    });
+  };
+
+  const isScoutOrg = data.organization === "BSP" || data.organization === "GSP";
+
   return (
     <div>
       <h2 className={styles.stepTitle}>
@@ -207,15 +231,49 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
         Please provide your personal details. All information is kept strictly confidential.
       </p>
 
+      {/* ── Age / membership notice ── */}
+      <div className={styles.infoNotice}>
+        <span className={styles.infoNoticeIcon}>ℹ</span>
+        <p className={styles.infoNoticeText}>
+          Applicants below 13 years old cannot apply through the online form. Please contact SASHA directly for guidance regarding provisional membership.
+        </p>
+      </div>
+
       <div className={styles.formGrid}>
         <Field label="Name" required error={errors.name}>
-          <Input placeholder="Full name" value={data.name} onChange={set("name")} />
+          <Input placeholder="Full name" value={data.name} onChange={set("name")} error={errors.name} />
         </Field>
-        <Field label="Age" required error={errors.age}>
-          <Input type="number" placeholder="Age" value={data.age} onChange={set("age")} />
+        <Field
+          label="Birthday"
+          required
+          hint="Entering your birthday will automatically fill in your age."
+          error={errors.birthday}
+        >
+          <Input
+            type="date"
+            value={data.birthday}
+            onChange={handleBirthdayChange}
+            error={errors.birthday}
+            max={new Date().toISOString().split("T")[0]}
+          />
+        </Field>
+        <Field
+          label="Age"
+          required
+          hint="Must be at least 13. Auto-filled from your birthday — update if incorrect."
+          error={errors.age}
+        >
+          <Input
+            type="number"
+            placeholder="Age"
+            min={13}
+            value={data.age}
+            onChange={(e) => { clearError("age"); onChange({ ...data, age: e.target.value }); }}
+            error={errors.age}
+          />
         </Field>
         <Field label="Gender Identity" required error={errors.gender}>
-          <Select value={data.gender} onChange={set("gender")}>
+          <Select value={data.gender} onChange={set("gender")} error={errors.gender}>
             <option value="">Select gender identity</option>
             <option>Male</option>
             <option>Female</option>
@@ -223,48 +281,282 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             <option>Prefer not to say</option>
           </Select>
         </Field>
+        <Field label="Pronouns">
+          <Select value={data.pronouns} onChange={set("pronouns")}>
+            <option value="">Select pronouns</option>
+            <option value="he">He/Him/His</option>
+            <option value="she">She/Her/Hers</option>
+            <option value="they">They/Them/Theirs</option>
+          </Select>
+        </Field>
         <Field label="Organization" required error={errors.organization}>
-          <Select value={data.organization} onChange={set("organization")}>
+          <Select value={data.organization} onChange={set("organization")} error={errors.organization}>
             <option value="">Select organization</option>
-            <option>BSP Unit</option>
-            <option>GSPH Troop</option>
-            <option>Other</option>
+            <option value="BSP">Boy Scouts of the Philippines (BSP)</option>
+            <option value="GSP">Girl Scouts of the Philippines (GSP)</option>
+            <option value="Other">Other</option>
           </Select>
         </Field>
       </div>
 
+      {/* ── BSP / GSP fields ── */}
+      {isScoutOrg && (
+        <>
+          <div className={styles.formDivider} />
+          <h3 className={styles.subSectionTitle}>Scout Organization Details</h3>
+          <div className={styles.formGrid}>
+            <Field label="Council" required hint="e.g. Manila Council, Rizal Council" error={errors.council}>
+              <Input
+                placeholder="Enter your council"
+                value={data.council || ""}
+                onChange={set("council")}
+                error={errors.council}
+              />
+            </Field>
+            <Field label="Region">
+              <Input value="National Capital Region (NCR)" readOnly className={`${styles.input} ${styles.inputReadonly}`} />
+            </Field>
+            <Field label="Tenure in Scouting (in years)" required error={errors.tenureInScouting}>
+              <Input
+                type="number"
+                placeholder="e.g. 3"
+                min={0}
+                value={data.tenureInScouting || ""}
+                onChange={set("tenureInScouting")}
+                error={errors.tenureInScouting}
+              />
+            </Field>
+            <Field label="Rank" required error={errors.rank}>
+              <Input
+                placeholder="e.g. Eagle Scout, Gold Awardee"
+                value={data.rank || ""}
+                onChange={set("rank")}
+                error={errors.rank}
+              />
+            </Field>
+            <Field
+              label="Scouting Membership Category"
+              required
+              hint="If you are a Rover Scout but have undergone Basic Training Course already, please choose the Adult in Scouting."
+              error={errors.scoutingMembership}
+            >
+              <Select
+                value={data.scoutingMembership || ""}
+                onChange={set("scoutingMembership")}
+                error={errors.scoutingMembership}
+              >
+                <option value="">Select scouting membership category</option>
+                <option>Senior Scouts</option>
+                <option>Senior Girl Scouts</option>
+                <option>Cadet Girl Scouts</option>
+                <option>Rover Scouts</option>
+                <option>Adult in Scouting</option>
+              </Select>
+            </Field>
+          </div>
+        </>
+      )}
+
+      {/* ── Other organization fields ── */}
+      {data.organization === "Other" && (
+        <>
+          <div className={styles.formDivider} />
+          <h3 className={styles.subSectionTitle}>Affiliation Details</h3>
+          <p className={styles.stepDesc}>
+            Tell us whether you are affiliated with any group, institution, or organization.
+            If none, you may select "No Organization / Independent".
+          </p>
+
+          <div className={styles.formGrid}>
+            <Field
+              label="Organization Type"
+              required
+              hint="Select the type that best describes your affiliation."
+              error={errors.organizationType}
+            >
+              <Select
+                value={data.organizationType || ""}
+                onChange={set("organizationType")}
+                error={errors.organizationType}
+              >
+                <option value="">Select organization type</option>
+                <option value="No Organization / Independent">No Organization / Independent</option>
+                <option value="School / University">School / University</option>
+                <option value="Workplace / Company">Workplace / Company</option>
+                <option value="Government Agency">Government Agency</option>
+                <option value="Non-Governmental Organization">Non-Governmental Organization (NGO)</option>
+                <option value="Community / Youth Organization">Community / Youth Organization</option>
+                <option value="Religious Organization">Religious Organization</option>
+                <option value="Online Community / Platform">Online Community / Platform</option>
+                <option value="Other">Other</option>
+              </Select>
+            </Field>
+
+            {data.organizationType === "Other" && (
+              <Field label="Specify Organization Type" hint="Enter the type of organization or affiliation.">
+                <Input
+                  placeholder="e.g. Sports Club"
+                  value={data.organizationTypeOther || ""}
+                  onChange={set("organizationTypeOther")}
+                />
+              </Field>
+            )}
+          </div>
+
+          {data.organizationType && data.organizationType !== "No Organization / Independent" && (
+            <>
+              <div className={styles.formGrid}>
+                <Field
+                  label="Organization Name"
+                  required
+                  hint="Enter the full name of your organization, institution, school, company, or group."
+                  error={errors.orgName}
+                >
+                  <Input
+                    placeholder="e.g. University of the Philippines"
+                    value={data.orgName || ""}
+                    onChange={set("orgName")}
+                    error={errors.orgName}
+                  />
+                </Field>
+              </div>
+
+              <p className={styles.stepDesc}>Where is the organization primarily located?</p>
+
+              <div className={styles.formGrid}>
+                <Field
+                  label="City / Municipality"
+                  required
+                  hint="Select the city or municipality where the organization is based."
+                  error={errors.orgCity}
+                >
+                  <Select value={data.orgCity || ""} onChange={set("orgCity")} error={errors.orgCity}>
+                    <option value="">Select city / municipality</option>
+                    {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
+                  </Select>
+                </Field>
+                <Field label="Region">
+                  <Input value="National Capital Region (NCR)" readOnly className={`${styles.input} ${styles.inputReadonly}`} />
+                </Field>
+              </div>
+            </>
+          )}
+
+          <div className={styles.formDivider} />
+          <h3 className={styles.subSectionTitle}>Your Location</h3>
+          <p className={styles.stepDesc}>
+            Where are you currently located?
+          </p>
+          <div className={styles.formGrid}>
+            <Field
+              label="City / Municipality"
+              required
+              hint="Select the city or municipality where you currently reside or stay."
+              error={errors.userCity}
+            >
+              <Select value={data.userCity || ""} onChange={set("userCity")} error={errors.userCity}>
+                <option value="">Select city / municipality</option>
+                {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Region">
+              <Input value="National Capital Region (NCR)" readOnly className={`${styles.input} ${styles.inputReadonly}`} />
+            </Field>
+          </div>
+        </>
+      )}
+
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Mode of Contact</h3>
       <div className={styles.formGrid}>
-        <Field label="Contact Number" required hint="We will use this to reach you." error={errors.contactNumber}>
-          <Input type="tel" placeholder="+639XXXXXXXXX" value={data.contactNumber} onChange={set("contactNumber")} />
+        <Field
+          label="Contact Number"
+          required
+          hint="We will use this to reach you regarding your application."
+          error={errors.contactNumber}
+        >
+          <Input
+            type="tel"
+            placeholder="+639XXXXXXXXX"
+            value={data.contactNumber}
+            onChange={(e) => {
+              clearError("contactNumber");
+              const formatted = normalisePhone(e.target.value);
+              onChange({ ...data, contactNumber: formatted });
+            }}
+            error={errors.contactNumber}
+          />
         </Field>
-        <Field label="Email" required error={errors.email}>
-          <Input type="email" placeholder="sample@gmail.com" value={data.email} onChange={set("email")} />
+        <Field label="Email" required hint="A confirmation and updates will be sent here." error={errors.email}>
+          <Input
+            type="email"
+            placeholder="sample@gmail.com"
+            value={data.email}
+            onChange={(e) => {
+              clearError("email");
+              onChange({ ...data, email: e.target.value.trim() });
+            }}
+            error={errors.email}
+          />
         </Field>
       </div>
 
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Consent</h3>
-      <Field label="Willingness to be interviewed by a SASHA Representative" required error={errors.interview}>
+      <Field
+        label="Willingness to be interviewed by a SASHA Representative"
+        required
+        error={errors.interview}
+      >
         <RadioGroup
           name="interview"
           options={["Yes", "No"]}
           value={data.interview}
           onChange={(v) => { clearError("interview"); onChange({ ...data, interview: v }); }}
+          error={errors.interview}
         />
       </Field>
     </div>
   );
 }
 
-// ── Page 2 — Screening Questions ───────────────────────────────────────────────
-function StepScreeningQuestions({ data, onChange, errors, clearError }) {
-  const setRadio = (key) => (v) => {
-    clearError(key);
-    onChange({ ...data, [key]: v });
+
+function CheckboxGroup({ name, options, value = [], onChange }) {
+  const toggle = (opt) => {
+    const next = value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt];
+    onChange(next);
   };
-  
+  return (
+    <div className={styles.checkboxGroup}>
+      {options.map((opt) => (
+        <label key={opt} className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            name={name}
+            value={opt}
+            checked={value.includes(opt)}
+            onChange={() => toggle(opt)}
+            className={styles.checkboxInput}
+          />
+          {opt}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+const EXPERTISE_OPTIONS = [
+  "News Writing", "Creative Writing", "Photography", "Videography",
+  "Graphic Designing", "Layouting", "Video Editing", "Social Media Management", "Content Creation",
+];
+
+const HOURS_OPTIONS = ["Less than 5 hours", "6-10 hours", "10-15 hours", "More than 15 hours"];
+
+// ── Page 2 — Screening Questions ───────────────────────────────────────────────
+function StepScreeningQuestions({ data, onChange }) {
+  const setRadio = (key) => (v) => onChange({ ...data, [key]: v });
+  const setCheckbox = (key) => (v) => onChange({ ...data, [key]: v });
+
   return (
     <div>
       <h2 className={styles.stepTitle}>
@@ -274,33 +566,132 @@ function StepScreeningQuestions({ data, onChange, errors, clearError }) {
         Please answer the following questions truthfully and honestly.
       </p>
 
+      {/* ── Values & Conduct ── */}
+      <div className={styles.screeningGroup}>
+        <div className={styles.screeningGroupHeader}>
+          <span className={styles.screeningGroupIcon}>⚖️</span>
+          <h3 className={styles.screeningGroupTitle}>Values &amp; Conduct</h3>
+        </div>
+        <div className={styles.radioColumn}>
+          <Field label="Do you believe survivors of harassment and abuse deserve to be treated with dignity, confidentiality, and respect?" required>
+            <RadioGroup name="survivorDignity" options={["Yes", "No"]} value={data.survivorDignity} onChange={setRadio("survivorDignity")} />
+          </Field>
+          <Field label="Are you willing to follow SASHA's confidentiality and safeguarding policies when handling sensitive concerns?" required>
+            <RadioGroup name="confidentialityPolicy" options={["Yes", "No"]} value={data.confidentialityPolicy} onChange={setRadio("confidentialityPolicy")} />
+          </Field>
+          <Field label="Do you agree that harassment, discrimination, victim-blaming, and hate speech are unacceptable within volunteer spaces?" required>
+            <RadioGroup name="noHarassment" options={["Yes", "No"]} value={data.noHarassment} onChange={setRadio("noHarassment")} />
+          </Field>
+          <Field label="Are you willing to communicate respectfully with individuals regardless of gender identity, sexual orientation, religion, or background?" required>
+            <RadioGroup name="respectfulComms" options={["Yes", "No"]} value={data.respectfulComms} onChange={setRadio("respectfulComms")} />
+          </Field>
+        </div>
+      </div>
+
+      <div className={styles.formDivider} />
+
+      {/* ── Advocacy & Participation ── */}
+      <div className={styles.screeningGroup}>
+        <div className={styles.screeningGroupHeader}>
+          <span className={styles.screeningGroupIcon}>📣</span>
+          <h3 className={styles.screeningGroupTitle}>Advocacy &amp; Participation</h3>
+        </div>
+        <div className={styles.radioColumn}>
+          <Field label="Are you in favor of creating safer environments free from sexual harassment and abuse?" required>
+            <RadioGroup name="saferEnvironments" options={["In Favor", "Not in Favor"]} value={data.saferEnvironments} onChange={setRadio("saferEnvironments")} />
+          </Field>
+          <Field label="Are you willing to support advocacy efforts related to gender equality, consent, and harassment prevention?" required>
+            <RadioGroup name="advocacySupport" options={["Yes", "No"]} value={data.advocacySupport} onChange={setRadio("advocacySupport")} />
+          </Field>
+          <Field label="Are you enthusiastic about contributing your time and skills to SASHA's initiatives and activities?" required>
+            <RadioGroup name="enthusiasm" options={["Yes", "No"]} value={data.enthusiasm} onChange={setRadio("enthusiasm")} />
+          </Field>
+          <Field label="Are you committed to maintaining professionalism and responsible conduct as a SASHA volunteer?" required>
+            <RadioGroup name="professionalism" options={["Yes", "No"]} value={data.professionalism} onChange={setRadio("professionalism")} />
+          </Field>
+        </div>
+      </div>
+
+      <div className={styles.formDivider} />
+
+      {/* ── Learning & Awareness ── */}
+      <div className={styles.screeningGroup}>
+        <div className={styles.screeningGroupHeader}>
+          <span className={styles.screeningGroupIcon}>📚</span>
+          <h3 className={styles.screeningGroupTitle}>Learning &amp; Awareness</h3>
+        </div>
+        <div className={styles.radioColumn}>
+          <Field label="Are you familiar with issues related to gender equality, consent, and harassment prevention?" required>
+            <RadioGroup name="genderAwareness" options={["Yes", "No"]} value={data.genderAwareness} onChange={setRadio("genderAwareness")} />
+          </Field>
+          <Field label="Do you actively stay informed about community, youth, or social issues?" required>
+            <RadioGroup name="stayInformed" options={["Yes", "No"]} value={data.stayInformed} onChange={setRadio("stayInformed")} />
+          </Field>
+          <Field label="Are you open to learning more about survivor-centered approaches and advocacy work?" required>
+            <RadioGroup name="openToLearn" options={["Yes", "No"]} value={data.openToLearn} onChange={setRadio("openToLearn")} />
+          </Field>
+          <Field label="Are you comfortable working with diverse individuals and teams?" required>
+            <RadioGroup name="diverseTeams" options={["Yes", "No"]} value={data.diverseTeams} onChange={setRadio("diverseTeams")} />
+          </Field>
+          <Field label="Are you willing to participate in required orientations, trainings, or volunteer briefings conducted by SASHA?" required>
+            <RadioGroup name="orientationWilling" options={["Yes", "No"]} value={data.orientationWilling} onChange={setRadio("orientationWilling")} />
+          </Field>
+          <Field label="Are you able to dedicate time consistently for volunteer responsibilities and activities?" required>
+            <RadioGroup name="timeCommitment" options={["Yes", "No"]} value={data.timeCommitment} onChange={setRadio("timeCommitment")} />
+          </Field>
+          <Field label="Are you willing to receive constructive feedback and continuously improve as a volunteer?" required>
+            <RadioGroup name="feedbackWilling" options={["Yes", "No"]} value={data.feedbackWilling} onChange={setRadio("feedbackWilling")} />
+          </Field>
+        </div>
+      </div>
+
+      <div className={styles.formDivider} />
+
+      {/* ── Expertise and Interest ── */}
+      <h3 className={styles.subSectionTitle}>Expertise and Interest</h3>
       <div className={styles.radioColumn}>
-        <Field label="Do you actively follow and stay informed about current social and political affairs?" required error={errors.socialStance}>
-          <RadioGroup name="socialStance" options={["Yes", "No"]} value={data.socialStance} onChange={setRadio("socialStance")} />
+        <Field label="With background" required>
+          <p className={styles.fieldHint}>These are fields of interest where you have an experience. Please choose as many fields as you need.</p>
+          <CheckboxGroup
+            name="withBackground"
+            options={EXPERTISE_OPTIONS}
+            value={data.withBackground}
+            onChange={setCheckbox("withBackground")}
+          />
         </Field>
-        <Field label="Are you familiar with SASHA's mission and concerns related to gender equality and harassment prevention?" required error={errors.shaKnowledge}>
-          <RadioGroup name="shaKnowledge" options={["Yes", "No"]} value={data.shaKnowledge} onChange={setRadio("shaKnowledge")} />
-        </Field>
-        <Field label="Are you open to learning more about social advocacy and gender-related issues?" required error={errors.openToLearn}>
-          <RadioGroup name="openToLearn" options={["Yes", "No"]} value={data.openToLearn} onChange={setRadio("openToLearn")} />
-        </Field>
-        <Field label="Are you enthusiastic about actively contributing to the fight against gender-based discrimination and harassment?" required error={errors.enthusiasm}>
-          <RadioGroup name="enthusiasm" options={["Yes", "No"]} value={data.enthusiasm} onChange={setRadio("enthusiasm")} />
-        </Field>
-        <Field label="Are you committed to dedicating time and effort as a SASHA volunteer?" required error={errors.commitment}>
-          <RadioGroup name="commitment" options={["Yes", "No"]} value={data.commitment} onChange={setRadio("commitment")} />
+
+        <Field label="If accepted, what field are you interested to be part of?" required>
+          <p className={styles.fieldHint}>These are fields of interest where you have an interest to practice, with or without background. Please choose as many fields as you need.</p>
+          <CheckboxGroup
+            name="interestedFields"
+            options={EXPERTISE_OPTIONS}
+            value={data.interestedFields}
+            onChange={setCheckbox("interestedFields")}
+          />
         </Field>
       </div>
-    </div>
+
+      <div className={styles.formDivider} />
+
+      {/* ── Availability ── */}
+      <h3 className={styles.subSectionTitle}>Weekly Availability</h3>
+      <Field label="How many hours of volunteer work can you commit per week?" required>
+          <p className={styles.fieldHint}>Please note that this is per week basis and may impact your application.</p>
+          <RadioGroup
+            name="hoursPerWeek"
+            options={HOURS_OPTIONS}
+            value={data.hoursPerWeek}
+            onChange={setRadio("hoursPerWeek")}
+          />
+        </Field>
+      </div>
   );
 }
 
 // ── Page 3 — Essay ─────────────────────────────────────────────────
-function StepEssay({ data, onChange, errors, clearError }) {
-  const set = (key) => (e) => {
-    clearError(key);
-    onChange({ ...data, [key]: e.target.value });
-  };
+function StepEssay({ data, onChange }) {
+  const set = (key) => (e) => onChange({ ...data, [key]: e.target.value });
+  const setRadio = (key) => (v) => onChange({ ...data, [key]: v });
 
   return (
     <div>
@@ -310,10 +701,11 @@ function StepEssay({ data, onChange, errors, clearError }) {
       <p className={styles.stepDesc}>
         Please answer truthfully and honestly.
       </p>
+      
 
       <div className={styles.formGrid}>
         <div>
-          <Field label="Why do you want to Volunteer with SASHA?" required hint="Please provide factual and clear information." error={errors.description}>
+          <Field label="In a two to four paragraph essay, please tell us why do you want to join us and why you should be accepted?" required>
             <textarea
               className={styles.textarea}
               placeholder="Answer here..."
@@ -322,13 +714,24 @@ function StepEssay({ data, onChange, errors, clearError }) {
               rows={5}
             />
           </Field>
+          <p className={styles.fieldHint}>Please provide factual and clear information.</p>
+
+          {/* <Field label="What action or outcome are you seeking?">
+            <textarea
+              className={styles.textarea}
+              placeholder="Describe the action or outcome you are seeking..."
+              value={data.outcome}
+              onChange={set("outcome")}
+              rows={3}
+            />
+          </Field> */}
         </div>
       </div>
     </div>
   );
 }
 
-// ── Page  — Supporting Credentials ─────────────────────────────────────────────
+// ── Page 4 — Supporting Credentials ─────────────────────────────────────────────
 // function StepCredentials({ data, onChange }) {
 //   const fileInputRef = useRef();
 //   const [dragging, setDragging] = useState(false);
@@ -434,21 +837,78 @@ function StepReview({ applicant, screeningQuestions, essay }) {
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Applicant's Information</h3>
         <Row label="Name" value={applicant.name} />
+        <Row label="Birthday" value={applicant.birthday} />
         <Row label="Age" value={applicant.age} />
         <Row label="Gender Identity" value={applicant.gender} />
-        <Row label="Organization" value={applicant.organization} />
+        <Row label="Pronouns" value={
+          applicant.pronouns === "he" ? "He/Him/His" :
+          applicant.pronouns === "she" ? "She/Her/Hers" :
+          applicant.pronouns === "they" ? "They/Them/Theirs" :
+          applicant.pronouns
+        } />
+        <Row label="Organization" value={
+          applicant.organization === "BSP" ? "Boy Scouts of the Philippines (BSP)" :
+          applicant.organization === "GSP" ? "Girl Scouts of the Philippines (GSP)" :
+          applicant.organization
+        } />
+        {(applicant.organization === "BSP" || applicant.organization === "GSP") && (
+          <>
+            <Row label="Council" value={applicant.council} />
+            <Row label="Tenure in Scouting (years)" value={applicant.tenureInScouting} />
+            <Row label="Rank" value={applicant.rank} />
+            <Row label="Scouting Membership Category" value={applicant.scoutingMembership} />
+          </>
+        )}
+        {applicant.organization === "Other" && (
+          <>
+            <Row label="Organization Type" value={applicant.organizationType} />
+            {applicant.organizationType === "Other" && <Row label="Specified Type" value={applicant.organizationTypeOther} />}
+            {applicant.organizationType && applicant.organizationType !== "No Organization / Independent" && (
+              <>
+                <Row label="Organization Name" value={applicant.orgName} />
+                <Row label="Organization City" value={applicant.orgCity} />
+              </>
+            )}
+            <Row label="Your City / Municipality" value={applicant.userCity} />
+          </>
+        )}
         <Row label="Willing to be interviewed" value={applicant.interview} />
         <Row label="Contact Number" value={applicant.contactNumber} />
         <Row label="Email" value={applicant.email} />
       </div>
 
       <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Screening Questions</h3>
-        <Row label="Social stance on current affairs" value={screeningQuestions.socialStance} />
-        <Row label="SASHA mission & gender equality knowledge" value={screeningQuestions.shaKnowledge} />
-        <Row label="Openness to learn" value={screeningQuestions.openToLearn} />
-        <Row label="Enthusiasm to join the fight" value={screeningQuestions.enthusiasm} />
-        <Row label="Commitment to volunteering" value={screeningQuestions.commitment} />
+        <h3 className={styles.reviewSectionTitle}>Values &amp; Conduct</h3>
+        <Row label="Survivors deserve dignity & respect" value={screeningQuestions.survivorDignity} />
+        <Row label="Follow confidentiality policies" value={screeningQuestions.confidentialityPolicy} />
+        <Row label="Harassment is unacceptable" value={screeningQuestions.noHarassment} />
+        <Row label="Communicate respectfully" value={screeningQuestions.respectfulComms} />
+      </div>
+
+      <div className={styles.reviewSection}>
+        <h3 className={styles.reviewSectionTitle}>Advocacy &amp; Participation</h3>
+        <Row label="In favor of safer environments" value={screeningQuestions.saferEnvironments} />
+        <Row label="Support advocacy efforts" value={screeningQuestions.advocacySupport} />
+        <Row label="Enthusiastic to contribute" value={screeningQuestions.enthusiasm} />
+        <Row label="Committed to professionalism" value={screeningQuestions.professionalism} />
+      </div>
+
+      <div className={styles.reviewSection}>
+        <h3 className={styles.reviewSectionTitle}>Learning &amp; Awareness</h3>
+        <Row label="Familiar with gender equality issues" value={screeningQuestions.genderAwareness} />
+        <Row label="Stays informed on social issues" value={screeningQuestions.stayInformed} />
+        <Row label="Open to learning" value={screeningQuestions.openToLearn} />
+        <Row label="Comfortable with diverse teams" value={screeningQuestions.diverseTeams} />
+        <Row label="Willing for orientations/trainings" value={screeningQuestions.orientationWilling} />
+        <Row label="Able to dedicate time consistently" value={screeningQuestions.timeCommitment} />
+        <Row label="Open to constructive feedback" value={screeningQuestions.feedbackWilling} />
+      </div>
+
+      <div className={styles.reviewSection}>
+        <h3 className={styles.reviewSectionTitle}>Expertise and Interest</h3>
+        <Row label="Fields with background" value={screeningQuestions.withBackground?.join(", ")} />
+        <Row label="Fields of interest" value={screeningQuestions.interestedFields?.join(", ")} />
+        <Row label="Hours per week" value={screeningQuestions.hoursPerWeek} />
       </div>
 
       <div className={styles.reviewSection}>
@@ -456,8 +916,8 @@ function StepReview({ applicant, screeningQuestions, essay }) {
         <Row label="Description" value={essay.description} />
       </div>
 
-      <div className={styles.reviewSection}>
-        {/* <h3 className={styles.reviewSectionTitle}>Supporting Credentials</h3>
+      {/* <div className={styles.reviewSection}>
+        <h3 className={styles.reviewSectionTitle}>Supporting Credentials</h3>
         <Row
           label="Files attached"
           value={
@@ -465,8 +925,8 @@ function StepReview({ applicant, screeningQuestions, essay }) {
               ? credentials.files.map((f) => f.name).join(", ")
               : "None"
           }
-        /> */}
-      </div>
+        />
+      </div> */}
     </div>
   );
 }
@@ -525,69 +985,68 @@ export default function CreateApplication({
 }) {
   const [step, setStep]   = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [stepErrors, setStepErrors] = useState({});
 
   const [applicant, setApplicant] = useState({
-    name: "", age: "", gender: "", organization: "",
+    name: "", birthday: "", age: "", gender: "", pronouns: "", organization: "",
     interview: "", contactNumber: "", email: "",
+    // BSP/GSP
+    council: "", tenureInScouting: "", rank: "", scoutingMembership: "",
+    // Other
+    organizationType: "", organizationTypeOther: "", orgName: "", orgCity: "", userCity: "",
   });
   const [screeningQuestions, setScreeningQuestions] = useState({
-    socialStance: "", shaKnowledge: "",
-    openToLearn: "", enthusiasm: "",
-    commitment: "",
+    // Values & Conduct
+    survivorDignity: "", confidentialityPolicy: "", noHarassment: "", respectfulComms: "",
+    // Advocacy & Participation
+    saferEnvironments: "", advocacySupport: "", enthusiasm: "", professionalism: "",
+    // Learning & Awareness
+    genderAwareness: "", stayInformed: "", openToLearn: "", diverseTeams: "",
+    orientationWilling: "", timeCommitment: "", feedbackWilling: "",
+    // Expertise & Interest (unchanged)
+    withBackground: [], interestedFields: [], hoursPerWeek: "",
   });
   const [essay, setEssay] = useState({
     description: "",
   });
-  
-  const [errors, setErrors] = useState({});
   // const [credentials, setCredentials] = useState({ files: []});
 
   const totalSteps = STEPS.length;
 
   const clearError = (key) => {
-    setErrors((p) => ({ ...p, [key]: "" }));
+    setStepErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const handleNext = () => {
-    if (step === 0) {
-      const stepErrors = validateStep0(applicant);
-      if (Object.keys(stepErrors).length) {
-        setErrors(stepErrors);
-        return;
-      }
-      setErrors({});
-    } else if (step === 1) {
-      const stepErrors = validateStep1(screeningQuestions);
-      if (Object.keys(stepErrors).length) {
-        setErrors(stepErrors);
-        return;
-      }
-      setErrors({});
-    } else if (step === 2) {
-      const stepErrors = validateStep2(essay);
-      if (Object.keys(stepErrors).length) {
-        setErrors(stepErrors);
-        return;
-      }
-      setErrors({});
+    let errors = {};
+    if (step === 0) errors = validateStep0(applicant);
+
+    if (Object.keys(errors).length > 0) {
+      setStepErrors(errors);
+      setTimeout(() => {
+        const firstErrorField = document.querySelector("[data-error='true']");
+        if (firstErrorField) {
+          firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
+          firstErrorField.focus();
+        }
+      }, 50);
+      return;
     }
-    
+
+    setStepErrors({});
     if (step < totalSteps - 1) setStep((s) => s + 1);
   };
 
   const handleBack = () => {
+    setStepErrors({});
     if (step > 0) setStep((s) => s - 1);
-    setErrors({});
   };
-
-  const handleSubmit = () => {
-    const stepErrors = validateStep0(applicant);
-    if (Object.keys(stepErrors).length) {
-      setErrors(stepErrors);
-      return;
-    }
-    setSubmitted(true);
-  };
+  const handleSubmit = () => setSubmitted(true);
 
   // ── Demo fallback data for status cards ───────────────────────────────────
   const resolvedApplication = applicationData ?? {
@@ -617,7 +1076,7 @@ export default function CreateApplication({
             <div className={styles.heroContent}>
               <p className={styles.heroEyebrow}>
                 <span className={styles.heroLine} />
-                Submit an Application
+                Submit a Application
               </p>
               <h1 className={styles.heroTitle}>
                 We're Here
@@ -649,11 +1108,11 @@ export default function CreateApplication({
 
             {/* Step content */}
             <div className={styles.formBody}>
-              {step === 0 && <StepApplicantInfo data={applicant} onChange={setApplicant} errors={errors} clearError={clearError} />}
-              {step === 1 && <StepScreeningQuestions data={screeningQuestions} onChange={setScreeningQuestions} errors={errors} clearError={clearError} />}
-              {step === 2 && <StepEssay data={essay} onChange={setEssay} errors={errors} clearError={clearError} />}
+              {step === 0 && <StepApplicantInfo data={applicant} onChange={setApplicant} errors={stepErrors} clearError={clearError} />}
+              {step === 1 && <StepScreeningQuestions data={screeningQuestions} onChange={setScreeningQuestions} />}
+              {step === 2 && <StepEssay data={essay} onChange={setEssay} />}
               {/* {step === 3 && <StepCredentials        data={credentials}    onChange={setCredentials}    />} */}
-              {step === 3 && <StepReview applicant={applicant} screeningQuestions={screeningQuestions} essay={essay}/>}
+              {step === 3 && <StepReview applicant={applicant} screeningQuestions={screeningQuestions} essay={essay} />}
             </div>
 
             {/* Navigation buttons */}
