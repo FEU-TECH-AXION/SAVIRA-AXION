@@ -17,6 +17,14 @@ const ROLES = [
   "Volunteers",
 ];
 
+const ROLES_MAP = {
+  1: "User",
+  2: "Staff",
+  3: "Admin",
+  4: "Legal Personnel",
+  5: "Case Officer",
+};
+
 const ROLE_OPTIONS = ROLES.filter((r) => r !== "All");
 const PAGE_SIZE = 8;
 
@@ -166,48 +174,133 @@ function Modal({ open, onClose, title, children }) {
 // CREATE USER MODAL
 // ══════════════════════════════════════════════════════════════════
 function CreateUserModal({ open, onClose, onSave }) {
-  const EMPTY = { name: "", email: "", phone: "", role: ROLE_OPTIONS[0], status: "Active" };
-  const [form, setForm] = useState(EMPTY);
-  const [errors, setErrors] = useState({});
+  const EMPTY = {
+    first_name:     "",
+    last_name:      "",
+    email:          "",
+    contact_number: "",
+    role_id:        "",
+    is_active:      true,
+  };
+
+  const ROLES = [
+    { id: 1, name: "User" },
+    { id: 2, name: "Staff" },
+    { id: 3, name: "Admin" },
+    { id: 4, name: "Legal Personnel" },
+    { id: 5, name: "Case Officer" },
+  ];
+
+  const TEMP_PASSWORD = "Savira@2026";
+
+  const [form, setForm]       = useState(EMPTY);
+  const [errors, setErrors]   = useState({});
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
   function validate() {
     const e = {};
-    if (!form.name.trim())  e.name  = "Name is required.";
-    if (!form.email.trim()) e.email = "Email is required.";
+    if (!form.first_name.trim()) e.first_name = "First name is required.";
+    if (!form.last_name.trim())  e.last_name  = "Last name is required.";
+    if (!form.email.trim())      e.email      = "Email is required.";
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email.";
-    if (!form.role) e.role = "Role is required.";
+    if (!form.role_id)           e.role_id    = "Role is required.";
     return e;
-  }
-
-  function handleSubmit() {
-    const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
-    onSave({ ...form, dateCreated: today() });
-    setForm(EMPTY);
-    setErrors({});
-    onClose();
   }
 
   function handleClose() {
     setForm(EMPTY);
     setErrors({});
+    setApiError(null);
     onClose();
+  }
+
+  async function handleSubmit() {
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); return; }
+
+    setLoading(true);
+    setApiError(null);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const username = `${form.email.split('@')[0]}${Math.floor(Math.random() * 10000)}`;
+
+      const response = await fetch(`${API_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          first_name:     form.first_name.trim(),
+          last_name:      form.last_name.trim(),
+          email:          form.email.trim().toLowerCase(),
+          contact_number: form.contact_number.trim() || null,
+          role_id:        parseInt(form.role_id),
+          is_active:      form.is_active,
+          user_name:      username,
+          password:       TEMP_PASSWORD,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || `Server error (${response.status})`);
+      }
+
+      const newUser = await response.json();
+      onSave(newUser);
+      handleClose();
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <Modal open={open} onClose={handleClose} title="Create New User">
+      {/* Temp password notice */}
+      <div style={{
+        background: "#fef9c3",
+        border: "1px solid #fde68a",
+        borderRadius: 8,
+        padding: "10px 14px",
+        marginBottom: "1rem",
+        fontSize: "0.82rem",
+        color: "#92400e",
+      }}>
+        ⚠️ Temporary password <strong>{TEMP_PASSWORD}</strong> will be assigned.
+        User should change it on first login.
+      </div>
+
       <div className={styles.formGrid}>
+        {/* First Name */}
         <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Full Name *</label>
+          <label className={styles.formLabel}>First Name *</label>
           <input
-            className={`${styles.formInput} ${errors.name ? styles.inputError : ""}`}
+            className={`${styles.formInput} ${errors.first_name ? styles.inputError : ""}`}
             type="text"
-            placeholder="e.g. Juan dela Cruz"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="e.g. Juan"
+            value={form.first_name}
+            onChange={(e) => { setForm({ ...form, first_name: e.target.value }); setErrors((p) => { const n = {...p}; delete n.first_name; return n; }); }}
           />
-          {errors.name && <span className={styles.errorMsg}>{errors.name}</span>}
+          {errors.first_name && <span className={styles.errorMsg}>{errors.first_name}</span>}
         </div>
+
+        {/* Last Name */}
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Last Name *</label>
+          <input
+            className={`${styles.formInput} ${errors.last_name ? styles.inputError : ""}`}
+            type="text"
+            placeholder="e.g. Dela Cruz"
+            value={form.last_name}
+            onChange={(e) => { setForm({ ...form, last_name: e.target.value }); setErrors((p) => { const n = {...p}; delete n.last_name; return n; }); }}
+          />
+          {errors.last_name && <span className={styles.errorMsg}>{errors.last_name}</span>}
+        </div>
+
+        {/* Email */}
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Email Address *</label>
           <input
@@ -215,31 +308,40 @@ function CreateUserModal({ open, onClose, onSave }) {
             type="email"
             placeholder="e.g. juan@sasha.org"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors((p) => { const n = {...p}; delete n.email; return n; }); }}
           />
           {errors.email && <span className={styles.errorMsg}>{errors.email}</span>}
         </div>
+
+        {/* Contact Number */}
         <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Phone Number</label>
+          <label className={styles.formLabel}>Contact Number</label>
           <input
             className={styles.formInput}
             type="tel"
             placeholder="e.g. 09171234567"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            value={form.contact_number}
+            onChange={(e) => setForm({ ...form, contact_number: e.target.value })}
           />
         </div>
+
+        {/* Role */}
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Role *</label>
           <select
-            className={`${styles.formInput} ${errors.role ? styles.inputError : ""}`}
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
+            className={`${styles.formInput} ${errors.role_id ? styles.inputError : ""}`}
+            value={form.role_id}
+            onChange={(e) => { setForm({ ...form, role_id: e.target.value }); setErrors((p) => { const n = {...p}; delete n.role_id; return n; }); }}
           >
-            {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            <option value="">— Select Role —</option>
+            {ROLES.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
           </select>
-          {errors.role && <span className={styles.errorMsg}>{errors.role}</span>}
+          {errors.role_id && <span className={styles.errorMsg}>{errors.role_id}</span>}
         </div>
+
+        {/* Status */}
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Status</label>
           <div className={styles.radioGroup}>
@@ -247,10 +349,9 @@ function CreateUserModal({ open, onClose, onSave }) {
               <label key={s} className={styles.radioLabel}>
                 <input
                   type="radio"
-                  name="status"
-                  value={s}
-                  checked={form.status === s}
-                  onChange={() => setForm({ ...form, status: s })}
+                  name="create-status"
+                  checked={form.is_active === (s === "Active")}
+                  onChange={() => setForm({ ...form, is_active: s === "Active" })}
                   className={styles.radioInput}
                 />
                 {s}
@@ -259,9 +360,30 @@ function CreateUserModal({ open, onClose, onSave }) {
           </div>
         </div>
       </div>
+
+      {apiError && (
+        <div style={{
+          background: "#fee2e2",
+          border: "1px solid #fca5a5",
+          borderRadius: 8,
+          padding: "10px 14px",
+          marginTop: "1rem",
+          fontSize: "0.82rem",
+          color: "#991b1b",
+        }}>
+          <strong>Error:</strong> {apiError}
+        </div>
+      )}
+
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={handleClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit}>Create User</button>
+        <button
+          className={styles.btnPrimary}
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? "Creating..." : "Create User"}
+        </button>
       </div>
     </Modal>
   );
@@ -688,9 +810,14 @@ export default function AdminDashboard() {
   ], [users]);
 
   // ── Create ────────────────────────────────────────────────────
-  function handleCreate(data) {
-    setUsers((prev) => [{ user_id: nextId(prev), ...data }, ...prev]);
-    showToast(`User "${data.name}" created successfully.`);
+  async function handleCreate(newUser) {
+    // newUser comes directly from the API response
+    const normalized = normalizeUser({
+      ...newUser,
+      roles: { role_name: ROLES_MAP[newUser.role_id] || "Unknown" }
+    });
+    setUsers((prev) => [normalized, ...prev]);
+    showToast(`User "${normalized.name}" created successfully.`);
   }
 
   // ── Update ────────────────────────────────────────────────────
