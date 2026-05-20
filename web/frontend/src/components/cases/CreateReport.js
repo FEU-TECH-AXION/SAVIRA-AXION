@@ -225,7 +225,12 @@ function validateStep1(data) {
 
   if (!data.date)          errors.date         = "Date is required.";
   if (!data.time)          errors.time         = "Time is required.";
-  if (!data.incidentCity)  errors.incidentCity = "Incident city/municipality is required.";
+  if (!data.locationType)  errors.locationType = "Please indicate if the incident occurred physically or online.";
+  
+  if (data.locationType === "Physical Location") {
+    if (!data.incidentCity)  errors.incidentCity = "Incident city/municipality is required.";
+  }
+  
   if (!data.description)   errors.description  = "Description of incident is required.";
   if (!data.perpetratorKnown) errors.perpetratorKnown = "Please indicate if the perpetrator is known.";
   if (!data.witnesses)     errors.witnesses    = "Please indicate if there are witnesses.";
@@ -250,6 +255,11 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
   const set = (key) => (e) => {
     clearError(key);
     onChange({ ...data, [key]: e.target.value });
+  };
+
+  const setRadio = (key) => (v) => {
+    clearError(key);
+    onChange({ ...data, [key]: v });
   };
 
   const isScoutOrg =
@@ -289,33 +299,32 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
       </p>
 
       <div className={styles.formGrid}>
-        <Field label="Name" hint="Optional — you may leave this blank if you prefer.">
+        <Field label="Who is this report about?" required hint="Is this report about you, or someone else?" error={errors.reporteeType}>
+          <RadioGroup
+            name="reporteeType"
+            options={["Me (Myself)", "Someone else"]}
+            value={data.reporteeType || ""}
+            onChange={(v) => {
+              clearError("reporteeType");
+              const isMe = v === "Me (Myself)";
+              setSelfReport(isMe);
+              onChange({
+                ...data,
+                reporteeType: v,
+                name: isMe ? (loggedInName ?? '') : '',
+              });
+            }}
+          />
+        </Field>
+
+        <Field label="Name" hint="Optional — you may leave this blank if you prefer to remain anonymous.">
           <Input
             placeholder="Full name"
             value={data.name}
             onChange={(e) => {
-              // If user manually edits, uncheck the box
-              if (selfReport) setSelfReport(false);
               set('name')(e);
             }}
-            disabled={selfReport}
           />
-
-                    {/* ── Self-report checkbox ── */}
-          <label className={styles.checkboxLabel} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '0.875rem', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={selfReport}
-              onChange={(e) => handleSelfReport(e.target.checked)}
-              disabled={!loggedInName}
-            />
-            This report is for me
-            {!loggedInName && (
-              <span style={{ color: 'var(--text-muted, #999)', fontSize: '0.8rem' }}>
-                (no name found in session)
-              </span>
-            )}
-          </label>
         </Field>
 
         {/* rest of the grid fields unchanged */}
@@ -640,20 +649,44 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Location of Incident</h3>
       <p className={styles.stepDesc}>Where did the incident take place? Avoid including exact home addresses if you prefer privacy.</p>
+      
+      <Field label="Incident Location Type" required error={errors.locationType}>
+        <RadioGroup
+          name="locationType"
+          options={["Physical Location", "Online"]}
+          value={data.locationType || ""}
+          onChange={setRadio("locationType")}
+        />
+      </Field>
+
       <div className={styles.formGrid}>
-        <Field label="City / Municipality" required hint="Select the city or municipality where the incident occurred." error={errors.incidentCity}>
-          <Select value={data.incidentCity || ""} onChange={set("incidentCity")} error={errors.incidentCity}>
-            <option value="">Select city / municipality</option>
-            {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
-          </Select>
-        </Field>
-        <Field label="Specific Place / Venue" hint="e.g. school campus, community center, online — do not include your home address.">
-          <Input
-            placeholder="e.g. Barangay hall, online platform, school"
-            value={data.incidentVenue || ""}
-            onChange={set("incidentVenue")}
-          />
-        </Field>
+        {data.locationType === "Physical Location" && (
+          <>
+            <Field label="City / Municipality" required hint="Select the city or municipality where the incident occurred." error={errors.incidentCity}>
+              <Select value={data.incidentCity || ""} onChange={set("incidentCity")} error={errors.incidentCity}>
+                <option value="">Select city / municipality</option>
+                {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Specific Place / Venue" hint="e.g. school campus, community center — do not include your home address.">
+              <Input
+                placeholder="e.g. Barangay hall, school gymnasium, park"
+                value={data.incidentVenue || ""}
+                onChange={set("incidentVenue")}
+              />
+            </Field>
+          </>
+        )}
+
+        {data.locationType === "Online" && (
+          <Field label="Online Platform / Service" hint="Where did this incident occur online?">
+            <Input
+              placeholder="e.g. Facebook, Instagram, WhatsApp, email, gaming platform, website"
+              value={data.incidentVenue || ""}
+              onChange={set("incidentVenue")}
+            />
+          </Field>
+        )}
       </div>
 
       {/* ── Description ── */}
@@ -922,7 +955,9 @@ function StepReview({ complainant, incident, evidence }) {
   // Reconstruct composed address fields for display
   const orgAddress = [complainant.orgCity, "National Capital Region (NCR)"].filter(Boolean).join(", ");
   const userAddress = [complainant.userCity, "National Capital Region (NCR)"].filter(Boolean).join(", ");
-  const incidentLocation = [incident.incidentVenue, incident.incidentCity, "NCR"].filter(Boolean).join(", ");
+  const incidentLocation = incident.locationType === "Online" 
+    ? incident.incidentVenue || "Online"
+    : [incident.incidentVenue, incident.incidentCity, "NCR"].filter(Boolean).join(", ");
 
   return (
     <div>
@@ -935,6 +970,7 @@ function StepReview({ complainant, incident, evidence }) {
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Complainant's Information</h3>
+        <Row label="Report Type"               value={complainant.reporteeType} />
         <Row label="Name"                   value={complainant.name} />
         <Row label="Age"                    value={complainant.age} />
         <Row label="Gender Identity"        value={complainant.gender} />
@@ -963,6 +999,7 @@ function StepReview({ complainant, incident, evidence }) {
         <h3 className={styles.reviewSectionTitle}>Incident Details</h3>
         <Row label="Date"                   value={incident.date} />
         <Row label="Time"                   value={incident.time} />
+        <Row label="Location Type"          value={incident.locationType} />
         <Row label="Location"               value={incidentLocation} />
         <Row label="Description"            value={incident.description} />
         <Row label="Outcome sought"         value={incident.outcome} />
@@ -1069,14 +1106,14 @@ export default function CreateReport({
   const [submissionError, setSubmissionError] = useState(null);
 
   const [complainant, setComplainant] = useState({
-    name: "", age: "", gender: "", organization: "",
+    name: "", age: "", gender: "", organization: "", reporteeType: "",
     council: "", region: "",
     orgName: "", organizationType: "", orgCity: "", userCity: "",
     contactNumber: "", email: "", interview: "",
   });
 
   const [incident, setIncident] = useState({
-    date: "", time: "", incidentCity: "", incidentVenue: "",
+    date: "", time: "", locationType: "", incidentCity: "", incidentVenue: "",
     description: "", outcome: "",
     perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
     perpetratorRelationship: "", perpetratorGender: "",
