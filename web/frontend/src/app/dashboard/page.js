@@ -19,6 +19,8 @@ function getCookie(name) {
 
 export default function DashboardPage() {
   const [role, setRole] = useState(null);
+  const [userReports, setUserReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -28,12 +30,35 @@ export default function DashboardPage() {
     setRole(user.role_name?.toLowerCase());
   }, []);
 
+  useEffect(() => {
+    if (role === "user") {
+      fetchUserReports();
+    }
+  }, [role]);
+
+  const fetchUserReports = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch reports');
+      const { data } = await res.json();
+      setUserReports(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching user reports:', err);
+      setUserReports([]);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
   if (!role) return <p>Loading...</p>;
   if (role === "admin")           return <AdminDashboard />;
   if (role === "staff")           return <StaffDashboard />;
   if (role === "case officer")    return <CaseOfficerDashboard />;
   if (role === "legal personnel") return <LegalPersonnelDashboard />;
-  if (role === "user")            return <ComplainantDashboard />;
+  if (role === "user")            return <ComplainantDashboard userReports={userReports} />;
 
   return <p>Unauthorized</p>;
 }

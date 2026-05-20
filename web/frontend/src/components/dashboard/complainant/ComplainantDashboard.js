@@ -181,7 +181,7 @@ function EventsItem({ image, emoji, title, date }) {
 export default function ComplainantDashboard({
   // These props will be populated by real data fetching in parent pages/layouts.
   // Passing null/undefined → cards show graceful placeholders.
-  reportData        = null,   // { email, contactNumber, dateApplied, currentStep }
+  userReports       = [],     // [{ id, email, contactNumber, dateApplied, status }]
   applicationData   = null,   // { email, contactNumber, dateApplied, currentStep }
   notifications     = [],     // [{ id, text }]
   events            = [],     // [{ id, image?, emoji?, title, date }]
@@ -216,13 +216,6 @@ export default function ComplainantDashboard({
       ];
 
   const resolvedTotalNotif = totalNotifications || resolvedNotifications.length;
-
-  const resolvedReport = reportData ?? {
-    email: "example@email.com",
-    contactNumber: "+63 9 1234 5678",
-    dateApplied: "March 3, 2026",
-    currentStep: 0,
-  };
 
   const resolvedApplication = applicationData ?? {
     email: "example@email.com",
@@ -272,7 +265,7 @@ export default function ComplainantDashboard({
                 icon=<img src="FileAReportIcon.png" alt="" className={styles.actionIconImg} />
                 title="Submit a Report"
                 description="Report safely and securely."
-                onView={() => router.push("/report")}
+                onView={() => router.push("/cases")}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -295,12 +288,14 @@ export default function ComplainantDashboard({
             {/* Left col — status cards */}
             <div className="col-12 col-lg-8">
               <div className="row g-3">
-                <div className="col-12">
-                  <ReportStatusCard
-                    reportData={resolvedReport}
-                    onView={() => {/* navigate to /cases */}}
-                  />
-                </div>
+                {userReports.length > 0 && (
+                  <div className="col-12">
+                    <ReportStatusCard
+                      reportData={userReports[0]}
+                      onView={() => router.push("/cases")}
+                    />
+                  </div>
+                )}
                 <div className="col-12">
                   <VolunteerStatusCard
                     applicationData={resolvedApplication}
