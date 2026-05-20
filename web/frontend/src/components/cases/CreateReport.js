@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./CreateReport.module.css";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
@@ -1046,15 +1047,36 @@ function StepReview({ complainant, incident, evidence }) {
   );
 }
 
+// ── Case status → 3-step display ─────────────────────────────────────────────
+// The stepper always shows [Submitted] → [<middle>] → [Resolved].
+// The middle label reflects the actual case status; the phase (0/1/2) drives
+// which dot is active so the user always knows where they stand.
+const STATUS_DISPLAY = {
+  "For Verification":      { middle: "For Verification",      phase: 1 },
+  "Undergoing Review":     { middle: "Undergoing Review",     phase: 1 },
+  "Verified - True":       { middle: "Verified",              phase: 1 },
+  "Verified - False":      { middle: "Verified",              phase: 1 },
+  "Under Case Evaluation": { middle: "Under Case Evaluation", phase: 1 },
+  "Case Filed":            { middle: "Case Filed",            phase: 1 },
+  "Investigation Ongoing": { middle: "Investigation Ongoing", phase: 1 },
+  "Hearing Ongoing":       { middle: "Hearing Ongoing",       phase: 1 },
+  "Dismissed":             { middle: "Dismissed",             phase: 2 },
+  "Perpetrator Convicted": { middle: "Perpetrator Convicted", phase: 2 },
+};
+
 // ── Status Stepper ────────────────────────────────────────────────────────────
-function StatusStepper({ steps, current }) {
+// `statusName` — raw status string from the API (one of the 10 statuses above)
+function StatusStepper({ statusName }) {
+  const { middle, phase } = STATUS_DISPLAY[statusName] ?? { middle: "In Progress", phase: 1 };
+  const steps = ["Submitted", middle, "Resolved"];
+
   return (
     <div className={styles.stepper}>
       {steps.map((label, i) => {
-        const done   = i < current;
-        const active = i === current;
+        const done   = i < phase;
+        const active = i === phase;
         return (
-          <div key={label} className={styles.stepItem}>
+          <div key={i} className={styles.stepItem}>
             {i > 0 && (
               <div className={`${styles.stepLine} ${done || active ? styles.stepLineDone : ""}`} />
             )}
@@ -1067,31 +1089,77 @@ function StatusStepper({ steps, current }) {
   );
 }
 
-// ── Report Status Card ────────────────────────────────────────────────────────
+// ── Relative time helper ────────────────────────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (isNaN(diff)) return null;
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins  < 1)   return "just now";
+  if (mins  < 60)  return `${mins} minute${mins !== 1 ? "s" : ""} ago`;
+  if (hours < 24)  return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+  if (days  < 30)  return `${days} day${days !== 1 ? "s" : ""} ago`;
+  return new Date(dateStr).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+}
+
+// ── Report Status Card ────────────────────────────────────────────────────────────────────────────
 function ReportStatusCard({ reportData, reportNumber, onView }) {
-  const steps = ["Submitted", "Under Review", "Resolved"];
-  const { description = "—", location = "—", dateApplied = "—", id = "—", currentStep = 0 } = reportData ?? {};
+  const router = useRouter();
+  const {
+    id                = "—",
+    caseId            = null,
+    dateSubmitted     = "—",
+    assignedPersonnel = null,
+    lastUpdated       = null,
+    statusName        = "For Verification",
+  } = reportData ?? {};
+
+  const displayId      = caseId ?? `SASHA-${String(id).padStart(5, "0")}`;
+  const personnelLabel = assignedPersonnel ?? "Unassigned";
+  const updatedAgo     = timeAgo(lastUpdated);
+
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
-        <span>Report {reportNumber}</span>  
-        <button className={styles.headerViewBtn} onClick={onView}>View →</button>
+        <span>Report {reportNumber}</span>
+        <button
+          className={styles.headerViewBtn}
+          onClick={() => router.push(`/cases/view?caseId=${id}&from=cases`)}
+        >
+          View →
+        </button>
       </div>
       <div className={styles.statusCardBody}>
-        <div className={styles.reportMetaRow}>
-          <div>
-            <p className={styles.statusMeta}>Description: {description}</p>
-            <p className={styles.statusMeta}>Location: {location}</p>
-            <p className={styles.statusMeta}>Date Reported: {dateApplied}</p>
-          </div>
-          <span className={styles.reportId}>ID: {id}</span>
+
+        {/* ── Top row: Case ID + last updated ── */}
+        <div className={styles.cardTopRow}>
+          <span className={styles.cardCaseId}>{displayId}</span>
+          {updatedAgo && (
+            <span className={styles.cardUpdated}>Updated {updatedAgo}</span>
+          )}
         </div>
-        <StatusStepper steps={steps} current={currentStep} />
+
+        {/* ── Meta grid ── */}
+        <div className={styles.cardMetaGrid}>
+          <div className={styles.cardMetaItem}>
+            <span className={styles.cardMetaLabel}>Date Submitted</span>
+            <span className={styles.cardMetaValue}>{dateSubmitted}</span>
+          </div>
+          <div className={styles.cardMetaItem}>
+            <span className={styles.cardMetaLabel}>Assigned Personnel</span>
+            <span className={`${styles.cardMetaValue} ${!assignedPersonnel ? styles.cardMetaUnassigned : ""}`}>
+              {personnelLabel}
+            </span>
+          </div>
+        </div>
+
+        <StatusStepper statusName={statusName} />
       </div>
     </div>
   );
 }
-
 // ── Main Page Component ───────────────────────────────────────────────────────
 export default function CreateReport({
   reportData      = null,
@@ -1198,10 +1266,17 @@ export default function CreateReport({
   const [userReports, setUserReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(true);
 
-  const STATUS_STEP = {
-    'Pending':      0,
-    'Under Review': 1,
-    'Resolved':     2,
+  const STATUS_NAME_MAP = {
+    'For Verification':      'For Verification',
+    'Undergoing Review':     'Undergoing Review',
+    'Verified - True':       'Verified - True',
+    'Verified - False':      'Verified - False',
+    'Under Case Evaluation': 'Under Case Evaluation',
+    'Case Filed':            'Case Filed',
+    'Investigation Ongoing': 'Investigation Ongoing',
+    'Hearing Ongoing':       'Hearing Ongoing',
+    'Dismissed':             'Dismissed',
+    'Perpetrator Convicted': 'Perpetrator Convicted',
   };
 
   const fetchUserReports = async () => {
@@ -1345,15 +1420,15 @@ export default function CreateReport({
                     <ReportStatusCard
                       reportNumber={i + 1}
                       reportData={{
-                        description: report.incident_description,
-                        location:    report.incident_city,
-                        dateApplied: new Date(report.incident_date).toLocaleDateString('en-PH', {
-                          year: 'numeric', month: 'long', day: 'numeric'
-                        }),
-                        id:          report.case_report_id,
-                        currentStep: STATUS_STEP[report.case_status?.status_name] ?? 0,
+                        id:                report.case_report_id,
+                        dateSubmitted:     report.created_at
+                          ? new Date(report.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+                          : '—',
+                        assignedPersonnel: report.assigned_officer ?? null,
+                        lastUpdated:       report.updated_at ?? report.created_at ?? null,
+                        statusName:        STATUS_NAME_MAP[report.case_status?.status_name] ?? 'For Verification',
                       }}
-                      onView={() => {}}
+                      onView={() => router.push(`/cases/view?caseId=${report.case_report_id}&from=cases`)}
                     />
                   </div>
                 ))
