@@ -28,31 +28,37 @@ function ActionCard({ icon, title, description, onView }) {
   );
 }
 
+// ── Case status → 3-step display ─────────────────────────────────────────────
+const STATUS_DISPLAY = {
+  "For Verification":      { middle: "For Verification",      phase: 1 },
+  "Undergoing Review":     { middle: "Undergoing Review",     phase: 1 },
+  "Verified - True":       { middle: "Verified",              phase: 1 },
+  "Verified - False":      { middle: "Verified",              phase: 1 },
+  "Under Case Evaluation": { middle: "Under Case Evaluation", phase: 1 },
+  "Case Filed":            { middle: "Case Filed",            phase: 1 },
+  "Investigation Ongoing": { middle: "Investigation Ongoing", phase: 1 },
+  "Hearing Ongoing":       { middle: "Hearing Ongoing",       phase: 1 },
+  "Dismissed":             { middle: "Dismissed",             phase: 2 },
+  "Perpetrator Convicted": { middle: "Perpetrator Convicted", phase: 2 },
+};
+
 // ── Status Stepper ───────────────────────────────────────────────────────────
-// `steps`   — array of step label strings
-// `current` — 0-based index of the active step
-function StatusStepper({ steps, current }) {
+// Always 3 dots: Submitted → <current status> → Resolved
+function StatusStepper({ statusName }) {
+  const { middle, phase } = STATUS_DISPLAY[statusName] ?? { middle: "In Progress", phase: 1 };
+  const steps = ["Submitted", middle, "Resolved"];
   return (
     <div className={styles.stepper}>
       {steps.map((label, i) => {
-        const done    = i < current;
-        const active  = i === current;
+        const done   = i < phase;
+        const active = i === phase;
         return (
-          <div key={label} className={styles.stepItem}>
-            {/* connector line before each step except the first */}
+          <div key={i} className={styles.stepItem}>
             {i > 0 && (
-              <div
-                className={`${styles.stepLine} ${done || active ? styles.stepLineDone : ""}`}
-              />
+              <div className={`${styles.stepLine} ${done || active ? styles.stepLineDone : ""}`} />
             )}
-            <div
-              className={`${styles.stepDot} ${active ? styles.stepDotActive : ""} ${done ? styles.stepDotDone : ""}`}
-            />
-            <span
-              className={`${styles.stepLabel} ${active ? styles.stepLabelActive : ""}`}
-            >
-              {label}
-            </span>
+            <div className={`${styles.stepDot} ${active ? styles.stepDotActive : ""} ${done ? styles.stepDotDone : ""}`} />
+            <span className={`${styles.stepLabel} ${active ? styles.stepLabelActive : ""}`}>{label}</span>
           </div>
         );
       })}
@@ -60,19 +66,36 @@ function StatusStepper({ steps, current }) {
   );
 }
 
-// ── Report Status Card ───────────────────────────────────────────────────────
-// Props are intentionally kept flexible so they can be fed by a real API later.
-// `reportData` shape:
-//   { email, contactNumber, dateApplied, currentStep }
-//   currentStep: 0 = Submitted, 1 = Under Review, 2 = Resolved
+// ── Relative time helper ────────────────────────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (isNaN(diff)) return null;
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins  < 1)   return "just now";
+  if (mins  < 60)  return `${mins} minute${mins !== 1 ? "s" : ""} ago`;
+  if (hours < 24)  return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+  if (days  < 30)  return `${days} day${days !== 1 ? "s" : ""} ago`;
+  return new Date(dateStr).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+}
+
+// ── Report Status Card ────────────────────────────────────────────────────────────────────────────
 function ReportStatusCard({ reportData, onView }) {
-  const steps = ["Submitted", "Under Review", "Resolved"];
+  const [expanded, setExpanded] = useState(false);
   const {
-    email         = "—",
-    contactNumber = "—",
-    dateApplied   = "—",
-    currentStep   = 0,
+    id                = "—",
+    caseId            = null,
+    dateSubmitted     = "—",
+    assignedPersonnel = null,
+    lastUpdated       = null,
+    statusName        = "For Verification",
   } = reportData ?? {};
+
+  const displayId      = caseId ?? `SASHA-${String(id).padStart(5, "0")}`;
+  const personnelLabel = assignedPersonnel ?? "Unassigned";
+  const updatedAgo     = timeAgo(lastUpdated);
 
   return (
     <div className={styles.statusCard}>
@@ -83,10 +106,30 @@ function ReportStatusCard({ reportData, onView }) {
         </button>
       </div>
       <div className={styles.statusCardBody}>
-        <p className={styles.statusMeta}>Email: {email}</p>
-        <p className={styles.statusMeta}>Contact Number: {contactNumber}</p>
-        <p className={styles.statusMeta}>Date Applied: {dateApplied}</p>
-        <StatusStepper steps={steps} current={currentStep} />
+
+        {/* ── Top row: Case ID + last updated ── */}
+        <div className={styles.cardTopRow}>
+          <span className={styles.cardCaseId}>{displayId}</span>
+          {updatedAgo && (
+            <span className={styles.cardUpdated}>Updated {updatedAgo}</span>
+          )}
+        </div>
+
+        {/* ── Meta grid ── */}
+        <div className={styles.cardMetaGrid}>
+          <div className={styles.cardMetaItem}>
+            <span className={styles.cardMetaLabel}>Date Submitted</span>
+            <span className={styles.cardMetaValue}>{dateSubmitted}</span>
+          </div>
+          <div className={styles.cardMetaItem}>
+            <span className={styles.cardMetaLabel}>Assigned Personnel</span>
+            <span className={`${styles.cardMetaValue} ${!assignedPersonnel ? styles.cardMetaUnassigned : ""}`}>
+              {personnelLabel}
+            </span>
+          </div>
+        </div>
+
+        <StatusStepper statusName={statusName} />
       </div>
     </div>
   );
@@ -181,10 +224,13 @@ function EventsItem({ image, emoji, title, date }) {
 export default function ComplainantDashboard({
   // These props will be populated by real data fetching in parent pages/layouts.
   // Passing null/undefined → cards show graceful placeholders.
-  userReports       = [],     // [{ id, email, contactNumber, dateApplied, status }]
-  applicationData   = null,   // { email, contactNumber, dateApplied, currentStep }
-  notifications     = [],     // [{ id, text }]
-  events            = [],     // [{ id, image?, emoji?, title, date }]
+  // userReports items can be raw API shape: { case_report_id, incident_description,
+  //   incident_city, incident_date, case_status: { status_name } }
+  // OR already-normalised: { id, description, location, dateApplied, statusName }
+  userReports       = [],
+  applicationData   = null,
+  notifications     = [],
+  events            = [],
   totalNotifications = 0,
 }) {
   const [calDate, setCalDate] = useState(new Date());
@@ -197,6 +243,25 @@ export default function ComplainantDashboard({
     firstName: authUser.first_name,
     lastName: authUser.last_name,
   } : { role: "complainant", firstName: "Complainant", lastName: "User" };
+
+  // Normalise whatever shape the parent passes into what the card expects
+  const normaliseReport = (r) => {
+    if (!r) return null;
+    // Already normalised
+    if (r.statusName !== undefined) return r;
+    // Raw API shape
+    return {
+      id:                r.case_report_id ?? r.id ?? "—",
+      dateSubmitted:     r.created_at
+        ? new Date(r.created_at).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
+        : (r.dateSubmitted ?? "—"),
+      assignedPersonnel: r.assigned_officer ?? r.assignedPersonnel ?? null,
+      lastUpdated:       r.updated_at ?? r.created_at ?? r.lastUpdated ?? null,
+      statusName:        r.case_status?.status_name ?? r.statusName ?? "For Verification",
+    };
+  };
+
+  const normalisedReports = userReports.map(normaliseReport).filter(Boolean);
 
   // ── Fallback demo data (only used when props are absent) ───────────────────
   const resolvedNotifications = notifications.length
@@ -288,11 +353,11 @@ export default function ComplainantDashboard({
             {/* Left col — status cards */}
             <div className="col-12 col-lg-8">
               <div className="row g-3">
-                {userReports.length > 0 && (
+                {normalisedReports.length > 0 && (
                   <div className="col-12">
                     <ReportStatusCard
-                      reportData={userReports[0]}
-                      onView={() => router.push("/cases")}
+                      reportData={normalisedReports[0]}
+                      onView={() => router.push(`/cases/view?caseId=${normalisedReports[0].id}&from=dashboard`)}
                     />
                   </div>
                 )}
