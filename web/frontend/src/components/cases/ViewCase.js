@@ -329,8 +329,12 @@ export default function ViewCase() {
           assignedOfficer: data.assigned_officer || null,
           dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH"),
           description: data.incident_description || "—",
+          incidentLocationType: data.incident_location_type || "Physical Location",
           incidentCity: data.incident_city,
           incidentLocation: data.incident_location,
+          incidentLocationDisplay: data.incident_location_type === "Online"
+            ? data.incident_location || "Online"
+            : [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", "),
           incidentDate: data.incident_date,
           incidentTime: data.incident_time,
           perpetratorKnown: data.is_perpetrator_known,
@@ -450,8 +454,8 @@ export default function ViewCase() {
             <h2 className={styles.sectionHeadingText}>📍 Incident Details</h2>
             <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
               {[
-                ["City", caseData.incidentCity],
-                ["Location/Venue", caseData.incidentLocation],
+                ["Location Type", caseData.incidentLocationType],
+                ["Location", caseData.incidentLocationDisplay],
                 ["Date", caseData.incidentDate],
                 ["Time", caseData.incidentTime],
               ].map(([k, v]) => (

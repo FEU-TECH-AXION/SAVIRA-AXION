@@ -25,17 +25,7 @@ const create = async (payload) => {
 async function getCaseById(caseReportId) {
   const { data, error } = await supabase
     .from('case_reports')
-    .select(`
-      case_report_id,
-      complainant_id,
-      incident_description,
-      incident_city,
-      incident_province,
-      incident_date,
-      case_status_id,
-      created_at,
-      is_current
-    `)
+    .select('*')
     .eq('case_report_id', caseReportId)
     .eq('is_current', true)
     .maybeSingle();
