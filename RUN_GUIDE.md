@@ -75,7 +75,7 @@ Press `a` in the terminal once the emulator is fully booted
 
 ## Other Services
 
-### NLP Service
+### NLP Service Install
 ```bash
 cd web/nlp
 python -m venv venv

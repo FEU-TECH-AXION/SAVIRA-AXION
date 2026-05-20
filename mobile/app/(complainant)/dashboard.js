@@ -24,6 +24,7 @@ function SideNav({ open, onClose }) {
     { label: 'About',     href: '/(complainant)/about',     icon: 'information-circle-outline' },
     { label: 'Contact',   href: '/(complainant)/contact',   icon: 'call-outline' },
     { label: 'Events',    href: '/(complainant)/events',    icon: 'calendar-outline' },
+    { label: 'Settings',  href: '/(complainant)/settings',  icon: 'settings-outline' },
   ];
 
   return (
@@ -123,7 +124,15 @@ const nav = StyleSheet.create({
 });
 
 // ── Top Navbar ────────────────────────────────────────────────────────────────
-function Navbar({ onBurger }) {
+function Navbar({ onBurger, onNotifications, notifCount, user }) {
+  const getInitials = (firstName, lastName) => {
+    const first = firstName?.charAt(0)?.toUpperCase() || '';
+    const last = lastName?.charAt(0)?.toUpperCase() || '';
+    return `${first}${last}` || 'U';
+  };
+
+  const initials = getInitials(user?.firstName, user?.lastName);
+
   return (
     <View style={s.navbar}>
       <Pressable onPress={onBurger} style={s.burgerBtn}>
@@ -131,10 +140,24 @@ function Navbar({ onBurger }) {
       </Pressable>
       <View style={s.navRight}>
         <Feather name="search" size={20} color="#fff" />
-        <Ionicons name="notifications-outline" size={20} color="#fff" />
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>U</Text>
-        </View>
+        <Pressable onPress={onNotifications} style={s.notifContainer}>
+          <Ionicons name="notifications-outline" size={20} color="#fff" />
+          {notifCount > 0 && (
+            <View style={s.badge}>
+              <Text style={s.badgeText}>{notifCount > 9 ? '9+' : notifCount}</Text>
+            </View>
+          )}
+        </Pressable>
+        {user?.profilePicture ? (
+          <Image
+            source={{ uri: user.profilePicture }}
+            style={s.avatarImage}
+          />
+        ) : (
+          <View style={s.avatar}>
+            <Text style={s.avatarText}>{initials}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -395,7 +418,12 @@ export default function ComplainantDashboard() {
   return (
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
-      <Navbar onBurger={() => setNavOpen(true)} />
+      <Navbar 
+        onBurger={() => setNavOpen(true)} 
+        onNotifications={() => router.push('/(complainant)/notifications')}
+        notifCount={notifications.length}
+        user={user}
+      />
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
@@ -512,10 +540,31 @@ const s = StyleSheet.create({
   burgerBtn: { padding: 4 },
 
   navRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  notifContainer: { position: 'relative' },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   avatar: {
     width: 30, height: 30, borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
