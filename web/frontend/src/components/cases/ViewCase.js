@@ -257,20 +257,34 @@ export default function ViewCase() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // FIX: was searchParams.get("id") — URL uses ?caseId=40
-  const caseId = searchParams.get("caseId");
+  const caseId   = searchParams.get("caseId");
+  const fromParam = searchParams.get("from"); // "cases" | "dashboard" | null
 
   const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [user, setUser] = useState({ role: null });
-const [userLoaded, setUserLoaded] = useState(false);
+  const [userLoaded, setUserLoaded] = useState(false);
 
   const isAdmin = user.role?.toLowerCase() === "admin";
   const isCaseOfficer =
     user.role?.toLowerCase() === "case officer" ||
     user.role?.toLowerCase() === "case_officer";
+  const isStaff = isAdmin || isCaseOfficer;
+
+  // Staff always go to Case Management; regular users go back to where they came from
+  const backRoute = isStaff
+    ? "/cases"
+    : fromParam === "dashboard"
+      ? "/dashboard"
+      : "/cases";
+
+  const backLabel = isStaff
+    ? "Back to Case Management"
+    : fromParam === "dashboard"
+      ? "Back to Dashboard"
+      : "Back to My Reports";
 
   useEffect(() => {
   const userCookie = getCookie("user");
@@ -369,8 +383,8 @@ const [userLoaded, setUserLoaded] = useState(false);
   if (error || !caseData) {
     return (
       <div className={styles.pageWrapper} style={{ padding: "2rem" }}>
-        <button className={styles.backBtn} onClick={() => router.push('/cases')}>
-          <IoIosArrowBack /> Back to Case Management
+        <button className={styles.backBtn} onClick={() => router.push(backRoute)}>
+          <IoIosArrowBack /> {backLabel}
         </button>
         <div style={{
           background: "#fee2e2",
@@ -394,8 +408,8 @@ const [userLoaded, setUserLoaded] = useState(false);
         {/* Header card */}
         <div className={styles.headerCard}>
           {/* Back Button */}
-          <button className={styles.backBtn} onClick={() => router.push('/cases')}>
-            <IoIosArrowBack /> Back to Case Management
+          <button className={styles.backBtn} onClick={() => router.push(backRoute)}>
+            <IoIosArrowBack /> {backLabel}
           </button>
 
           <div className={styles.headerTop}>
@@ -545,13 +559,14 @@ const [userLoaded, setUserLoaded] = useState(false);
             )}
           </section>
 
-          {userLoaded && (
-          <NLPAnalysisSection
-            caseReportId={caseData.id}
-            isAdmin={isAdmin}
-            isCaseOfficer={isCaseOfficer}
-          />
-        )}
+          {/* NLP Analysis — staff only (admin / case officer) */}
+          {userLoaded && isStaff && (
+            <NLPAnalysisSection
+              caseReportId={caseData.id}
+              isAdmin={isAdmin}
+              isCaseOfficer={isCaseOfficer}
+            />
+          )}
 
         </div>
       </div>
