@@ -1711,42 +1711,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Case Officer: intake & verification */}
-            {(isCaseOfficer || isAdmin) && (
-              <div className="col-12 col-sm-6 col-lg-3">
-                <ActionCard
-                  icon={<img src="CaseIconManage.png" alt="" className={styles.actionIconImg} />}
-                  title="Intake & Verification"
-                  description="Verify new cases and update case details."
-                  onView={() => setModal("viewAll_caseOfficer")}
-                />
-              </div>
-            )}
-
-            {/* Case Officer → Under Case Evaluation */}
-            {(isCaseOfficer || isAdmin) && (
-              <div className="col-12 col-sm-6 col-lg-3">
-                <ActionCard
-                  icon={<img src="CaseIconEvaluate.png" alt="" className={styles.actionIconImg} />}
-                  title="Case Evaluation"
-                  description="Assess verified cases and identify best pathways for referral or action."
-                  onView={() => setModal("viewAll_eval")}
-                />
-              </div>
-            )}
-
-            {/* Legal: Case Filed → Investigation → Hearing → Dismissed/Convicted */}
-            {(isLegal || isAdmin) && (
-              <div className="col-12 col-sm-6 col-lg-3">
-                <ActionCard
-                  icon={<img src="CaseIconLegal.png" alt="" className={styles.actionIconImg} />}
-                  title="Legal Case Progress"
-                  description="Advance cases through filing, investigation, hearing, and final resolution."
-                  onView={() => setModal("viewAll_legal")}
-                />
-              </div>
-            )}
-
             {/* Admin: approve pending changes */}
             {isAdmin && (
               <div className="col-12 col-sm-6 col-lg-3">
@@ -1916,9 +1880,6 @@ useEffect(() => {
       {/* All Cases quick browsers */}
       <AllCasesModal open={modal === "viewAll"}            onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} />
       <AllCasesModal open={modal === "viewAll_assign"}     onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("assign"); }} />
-      <AllCasesModal open={modal === "viewAll_caseOfficer"} onClose={closeModal} cases={cases.filter((c) => CASE_OFFICER_STATUSES.includes(c.status))} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
-      <AllCasesModal open={modal === "viewAll_eval"}       onClose={closeModal} cases={cases.filter((c) => c.status === "Verified - True")}                          onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
-      <AllCasesModal open={modal === "viewAll_legal"}      onClose={closeModal} cases={cases.filter((c) => LEGAL_STATUSES_OWN.includes(c.status))}                   onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("statusRouter"); }} />
 
       {/* Pending approvals list */}
       {modal === "viewPending" && (
