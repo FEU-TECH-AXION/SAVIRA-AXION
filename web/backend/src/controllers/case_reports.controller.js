@@ -46,7 +46,7 @@ function buildPayload(complainantId, organizationId, complainant, incident, evid
     contact_number:           complainant.contactNumber,
     is_willing_for_interview: complainant.interview === "Yes",
 
-    incident_location_type:   incident.locationType           || "Physical Location",
+    incident_location_type:   incident.locationType           || null,
     incident_city:            incident.incidentCity,
     incident_province:        "Metro Manila",
     incident_location:        incident.incidentVenue        || null,
