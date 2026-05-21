@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import CasesTable from "./CasesTable";
+import FilterMenu from "./FilterMenu";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -1523,9 +1525,16 @@ useEffect(() => {
   fetchCases();
 }, []);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [toast, setToast] = useState(null);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    status: "",
+    assignedOfficer: "",
+    violenceType: "",
+    region: "",
+    dateSubmitted: "",
+    reporterId: "",
+  });
 
   // Modal state
   const [modal, setModal] = useState(null);
@@ -1553,12 +1562,33 @@ useEffect(() => {
   const filtered = useMemo(() =>
     cases.filter((c) => {
       const ms = !search || c.caseId.includes(search) || c.reporterId.includes(search) || c.region.toLowerCase().includes(search.toLowerCase());
-      const mf = activeFilter === "All" || c.status === activeFilter;
+      
+      // Apply advanced filters
+      let mf = true;
+      if (advancedFilters.status && advancedFilters.status !== "" && advancedFilters.status !== "All") {
+        mf = mf && c.status === advancedFilters.status;
+      }
+      if (advancedFilters.assignedOfficer && advancedFilters.assignedOfficer !== "") {
+        mf = mf && (c.assignedOfficer || "").toLowerCase().includes(advancedFilters.assignedOfficer.toLowerCase());
+      }
+      if (advancedFilters.violenceType && advancedFilters.violenceType !== "") {
+        mf = mf && (c.violenceType || "").toLowerCase().includes(advancedFilters.violenceType.toLowerCase());
+      }
+      if (advancedFilters.region && advancedFilters.region !== "") {
+        mf = mf && (c.region || "").toLowerCase().includes(advancedFilters.region.toLowerCase());
+      }
+      if (advancedFilters.dateSubmitted && advancedFilters.dateSubmitted !== "") {
+        mf = mf && (c.dateSubmitted || "").includes(advancedFilters.dateSubmitted);
+      }
+      if (advancedFilters.reporterId && advancedFilters.reporterId !== "") {
+        mf = mf && (c.reporterId || "").includes(advancedFilters.reporterId);
+      }
+      
       return ms && mf;
     }),
-    [cases, search, activeFilter]
+    [cases, search, advancedFilters]
   );
-  useEffect(() => setPage(1), [search, activeFilter]);
+  useEffect(() => setPage(1), [search, advancedFilters]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -1734,80 +1764,32 @@ useEffect(() => {
               <div className={styles.headingLine} />
             </div>
             <div className={styles.layout}>
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Case ID</th>
-                      <th>Reporter ID</th>
-                      <th>Region</th>
-                      <th>Status</th>
-                      <th>Officer</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.length === 0
-                      ? <tr><td colSpan={6} className={styles.emptyState}>No cases found.</td></tr>
-                      : paginated.map((c) => {
-                        const transitions = getAvailableTransitions(c);
-                        return (
-                          <tr key={c.id}>
-                            <td>{c.caseId}</td>
-                            <td>{c.reporterId}</td>
-                            <td>{c.region}</td>
-                            <td>
-                              <StatusBadge status={c.status} />
-                              {c.pendingApproval && <div style={{ marginTop: 3 }}><PendingBadge /></div>}
-                            </td>
-                            <td>{c.assignedOfficer || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Unassigned</span>}</td>
-                            <td>
-                              <div className={styles.actionBtns}>
-                                <button className={styles.tblBtnView} onClick={() => router.push(`/cases/view?caseId=${c.id}`)}>View</button>
-                                {isAdmin && <button className={styles.tblBtnEdit} onClick={() => { setSelected(c); setModal("assign"); }}>Assign</button>}
-                                {(transitions.length > 0 && !c.pendingApproval) && (
-                                  <button className={styles.tblBtnStatus} onClick={() => { setSelected(c); setModal("statusRouter"); }}>
-                                    Update Status
-                                  </button>
-                                )}
-                                {isAdmin && c.pendingApproval && (
-                                  <button className={styles.tblBtnApprove} onClick={() => { setSelected(c); setModal("approval"); }}>Review</button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    }
-                  </tbody>
-                </table>
-                <Pagination current={page} total={totalPages} onChange={setPage} />
-              </div>
-
-              {/* Sidebar */}
-              <aside className={styles.sidebar}>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Search</h3>
-                  <div className={styles.searchWrap}>
-                    <input className={styles.searchInput} type="text" placeholder="Case ID, region…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <div>
+                <div className={styles.tableTopBar}>
+                  <div className={styles.searchWrap} style={{ flex: 1 }}>
+                    <input className={styles.searchInput} type="text" placeholder="Search by Case ID, Reporter ID, or Region…" value={search} onChange={(e) => setSearch(e.target.value)} />
                     <span className={styles.searchIcon}><FiSearch /></span>
                   </div>
+                  <FilterMenu 
+                    activeFilters={advancedFilters} 
+                    onFilterChange={setAdvancedFilters}
+                    onDone={() => {}} 
+                  />
                 </div>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Filter by Status</h3>
-                  <div className={styles.filterList}>
-                    {STATUS_FILTERS.map((f) => (
-                      <button
-                        key={f}
-                        className={`${styles.filterBtn} ${activeFilter === f ? styles.filterBtnActive : ""}`}
-                        onClick={() => setActiveFilter(f)}
-                      >
-                        {f}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </aside>
+                <CasesTable
+                  paginated={paginated}
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  onView={(c) => router.push(`/cases/view?caseId=${c.id}`)}
+                  onAssign={(c) => { setSelected(c); setModal("assign"); }}
+                  onUpdateStatus={(c) => { setSelected(c); setModal("statusRouter"); }}
+                  onReview={(c) => { setSelected(c); setModal("approval"); }}
+                  isAdmin={isAdmin}
+                  getAvailableTransitions={getAvailableTransitions}
+                  router={router}
+                />
+              </div>
             </div>
           </div>
         </section>
