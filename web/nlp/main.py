@@ -49,13 +49,16 @@ async def analyze_report(report: ReportRequest):
     """
     Full NLP pipeline:
     1. Combine relevant text fields
-    2. Preprocess (normalize, tokenize, lemmatize)
-    3. Anonymize PII (Presidio)
-    4. Send to Groq (classify, summarize, recommend)
+    2. Anonymize PII first on raw text (Presidio)
+       — must run before preprocessing so names/PII are still capitalized and in context
+    3. Preprocess the anonymized text (normalize, tokenize, lemmatize)
+       — language detection only; processed tokens are NOT sent to Groq
+    4. Send anonymized natural text to Groq (classify, summarize, recommend)
+       — anonymized_text preserves sentence structure for better Groq output
     5. Return structured results
     """
     try:
-        # Step 1 — Combine relevant text fields into one input
+        # Step 1 — Combine fields
         combined_text = report.incident_description
         if report.action_requested:
             combined_text += f" {report.action_requested}"
@@ -66,24 +69,23 @@ async def analyze_report(report: ReportRequest):
                 detail="Incident description is required for analysis."
             )
 
-        # Step 2 — Preprocess
-        preprocessed = preprocess(combined_text)
+        # Step 2 — Anonymize FIRST on raw text
+        # Names/PII are still capitalized and in context here
+        anonymized = anonymize(combined_text)
 
-        # Step 3 — Anonymize the ORIGINAL text (not preprocessed)
-        # We anonymize original so the summary reads naturally
-        # We send processed tokens to classifier for better accuracy
-        anonymized = anonymize(
-            preprocessed["original"],
-            language=preprocessed["language"],
-        )
+        # Step 3 — Preprocess the ANONYMIZED text
+        # Now [PERSON], [LOCATION] placeholders go through preprocessing
+        # Only language_detected is used from this result — processed_text is NOT sent to Groq
+        preprocessed = preprocess(anonymized["anonymized_text"])
 
         # Step 4 — Run Groq analysis
-        # Run in thread pool since Groq SDK is synchronous
+        # Send anonymized_text (natural language) to BOTH summary and classifier
+        # Do NOT send processed_text to Groq — it strips too much context
         result = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: analyze(
-                preprocessed["processed_text"],
-                anonymized["anonymized_text"],
+                anonymized["anonymized_text"],  # ← classification gets natural text
+                anonymized["anonymized_text"],  # ← summary gets natural text
             )
         )
 
