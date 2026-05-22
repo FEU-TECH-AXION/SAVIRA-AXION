@@ -89,7 +89,17 @@ function makeCase(id) {
     status: statuses[id % statuses.length],
     assignedOfficer: OFFICERS[id % OFFICERS.length],
     dateSubmitted: dateISO,  // ISO string so CasesTable can format it
-    caseType: ["Inquiry", "Accommodation", "Investigation", "Complaint"][id % 4],
+    caseType: [
+      "Child Sexual Abuse",
+      "Gender-Based Sexual Harassment in Institutions",
+      "Non-Consensual Sharing of Intimate Images/Videos",
+      "Online Sexual Harassment",
+      "Rape / Attempted Rape",
+      "Sexual Assault / Unwanted Sexual Touching",
+      "Sexual Exploitation / Trafficking-Related Sexual Abuse",
+      "Sexual Harassment",
+      "Stalking With Sexual Nature or Intent",
+    ][id % 9],
     violenceType: VIOLENCE_TYPES[id % VIOLENCE_TYPES.length],
     description: "Complainant reported an incident involving unwanted conduct.",
     endorsedTo: null,
