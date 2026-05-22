@@ -1493,10 +1493,11 @@ useEffect(() => {
       });
       if (!res.ok) throw new Error('Failed to fetch cases');
       const { data } = await res.json();
-      const year = new Date(r.created_at).getFullYear();
 
       // Map DB shape to the shape CaseManagement expects
-      const mapped = data.map((r, i) => ({
+      const mapped = data.map((r, i) => {
+        const year = new Date(r.created_at).getFullYear();
+        return {
         id:              r.case_report_id,
         caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
         reporterId:      String(r.complainant_id),
@@ -1517,7 +1518,8 @@ useEffect(() => {
             notes:  "Report received and logged.",
           }
         ],
-      }));
+        };
+      });
 
       setCases(mapped);
     } catch (err) {
