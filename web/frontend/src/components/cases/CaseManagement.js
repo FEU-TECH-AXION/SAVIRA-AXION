@@ -8,6 +8,62 @@ import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// UTILITY FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getDateRangeFromFilter(filterValue) {
+  if (!filterValue) return null;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let startDate, endDate;
+  
+  switch (filterValue) {
+    case "today":
+      startDate = new Date(today);
+      endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 1);
+      break;
+    case "thisWeek":
+      startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - today.getDay());
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 7);
+      break;
+    case "thisMonth":
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      break;
+    case "thisYear":
+      startDate = new Date(today.getFullYear(), 0, 1);
+      endDate = new Date(today.getFullYear() + 1, 0, 1);
+      break;
+    case "last30Days":
+      endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 1);
+      startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 30);
+      break;
+    default:
+      if (filterValue.startsWith("custom|")) {
+        const parts = filterValue.split("|");
+        if (parts.length === 3) {
+          startDate = new Date(parts[1] + "T00:00:00");
+          endDate = new Date(parts[2] + "T23:59:59");
+        }
+      }
+  }
+  
+  return startDate && endDate ? { startDate, endDate } : null;
+}
+
+function isDateInRange(dateString, startDate, endDate) {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return date >= startDate && date <= endDate;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1597,7 +1653,10 @@ useEffect(() => {
         mf = mf && (c.region || "").toLowerCase().includes(advancedFilters.region.toLowerCase());
       }
       if (advancedFilters.dateSubmitted && advancedFilters.dateSubmitted !== "") {
-        mf = mf && (c.dateSubmitted || "").includes(advancedFilters.dateSubmitted);
+        const range = getDateRangeFromFilter(advancedFilters.dateSubmitted);
+        if (range) {
+          mf = mf && isDateInRange(c.dateSubmitted, range.startDate, range.endDate);
+        }
       }
       if (advancedFilters.reporterId && advancedFilters.reporterId !== "") {
         mf = mf && (c.reporterId || "").includes(advancedFilters.reporterId);

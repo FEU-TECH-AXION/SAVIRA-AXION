@@ -138,6 +138,44 @@
   border-color: #037F81;
 }
 
+/* ── Date range options ── */
+.dateRangeOptions {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dateRangeOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.dateRangeOption:last-child {
+  border-bottom: none;
+}
+
+.dateRangeOption:hover {
+  background: #e1f5f5;
+  color: #037F81;
+}
+
+.dateRangeOptionActive {
+  background: #e1f5f5;
+  color: #037F81;
+  font-weight: 700;
+}
+
 /* ── Officer search ── */
 .officerSearchWrap {
   display: flex;

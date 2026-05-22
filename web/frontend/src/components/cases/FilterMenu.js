@@ -51,7 +51,7 @@ const DEFAULT_FILTERS = [
   {
     key: "dateSubmitted",
     label: "Submission Date",
-    type: "date",
+    type: "dateRange",
   },
 ];
 
@@ -106,29 +106,124 @@ function DefaultFilterDropdown({ field, value, onChange }) {
 
   const displayValue = value && value !== "All" ? value : "All";
 
-  if (field.type === "date") {
+  if (field.type === "dateRange") {
+    const DATE_RANGE_OPTIONS = [
+      { label: "Today", value: "today" },
+      { label: "This Week", value: "thisWeek" },
+      { label: "This Month", value: "thisMonth" },
+      { label: "This Year", value: "thisYear" },
+      { label: "Last 30 Days", value: "last30Days" },
+      { label: "Custom Date Range", value: "custom" },
+    ];
+
+    const [customMode, setCustomMode] = useState(false);
+    const [customStart, setCustomStart] = useState("");
+    const [customEnd, setCustomEnd] = useState("");
+
+    const getDisplayLabel = () => {
+      if (!value || value === "") return "All";
+      const opt = DATE_RANGE_OPTIONS.find(o => o.value === value);
+      return opt ? opt.label : value.split("|")[0] || "Custom";
+    };
+
     return (
       <div className={styles.defaultFilter} ref={ref}>
         <button
-          className={`${styles.defaultFilterBtn} ${value && value !== "All" ? styles.defaultFilterBtnActive : ""}`}
+          className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
           onClick={() => setOpen(!open)}
         >
           <span className={styles.defaultFilterLabel}>{field.label}</span>
+          <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
           <FiChevronDown size={13} />
         </button>
         {open && (
-          <div className={styles.defaultFilterDropdown}>
-            <input
-              type="date"
-              className={styles.dateInput}
-              value={value || ""}
-              onChange={(e) => { onChange(e.target.value); }}
-              autoFocus
-            />
-            <div className={styles.defaultFilterFooter}>
-              <button className={styles.clearBtn} onClick={() => { onChange(""); setOpen(false); }}>Clear</button>
-              <button className={styles.doneBtn} onClick={() => setOpen(false)}>Done</button>
-            </div>
+          <div className={styles.defaultFilterDropdown} style={{ minWidth: 220 }}>
+            {!customMode ? (
+              <>
+                <div className={styles.dateRangeOptions}>
+                  <button
+                    className={`${styles.dateRangeOption} ${!value || value === "" ? styles.dateRangeOptionActive : ""}`}
+                    onClick={() => {
+                      onChange("");
+                      setOpen(false);
+                    }}
+                  >
+                    All
+                  </button>
+                  {DATE_RANGE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      className={`${styles.dateRangeOption} ${value === opt.value ? styles.dateRangeOptionActive : ""}`}
+                      onClick={() => {
+                        if (opt.value === "custom") {
+                          setCustomMode(true);
+                        } else {
+                          onChange(opt.value);
+                          setOpen(false);
+                        }
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.defaultFilterFooter}>
+                  <button className={styles.clearBtn} onClick={() => { onChange(""); setOpen(false); }}>Clear</button>
+                  <button className={styles.doneBtn} onClick={() => setOpen(false)}>Done</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding: "12px" }}>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={{ display: "block", fontSize: "12px", marginBottom: "4px", fontWeight: "500" }}>
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={customStart}
+                      onChange={(e) => setCustomStart(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", marginBottom: "4px", fontWeight: "500" }}>
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={customEnd}
+                      onChange={(e) => setCustomEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className={styles.defaultFilterFooter}>
+                  <button
+                    className={styles.clearBtn}
+                    onClick={() => {
+                      setCustomMode(false);
+                      setCustomStart("");
+                      setCustomEnd("");
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    className={styles.doneBtn}
+                    onClick={() => {
+                      if (customStart && customEnd) {
+                        onChange(`custom|${customStart}|${customEnd}`);
+                        setOpen(false);
+                        setCustomMode(false);
+                      }
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
