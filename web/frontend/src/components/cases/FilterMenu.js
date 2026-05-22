@@ -59,29 +59,39 @@ const DEFAULT_FILTERS = [
 
 const ALL_FILTER_FIELDS = [
   {
-    key: "status",
-    label: "Case Status",
+    key: "primaryCategory",
+    label: "Case Primary Category",
     type: "select",
     options: [
       "All",
-      "For Verification",
-      "Undergoing Review",
-      "Verified - True",
-      "Verified - False",
-      "Under Case Evaluation",
-      "Case Filed",
-      "Investigation Ongoing",
-      "Hearing Ongoing",
-      "Dismissed",
-      "Perpetrator Convicted",
+      "Physical",
+      "Verbal",
+      "Virtual",
     ],
   },
-  { key: "assignedOfficer", label: "Case Officer", type: "text" },
-  { key: "caseType",        label: "Case Type",    type: "text" },
-  { key: "dateSubmitted",   label: "Submission Date", type: "text" },
-  { key: "violenceType",    label: "Violence Type",   type: "text" },
-  { key: "region",          label: "Region",          type: "text" },
-  { key: "reporterId",      label: "Reporter ID",     type: "text" },
+  { key: "city",
+    label: "City",
+    type: "select",
+    options: [
+      "Caloocan",
+      "Las Piñas",
+      "Makati",
+      "Malabon",
+      "Mandaluyong",
+      "Manila",
+      "Marikina",
+      "Muntinlupa",
+      "Navotas",
+      "Parañaque",
+      "Pasay",
+      "Pasig",
+      "Pateros",
+      "Quezon City",
+      "San Juan",
+      "Taguig",
+      "Valenzuela",
+    ], 
+  },
 ];
 
 // Placeholder officers list (up to 20 shown)
@@ -119,18 +129,23 @@ function DefaultFilterDropdown({ field, value, onChange }) {
     const [customMode, setCustomMode] = useState(false);
     const [customStart, setCustomStart] = useState("");
     const [customEnd, setCustomEnd] = useState("");
+    const [dateSearch, setDateSearch] = useState("");
 
     const getDisplayLabel = () => {
       if (!value || value === "") return "All";
       const opt = DATE_RANGE_OPTIONS.find(o => o.value === value);
-      return opt ? opt.label : value.split("|")[0] || "Custom";
+      return opt ? opt.label : "Custom Range";
     };
+
+    const filteredDateOptions = DATE_RANGE_OPTIONS.filter(opt =>
+      opt.label.toLowerCase().includes(dateSearch.toLowerCase())
+    );
 
     return (
       <div className={styles.defaultFilter} ref={ref}>
         <button
           className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
-          onClick={() => setOpen(!open)}
+          onClick={() => { setOpen(!open); setDateSearch(""); setCustomMode(false); }}
         >
           <span className={styles.defaultFilterLabel}>{field.label}</span>
           <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
@@ -140,20 +155,30 @@ function DefaultFilterDropdown({ field, value, onChange }) {
           <div className={styles.defaultFilterDropdown} style={{ minWidth: 220 }}>
             {!customMode ? (
               <>
-                <div className={styles.dateRangeOptions}>
-                  <button
-                    className={`${styles.dateRangeOption} ${!value || value === "" ? styles.dateRangeOptionActive : ""}`}
-                    onClick={() => {
-                      onChange("");
-                      setOpen(false);
-                    }}
-                  >
-                    All
-                  </button>
-                  {DATE_RANGE_OPTIONS.map(opt => (
+                <div className={styles.officerSearchWrap}>
+                  <FiSearch size={13} className={styles.officerSearchIcon} />
+                  <input
+                    type="text"
+                    className={styles.officerSearchInput}
+                    placeholder="Search date range…"
+                    value={dateSearch}
+                    onChange={e => setDateSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className={styles.officerList}>
+                  {!dateSearch && (
+                    <button
+                      className={`${styles.officerOption} ${!value || value === "" ? styles.officerOptionActive : ""}`}
+                      onClick={() => { onChange(""); setOpen(false); }}
+                    >
+                      All
+                    </button>
+                  )}
+                  {filteredDateOptions.map(opt => (
                     <button
                       key={opt.value}
-                      className={`${styles.dateRangeOption} ${value === opt.value ? styles.dateRangeOptionActive : ""}`}
+                      className={`${styles.officerOption} ${value === opt.value ? styles.officerOptionActive : ""}`}
                       onClick={() => {
                         if (opt.value === "custom") {
                           setCustomMode(true);
@@ -166,10 +191,12 @@ function DefaultFilterDropdown({ field, value, onChange }) {
                       {opt.label}
                     </button>
                   ))}
+                  {filteredDateOptions.length === 0 && (
+                    <div className={styles.officerEmpty}>No options found</div>
+                  )}
                 </div>
                 <div className={styles.defaultFilterFooter}>
                   <button className={styles.clearBtn} onClick={() => { onChange(""); setOpen(false); }}>Clear</button>
-                  <button className={styles.doneBtn} onClick={() => setOpen(false)}>Done</button>
                 </div>
               </>
             ) : (
@@ -287,12 +314,17 @@ function DefaultFilterDropdown({ field, value, onChange }) {
     );
   }
 
-  // select type
+  // select type — with search, scrollable list, and clear button (matches officer filter)
+  const [selectSearch, setSelectSearch] = useState("");
+  const filteredOptions = (field.options || []).filter(opt =>
+    opt.toLowerCase().includes(selectSearch.toLowerCase())
+  );
+
   return (
     <div className={styles.defaultFilter} ref={ref}>
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "All" ? styles.defaultFilterBtnActive : ""}`}
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); setSelectSearch(""); }}
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>
@@ -301,16 +333,35 @@ function DefaultFilterDropdown({ field, value, onChange }) {
         <FiChevronDown size={13} />
       </button>
       {open && (
-        <div className={styles.defaultFilterDropdown}>
-          {field.options.map(opt => (
-            <button
-              key={opt}
-              className={`${styles.selectOption} ${(value === opt || (!value && opt === "All")) ? styles.selectOptionActive : ""}`}
-              onClick={() => { onChange(opt === "All" ? "" : opt); setOpen(false); }}
-            >
-              {opt}
-            </button>
-          ))}
+        <div className={styles.defaultFilterDropdown} style={{ minWidth: 220 }}>
+          <div className={styles.officerSearchWrap}>
+            <FiSearch size={13} className={styles.officerSearchIcon} />
+            <input
+              type="text"
+              className={styles.officerSearchInput}
+              placeholder={`Search ${field.label}…`}
+              value={selectSearch}
+              onChange={e => setSelectSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className={styles.officerList}>
+            {filteredOptions.map(opt => (
+              <button
+                key={opt}
+                className={`${styles.officerOption} ${(value === opt || (!value && opt === "All")) ? styles.officerOptionActive : ""}`}
+                onClick={() => { onChange(opt === "All" ? "" : opt); setOpen(false); }}
+              >
+                {opt}
+              </button>
+            ))}
+            {filteredOptions.length === 0 && (
+              <div className={styles.officerEmpty}>No options found</div>
+            )}
+          </div>
+          <div className={styles.defaultFilterFooter}>
+            <button className={styles.clearBtn} onClick={() => { onChange(""); setOpen(false); }}>Clear</button>
+          </div>
         </div>
       )}
     </div>
