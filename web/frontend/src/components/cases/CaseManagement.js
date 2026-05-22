@@ -1493,11 +1493,12 @@ useEffect(() => {
       });
       if (!res.ok) throw new Error('Failed to fetch cases');
       const { data } = await res.json();
+      const year = new Date(r.created_at).getFullYear();
 
       // Map DB shape to the shape CaseManagement expects
       const mapped = data.map((r, i) => ({
         id:              r.case_report_id,
-        caseId:          "SASHA-" + String(r.case_report_id).padStart(5, "0"),
+        caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
         reporterId:      String(r.complainant_id),
         region:          r.incident_province || r.incident_city || "—",
         status:          STATUS_STEP[r.case_status_id] || "For Verification",
