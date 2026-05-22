@@ -286,7 +286,7 @@ export default function CasesTable({
                   aria-label="Select all"
                 />
               </th>
-              <SortableTh field="caseId">Case #</SortableTh>
+              <SortableTh field="caseId">Case ID</SortableTh>
               <SortableTh field="status">Case Status</SortableTh>
               <th className={styles.th}>Case Type</th>
               <SortableTh field="reporterId">Reporter ID</SortableTh>
@@ -341,7 +341,7 @@ export default function CasesTable({
                       />
                     </td>
 
-                    {/* Case # */}
+                    {/* Case ID */}
                     <td className={`${styles.td} ${styles.caseIdTd}`}>
                       <span className={styles.caseIdText}>{c.caseId}</span>
                     </td>
