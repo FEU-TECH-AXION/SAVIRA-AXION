@@ -1057,8 +1057,6 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
               <option>Physical</option>
               <option>Verbal</option>
               <option>Virtual / Online</option>
-              <option>Institutional</option>
-              <option>Exploitation-based</option>
             </FSelect>
           </FormGroup>
         </div>
