@@ -75,24 +75,28 @@ const PAGE_SIZE = 10;
 
 function makeCase(id) {
   const statuses = ALL_STATUSES;
+  const month = String((id % 9) + 1).padStart(2, "0");
+  const day   = String((id % 7) + 1).padStart(2, "0");
+  const year  = 2026;
+  const dateISO = `${year}-${month}-${day}T${String(8 + (id % 3)).padStart(2, "0")}:${String((id * 7) % 60).padStart(2, "0")}:00`;
+ 
   return {
     id,
-    caseId: "SASHA-" + String(100000 + id).slice(-5),
+    // Year-based case ID: "2026-011" (year of submission + zero-padded id)
+    caseId: `${year}-` + String(id).padStart(3, "0"),
     reporterId: String(10000000 + id * 7).slice(0, 8),
     region: ["NCR", "Region I", "Region III", "Region IV-A"][id % 4],
     status: statuses[id % statuses.length],
     assignedOfficer: OFFICERS[id % OFFICERS.length],
-    dateSubmitted: `0${(id % 9) + 1}/0${(id % 7) + 1}/2026`,
+    dateSubmitted: dateISO,  // ISO string so CasesTable can format it
+    caseType: ["Inquiry", "Accommodation", "Investigation", "Complaint"][id % 4],
     violenceType: VIOLENCE_TYPES[id % VIOLENCE_TYPES.length],
     description: "Complainant reported an incident involving unwanted conduct.",
-    // Endorsement tracking
     endorsedTo: null,
     endorsementDetails: null,
-    // Pending approval queue
     pendingApproval: null,
-    // Status change history
     statusHistory: [
-      { status: "For Verification", date: `0${(id % 9) + 1}/0${(id % 7) + 1}/2026`, by: OFFICERS[id % OFFICERS.length], notes: "Report received and logged." }
+      { status: "For Verification", date: dateISO, by: OFFICERS[id % OFFICERS.length], notes: "Report received and logged." }
     ],
   };
 }
@@ -1535,6 +1539,8 @@ useEffect(() => {
     dateSubmitted: "",
     reporterId: "",
   });
+  const [sortField, setSortField] = useState("dateSubmitted");
+  const [sortDir, setSortDir]     = useState("desc");
 
   // Modal state
   const [modal, setModal] = useState(null);
@@ -1590,7 +1596,16 @@ useEffect(() => {
   );
   useEffect(() => setPage(1), [search, advancedFilters]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sorted = useMemo(() => {
+  if (!sortField) return filtered;
+  return [...filtered].sort((a, b) => {
+    const av = a[sortField] ?? "";
+    const bv = b[sortField] ?? "";
+    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+}, [filtered, sortField, sortDir]);
+const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── Status change — submit for approval ──
   function submitForApproval(caseData, proposedStatus, changeDetails) {
@@ -1780,14 +1795,27 @@ useEffect(() => {
                   paginated={paginated}
                   page={page}
                   totalPages={totalPages}
+                  totalRecords={filtered.length}
+                  pageSize={PAGE_SIZE}
                   onPageChange={setPage}
-                  onView={(c) => router.push(`/cases/view?caseId=${c.id}`)}
-                  onAssign={(c) => { setSelected(c); setModal("assign"); }}
-                  onUpdateStatus={(c) => { setSelected(c); setModal("statusRouter"); }}
-                  onReview={(c) => { setSelected(c); setModal("approval"); }}
+                  onRowClick={(c) => router.push(`/cases/view?caseId=${c.id}`)}
+                  onAssign={(cases) => {
+                    // bulk assign: open assign modal for first; or handle multi-assign
+                    setSelected(cases[0]);
+                    setModal("assign");
+                  }}
+                  onUpdateStatus={(cases) => {
+                    setSelected(cases[0]);
+                    setModal("statusRouter");
+                  }}
                   isAdmin={isAdmin}
                   getAvailableTransitions={getAvailableTransitions}
-                  router={router}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={(field) => {
+                    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+                    else { setSortField(field); setSortDir("asc"); }
+                  }}
                 />
               </div>
             </div>

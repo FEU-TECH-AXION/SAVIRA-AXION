@@ -1417,9 +1417,10 @@ export default function ViewCase() {
           throw new Error(body.error || "Case not found");
         }
         const { data } = await res.json();
+        const caseYear = new Date(data.created_at).getFullYear();
         setCaseData({
           id:                   data.case_report_id,
-          caseId:               "SASHA-" + String(data.case_report_id).padStart(5, "0"),
+          caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
           reporterId:           String(data.complainant_id),
           region:               data.incident_province || data.incident_city || "—",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",
