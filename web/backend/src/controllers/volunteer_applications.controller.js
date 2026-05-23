@@ -1,26 +1,137 @@
-const VolunteerApplicationsModel = require("../models/volunteer_applicants.model");
+const VolunteerApplicationsModel = require("../models/volunteer_applications.model");
+const VolunteerApplicantModel = require("../models/volunteer_applicants.model");
+const ScreeningAnswerModel      = require('../models/screening_answers.model')
+const ScreeningQuestionSetModel = require('../models/screening_question_set.model')
+const OrganizationsModel         = require('../models/organizations.model')
+const supabase                   = require('../config/supabase')
+
+// Maps your form keys to question_key values in the database
+const ANSWER_MAP = {
+    survivorDignity:       'survivor_dignity',
+    confidentialityPolicy: 'confidentiality_policy',
+    noHarassment:          'no_harassment',
+    respectfulComms:       'respectful_comms',
+    saferEnvironments:     'safer_environments',
+    advocacySupport:       'advocacy_support',
+    enthusiasm:            'enthusiasm',
+    professionalism:       'professionalism',
+    genderAwareness:       'gender_awareness',
+    stayInformed:          'stay_informed',
+    openToLearn:           'open_to_learn',
+    diverseTeams:          'diverse_teams',
+    orientationWilling:    'orientation_willing',
+    timeCommitment:        'time_commitment',
+    feedbackWilling:       'feedback_willing',
+}
 
 const getItems = async (req, res) => {
-  try {
-    const data = await VolunteerApplicationsModel.getAll();
-    res.json(data);
-  } catch (err) {
-    // 500 here because the failure is on our side (DB/Supabase), not the client's
-    res.status(500).json({ error: err.message });
-  }
-};
+    try {
+        const data = await VolunteerApplicationsModel.getAll()
+        res.json(data)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
 
 const createItem = async (req, res) => {
-  try {
-    // req.body is passed directly — input validation should be added here
-    // before hitting the DB (e.g. check required fields, sanitize input)
-    const item = await VolunteerApplicationsModel.create(req.body);
+    try {
+        const { applicant, screeningQuestions, essay } = req.body
+        const userId = req.user?.id
+        if (!userId) return res.status(401).json({ error: 'Authentication required.' })
 
-    // 201 instead of 200 to explicitly signal a resource was created
-    res.status(201).json(item);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+        // ── 1. Get volunteer_applicant_id from logged in user ──
+        const { data: existingApplicant } = await supabase
+    .from('volunteer_applicants')
+    .select('volunteer_applicant_id')
+    .eq('user_id', userId)
+    .maybeSingle()
 
-module.exports = { getItems, createItem};
+    let volunteerApplicantId
+
+    if (existingApplicant) {
+        // Already applied before, reuse existing row
+        volunteerApplicantId = existingApplicant.volunteer_applicant_id
+    } else {
+        // First time applying, create the row
+        const { data: newApplicant, error: insertError } = await supabase
+            .from('volunteer_applicants')
+            .insert([{
+                user_id:                userId,
+                converted_to_volunteer: false,
+            }])
+            .select('volunteer_applicant_id')
+            .single()
+
+        if (insertError) throw insertError
+        volunteerApplicantId = newApplicant.volunteer_applicant_id
+    }
+
+        // ── 2. Find or create organization ──
+        const org = await OrganizationsModel.findOrCreateOrganization(applicant)
+
+        // ── 3. Fetch active question set + all 15 questions ──
+        const questionSet = await ScreeningQuestionSetModel.getActive()
+        // console.log('questionSet:', JSON.stringify(questionSet, null, 2))
+        const questions   = questionSet.screening_questions
+        // console.log('questions count:', questions?.length)
+
+        // ── 4. Evaluate answers ──
+        let nonNegotiablePassed = true
+        let negotiableScore     = 0
+        const answerRows        = []
+
+        for (const question of questions) {
+            const formKey     = Object.keys(ANSWER_MAP).find(k => ANSWER_MAP[k] === question.question_key)
+            const answerValue = screeningQuestions[formKey] ?? ''
+            const isCorrect   = answerValue === question.preferred_answer
+
+            if (question.type === 'non_negotiable' && !isCorrect) {
+                nonNegotiablePassed = false
+            }
+
+            if (question.type === 'negotiable' && isCorrect) {
+                negotiableScore += 1
+            }
+
+            answerRows.push({
+                screening_question_id: question.screening_question_id,
+                answer_value:          answerValue,
+            })
+        }
+
+        // ── 5. Create the application ──
+        const application = await VolunteerApplicationsModel.create({
+            volunteer_applicant_id:    volunteerApplicantId,
+            organization_id:           org.organization_id,
+            screening_question_set_id: questionSet.id,
+            essay_response:            essay.description,
+            scouting_membership:       applicant.scoutingMembership || null,
+            tenure_years:              applicant.tenureInScouting   ? parseInt(applicant.tenureInScouting) : null,
+            rank:                      applicant.rank               || null,
+            non_negotiable_passed:     nonNegotiablePassed,
+            negotiable_score:          negotiableScore,
+            application_status:        nonNegotiablePassed ? 'pending' : 'forfeited',
+            interview_required:        nonNegotiablePassed ? true : false,
+        })
+
+        // ── 6. Save all 15 screening answers ──
+        const answersWithAppId = answerRows.map(row => ({
+            ...row,
+            volunteer_application_id: application.volunteer_application_id,
+        }))
+
+        await ScreeningAnswerModel.createMany(answersWithAppId)
+
+        res.status(201).json({
+            message:            'Application submitted successfully.',
+            application,
+            nonNegotiablePassed,
+            negotiableScore,
+        })
+
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+module.exports = { getItems, createItem }

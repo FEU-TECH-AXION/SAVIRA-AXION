@@ -12,7 +12,7 @@ const getAll = async () => {
 
 const create = async (payload) => {
     const { data, error } = await supabase
-        .from('volunteer_applicants')
+        .from('volunteer_applications')
         .insert([payload])
         .select() // Without .select(), Supabase returns null instead of the new row
     if (error) throw error
@@ -24,7 +24,7 @@ const create = async (payload) => {
 
 const update = async (id, payload) => {
     const { data, error } = await supabase
-        .from('volunteer_applicants')
+        .from('volunteer_applications')
         .update(payload)
         .eq('id', id)
         .select()
@@ -34,7 +34,7 @@ const update = async (id, payload) => {
 
 const getByEmail = async (email) => {
     const { data, error } = await supabase
-        .from('volunteer_applicants')
+        .from('volunteer_applications')
         .select('*')
         .eq('email', email)
         .order('created_at', { ascending: false });

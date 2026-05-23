@@ -1043,7 +1043,25 @@ export default function CreateApplication({
     setStepErrors({});
     if (step > 0) setStep((s) => s - 1);
   };
-  const handleSubmit = () => setSubmitted(true);
+
+  const handleSubmit = async () => {
+    try {
+        const res = await fetch('http://localhost:5000/api/volunteer_applications/submit', {
+            method:      'POST',
+            headers:     { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body:        JSON.stringify({ applicant, screeningQuestions, essay }),
+        })
+
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error || 'Submission failed.')
+
+        setSubmitted(true)
+
+    } catch (error) {
+        alert('Something went wrong: ' + error.message)
+    }
+  };
 
   // ── Demo fallback data for status cards ───────────────────────────────────
   const resolvedApplication = applicationData ?? {

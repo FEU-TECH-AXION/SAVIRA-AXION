@@ -22,4 +22,13 @@ const create = async (payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create }
+const createMany = async (answers) => {
+    const { data, error } = await supabase
+        .from('screening_answers')
+        .insert(answers)
+        .select()
+    if (error) throw error
+    return data
+}
+
+module.exports = { getAll, create, createMany }

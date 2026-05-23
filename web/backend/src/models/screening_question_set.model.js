@@ -22,4 +22,14 @@ const create = async (payload) => {
     return data[0]
 }
 
-module.exports = { getAll, create }
+const getActive = async () => {
+    const { data, error } = await supabase
+        .from('screening_question_set')
+        .select('*, screening_questions(*)')  
+        .eq('is_active', true)
+        .single()
+    if (error) throw error
+    return data
+}
+
+module.exports = { getAll, create, getActive }
