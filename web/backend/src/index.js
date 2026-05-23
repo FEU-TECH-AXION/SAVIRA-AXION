@@ -98,6 +98,18 @@ app.use('/api/case_report_analysis', caseReportAnalysisRouter)
 
 // ── ROUTES FOR VOLUNTEER APPLICATION RELATED TABLES ───────────────────────────────
 
-// Route for case_report_logs tbl
+// Route for volunteer_applications tbl
 const volunteerApplicationsRouter = require('./routes/volunteer_applications.routes')
 app.use('/api/volunteer_applications', volunteerApplicationsRouter)
+
+// Route for screening_questions tbl
+const screeningQuestionsRouter = require('./routes/screening_questions.routes')
+app.use('/api/screening_questions', screeningQuestionsRouter)
+
+// Route for screening_questions_set tbl
+const screeningQuestionSetRouter = require('./routes/screening_question_set.routes')
+app.use('/api/screening_question_set', screeningQuestionSetRouter)
+
+// Route for screening_answers tbl
+const screeningAnswersRouter = require('./routes/screening_answers.routes')
+app.use('/api/screening_answers', screeningAnswersRouter)
