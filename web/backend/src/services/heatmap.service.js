@@ -115,6 +115,19 @@ function generateCouncilHeatmapData(reports) {
   });
 }
 
+const STATUS_MAP = {
+  1:  "For Verification",
+  2:  "Undergoing Review",
+  3:  "Verified - True",
+  4:  "Verified - False",
+  5:  "Under Case Evaluation",
+  6:  "Case Filed",
+  7:  "Investigation Ongoing",
+  8:  "Hearing Ongoing",
+  9:  "Dismissed",
+  10: "Perpetrator Convicted",
+};
+
 /**
  * Get filtered reports based on criteria
  * @param {Array} reports - All case reports
@@ -147,18 +160,20 @@ function getFilteredReports(reports, filters = {}) {
   }
 
   if (filters.status) {
-    filtered = filtered.filter((r) => r.case_status_id === filters.status);
+    filtered = filtered.filter((r) => STATUS_MAP[r.case_status_id] === filters.status);
   }
 
   if (filters.verification === 'verified') {
     filtered = filtered.filter((r) => {
+      const statusName = STATUS_MAP[r.case_status_id] || '';
       const statuses = ['Verified', 'Investigation', 'Case Filed', 'Hearing', 'Convicted'];
-      return statuses.some((s) => r.case_status_id?.includes(s));
+      return statuses.some((s) => statusName.includes(s));
     });
   } else if (filters.verification === 'unverified') {
     filtered = filtered.filter((r) => {
+      const statusName = STATUS_MAP[r.case_status_id] || '';
       const statuses = ['Verified', 'Investigation', 'Case Filed', 'Hearing', 'Convicted'];
-      return !statuses.some((s) => r.case_status_id?.includes(s));
+      return !statuses.some((s) => statusName.includes(s));
     });
   }
 
