@@ -1044,24 +1044,34 @@ export default function CreateApplication({
     if (step > 0) setStep((s) => s - 1);
   };
 
+  const [submitError, setSubmitError] = useState(null)
+
   const handleSubmit = async () => {
-    try {
-        const res = await fetch('http://localhost:5000/api/volunteer_applications/submit', {
-            method:      'POST',
-            headers:     { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body:        JSON.stringify({ applicant, screeningQuestions, essay }),
-        })
+      try {
+          setSubmitError(null)
 
-        const result = await res.json()
-        if (!res.ok) throw new Error(result.error || 'Submission failed.')
+          const res = await fetch('http://localhost:5000/api/volunteer_applications/submit', {
+              method:      'POST',
+              headers:     { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body:        JSON.stringify({ applicant, screeningQuestions, essay }),
+          })
 
-        setSubmitted(true)
+          const result = await res.json()
 
-    } catch (error) {
-        alert('Something went wrong: ' + error.message)
-    }
-  };
+          if (res.status === 409) {
+              setSubmitError(result.error)
+              return
+          }
+
+          if (!res.ok) throw new Error(result.error || 'Submission failed.')
+
+          setSubmitted(true)
+
+      } catch (error) {
+          setSubmitError('Something went wrong: ' + error.message)
+      }
+  }
 
   // ── Demo fallback data for status cards ───────────────────────────────────
   const resolvedApplication = applicationData ?? {
@@ -1137,6 +1147,13 @@ export default function CreateApplication({
                   ← Back
                 </button>
               ) : <div />}
+
+                  {/* ── Active application warning ── */}
+                  {submitError && (
+                      <div className={styles.submitError}>
+                          <span>⚠</span> {submitError}
+                      </div>
+                  )}
 
               {step < totalSteps - 1 ? (
                 <button type="button" className={styles.nextBtn} onClick={handleNext}>

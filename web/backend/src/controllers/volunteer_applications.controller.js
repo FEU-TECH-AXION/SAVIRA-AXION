@@ -99,7 +99,22 @@ const createItem = async (req, res) => {
             })
         }
 
-        // ── 5. Create the application ──
+        // ── 5. Check for existing active application ──
+        const { data: existingApplication } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, application_status')
+            .eq('volunteer_applicant_id', volunteerApplicantId)
+            .in('application_status', ['pending', 'under_review'])
+            .maybeSingle()
+
+        if (existingApplication) {
+            return res.status(409).json({
+                error: 'You already have an active application. Please wait for it to be resolved before applying again.',
+                status: existingApplication.application_status
+            })
+        }
+
+        // ── 6. Create the application ──
         const application = await VolunteerApplicationsModel.create({
             volunteer_applicant_id:    volunteerApplicantId,
             organization_id:           org.organization_id,
