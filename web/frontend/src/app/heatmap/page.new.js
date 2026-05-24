@@ -7,10 +7,6 @@ import { NCR_REGIONS, NCR_COUNCILS, ALL_NCR_CITIES, getCitiesByRegion } from "@/
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
-
 const CASE_STATUSES = [
   "For Verification",
   "Undergoing Review",
@@ -24,35 +20,19 @@ const CASE_STATUSES = [
   "Perpetrator Convicted",
 ];
 
-// Color mapping for heatmap intensity (weather-style: red → yellow → green)
 function getColorForIntensity(intensity) {
-  if (intensity >= 0.7) return "#ef4444"; // Red - high density
-  if (intensity >= 0.5) return "#f97316"; // Orange
-  if (intensity >= 0.3) return "#eab308"; // Yellow
-  if (intensity >= 0.15) return "#22c55e"; // Green - low density
-  return "#dbeafe"; // Light blue - minimal
+  if (intensity >= 0.7) return "#ef4444";
+  if (intensity >= 0.5) return "#f97316";
+  if (intensity >= 0.3) return "#eab308";
+  if (intensity >= 0.15) return "#22c55e";
+  return "#dbeafe";
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILITY
-// ─────────────────────────────────────────────────────────────────────────────
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAP CONTAINER COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 
 function MapContainer({ heatmapData, reportCount, aggregation }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
 
   useEffect(() => {
-    // Load Mapbox GL from CDN
     const script = document.createElement("script");
     script.src = "https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js";
     script.async = true;
@@ -71,7 +51,6 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
           zoom: 11,
         });
 
-        // Add heatmap layer once map loads
         map.current.on("load", () => {
           addHeatmapLayer(map.current, heatmapData);
         });
@@ -87,9 +66,8 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
     };
   }, []);
 
-  // Update heatmap when data changes
   useEffect(() => {
-    if (map.current && map.current.isStyleLoaded() && heatmapData) {
+    if (map.current && map.current.isStyleLoaded && map.current.isStyleLoaded() && heatmapData) {
       updateHeatmapLayer(map.current, heatmapData);
     }
   }, [heatmapData, aggregation]);
@@ -138,14 +116,12 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
   );
 }
 
-// Add heatmap layer to map
 function addHeatmapLayer(map, heatmapData) {
   if (!heatmapData || heatmapData.length === 0) return;
 
   const sourceId = "heatmap-source";
   const layerId = "heatmap-layer";
 
-  // Check if source already exists
   if (map.getSource(sourceId)) {
     map.removeLayer(layerId);
     map.removeSource(sourceId);
@@ -202,10 +178,9 @@ function addHeatmapLayer(map, heatmapData) {
     },
   });
 
-  // Add popup on click
   map.on("click", layerId, (e) => {
     const properties = e.features[0].properties;
-    const popup = new window.mapboxgl.Popup()
+    new window.mapboxgl.Popup()
       .setLngLat(e.lngLat)
       .setHTML(`<div style="font-size: 0.875rem; color: #1f2937;"><strong>${properties.name}</strong><br/>Cases: ${properties.density}</div>`)
       .addTo(map);
@@ -220,7 +195,6 @@ function addHeatmapLayer(map, heatmapData) {
   });
 }
 
-// Update heatmap layer with new data
 function updateHeatmapLayer(map, heatmapData) {
   const sourceId = "heatmap-source";
 
@@ -258,10 +232,6 @@ function StatCard({ title, value, subtext, color }) {
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FILTER SECTION
-// ─────────────────────────────────────────────────────────────────────────────
 
 function FilterSection({ filters, onChange }) {
   const citiesInRegion = filters.region ? getCitiesByRegion(filters.region) : [];
@@ -353,19 +323,13 @@ function FilterSection({ filters, onChange }) {
 
       <button
         className={styles.resetBtn}
-        onClick={() =>
-          onChange("reset", true)
-        }
+        onClick={() => onChange("reset", true)}
       >
         Reset Filters
       </button>
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function HeatmapPage() {
   const [heatmapData, setHeatmapData] = useState([]);
@@ -382,17 +346,12 @@ export default function HeatmapPage() {
     verification: "",
   });
 
-  // Inject Mapbox CSS
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = "https://unpkg.com/mapbox-gl@3.6.0/dist/mapbox-gl.css";
     document.head.appendChild(link);
   }, []);
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // FETCH HEATMAP DATA
-  // ──────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const fetchHeatmapData = async () => {
@@ -437,10 +396,6 @@ export default function HeatmapPage() {
     fetchHeatmapData();
   }, [filters, aggregation]);
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // HANDLE FILTER CHANGES
-  // ──────────────────────────────────────────────────────────────────────────
-
   const handleFilterChange = (field, value) => {
     if (field === "reset") {
       setFilters({
@@ -483,13 +438,11 @@ export default function HeatmapPage() {
 
   return (
     <div className={styles.container}>
-      {/* HEADER */}
       <div className={styles.header}>
         <h1>🌡️ NCR Heatmap - Case Density Visualization</h1>
         <p>Weather-style heatmap showing case concentration by location (Red = High density, Green = Low density)</p>
       </div>
 
-      {/* STATS OVERVIEW */}
       <div className={styles.statsGrid}>
         <StatCard
           title="Total Reports"
@@ -514,10 +467,8 @@ export default function HeatmapPage() {
         />
       </div>
 
-      {/* FILTERS */}
       <FilterSection filters={filters} onChange={handleFilterChange} />
 
-      {/* AGGREGATION TOGGLE */}
       <div style={{ padding: "1rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
         <label style={{ fontWeight: 600, color: "#374151", marginRight: "1rem" }}>View by:</label>
         {["city", "region", "council"].map((agg) => (
@@ -540,7 +491,6 @@ export default function HeatmapPage() {
         ))}
       </div>
 
-      {/* MAP CONTAINER */}
       <div className={styles.mapContainer}>
         {MAPBOX_TOKEN ? (
           <MapContainer 
@@ -556,7 +506,6 @@ export default function HeatmapPage() {
         )}
       </div>
 
-      {/* DETAILED BREAKDOWN */}
       <div className={styles.breakdownContainer}>
         <div className={styles.breakdownSection}>
           <h3>Top {aggregation === "city" ? "Cities" : aggregation === "region" ? "Regions" : "Councils"} by Density</h3>
@@ -586,4 +535,3 @@ export default function HeatmapPage() {
     </div>
   );
 }
-
