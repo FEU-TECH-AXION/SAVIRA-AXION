@@ -2,6 +2,7 @@ const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
 const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
+const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 
 const getItems = async (req, res) => {
     try {
@@ -165,4 +166,44 @@ async function getNLPAnalysis(req, res) {
   }
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis }
+// ── GET /api/case_reports/heatmap/data ────────────────────────────────────
+async function getHeatmapData(req, res) {
+  try {
+    const { aggregation = 'city', city, region, council, status, verification } = req.query;
+
+    // Fetch all reports
+    const allReports = await getAllReports();
+
+    // Apply filters
+    const filters = {};
+    if (city) filters.city = city;
+    if (region) filters.region = region;
+    if (council) filters.council = council;
+    if (status) filters.status = status;
+    if (verification) filters.verification = verification;
+
+    const filteredReports = getFilteredReports(allReports, filters);
+
+    // Generate heatmap data based on aggregation type
+    let heatmapData;
+    if (aggregation === 'region') {
+      heatmapData = generateRegionHeatmapData(filteredReports);
+    } else if (aggregation === 'council') {
+      heatmapData = generateCouncilHeatmapData(filteredReports);
+    } else {
+      heatmapData = generateCityHeatmapData(filteredReports);
+    }
+
+    return res.json({
+      data: heatmapData,
+      filters,
+      totalReports: filteredReports.length,
+      aggregation,
+    });
+  } catch (err) {
+    console.error('[getHeatmapData]', err.message);
+    return res.status(500).json({ error: 'Failed to fetch heatmap data.' });
+  }
+}
+
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData }
