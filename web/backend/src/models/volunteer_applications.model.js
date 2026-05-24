@@ -1,12 +1,21 @@
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('volunteer_applications').select('*')
-
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
+    const { data, error } = await supabase
+        .from('volunteer_applications')
+        .select(`
+            *,
+            volunteer_applicants (
+                *,
+                users (
+                    first_name,
+                    last_name,
+                    email,
+                    contact_number
+                )
+            )
+        `)
     if (error) throw error
-
     return data
 }
 
@@ -26,7 +35,7 @@ const update = async (id, payload) => {
     const { data, error } = await supabase
         .from('volunteer_applications')
         .update(payload)
-        .eq('id', id)
+        .eq('volunteer_application_id', id)
         .select()
     if (error) throw error
     return data[0]

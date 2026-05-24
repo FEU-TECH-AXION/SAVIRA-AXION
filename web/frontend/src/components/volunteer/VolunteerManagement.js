@@ -18,6 +18,17 @@ const getCookie = (name) => {
 
 const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
 
+const capitalizeStatus = (status) => {
+    const map = {
+        pending:     'Pending',
+        under_review: 'Reviewing',
+        approved:    'Approved',
+        rejected:    'Rejected',
+        forfeited:   'Rejected', // or add a separate Forfeited status
+    }
+    return map[status] || 'Pending'
+}
+
 const PAGE_SIZE = 6;
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -252,9 +263,27 @@ function UpdateStatusModal({ open, onClose, applicant, onSave }) {
     }
   }, [applicant]);
   if (!applicant) return null;
-  function handleSubmit() {
-    onSave({ ...applicant, status, notes });
-    onClose();
+async function handleSubmit() {
+    try {
+        const res = await fetch(`http://localhost:5000/api/volunteer_applications/${applicant.id}`, {
+            method:  'PUT',
+            headers: {
+                'Content-Type':  'application/json',
+                Authorization:   `Bearer ${getCookie('token')}`,
+            },
+            body: JSON.stringify({
+                application_status: status.toLowerCase().replace(' ', '_'),
+                notes,
+            }),
+        })
+
+        if (!res.ok) throw new Error('Failed to update status.')
+
+        onSave({ ...applicant, status, notes })
+        onClose()
+    } catch (err) {
+        alert('Something went wrong: ' + err.message)
+    }
   }
   return (
     <Modal open={open} onClose={onClose} title="Update Application Status">
@@ -426,38 +455,33 @@ export default function VolunteerManagement() {
   // Fetch volunteer applicants on component mount
   useEffect(() => {
     const fetchApplicants = async () => {
-      try {
-        const res = await fetch(
-          "http://localhost:5000/api/volunteer_applicants",
-          {
-            headers: {
-              // Send cookie or admin token
-              Authorization: `Bearer ${getCookie("token")}`,
-            },
-          },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          // Standardize keys (e.g. backend snake_case to frontend camelCase if needed)
-          const mapped = data.map((app) => ({
-            id: app.application_id || app.id,
-            name: app.name,
-            email: app.email,
-            contact: app.contact_number,
-            dateApplied: new Date(app.created_at).toLocaleDateString(),
-            status: app.status || "Pending",
-            notes: app.notes || "",
-          }));
-          setApplicants(mapped);
+        try {
+            const res = await fetch('http://localhost:5000/api/volunteer_applications', {
+                headers: {
+                    Authorization: `Bearer ${getCookie('token')}`,
+                },
+            })
+            if (res.ok) {
+                const data = await res.json()
+                const mapped = data.map((app) => ({
+                    id:          app.volunteer_application_id,
+                    name:        app.volunteer_applicants?.users?.first_name + ' ' + app.volunteer_applicants?.users?.last_name,
+                    email:       app.volunteer_applicants?.users?.email,
+                    contact:     app.volunteer_applicants?.users?.contact_number,
+                    dateApplied: new Date(app.created_at).toLocaleDateString(),
+                    status:      capitalizeStatus(app.application_status),
+                    notes:       '',
+                }))
+                setApplicants(mapped)
+            }
+        } catch (err) {
+            console.error('Failed to load volunteer applications', err)
+        } finally {
+            setLoading(false)
         }
-      } catch (err) {
-        console.error("Failed to load live volunteer applicants", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    }
 
-    fetchApplicants();
+    fetchApplicants()
   }, []);
 
   function showToast(msg, type = "success") {
@@ -478,10 +502,11 @@ export default function VolunteerManagement() {
   }
 
   function handleUpdate(updated) {
-    setApplicants((prev) =>
-      prev.map((a) => (a.id === updated.id ? updated : a)),
-    );
-    showToast(`${updated.name}'s application updated to ${updated.status}.`);
+      // Update local state immediately for snappy UI
+      setApplicants((prev) =>
+          prev.map((a) => (a.id === updated.id ? updated : a))
+      )
+      showToast(`${updated.name}'s application updated to ${updated.status}.`)
   }
 
   const stats = useMemo(
@@ -534,7 +559,7 @@ export default function VolunteerManagement() {
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Volunteer Management</h1>
               <div className="row g-3 justify-content-center">
-                {stats.map(({ num, label, hasNew }) => (
+                {stats.map(({ num, label, hasNew }, i) => (
                   <div key={label} className="col-12 col-md-4">
                     <div className={styles.statCard}>
                       {/* {hasNew && <span className={styles.statDot} />} */}

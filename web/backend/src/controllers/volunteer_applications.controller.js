@@ -134,4 +134,21 @@ const createItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem }
+const updateItem = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { application_status, notes } = req.body
+
+        const updated = await VolunteerApplicationsModel.update(id, {
+            application_status,
+            updated_at: new Date(),
+        })
+
+        res.status(200).json(updated)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+module.exports = { getItems, createItem, updateItem }
+
