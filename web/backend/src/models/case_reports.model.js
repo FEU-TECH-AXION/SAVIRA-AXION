@@ -97,13 +97,44 @@ async function getAllReports() {
       incident_date,
       case_status_id,
       created_at,
-      is_current
+      is_current,
+      case_assignments (
+        assignment_id,
+        case_officer_id,
+        is_active,
+        case_officers (
+          case_officer_id,
+          users (
+            user_id,
+            first_name,
+            last_name,
+            email
+          )
+        )
+      )
     `)
     .eq('is_current', true)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+
+  // Flatten the nested data to extract officer name
+  return data.map(report => {
+    let assignedOfficer = null;
+    if (report.case_assignments && report.case_assignments.length > 0) {
+      const assignment = report.case_assignments[0]; // Get first active assignment
+      if (assignment.case_officers?.users) {
+        const user = assignment.case_officers.users;
+        assignedOfficer = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+      }
+    }
+
+    return {
+      ...report,
+      assigned_officer: assignedOfficer,
+      case_assignments: undefined, // Remove nested data from response
+    };
+  });
 }
 
 module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, }

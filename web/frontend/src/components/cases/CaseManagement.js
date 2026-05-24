@@ -665,32 +665,74 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
 // ASSIGN CASE MODAL (admin only)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AssignCaseModal({ open, onClose, caseData, onSave }) {
+function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, officers: officersProp = [] }) {
   const [officer, setOfficer] = useState("");
   const [error, setError] = useState("");
-  useEffect(() => { if (caseData) setOfficer(caseData.assignedOfficer || ""); }, [caseData]);
-  if (!caseData) return null;
+  
+  // Support both single case and array of cases
+  const casesData = Array.isArray(casesDataProp) ? casesDataProp : (casesDataProp ? [casesDataProp] : []);
+  
+  useEffect(() => { 
+    if (casesData.length > 0) {
+      // If all selected cases have the same officer, pre-fill it
+      const firstOfficer = casesData[0].assignedOfficer;
+      if (casesData.every(c => c.assignedOfficer === firstOfficer)) {
+        setOfficer(firstOfficer || "");
+      } else {
+        setOfficer("");
+      }
+    }
+  }, [casesData]);
+  
+  if (casesData.length === 0) return null;
 
   function handleSave() {
     if (!officer) { setError("Please select an officer."); return; }
-    onSave({ ...caseData, assignedOfficer: officer });
+    // Call onSave for each case
+    casesData.forEach(caseData => {
+      onSave({ ...caseData, assignedOfficer: officer });
+    });
     onClose();
   }
 
+  const officerList = (officersProp && officersProp.length > 0) ? officersProp : OFFICERS;
+  const isBulk = casesData.length > 1;
+
   return (
-    <Modal open={open} onClose={onClose} title="Assign Case Officer">
+    <Modal open={open} onClose={onClose} title={isBulk ? `Assign Case Officer (${casesData.length} cases)` : "Assign Case Officer"}>
       <div className={styles.formGrid}>
-        <FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup>
-        <FormGroup label="Assign to Officer" required error={error}>
+        {isBulk ? (
+          <>
+            <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+              <label className={styles.formLabel}>Cases to assign:</label>
+              <div style={{ background: "#f3f4f6", borderRadius: 6, padding: 10, fontSize: "0.875rem", maxHeight: 150, overflowY: "auto" }}>
+                {casesData.map((c, i) => (
+                  <div key={i} style={{ padding: "4px 0", borderBottom: i < casesData.length - 1 ? "1px solid #e5e7eb" : "none" }}>
+                    <strong>{c.caseId}</strong> — {c.status} (Reporter: {c.reporterId})
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <FormGroup label="Case ID"><FInput value={casesData[0].caseId} disabled /></FormGroup>
+        )}
+        <FormGroup label="Assign to Officer" required error={error} style={isBulk ? { gridColumn: "1 / -1" } : {}}>
           <FSelect value={officer} onChange={(e) => { setOfficer(e.target.value); setError(""); }} error={error}>
             <option value="">— Select Officer —</option>
-            {OFFICERS.map((o) => <option key={o} value={o}>{o}</option>)}
+            {officerList.length > 0 ? (
+              officerList.map((o) => <option key={o} value={o}>{o}</option>)
+            ) : (
+              <option disabled>No case officers available</option>
+            )}
           </FSelect>
         </FormGroup>
       </div>
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSave}>Assign Officer</button>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={officerList.length === 0}>
+          {isBulk ? `Assign to ${casesData.length} Case${casesData.length === 1 ? '' : 's'}` : "Assign Officer"}
+        </button>
       </div>
     </Modal>
   );
@@ -1535,7 +1577,10 @@ export default function CaseManagement() {
   const isLegal   = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
 
   const [cases, setCases] = useState([]);
-const [casesLoading, setCasesLoading] = useState(true);
+  const [casesLoading, setCasesLoading] = useState(true);
+
+  // Dynamic officers list (try backend, fallback to deriving from cases)
+  const [officers, setOfficers] = useState([]);
 
 const STATUS_STEP = {
   1: "For Verification",
@@ -1557,11 +1602,15 @@ useEffect(() => {
       const res = await fetch(`${API_URL}/api/case_reports/all`, {
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Failed to fetch cases');
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[CaseManagement] API error:', res.status, errorText);
+        throw new Error(`Failed to fetch cases: ${res.status} ${errorText}`);
+      }
       const { data } = await res.json();
 
       // Map DB shape to the shape CaseManagement expects
-      const mapped = data.map((r, i) => {
+      let mapped = data.map((r, i) => {
         const year = new Date(r.created_at).getFullYear();
         return {
         id:              r.case_report_id,
@@ -1587,6 +1636,18 @@ useEffect(() => {
         };
       });
 
+      // Case officers only see cases assigned to them
+      if (isCaseOfficer && actorName) {
+        console.log('[CaseManagement] Case officer filter - actorName:', actorName);
+        console.log('[CaseManagement] Before filter - total cases:', mapped.length);
+        mapped = mapped.filter(c => {
+          const match = c.assignedOfficer === actorName;
+          if (!match) console.log('[CaseManagement] Filtered out case:', c.caseId, 'assigned to:', c.assignedOfficer);
+          return match;
+        });
+        console.log('[CaseManagement] After filter - visible cases:', mapped.length);
+      }
+
       setCases(mapped);
     } catch (err) {
       console.error('[CaseManagement] fetch error:', err);
@@ -1596,6 +1657,28 @@ useEffect(() => {
   };
 
   fetchCases();
+}, [isCaseOfficer, actorName]);
+
+// Fetch case officers from database
+useEffect(() => {
+  const loadOfficers = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    try {
+      const res = await fetch(`${API_URL}/api/case_officers`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        // Expect data = [{ case_officer_id, name, user_id, is_available, ... }]
+        const availableOfficers = (Array.isArray(data) ? data : data.data || [])
+          .filter(officer => officer.is_available !== false); // Only include available officers
+        setOfficers(availableOfficers);
+      }
+    } catch (e) {
+      console.error('[CaseManagement] Failed to fetch case officers:', e);
+      setOfficers([]);
+    }
+  };
+
+  loadOfficers();
 }, []);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -1872,8 +1955,8 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                   onPageChange={setPage}
                   onRowClick={(c) => router.push(`/cases/view?caseId=${c.id}`)}
                   onAssign={(cases) => {
-                    // bulk assign: open assign modal for first; or handle multi-assign
-                    setSelected(cases[0]);
+                    // bulk assign: pass all selected cases
+                    setSelected(cases);
                     setModal("assign");
                   }}
                   onUpdateStatus={(cases) => {
@@ -1907,7 +1990,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       />
 
       {/* Assign (admin) */}
-      <AssignCaseModal open={modal === "assign"} onClose={closeModal} caseData={selected} onSave={assignOfficer} />
+      <AssignCaseModal open={modal === "assign"} onClose={closeModal} casesData={selected} onSave={assignOfficer} officers={officers} />
 
       {/* Status Router — inline transition picker */}
       {modal === "statusRouter" && selected && (() => {
@@ -1961,7 +2044,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
       {/* All Cases quick browsers */}
       <AllCasesModal open={modal === "viewAll"}            onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} />
-      <AllCasesModal open={modal === "viewAll_assign"}     onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected(c); setModal("assign"); }} />
+      <AllCasesModal open={modal === "viewAll_assign"}     onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected([c]); setModal("assign"); }} />
 
       {/* Pending approvals list */}
       {modal === "viewPending" && (

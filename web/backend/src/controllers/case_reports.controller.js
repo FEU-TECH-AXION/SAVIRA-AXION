@@ -133,7 +133,7 @@ async function getAllCases(req, res) {
     const reports = await getAllReports();
     return res.json({ data: reports });
   } catch (err) {
-    console.error('[getAllCases]', err.message);
+    console.error('[getAllCases]', err);
     return res.status(500).json({ error: 'Failed to fetch cases.' });
   }
 }
