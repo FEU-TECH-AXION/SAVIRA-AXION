@@ -120,14 +120,23 @@ const createItem = async (req, res) => {
             organization_id:           org.organization_id,
             screening_question_set_id: questionSet.id,
             essay_response:            essay.description,
+            contact_number:            applicant.contactNumber    || null,
+            name:                      applicant.name             || null,
+            age:                       parseInt(applicant.age)    || null,
+            gender_identity:           applicant.gender           || null,
+            email:                     applicant.email            || null,
+            city:                      applicant.userCity         || null,
+            province:                  'Metro Manila',
+            organization_id:           org.organization_id,
             scouting_membership:       applicant.scoutingMembership || null,
-            tenure_years:              applicant.tenureInScouting   ? parseInt(applicant.tenureInScouting) : null,
-            rank:                      applicant.rank               || null,
+            tenure_years:              applicant.tenureInScouting ? parseInt(applicant.tenureInScouting) : null,
+            rank:                      applicant.rank             || null,
             non_negotiable_passed:     nonNegotiablePassed,
             negotiable_score:          negotiableScore,
             application_status:        nonNegotiablePassed ? 'pending' : 'forfeited',
             interview_required:        nonNegotiablePassed ? true : false,
-        })
+            birthday:                   applicant.birthday ? new Date(applicant.birthday) : null,
+        })      
 
         // ── 6. Save all 15 screening answers ──
         const answersWithAppId = answerRows.map(row => ({

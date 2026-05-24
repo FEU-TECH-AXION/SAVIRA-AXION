@@ -465,9 +465,10 @@ export default function VolunteerManagement() {
                 const data = await res.json()
                 const mapped = data.map((app) => ({
                     id:          app.volunteer_application_id,
-                    name:        app.volunteer_applicants?.users?.first_name + ' ' + app.volunteer_applicants?.users?.last_name,
-                    email:       app.volunteer_applicants?.users?.email,
-                    contact:     app.volunteer_applicants?.users?.contact_number,
+                    name:        app.name,
+                    email:       app.email,
+                    contact:     app.contact_number,
+                    birthday:    app.birthday || '—',
                     dateApplied: new Date(app.created_at).toLocaleDateString(),
                     status:      capitalizeStatus(app.application_status),
                     notes:       '',
