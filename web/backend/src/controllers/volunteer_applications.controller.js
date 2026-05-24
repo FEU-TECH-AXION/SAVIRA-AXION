@@ -99,7 +99,22 @@ const createItem = async (req, res) => {
             })
         }
 
-        // ── 5. Create the application ──
+        // ── 5. Check for existing active application ──
+        const { data: existingApplication } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, application_status')
+            .eq('volunteer_applicant_id', volunteerApplicantId)
+            .in('application_status', ['pending', 'under_review'])
+            .maybeSingle()
+
+        if (existingApplication) {
+            return res.status(409).json({
+                error: 'You already have an active application. Please wait for it to be resolved before applying again.',
+                status: existingApplication.application_status
+            })
+        }
+
+        // ── 6. Create the application ──
         const application = await VolunteerApplicationsModel.create({
             volunteer_applicant_id:    volunteerApplicantId,
             organization_id:           org.organization_id,
@@ -150,5 +165,35 @@ const updateItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem, updateItem }
+const getMyApplications = async (req, res) => {
+    try {
+        const userId = req.user?.id
+        if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+
+        // Get volunteer_applicant_id from user
+        const { data: volunteerApplicant } = await supabase
+            .from('volunteer_applicants')
+            .select('volunteer_applicant_id')
+            .eq('user_id', userId)
+            .maybeSingle()
+
+        if (!volunteerApplicant) return res.status(200).json([])
+
+        const { data, error } = await supabase
+            .from('volunteer_applications')
+            .select('*')
+            .eq('volunteer_applicant_id', volunteerApplicant.volunteer_applicant_id)
+            .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        res.status(200).json(data)
+
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+module.exports = { getItems, createItem, updateItem, getMyApplications }
+
 
