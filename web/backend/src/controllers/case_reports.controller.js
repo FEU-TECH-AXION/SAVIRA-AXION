@@ -206,4 +206,31 @@ async function getHeatmapData(req, res) {
   }
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData }
+// ── GET /api/case_reports/heatmap/meta ────────────────────────────────────
+// Returns regions, cities and councils from the backend geography config.
+// This lets the frontend build its filter dropdowns without duplicating data.
+async function getHeatmapMeta(req, res) {
+  try {
+    const {
+      NCR_GEOGRAPHY,
+      getAllNCRCities,
+      getAllNCRCouncils,
+    } = require('../config/ncr-geography');
+
+    const regions = Object.entries(NCR_GEOGRAPHY.regions).map(([key, data]) => ({
+      key,
+      label: data.label,
+      cities: Object.keys(data.cities),
+    }));
+
+    const cities = getAllNCRCities().map((c) => c.name);
+    const councils = getAllNCRCouncils();
+
+    return res.json({ regions, cities, councils });
+  } catch (err) {
+    console.error('[getHeatmapMeta]', err.message);
+    return res.status(500).json({ error: 'Failed to fetch heatmap metadata.' });
+  }
+}
+
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta }
