@@ -1,6 +1,6 @@
 /**
  * NCR Geographic Data for Frontend
- * 
+ *
  * Mirror of backend geographic data for UI rendering
  */
 
