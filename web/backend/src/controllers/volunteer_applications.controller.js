@@ -165,5 +165,35 @@ const updateItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem, updateItem }
+const getMyApplications = async (req, res) => {
+    try {
+        const userId = req.user?.id
+        if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+
+        // Get volunteer_applicant_id from user
+        const { data: volunteerApplicant } = await supabase
+            .from('volunteer_applicants')
+            .select('volunteer_applicant_id')
+            .eq('user_id', userId)
+            .maybeSingle()
+
+        if (!volunteerApplicant) return res.status(200).json([])
+
+        const { data, error } = await supabase
+            .from('volunteer_applications')
+            .select('*')
+            .eq('volunteer_applicant_id', volunteerApplicant.volunteer_applicant_id)
+            .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        res.status(200).json(data)
+
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+module.exports = { getItems, createItem, updateItem, getMyApplications }
+
 

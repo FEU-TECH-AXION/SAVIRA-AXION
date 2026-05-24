@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import styles from "./ApplyApplicationForm.module.css";
 
 // ── Step definitions ──────────────────────────────────────────────────────────
@@ -950,20 +950,19 @@ function StatusStepper({ steps, current }) {
 }
 
 // ── Application Status Card ────────────────────────────────────────────────────────
-function ApplicationStatusCard({ applicationData, onView }) {
+function ApplicationStatusCard({ applicationData, onView, index }) {
   const steps = ["Submitted", "Under Review", "Resolved"];
-  const { description = "—", location = "—", dateApplied = "—", id = "—", currentStep = 0 } = applicationData ?? {};
+  const { description = "—", dateApplied = "—", id = "—", currentStep = 0 } = applicationData ?? {};
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
-        <span>Application 2</span>
+        <span>Application {index + 1}</span>
         <button className={styles.headerViewBtn} onClick={onView}>View →</button>
       </div>
       <div className={styles.statusCardBody}>
         <div className={styles.applicationMetaRow}>
           <div>
             <p className={styles.statusMeta}>Description: {description}</p>
-            <p className={styles.statusMeta}>Location: {location}</p>
             <p className={styles.statusMeta}>Date Applied: {dateApplied}</p>
           </div>
           <span className={styles.applicationId}>ID: {id}</span>
@@ -983,6 +982,28 @@ export default function CreateApplication({
   const [step, setStep]   = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [stepErrors, setStepErrors] = useState({});
+
+  const [myApplications, setMyApplications] = useState([])
+  const [appsLoading, setAppsLoading] = useState(true)
+
+  useEffect(() => {
+      const fetchMyApplications = async () => {
+          try {
+              const res = await fetch('http://localhost:5000/api/volunteer_applications/my_applications', {
+                  credentials: 'include',
+              })
+              if (res.ok) {
+                  const data = await res.json()
+                  setMyApplications(data)
+              }
+          } catch (err) {
+              console.error('Failed to fetch applications:', err)
+          } finally {
+              setAppsLoading(false)
+          }
+      }
+      fetchMyApplications()
+  }, [submitted]) // ← refetches after a new submission
 
   const [applicant, setApplicant] = useState({
     name: "", birthday: "", age: "", gender: "", pronouns: "", organization: "",
@@ -1187,12 +1208,32 @@ export default function CreateApplication({
         </div>
 
         <div className="row g-3">
-          <div className="col-12">
-            <ApplicationStatusCard applicationData={resolvedApplication} onView={() => {}} />
-          </div>
-          <div className="col-12">
-            <ApplicationStatusCard applicationData={resolvedApplication2} onView={() => {}} />
-          </div>
+            {appsLoading ? (
+                <div className="col-12">
+                    <p className={styles.stepDesc}>Loading your applications...</p>
+                </div>
+            ) : myApplications.length === 0 ? (
+                <div className="col-12">
+                    <p className={styles.stepDesc}>You have not submitted any applications yet.</p>
+                </div>
+            ) : (
+                myApplications.map((app, index) => (      // ← it's here
+                    <div className="col-12" key={app.volunteer_application_id}>
+                        <ApplicationStatusCard
+                            applicationData={{
+                                id:          app.volunteer_application_id,
+                                description: app.essay_response,
+                                dateApplied: new Date(app.created_at).toLocaleDateString(),
+                                currentStep: app.application_status === 'pending'      ? 0
+                                          : app.application_status === 'under_review' ? 1
+                                          : 2,
+                            }}
+                            index={index}
+                            onView={() => {}}
+                        />
+                    </div>
+                ))
+            )}
         </div>
         </div>
       </div>
