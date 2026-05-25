@@ -1,14 +1,16 @@
 const VolunteerApplicantsModel = require("../models/volunteer_applicants.model");
 
 const getItems = async (req, res) => {
-  try {
-    const data = await VolunteerApplicantsModel.getAll();
-    res.json(data);
-  } catch (err) {
-    // 500 here because the failure is on our side (DB/Supabase), not the client's
-    res.status(500).json({ error: err.message });
-  }
-};
+    try {
+        const userId = req.user?.id
+        if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+
+        const data = await VolunteerApplicantsModel.getAll()
+        res.json(data)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
 
 const createItem = async (req, res) => {
   try {

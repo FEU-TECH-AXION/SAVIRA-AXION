@@ -2,10 +2,12 @@ const ScreeningAnswersModel = require('../models/screening_answers.model')
 
 const getItems = async (req, res) => {
     try {
+        const userId = req.user?.id
+        if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+
         const data = await ScreeningAnswersModel.getAll()
         res.json(data)
     } catch (err) {
-        // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
     }
 }

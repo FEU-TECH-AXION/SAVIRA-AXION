@@ -26,6 +26,9 @@ const ANSWER_MAP = {
 
 const getItems = async (req, res) => {
     try {
+        const userId = req.user?.id
+        if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+
         const data = await VolunteerApplicationsModel.getAll()
         res.json(data)
     } catch (err) {
