@@ -123,7 +123,7 @@ async function getAllReports() {
     let assignedOfficer = null;
     if (report.case_assignments && report.case_assignments.length > 0) {
       const assignment = report.case_assignments[0]; // Get first active assignment
-      if (assignment.case_officers?.users) {
+      if (assignment.is_active && assignment.case_officers?.users) {
         const user = assignment.case_officers.users;
         assignedOfficer = `${user.first_name || ''} ${user.last_name || ''}`.trim();
       }

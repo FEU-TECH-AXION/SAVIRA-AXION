@@ -666,7 +666,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, officers: officersProp = [] }) {
-  const [officer, setOfficer] = useState("");
+  const [officerId, setOfficerId] = useState("");
   const [error, setError] = useState("");
   
   // Support both single case and array of cases
@@ -674,29 +674,29 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
   
   useEffect(() => { 
     if (casesData.length > 0) {
-      // If all selected cases have the same officer, pre-fill it
-      const firstOfficer = casesData[0].assignedOfficer;
-      if (casesData.every(c => c.assignedOfficer === firstOfficer)) {
-        setOfficer(firstOfficer || "");
-      } else {
-        setOfficer("");
-      }
+      // Reset officer selection when cases change
+      setOfficerId("");
     }
   }, [casesData]);
   
   if (casesData.length === 0) return null;
 
   function handleSave() {
-    if (!officer) { setError("Please select an officer."); return; }
+    if (!officerId) { setError("Please select an officer."); return; }
+    
+    // Find the selected officer object to get the officer name
+    const selectedOfficer = officersProp.find(o => o.case_officer_id == officerId);
+    const officerName = selectedOfficer?.name || `${selectedOfficer?.first_name || ''} ${selectedOfficer?.last_name || ''}`.trim() || officerId;
+    
     // Call onSave for each case
     casesData.forEach(caseData => {
-      onSave({ ...caseData, assignedOfficer: officer });
+      onSave({ ...caseData, assignedOfficer: officerName, assignedOfficerId: officerId });
     });
     onClose();
   }
 
-  const officerList = (officersProp && officersProp.length > 0) ? officersProp : OFFICERS;
   const isBulk = casesData.length > 1;
+  const availableOfficers = (officersProp && officersProp.length > 0) ? officersProp : [];
 
   return (
     <Modal open={open} onClose={onClose} title={isBulk ? `Assign Case Officer (${casesData.length} cases)` : "Assign Case Officer"}>
@@ -718,10 +718,13 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
           <FormGroup label="Case ID"><FInput value={casesData[0].caseId} disabled /></FormGroup>
         )}
         <FormGroup label="Assign to Officer" required error={error} style={isBulk ? { gridColumn: "1 / -1" } : {}}>
-          <FSelect value={officer} onChange={(e) => { setOfficer(e.target.value); setError(""); }} error={error}>
+          <FSelect value={officerId} onChange={(e) => { setOfficerId(e.target.value); setError(""); }} error={error}>
             <option value="">— Select Officer —</option>
-            {officerList.length > 0 ? (
-              officerList.map((o) => <option key={o} value={o}>{o}</option>)
+            {availableOfficers.length > 0 ? (
+              availableOfficers.map((o) => {
+                const officerName = o.name || `${o.first_name || ''} ${o.last_name || ''}`.trim();
+                return <option key={o.case_officer_id} value={o.case_officer_id}>{officerName}</option>;
+              })
             ) : (
               <option disabled>No case officers available</option>
             )}
@@ -730,7 +733,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
       </div>
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSave} disabled={officerList.length === 0}>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={availableOfficers.length === 0}>
           {isBulk ? `Assign to ${casesData.length} Case${casesData.length === 1 ? '' : 's'}` : "Assign Officer"}
         </button>
       </div>
@@ -1811,8 +1814,37 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── Assign officer (admin) ──
   function assignOfficer(updated) {
+    // Update local state
     setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
-    showToast(`Officer assigned to ${updated.caseId}.`);
+    
+    // Save to backend via API
+    const saveToBackend = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        if (updated.assignedOfficerId) {
+          const res = await fetch(`${API_URL}/api/case_assignments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              case_report_id: updated.id,
+              case_officer_id: updated.assignedOfficerId,
+            }),
+          });
+          if (!res.ok) {
+            console.error('[assignOfficer] API error:', res.status);
+            showToast('Failed to save assignment to database', 'danger');
+          } else {
+            showToast(`Officer assigned to ${updated.caseId}.`);
+          }
+        }
+      } catch (err) {
+        console.error('[assignOfficer] Error:', err);
+        showToast('Error saving assignment', 'danger');
+      }
+    };
+    
+    saveToBackend();
   }
 
   // ── Open correct status modal ──
