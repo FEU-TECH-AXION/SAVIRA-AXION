@@ -472,6 +472,9 @@ export default function VolunteerManagement() {
                     dateApplied: new Date(app.created_at).toLocaleDateString(),
                     status:      capitalizeStatus(app.application_status),
                     notes:       '',
+                    fieldsWithBackground: app.fields_with_background || [],
+                    fieldsOfInterest:     app.fields_of_interest     || [],
+                    hoursPerWeek:         app.hours_per_week         || '—',
                 }))
                 setApplicants(mapped)
             }

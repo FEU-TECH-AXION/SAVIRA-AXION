@@ -136,6 +136,9 @@ const createItem = async (req, res) => {
             application_status:        nonNegotiablePassed ? 'pending' : 'forfeited',
             interview_required:        nonNegotiablePassed ? true : false,
             birthday:                   applicant.birthday ? new Date(applicant.birthday) : null,
+            fields_with_background: screeningQuestions.withBackground   || [],
+            fields_of_interest:     screeningQuestions.interestedFields || [],
+            hours_per_week:         screeningQuestions.hoursPerWeek     || null,
         })      
 
         // ── 6. Save all 15 screening answers ──
