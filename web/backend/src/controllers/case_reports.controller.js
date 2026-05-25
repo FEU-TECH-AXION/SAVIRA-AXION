@@ -133,8 +133,15 @@ async function getAllCases(req, res) {
     const reports = await getAllReports();
     return res.json({ data: reports });
   } catch (err) {
-    console.error('[getAllCases]', err);
-    return res.status(500).json({ error: 'Failed to fetch cases.' });
+    // Log the full error object so Supabase PostgREST details are visible
+    console.error('[getAllCases] Error details:', JSON.stringify(err, null, 2));
+    console.error('[getAllCases] message:', err?.message);
+    console.error('[getAllCases] hint:', err?.hint);
+    console.error('[getAllCases] details:', err?.details);
+    return res.status(500).json({ 
+      error: 'Failed to fetch cases.',
+      details: err?.message || String(err),
+    });
   }
 }
 

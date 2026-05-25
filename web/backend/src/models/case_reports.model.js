@@ -86,7 +86,9 @@ async function getReportsByUserId(complainantId) {
 }
 
 async function getAllReports() {
-  const { data, error } = await supabase
+  // Step 1: Fetch case reports with their assignments (just IDs — avoids the
+  // broken deep nested join: case_assignments → case_officers → users)
+  const { data: reports, error: reportsError } = await supabase
     .from('case_reports')
     .select(`
       case_report_id,
@@ -101,38 +103,61 @@ async function getAllReports() {
       case_assignments (
         assignment_id,
         case_officer_id,
-        is_active,
-        case_officers (
-          case_officer_id,
-          users (
-            user_id,
-            first_name,
-            last_name,
-            email
-          )
-        )
+        is_active
       )
     `)
     .eq('is_current', true)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (reportsError) {
+    console.error('[getAllReports] reports query error:', JSON.stringify(reportsError, null, 2));
+    throw reportsError;
+  }
 
-  // Flatten the nested data to extract officer name
-  return data.map(report => {
+  // Step 2: Fetch all officers with their user info (this join works fine from case_officers directly)
+  const { data: officers, error: officersError } = await supabase
+    .from('case_officers')
+    .select(`
+      case_officer_id,
+      users!inner (
+        user_id,
+        first_name,
+        last_name,
+        email
+      )
+    `);
+
+  if (officersError) {
+    console.error('[getAllReports] officers query error:', JSON.stringify(officersError, null, 2));
+    throw officersError;
+  }
+
+  // Build a quick lookup: case_officer_id → full name
+  const officerMap = {};
+  for (const o of officers || []) {
+    if (o.users) {
+      officerMap[o.case_officer_id] = `${o.users.first_name || ''} ${o.users.last_name || ''}`.trim();
+    }
+  }
+
+  // Step 3: Merge — find the active assignment for each report and resolve the officer name
+  return reports.map(report => {
     let assignedOfficer = null;
+    let assignedOfficerId = null;
+
     if (report.case_assignments && report.case_assignments.length > 0) {
-      const assignment = report.case_assignments[0]; // Get first active assignment
-      if (assignment.is_active && assignment.case_officers?.users) {
-        const user = assignment.case_officers.users;
-        assignedOfficer = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+      const activeAssignment = report.case_assignments.find(a => a.is_active);
+      if (activeAssignment) {
+        assignedOfficerId = activeAssignment.case_officer_id;
+        assignedOfficer = officerMap[assignedOfficerId] || null;
       }
     }
 
     return {
       ...report,
       assigned_officer: assignedOfficer,
-      case_assignments: undefined, // Remove nested data from response
+      assigned_officer_id: assignedOfficerId,
+      case_assignments: undefined, // strip nested data from response
     };
   });
 }
