@@ -342,6 +342,646 @@ function ApplicationDetailsTab({ appData }) {
   );
 }
 
+// ─── Application Evaluation Tab (staff only) ─────────────────────────────────
+
+const ESSAY_CRITERIA = [
+  { key: "alignment",    label: "Alignment with SASHA's Mission",       weight: 30, hint: "Does the applicant understand survivor-centered, gender-sensitive, and accountability-based work?" },
+  { key: "maturity",     label: "Maturity and Judgment",                 weight: 20, hint: "Does the essay show discretion, empathy, and seriousness in handling sensitive matters?" },
+  { key: "commitment",   label: "Commitment and Reliability",            weight: 20, hint: "Does the applicant show realistic availability and willingness to do sustained work?" },
+  { key: "clarity",      label: "Writing Clarity and Thoughtfulness",    weight: 15, hint: "Is the essay coherent, reflective, and understandable?" },
+  { key: "experience",   label: "Relevant Experience / Transferable Skills", weight: 15, hint: "Advocacy, community work, peer support, writing, research, documentation, legal or psychosocial exposure." },
+];
+
+// Scoring helpers
+function weightedEssayScore(scores) {
+  return ESSAY_CRITERIA.reduce((sum, c) => {
+    const raw = Number(scores[c.key] ?? 0);
+    return sum + (raw / 10) * c.weight;
+  }, 0);
+}
+
+function ScoreBar({ score, max = 10, color }) {
+  const pct = Math.min(100, (score / max) * 100);
+  const barColor = color || (pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626");
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+      <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 999, transition: "width 0.4s ease" }} />
+      </div>
+      <span style={{ fontSize: "0.82rem", fontWeight: 700, color: barColor, minWidth: 36 }}>{score}/{max}</span>
+    </div>
+  );
+}
+
+function RatingStars({ value, onChange, disabled }) {
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      {[...Array(10)].map((_, i) => {
+        const v = i + 1;
+        return (
+          <button
+            key={v}
+            disabled={disabled}
+            onClick={() => onChange(v)}
+            style={{
+              width: 28, height: 28, borderRadius: 6,
+              border: "1px solid",
+              borderColor: v <= value ? "#037F81" : "#d1d5db",
+              background: v <= value ? "#037F81" : "#f9fafb",
+              color: v <= value ? "#fff" : "#6b7280",
+              fontSize: "0.72rem", fontWeight: 700,
+              cursor: disabled ? "default" : "pointer",
+              transition: "all 0.1s",
+              lineHeight: 1,
+            }}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ApplicationEvaluationTab({ appData, isAdmin }) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  // Quantitative scores (non-negotiable & negotiable from screening)
+  const [quantScores, setQuantScores] = useState(null);
+  const [quantLoading, setQuantLoading] = useState(true);
+
+  // Essay rubric scores (qualitative – manual input)
+  const [essayScores, setEssayScores] = useState({
+    alignment: 0, maturity: 0, commitment: 0, clarity: 0, experience: 0,
+  });
+  const [essayNotes, setEssayNotes] = useState("");
+  const [essaySaving, setEssaySaving] = useState(false);
+  const [essaySaved, setEssaySaved] = useState(false);
+  const [essayLoaded, setEssayLoaded] = useState(false);
+
+  // Interview score
+  const [interviewScore, setInterviewScore] = useState(0);
+  const [interviewNotes, setInterviewNotes] = useState("");
+  const [interviewSaving, setInterviewSaving] = useState(false);
+  const [interviewSaved, setInterviewSaved] = useState(false);
+  const [interviewLoaded, setInterviewLoaded] = useState(false);
+
+  // ── Fetch quantitative scores ──────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!appData?.id) return;
+    async function fetchQuant() {
+      try {
+        const res = await fetch(
+          `${API_URL}/api/volunteer_applications/${appData.id}/scores`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setQuantScores(json.data || json);
+        }
+      } catch (_) {}
+      finally { setQuantLoading(false); }
+    }
+    fetchQuant();
+  }, [appData?.id]);
+
+  // ── Fetch saved essay rubric scores ───────────────────────────────────────
+
+  useEffect(() => {
+    if (!appData?.id) return;
+    async function fetchEssay() {
+      try {
+        const res = await fetch(
+          `${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          const d = json.data || json;
+          setEssayScores({
+            alignment:  d.alignment  ?? 0,
+            maturity:   d.maturity   ?? 0,
+            commitment: d.commitment ?? 0,
+            clarity:    d.clarity    ?? 0,
+            experience: d.experience ?? 0,
+          });
+          setEssayNotes(d.notes || "");
+        }
+      } catch (_) {}
+      finally { setEssayLoaded(true); }
+    }
+    fetchEssay();
+  }, [appData?.id]);
+
+  // ── Fetch saved interview score ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!appData?.id) return;
+    async function fetchInterview() {
+      try {
+        const res = await fetch(
+          `${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          const d = json.data || json;
+          setInterviewScore(d.score ?? 0);
+          setInterviewNotes(d.notes || "");
+        }
+      } catch (_) {}
+      finally { setInterviewLoaded(true); }
+    }
+    fetchInterview();
+  }, [appData?.id]);
+
+  // ── Save handlers ──────────────────────────────────────────────────────────
+
+  async function saveEssayScores() {
+    setEssaySaving(true);
+    try {
+      await fetch(
+        `${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ ...essayScores, notes: essayNotes }),
+        }
+      );
+      setEssaySaved(true);
+      setTimeout(() => setEssaySaved(false), 2500);
+    } catch (_) {
+      alert("Failed to save essay scores. Please try again.");
+    } finally {
+      setEssaySaving(false);
+    }
+  }
+
+  async function saveInterviewScore() {
+    setInterviewSaving(true);
+    try {
+      await fetch(
+        `${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ score: interviewScore, notes: interviewNotes }),
+        }
+      );
+      setInterviewSaved(true);
+      setTimeout(() => setInterviewSaved(false), 2500);
+    } catch (_) {
+      alert("Failed to save interview score. Please try again.");
+    } finally {
+      setInterviewSaving(false);
+    }
+  }
+
+  // ── Computed totals ────────────────────────────────────────────────────────
+
+  const essayWeightedTotal = weightedEssayScore(essayScores); // 0–100
+
+  // Derive non-negotiable / negotiable pass counts from screening answers
+  const NON_NEG_FIELDS = [
+    "survivorDignity", "confidentialityPolicy", "noHarassment", "respectfulComms",
+    "saferEnvironments", "advocacySupport",
+  ];
+  const NEG_FIELDS = [
+    "enthusiasm", "professionalism", "genderAwareness", "stayInformed",
+    "openToLearn", "diverseTeams", "orientationWilling", "timeCommitment", "feedbackWilling",
+  ];
+
+  function isYes(v) { return typeof v === "string" && v.toLowerCase().startsWith("y"); }
+
+  const nonNegTotal  = NON_NEG_FIELDS.length;
+  const nonNegPassed = NON_NEG_FIELDS.filter(f => isYes(appData[f])).length;
+  const negTotal     = NEG_FIELDS.length;
+  const negPassed    = NEG_FIELDS.filter(f => isYes(appData[f])).length;
+
+  // Aggregate score: non-neg (20%) + neg (10%) + essay (50%) + interview (20%)
+  const nonNegScore   = nonNegTotal > 0 ? (nonNegPassed / nonNegTotal) * 20 : 0;
+  const negScore      = negTotal > 0 ? (negPassed / negTotal) * 10 : 0;
+  const essayScore20  = (essayWeightedTotal / 100) * 50;
+  const interviewScore20 = (interviewScore / 10) * 20;
+  const aggregateTotal = nonNegScore + negScore + essayScore20 + interviewScore20;
+
+  const aggColor = aggregateTotal >= 75 ? "#16a34a" : aggregateTotal >= 50 ? "#d97706" : "#dc2626";
+
+  const allEssayFilled  = ESSAY_CRITERIA.every(c => (essayScores[c.key] ?? 0) > 0);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+      {/* ── Notice ── */}
+      <div style={{
+        background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
+        padding: "10px 14px", fontSize: "0.82rem", color: "#166534",
+        display: "flex", gap: 8, alignItems: "flex-start",
+      }}>
+        <span style={{ fontSize: "1rem", flexShrink: 0 }}>📋</span>
+        <span>
+          This tab is for <strong>Membership Committee staff only.</strong>{" "}
+          Scores entered here are saved and contribute to the automated aggregate evaluation of the applicant.
+        </span>
+      </div>
+
+      {/* ════════════════════════════════════════════
+          SECTION 1 – QUANTITATIVE: Screening Scores
+          ════════════════════════════════════════════ */}
+      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+        <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
+          📊 Quantitative Scores — Screening Responses
+        </h3>
+
+        <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.6 }}>
+          These scores are automatically derived from the applicant's answers to the screening questions.
+          Non-negotiables reflect values alignment; negotiables reflect readiness and commitment.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+
+          {/* Non-negotiable block */}
+          <div style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 800, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Non-Negotiables
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: "0.75rem", color: "#6b7280" }}>
+              Core values that every volunteer must hold.
+            </p>
+            {NON_NEG_FIELDS.map(f => {
+              const label = {
+                survivorDignity:       "Survivors deserve dignity & respect",
+                confidentialityPolicy: "Follow confidentiality & safeguarding policies",
+                noHarassment:          "Harassment / victim-blaming are unacceptable",
+                respectfulComms:       "Communicate respectfully",
+                saferEnvironments:     "In favor of safer environments",
+                advocacySupport:       "Support advocacy efforts",
+              }[f] || f;
+              const yes = isYes(appData[f]);
+              return (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    background: yes ? "#d1fae5" : "#fee2e2",
+                    color: yes ? "#065f46" : "#991b1b",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "0.7rem", fontWeight: 700,
+                  }}>{yes ? "✓" : "✗"}</span>
+                  <span style={{ fontSize: "0.78rem", color: "#374151", lineHeight: 1.4 }}>{label}</span>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>Score</span>
+                <span style={{
+                  fontWeight: 800, fontSize: "0.85rem",
+                  color: nonNegPassed === nonNegTotal ? "#16a34a" : nonNegPassed >= nonNegTotal - 1 ? "#d97706" : "#dc2626",
+                }}>
+                  {nonNegPassed} / {nonNegTotal}
+                </span>
+              </div>
+              <ScoreBar score={nonNegPassed} max={nonNegTotal} color={nonNegPassed === nonNegTotal ? "#16a34a" : nonNegPassed >= nonNegTotal - 1 ? "#d97706" : "#dc2626"} />
+            </div>
+          </div>
+
+          {/* Negotiable block */}
+          <div style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 800, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Negotiables
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: "0.75rem", color: "#6b7280" }}>
+              Readiness, openness, and availability indicators.
+            </p>
+            {NEG_FIELDS.map(f => {
+              const label = {
+                enthusiasm:         "Enthusiastic to contribute",
+                professionalism:    "Committed to professionalism",
+                genderAwareness:    "Familiar with gender equality issues",
+                stayInformed:       "Stays informed on social issues",
+                openToLearn:        "Open to learning",
+                diverseTeams:       "Comfortable with diverse teams",
+                orientationWilling: "Willing for orientations/trainings",
+                timeCommitment:     "Able to dedicate time consistently",
+                feedbackWilling:    "Open to constructive feedback",
+              }[f] || f;
+              const yes = isYes(appData[f]);
+              return (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    background: yes ? "#d1fae5" : "#fee2e2",
+                    color: yes ? "#065f46" : "#991b1b",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "0.7rem", fontWeight: 700,
+                  }}>{yes ? "✓" : "✗"}</span>
+                  <span style={{ fontSize: "0.78rem", color: "#374151", lineHeight: 1.4 }}>{label}</span>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>Score</span>
+                <span style={{
+                  fontWeight: 800, fontSize: "0.85rem",
+                  color: negPassed === negTotal ? "#16a34a" : negPassed >= negTotal * 0.6 ? "#d97706" : "#dc2626",
+                }}>
+                  {negPassed} / {negTotal}
+                </span>
+              </div>
+              <ScoreBar score={negPassed} max={negTotal} color={negPassed === negTotal ? "#16a34a" : negPassed >= negTotal * 0.6 ? "#d97706" : "#dc2626"} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════
+          SECTION 2 – QUALITATIVE: Essay Rubric
+          ════════════════════════════════════════════ */}
+      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+        <h3 style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
+          ✍️ Qualitative Assessment — Essay Rubric
+        </h3>
+        <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.6 }}>
+          Rate each criterion from <strong>1 (lowest)</strong> to <strong>10 (highest)</strong>.
+          Scores are weighted and automatically compute the essay total.
+        </p>
+
+        {/* Essay text reminder */}
+        {appData.essayDescription && appData.essayDescription !== "—" && (
+          <details style={{ marginBottom: "1rem" }}>
+            <summary style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, color: "#037F81", userSelect: "none" }}>
+              📄 View Essay (click to expand)
+            </summary>
+            <div style={{
+              marginTop: 8, background: "#fff", border: "1px solid #e5e7eb",
+              borderRadius: 8, padding: "0.85rem 1rem",
+              fontSize: "0.85rem", color: "#374151", lineHeight: 1.7,
+              maxHeight: 220, overflowY: "auto", whiteSpace: "pre-wrap",
+            }}>
+              {appData.essayDescription}
+            </div>
+          </details>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {ESSAY_CRITERIA.map((c) => (
+            <div key={c.key} style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#1f2937" }}>
+                    {c.label}
+                    <span style={{
+                      marginLeft: 8, fontSize: "0.72rem", fontWeight: 700,
+                      background: "#e1f5f5", color: "#037F81",
+                      padding: "2px 8px", borderRadius: 999,
+                    }}>{c.weight}%</span>
+                  </p>
+                  <p style={{ margin: "2px 0 8px", fontSize: "0.76rem", color: "#6b7280", lineHeight: 1.5 }}>{c.hint}</p>
+                </div>
+                <span style={{ fontSize: "1.1rem", fontWeight: 800, color: essayScores[c.key] > 0 ? "#037F81" : "#d1d5db", minWidth: 32, textAlign: "right" }}>
+                  {essayScores[c.key] > 0 ? essayScores[c.key] : "—"}
+                </span>
+              </div>
+              <RatingStars
+                value={essayScores[c.key]}
+                onChange={(v) => setEssayScores(prev => ({ ...prev, [c.key]: v }))}
+              />
+              {essayScores[c.key] > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <ScoreBar score={essayScores[c.key]} max={10} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Weighted total */}
+        <div style={{
+          marginTop: "1rem", background: "#fff", borderRadius: 8,
+          padding: "0.85rem 1rem", border: "1px solid #e5e7eb",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <div>
+            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 800, color: "#374151" }}>
+              Essay Weighted Total
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: "0.76rem", color: "#6b7280" }}>
+              Σ (score/10 × weight%) across all criteria
+            </p>
+          </div>
+          <span style={{
+            fontSize: "1.5rem", fontWeight: 900,
+            color: essayWeightedTotal >= 70 ? "#16a34a" : essayWeightedTotal >= 40 ? "#d97706" : essayWeightedTotal > 0 ? "#dc2626" : "#d1d5db",
+          }}>
+            {essayWeightedTotal > 0 ? essayWeightedTotal.toFixed(1) : "—"}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/100</span>
+          </span>
+        </div>
+
+        {/* Essay reviewer notes */}
+        <div style={{ marginTop: "0.75rem" }}>
+          <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>
+            Essay Reviewer Notes <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+          </label>
+          <textarea
+            rows={3}
+            value={essayNotes}
+            onChange={e => setEssayNotes(e.target.value)}
+            placeholder="Observations, justifications, or flagged concerns about the essay…"
+            style={{
+              width: "100%", padding: "0.55rem 0.85rem",
+              border: "1px solid #d1d5db", borderRadius: 8,
+              fontSize: "0.85rem", color: "#374151",
+              resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
+          {essaySaved && (
+            <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>✓ Saved!</span>
+          )}
+          {!allEssayFilled && (
+            <span style={{ fontSize: "0.78rem", color: "#9ca3af" }}>Score all criteria to save.</span>
+          )}
+          <button
+            onClick={saveEssayScores}
+            disabled={essaySaving || !allEssayFilled}
+            style={{
+              background: allEssayFilled ? "#037F81" : "#e5e7eb",
+              color: allEssayFilled ? "#fff" : "#9ca3af",
+              border: "none", borderRadius: 999,
+              padding: "0.45rem 1.25rem", fontSize: "0.85rem", fontWeight: 700,
+              cursor: allEssayFilled ? "pointer" : "not-allowed",
+              transition: "background 0.15s",
+            }}
+          >
+            {essaySaving ? "Saving…" : "Save Essay Scores"}
+          </button>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════
+          SECTION 3 – INTERVIEW SCORE
+          ════════════════════════════════════════════ */}
+      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+        <h3 style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
+          🎙️ Interview Score
+        </h3>
+        <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.6 }}>
+          If the applicant was interviewed, rate the overall interview performance from <strong>1–10</strong>.
+          Leave at 0 if the interview has not yet taken place or is not applicable.
+        </p>
+
+        <div style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#1f2937" }}>
+              Overall Interview Performance
+            </p>
+            <span style={{
+              fontSize: "1.3rem", fontWeight: 900,
+              color: interviewScore > 0 ? (interviewScore >= 7 ? "#16a34a" : interviewScore >= 4 ? "#d97706" : "#dc2626") : "#d1d5db",
+            }}>
+              {interviewScore > 0 ? interviewScore : "—"}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/10</span>
+            </span>
+          </div>
+          <RatingStars value={interviewScore} onChange={setInterviewScore} />
+          {interviewScore > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <ScoreBar score={interviewScore} max={10} />
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: "0.75rem" }}>
+          <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>
+            Interview Notes <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+          </label>
+          <textarea
+            rows={3}
+            value={interviewNotes}
+            onChange={e => setInterviewNotes(e.target.value)}
+            placeholder="Key impressions, red flags, standout qualities from the interview…"
+            style={{
+              width: "100%", padding: "0.55rem 0.85rem",
+              border: "1px solid #d1d5db", borderRadius: 8,
+              fontSize: "0.85rem", color: "#374151",
+              resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
+          {interviewSaved && (
+            <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>✓ Saved!</span>
+          )}
+          <button
+            onClick={saveInterviewScore}
+            disabled={interviewSaving}
+            style={{
+              background: "#037F81", color: "#fff",
+              border: "none", borderRadius: 999,
+              padding: "0.45rem 1.25rem", fontSize: "0.85rem", fontWeight: 700,
+              cursor: "pointer", transition: "background 0.15s",
+            }}
+          >
+            {interviewSaving ? "Saving…" : "Save Interview Score"}
+          </button>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════
+          SECTION 4 – AGGREGATE SCORE SUMMARY
+          ════════════════════════════════════════════ */}
+      <div style={{
+        background: "#fff", borderRadius: 10, padding: "1.1rem 1.25rem",
+        border: `2px solid ${aggColor}`,
+      }}>
+        <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: aggColor }}>
+          🏆 Aggregate Evaluation Summary
+        </h3>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
+          {[
+            { label: "Non-Negotiables", value: nonNegScore.toFixed(1), max: "20", desc: `${nonNegPassed}/${nonNegTotal} passed`, color: nonNegPassed === nonNegTotal ? "#16a34a" : "#dc2626" },
+            { label: "Negotiables",     value: negScore.toFixed(1),    max: "10", desc: `${negPassed}/${negTotal} passed`,    color: negPassed >= negTotal * 0.6 ? "#16a34a" : "#d97706" },
+            { label: "Essay",           value: essayScore20.toFixed(1), max: "50", desc: `${essayWeightedTotal.toFixed(1)}/100 weighted`, color: essayWeightedTotal >= 70 ? "#16a34a" : essayWeightedTotal >= 40 ? "#d97706" : "#9ca3af" },
+            { label: "Interview",       value: interviewScore20.toFixed(1), max: "20", desc: `${interviewScore}/10 raw score`, color: interviewScore >= 7 ? "#16a34a" : interviewScore >= 4 ? "#d97706" : "#9ca3af" },
+          ].map(({ label, value, max, desc, color }) => (
+            <div key={label} style={{
+              background: "#f9fafb", borderRadius: 8, padding: "0.75rem 0.85rem",
+              border: "1px solid #e5e7eb", textAlign: "center",
+            }}>
+              <p style={{ margin: "0 0 2px", fontSize: "0.72rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
+              <p style={{ margin: "0 0 2px", fontSize: "1.4rem", fontWeight: 900, color }}>
+                {value}<span style={{ fontSize: "0.75rem", color: "#9ca3af", fontWeight: 600 }}>/{max}</span>
+              </p>
+              <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af" }}>{desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Aggregate bar */}
+        <div style={{ marginBottom: "0.85rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#374151" }}>Total Score</span>
+            <span style={{ fontSize: "1.6rem", fontWeight: 900, color: aggColor }}>
+              {aggregateTotal.toFixed(1)}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/100</span>
+            </span>
+          </div>
+          <div style={{ height: 12, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+            <div style={{
+              width: `${Math.min(100, aggregateTotal)}%`, height: "100%",
+              background: aggColor, borderRadius: 999, transition: "width 0.5s ease",
+            }} />
+          </div>
+        </div>
+
+        {/* Recommendation badge */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "0.65rem 0.9rem", borderRadius: 8,
+          background: aggregateTotal >= 75 ? "#f0fdf4" : aggregateTotal >= 50 ? "#fffbeb" : "#fef2f2",
+          border: `1px solid ${aggregateTotal >= 75 ? "#86efac" : aggregateTotal >= 50 ? "#fcd34d" : "#fca5a5"}`,
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>
+            {aggregateTotal >= 75 ? "👍" : aggregateTotal >= 50 ? "🔍" : "👎"}
+          </span>
+          <div>
+            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 800, color: aggColor }}>
+              {aggregateTotal >= 75
+                ? "Recommended for Approval"
+                : aggregateTotal >= 50
+                ? "For Further Review"
+                : "Below Passing Threshold"}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.76rem", color: "#6b7280" }}>
+              {aggregateTotal >= 75
+                ? "Applicant meets most evaluation criteria. Final decision rests with reviewing officer."
+                : aggregateTotal >= 50
+                ? "Applicant shows potential but has gaps. Review essay and interview scores carefully."
+                : "Applicant does not meet the minimum threshold. Rejection may be warranted."}
+            </p>
+          </div>
+        </div>
+
+        <p style={{ margin: "0.75rem 0 0", fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic" }}>
+          ⚠ This aggregate score is a guide for the Membership Committee. Final decisions remain with the reviewing officer.
+          Weights: Non-Negotiables 20 pts · Negotiables 10 pts · Essay 50 pts · Interview 20 pts.
+        </p>
+      </div>
+
+    </div>
+  );
+}
+
 // ─── NLP Essay Analysis Tab (staff only) ─────────────────────────────────────
 
 function NLPEssayTab({ appId, isAdmin }) {
@@ -745,9 +1385,10 @@ export default function ViewApplication() {
   // ── Tab definitions — staff gets details + NLP, applicant gets details only ──
 
   const tabs = [
-    { id: "details", label: "📄 Application Details", staffOnly: false },
+    { id: "details",    label: "📄 Application Details",   staffOnly: false },
     ...(isStaff ? [
-      { id: "nlp", label: "🤖 AI / NLP Analysis", staffOnly: true },
+      { id: "evaluation", label: "📋 Application Evaluation", staffOnly: true },
+      { id: "nlp",        label: "🤖 AI / NLP Analysis",      staffOnly: true },
     ] : []),
   ];
 
@@ -836,6 +1477,10 @@ export default function ViewApplication() {
           {/* Tab content */}
           {activeTab === "details" && userLoaded && (
             <ApplicationDetailsTab appData={appData} />
+          )}
+
+          {activeTab === "evaluation" && isStaff && userLoaded && (
+            <ApplicationEvaluationTab appData={appData} isAdmin={isAdmin} />
           )}
 
           {activeTab === "nlp" && isStaff && userLoaded && (
