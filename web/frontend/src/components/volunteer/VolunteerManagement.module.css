@@ -926,3 +926,60 @@
   .footerBrand { grid-column: auto; }
   .overviewCount { font-size: 2.25rem; }
 }
+
+/* ── Table top bar (filter + search row) ── */
+.tableTopBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--sasha-white);
+  border-radius: 10px;
+  border: 1px solid var(--sasha-border);
+}
+
+/* ── Record count / clear-filters row ── */
+.recordLabel {
+  font-size: 0.8rem;
+  color: var(--sasha-muted);
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.clearFiltersBtn {
+  background: none;
+  border: none;
+  color: #037F81;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.12s;
+}
+
+.clearFiltersBtn:hover {
+  color: #025f61;
+}
+
+/* ── Loading state ── */
+.loadingState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--sasha-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Status badge (used in modals) ── */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
