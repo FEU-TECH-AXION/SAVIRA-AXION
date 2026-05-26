@@ -1,13 +1,19 @@
 /* ════════════════════════════════════════════
    ViewApplication.module.css
-   SASHA Design tokens (inherit from :root)
    ════════════════════════════════════════════ */
 
-/* ── Page wrapper ── */
-.pageWrap {
-  max-width: 860px;
+/* ── Page shell ── */
+.pageWrapper {
+  background: var(--sasha-offwhite);
+  min-height: 100vh;
+  color: var(--sasha-text);
+  padding: 2rem;
+  margin-top: 64px
+}
+
+.pageInner {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
 }
 
 /* ── Loading / error ── */
