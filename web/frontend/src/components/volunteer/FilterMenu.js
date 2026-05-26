@@ -6,11 +6,22 @@ import styles from "./FilterMenu.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn"];
+const APPLICATION_STATUSES = [
+  "All",
+  "Pending",
+  "Reviewing",
+  "Approved",
+  "Rejected",
+  "Withdrawn",
+  "Forfeited",
+];
 
-const ORGANIZATION_OPTIONS = [
-  "BSP",
-  "GSP",
+const GENDER_OPTIONS = [
+  "All",
+  "Male",
+  "Female",
+  "Non-binary",
+  "Prefer not to say",
   "Other",
 ];
 
@@ -20,215 +31,361 @@ const DATE_RANGE_OPTIONS = [
   { label: "This Month",   value: "thisMonth" },
   { label: "This Year",    value: "thisYear" },
   { label: "Last 30 Days", value: "last30Days" },
-  { label: "Custom Range", value: "custom" },
+  { label: "Custom Date Range", value: "custom" },
 ];
 
-// ─── Default Filter Button (Status / Organization / Date) ─────────────────────
+const CITY_OPTIONS = [
+  "All",
+  "Caloocan",
+  "Las Piñas",
+  "Makati",
+  "Malabon",
+  "Mandaluyong",
+  "Manila",
+  "Marikina",
+  "Muntinlupa",
+  "Navotas",
+  "Parañaque",
+  "Pasay",
+  "Pasig",
+  "Pateros",
+  "Quezon City",
+  "San Juan",
+  "Taguig",
+  "Valenzuela",
+];
 
-function DefaultFilterBtn({ label, value, children, active }) {
+const FIELDS_WITH_BACKGROUND_OPTIONS = [
+  "All",
+  "Legal / Law",
+  "Social Work",
+  "Counseling / Psychology",
+  "Healthcare / Medicine",
+  "Education",
+  "Community Organizing",
+  "Research",
+  "Communications / Media",
+  "IT / Technology",
+  "Administration",
+  "Other",
+];
+
+const FIELDS_OF_INTEREST_OPTIONS = [
+  "All",
+  "Survivor Support",
+  "Legal Advocacy",
+  "Counseling / Psychosocial Support",
+  "Public Awareness & Education",
+  "Research & Documentation",
+  "Policy Advocacy",
+  "Community Outreach",
+  "Administrative Support",
+  "Communications",
+  "Other",
+];
+
+// ─── Default filter fields ────────────────────────────────────────────────────
+
+const DEFAULT_FILTERS = [
+  {
+    key: "status",
+    label: "Status",
+    type: "select",
+    options: APPLICATION_STATUSES,
+  },
+  {
+    key: "dateApplied",
+    label: "Date Applied",
+    type: "dateRange",
+  },
+  {
+    key: "gender",
+    label: "Gender",
+    type: "select",
+    options: GENDER_OPTIONS,
+  },
+];
+
+// ─── Add-filter fields ────────────────────────────────────────────────────────
+
+const ALL_FILTER_FIELDS = [
+  {
+    key: "city",
+    label: "City",
+    type: "select",
+    options: CITY_OPTIONS,
+  },
+  {
+    key: "fieldsWithBackground",
+    label: "Fields with Background",
+    type: "select",
+    options: FIELDS_WITH_BACKGROUND_OPTIONS,
+  },
+  {
+    key: "fieldsOfInterest",
+    label: "Fields with Interest",
+    type: "select",
+    options: FIELDS_OF_INTEREST_OPTIONS,
+  },
+];
+
+// ─── DefaultFilterDropdown ────────────────────────────────────────────────────
+// Mirrors the Cases FilterMenu's DefaultFilterDropdown exactly.
+
+function DefaultFilterDropdown({ field, value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    function handler(e) {
+    function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mousedown", outside);
+    return () => document.removeEventListener("mousedown", outside);
   }, []);
 
-  return (
-    <div className={styles.defaultFilterWrapper} ref={ref}>
-      <button
-        className={`${styles.defaultFilterBtn} ${active ? styles.defaultFilterBtnActive : ""}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className={styles.defaultFilterLabel}>{label}</span>
-        {value && <span className={styles.defaultFilterValue}>: {value}</span>}
-        <span style={{ marginLeft: "auto", fontSize: "0.6rem", opacity: 0.6 }}>▾</span>
-      </button>
-      {open && (
-        <div className={styles.defaultFilterDropdown}>
-          {children({ close: () => setOpen(false) })}
-        </div>
-      )}
-    </div>
-  );
-}
+  const displayValue = value && value !== "All" ? value : "All";
 
-// ─── Extra (removable) filter ─────────────────────────────────────────────────
+  // ── dateRange type ──
+  if (field.type === "dateRange") {
+    const [customMode, setCustomMode] = useState(false);
+    const [customStart, setCustomStart] = useState("");
+    const [customEnd, setCustomEnd] = useState("");
+    const [dateSearch, setDateSearch] = useState("");
 
-function ExtraFilterBtn({ label, value, onRemove, children, active }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+    const getDisplayLabel = () => {
+      if (!value || value === "") return "All";
+      const opt = DATE_RANGE_OPTIONS.find(o => o.value === value);
+      return opt ? opt.label : "Custom Range";
+    };
 
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+    const filteredDateOptions = DATE_RANGE_OPTIONS.filter(opt =>
+      opt.label.toLowerCase().includes(dateSearch.toLowerCase())
+    );
 
-  return (
-    <div className={styles.extraFilterWrap} ref={ref}>
-      <button
-        className={`${styles.defaultFilterBtn} ${active ? styles.defaultFilterBtnActive : ""}`}
-        style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className={styles.defaultFilterLabel}>{label}</span>
-        {value && <span className={styles.defaultFilterValue}>: {value}</span>}
-        <span style={{ marginLeft: "auto", fontSize: "0.6rem", opacity: 0.6 }}>▾</span>
-      </button>
-      <button
-        className={styles.removeExtraBtn}
-        onClick={onRemove}
-        title={`Remove ${label} filter`}
-        aria-label={`Remove ${label} filter`}
-      >
-        ×
-      </button>
-      {open && (
-        <div className={styles.defaultFilterDropdown}>
-          {children({ close: () => setOpen(false) })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── FilterMenu (⊞ button with dropdown panel) ───────────────────────────────
-
-function FilterMenuDropdown({ onAddFilter, activeExtras, onClose }) {
-  const EXTRA_FILTER_DEFS = [
-    { key: "organization", label: "Organization" },
-    { key: "name",         label: "Name" },
-    { key: "email",        label: "Email" },
-    { key: "contact",      label: "Contact No." },
-  ];
-
-  return (
-    <div className={styles.filterDropdown}>
-      <div className={styles.filterDropdownHeader}>
-        <p className={styles.filterDropdownTitle}>Add Filter</p>
-        <button className={styles.filterDropdownClose} onClick={onClose}>
-          <FiX size={14} />
-        </button>
-      </div>
-      <p className={styles.filterDropdownHint}>Select a field to add as a filter column.</p>
-      <div className={styles.filterFieldsList}>
-        {EXTRA_FILTER_DEFS.map(({ key, label }) => {
-          const alreadyAdded = activeExtras.includes(key);
-          return (
-            <div key={key} className={styles.filterField}>
-              <label className={styles.filterFieldLabel}>
-                <input
-                  type="checkbox"
-                  className={styles.filterFieldCheckbox}
-                  checked={alreadyAdded}
-                  onChange={() => onAddFilter(key)}
-                />
-                {label}
-              </label>
-            </div>
-          );
-        })}
-      </div>
-      <div className={styles.filterDropdownFooter}>
+    return (
+      <div className={styles.defaultFilter} ref={ref}>
         <button
-          className={styles.filterDoneBtn}
-          onClick={onClose}
+          className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
+          onClick={() => { setOpen(!open); setDateSearch(""); setCustomMode(false); }}
         >
-          Done
+          <span className={styles.defaultFilterLabel}>{field.label}</span>
+          <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
+          <FiChevronDown size={13} />
         </button>
+        {open && (
+          <div className={styles.defaultFilterDropdown} style={{ minWidth: 220 }}>
+            {!customMode ? (
+              <>
+                <div className={styles.officerSearchWrap}>
+                  <FiSearch size={13} className={styles.officerSearchIcon} />
+                  <input
+                    type="text"
+                    className={styles.officerSearchInput}
+                    placeholder="Search date range…"
+                    value={dateSearch}
+                    onChange={e => setDateSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className={styles.officerList}>
+                  {!dateSearch && (
+                    <button
+                      className={`${styles.officerOption} ${!value || value === "" ? styles.officerOptionActive : ""}`}
+                      onClick={() => { onChange(""); setOpen(false); }}
+                    >
+                      All
+                    </button>
+                  )}
+                  {filteredDateOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      className={`${styles.officerOption} ${value === opt.value ? styles.officerOptionActive : ""}`}
+                      onClick={() => {
+                        if (opt.value === "custom") {
+                          setCustomMode(true);
+                        } else {
+                          onChange(opt.value);
+                          setOpen(false);
+                        }
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  {filteredDateOptions.length === 0 && (
+                    <div className={styles.officerEmpty}>No options found</div>
+                  )}
+                </div>
+                <div className={styles.defaultFilterFooter}>
+                  <button className={styles.clearBtn} onClick={() => { onChange(""); setOpen(false); }}>Clear</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding: "12px" }}>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={{ display: "block", fontSize: "12px", marginBottom: "4px", fontWeight: "500" }}>
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={customStart}
+                      onChange={e => setCustomStart(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", marginBottom: "4px", fontWeight: "500" }}>
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={customEnd}
+                      onChange={e => setCustomEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className={styles.defaultFilterFooter}>
+                  <button
+                    className={styles.clearBtn}
+                    onClick={() => { setCustomMode(false); setCustomStart(""); setCustomEnd(""); }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    className={styles.doneBtn}
+                    onClick={() => {
+                      if (customStart && customEnd) {
+                        onChange(`custom|${customStart}|${customEnd}`);
+                        setOpen(false);
+                        setCustomMode(false);
+                      }
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+    );
+  }
+
+  // ── select type (with search, scrollable list, clear) ──
+  const [selectSearch, setSelectSearch] = useState("");
+  const filteredOptions = (field.options || []).filter(opt =>
+    opt.toLowerCase().includes(selectSearch.toLowerCase())
+  );
+
+  return (
+    <div className={styles.defaultFilter} ref={ref}>
+      <button
+        className={`${styles.defaultFilterBtn} ${value && value !== "All" ? styles.defaultFilterBtnActive : ""}`}
+        onClick={() => { setOpen(!open); setSelectSearch(""); }}
+      >
+        <span className={styles.defaultFilterLabel}>{field.label}</span>
+        <span className={styles.defaultFilterValue}>{displayValue}</span>
+        <FiChevronDown size={13} />
+      </button>
+      {open && (
+        <div className={styles.defaultFilterDropdown} style={{ minWidth: 200 }}>
+          <div className={styles.officerSearchWrap}>
+            <FiSearch size={13} className={styles.officerSearchIcon} />
+            <input
+              type="text"
+              className={styles.officerSearchInput}
+              placeholder={`Search ${field.label}…`}
+              value={selectSearch}
+              onChange={e => setSelectSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className={styles.officerList}>
+            {filteredOptions.map(opt => (
+              <button
+                key={opt}
+                className={`${styles.officerOption} ${(value === opt || (!value && opt === "All")) ? styles.officerOptionActive : ""}`}
+                onClick={() => { onChange(opt === "All" ? "" : opt); setOpen(false); }}
+              >
+                {opt}
+              </button>
+            ))}
+            {filteredOptions.length === 0 && (
+              <div className={styles.officerEmpty}>No options found</div>
+            )}
+          </div>
+          <div className={styles.defaultFilterFooter}>
+            <button className={styles.clearBtn} onClick={() => { onChange(""); setOpen(false); }}>Clear</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Main FilterMenu export ───────────────────────────────────────────────────
+// ─── Main FilterMenu ──────────────────────────────────────────────────────────
 
 /**
  * Props:
- *   filters        — current filter state object
- *   onFilterChange — callback(updatedFilters)
- *   onSearch       — callback(searchString) for the search box
- *   searchValue    — controlled search string
+ *  activeFilters    — object of { key: value }
+ *  onFilterChange   — (newFilters) => void
+ *  onSearch         — (searchString) => void
+ *  searchValue      — controlled search string
  */
-export default function FilterMenu({ filters, onFilterChange, onSearch, searchValue }) {
+export default function FilterMenu({ activeFilters, onFilterChange, onSearch, searchValue }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [extraFilters, setExtraFilters] = useState([]);
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd]     = useState("");
-
   const menuRef = useRef(null);
 
+  // Extra filter fields selected via the "Add Filter" menu
+  const [extraFields, setExtraFields] = useState([]);
+
   useEffect(() => {
-    function handler(e) {
+    function outside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mousedown", outside);
+    return () => document.removeEventListener("mousedown", outside);
   }, []);
 
-  const activeFilterCount = Object.values(filters || {}).filter(Boolean).length;
+  const activeFilterCount = Object.values(activeFilters || {}).filter(
+    v => v && v !== "All" && v !== ""
+  ).length;
 
-  function setFilter(key, val) {
-    onFilterChange({ ...filters, [key]: val || null });
+  function handleClearAll() {
+    const cleared = {};
+    DEFAULT_FILTERS.forEach(f => { cleared[f.key] = ""; });
+    ALL_FILTER_FIELDS.forEach(f => { cleared[f.key] = ""; });
+    onFilterChange(cleared);
+    setExtraFields([]);
   }
 
-  function clearFilter(key) {
-    const next = { ...filters };
-    delete next[key];
-    onFilterChange(next);
+  function toggleExtraField(key) {
+    setExtraFields(prev => {
+      if (prev.includes(key)) {
+        // Remove: also clear its value
+        onFilterChange({ ...(activeFilters || {}), [key]: "" });
+        return prev.filter(k => k !== key);
+      }
+      return [...prev, key];
+    });
   }
 
-  function toggleExtra(key) {
-    setExtraFilters(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
-    // Clear value when removing
-    if (extraFilters.includes(key)) clearFilter(key);
-  }
-
-  function removeExtra(key) {
-    setExtraFilters(prev => prev.filter(k => k !== key));
-    clearFilter(key);
-  }
-
-  // Label helpers
-  const statusLabel = filters?.status || null;
-  const orgLabel    = filters?.organization || null;
-
-  function dateLabel(val) {
-    if (!val) return null;
-    const opt = DATE_RANGE_OPTIONS.find(o => o.value === val);
-    if (opt && opt.value !== "custom") return opt.label;
-    if (val.startsWith("custom|")) {
-      const parts = val.split("|");
-      return parts.length === 3 ? `${parts[1]} → ${parts[2]}` : "Custom";
-    }
-    return null;
-  }
-
-  const EXTRA_LABEL_MAP = {
-    organization: "Organization",
-    name:         "Name",
-    email:        "Email",
-    contact:      "Contact No.",
-  };
+  const extraFieldDefs = ALL_FILTER_FIELDS.filter(f => extraFields.includes(f.key));
 
   return (
-    <div className={styles.filterRow}>
-      {/* Search box */}
+    <div className={styles.filterBarWrap}>
+      {/* ── Search box ── */}
       <div className={styles.searchWrap}>
         <FiSearch className={styles.searchIcon} size={14} />
         <input
           className={styles.searchInput}
           type="text"
           placeholder="Search by name, email, or ID…"
-          value={searchValue}
+          value={searchValue || ""}
           onChange={e => onSearch(e.target.value)}
         />
         {searchValue && (
@@ -238,169 +395,95 @@ export default function FilterMenu({ filters, onFilterChange, onSearch, searchVa
         )}
       </div>
 
-      {/* ── Default filters ── */}
-
-      {/* Status */}
-      <DefaultFilterBtn
-        label="Status"
-        value={statusLabel}
-        active={!!statusLabel}
-      >
-        {({ close }) => (
-          <div className={styles.dateRangeOptions}>
-            <button
-              className={`${styles.selectOption} ${!filters?.status ? styles.selectOptionActive : ""}`}
-              onClick={() => { clearFilter("status"); close(); }}
-            >
-              All Statuses
-            </button>
-            {APPLICATION_STATUSES.map(s => (
-              <button
-                key={s}
-                className={`${styles.selectOption} ${filters?.status === s ? styles.selectOptionActive : ""}`}
-                onClick={() => { setFilter("status", s); close(); }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-      </DefaultFilterBtn>
-
-      {/* Date Applied */}
-      <DefaultFilterBtn
-        label="Date Applied"
-        value={dateLabel(filters?.dateApplied)}
-        active={!!filters?.dateApplied}
-      >
-        {({ close }) => (
-          <>
-            <div className={styles.dateRangeOptions}>
-              <button
-                className={`${styles.selectOption} ${!filters?.dateApplied ? styles.selectOptionActive : ""}`}
-                onClick={() => { clearFilter("dateApplied"); close(); }}
-              >
-                Any Time
-              </button>
-              {DATE_RANGE_OPTIONS.filter(o => o.value !== "custom").map(o => (
-                <button
-                  key={o.value}
-                  className={`${styles.selectOption} ${filters?.dateApplied === o.value ? styles.selectOptionActive : ""}`}
-                  onClick={() => { setFilter("dateApplied", o.value); close(); }}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            {/* Custom range */}
-            <div style={{ borderTop: "1px solid #e5e7eb", padding: "0.6rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6b7280" }}>Custom Range</span>
-              <input
-                type="date"
-                className={styles.dateInput}
-                value={customStart}
-                onChange={e => setCustomStart(e.target.value)}
-              />
-              <input
-                type="date"
-                className={styles.dateInput}
-                value={customEnd}
-                onChange={e => setCustomEnd(e.target.value)}
-              />
-            </div>
-            <div className={styles.defaultFilterFooter}>
-              <button className={styles.clearBtn} onClick={() => { clearFilter("dateApplied"); setCustomStart(""); setCustomEnd(""); close(); }}>Clear</button>
-              <button
-                className={styles.doneBtn}
-                onClick={() => {
-                  if (customStart && customEnd) {
-                    setFilter("dateApplied", `custom|${customStart}|${customEnd}`);
-                  }
-                  close();
-                }}
-              >
-                Apply
-              </button>
-            </div>
-          </>
-        )}
-      </DefaultFilterBtn>
-
-      {/* ── Extra filters ── */}
-      {extraFilters.map(key => (
-        <ExtraFilterBtn
-          key={key}
-          label={EXTRA_LABEL_MAP[key]}
-          value={filters?.[key] || null}
-          onRemove={() => removeExtra(key)}
-          active={!!filters?.[key]}
-        >
-          {({ close }) => {
-            if (key === "organization") {
-              return (
-                <div className={styles.dateRangeOptions}>
-                  <button
-                    className={`${styles.selectOption} ${!filters?.organization ? styles.selectOptionActive : ""}`}
-                    onClick={() => { clearFilter("organization"); close(); }}
-                  >
-                    All
-                  </button>
-                  {ORGANIZATION_OPTIONS.map(o => (
-                    <button
-                      key={o}
-                      className={`${styles.selectOption} ${filters?.organization === o ? styles.selectOptionActive : ""}`}
-                      onClick={() => { setFilter("organization", o); close(); }}
-                    >
-                      {o === "BSP" ? "Boy Scouts of the Philippines (BSP)" :
-                       o === "GSP" ? "Girl Scouts of the Philippines (GSP)" : "Other"}
-                    </button>
-                  ))}
-                </div>
-              );
-            }
-            // Text inputs for name, email, contact
-            return (
-              <>
-                <div className={styles.officerSearchWrap}>
-                  <FiSearch className={styles.officerSearchIcon} size={13} />
-                  <input
-                    className={styles.officerSearchInput}
-                    type="text"
-                    placeholder={`Search ${EXTRA_LABEL_MAP[key]}…`}
-                    value={filters?.[key] || ""}
-                    onChange={e => setFilter(key, e.target.value)}
-                  />
-                </div>
-                <div className={styles.defaultFilterFooter}>
-                  <button className={styles.clearBtn} onClick={() => { clearFilter(key); close(); }}>Clear</button>
-                  <button className={styles.doneBtn} onClick={close}>Done</button>
-                </div>
-              </>
-            );
-          }}
-        </ExtraFilterBtn>
-      ))}
-
-      {/* ── Filter Menu (⊞) ── */}
-      <div className={styles.filterMenuWrapper} ref={menuRef}>
-        <button
-          className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`}
-          onClick={() => setMenuOpen(o => !o)}
-          title="Add filter"
-          aria-label="Open filter menu"
-        >
-          <FiFilter size={15} />
-          {activeFilterCount > 0 && (
-            <span className={styles.filterBadge}>{activeFilterCount}</span>
-          )}
-        </button>
-        {menuOpen && (
-          <FilterMenuDropdown
-            onAddFilter={toggleExtra}
-            activeExtras={extraFilters}
-            onClose={() => setMenuOpen(false)}
+      {/* ── Default top-bar filter dropdowns ── */}
+      <div className={styles.defaultFiltersRow}>
+        {DEFAULT_FILTERS.map(field => (
+          <DefaultFilterDropdown
+            key={field.key}
+            field={field}
+            value={(activeFilters || {})[field.key] || ""}
+            onChange={val => onFilterChange({ ...(activeFilters || {}), [field.key]: val })}
           />
-        )}
+        ))}
+
+        {/* Extra fields added via filter menu */}
+        {extraFieldDefs.map(field => (
+          <div key={field.key} className={styles.extraFilterWrap}>
+            <DefaultFilterDropdown
+              field={field}
+              value={(activeFilters || {})[field.key] || ""}
+              onChange={val => onFilterChange({ ...(activeFilters || {}), [field.key]: val })}
+            />
+            <button
+              className={styles.removeExtraBtn}
+              onClick={() => toggleExtraField(field.key)}
+              title={`Remove ${field.label} filter`}
+            >
+              <FiX size={12} />
+            </button>
+          </div>
+        ))}
+
+        {/* ── Filter Menu button ── */}
+        <div className={styles.filterMenuWrapper} ref={menuRef}>
+          <button
+            className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`}
+            onClick={() => setMenuOpen(!menuOpen)}
+            title="Add more filters"
+            aria-label="Open filter menu"
+          >
+            <FiFilter size={15} />
+            {activeFilterCount > 0 && (
+              <span className={styles.filterBadge}>{activeFilterCount}</span>
+            )}
+          </button>
+
+          {menuOpen && (
+            <div className={styles.filterDropdown}>
+              <div className={styles.filterDropdownHeader}>
+                <h4 className={styles.filterDropdownTitle}>Add Filters</h4>
+                <button
+                  className={styles.filterDropdownClose}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <FiX size={15} />
+                </button>
+              </div>
+              <p className={styles.filterDropdownHint}>
+                Select a field to add as a filter column.
+              </p>
+              <div className={styles.filterFieldsList}>
+                {ALL_FILTER_FIELDS.map(({ key, label }) => {
+                  const alreadyAdded = extraFields.includes(key);
+                  return (
+                    <div key={key} className={styles.filterField}>
+                      <label className={styles.filterFieldLabel}>
+                        <input
+                          type="checkbox"
+                          className={styles.filterFieldCheckbox}
+                          checked={alreadyAdded}
+                          onChange={() => toggleExtraField(key)}
+                        />
+                        {label}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className={styles.filterDropdownFooter}>
+                <button className={styles.filterClearBtn} onClick={handleClearAll}>
+                  Clear All
+                </button>
+                <button
+                  className={styles.filterDoneBtn}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -80,10 +80,10 @@ function isDateInRange(dateString, startDate, endDate) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn"];
+const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn", "Forfeited"];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STATUS BADGE (for modals)
+// STATUS BADGE
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS = {
@@ -92,6 +92,7 @@ const STATUS_COLORS = {
   "Approved":  { bg: "#d1fae5", color: "#065f46" },
   "Rejected":  { bg: "#fee2e2", color: "#991b1b" },
   "Withdrawn": { bg: "#f3f4f6", color: "#374151" },
+  "Forfeited": { bg: "#f3f4f6", color: "#6b7280" },
 };
 
 function StatusBadge({ status }) {
@@ -257,57 +258,83 @@ export default function VolunteerManagement() {
   useEffect(() => {
     const userCookie = getCookie("user");
     if (userCookie) {
-      const parsedUser = JSON.parse(userCookie);
-      setUser({
-        role: parsedUser.role_name,
-        firstName: parsedUser.first_name,
-        lastName: parsedUser.last_name,
-      });
+      try {
+        const parsedUser = JSON.parse(userCookie);
+        setUser({
+          role: parsedUser.role_name,
+          firstName: parsedUser.first_name,
+          lastName: parsedUser.last_name,
+        });
+      } catch (_) {}
     }
   }, []);
 
   const [applicants, setApplicants] = useState([]);
   const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
   const [toast, setToast]           = useState(null);
   const [modal, setModal]           = useState(null);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
 
   // Table state
-  const [search, setSearch]       = useState("");
-  const [filters, setFilters]     = useState({});
-  const [sortField, setSortField] = useState("dateApplied");
-  const [sortDir, setSortDir]     = useState("desc");
-  const [page, setPage]           = useState(1);
+  const [search, setSearch]         = useState("");
+  const [activeFilters, setActiveFilters] = useState({});
+  const [sortField, setSortField]   = useState("dateApplied");
+  const [sortDir, setSortDir]       = useState("desc");
+  const [page, setPage]             = useState(1);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function fetchApplicants() {
       try {
+        const token = getCookie("token");
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications`,
-          { headers: { Authorization: `Bearer ${getCookie("token")}` } }
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
         );
-        if (res.ok) {
-          const data = await res.json();
-          const mapped = data.map((app) => ({
-            id:           app.volunteer_application_id,
-            name:         app.name,
-            email:        app.email,
-            contact:      app.contact_number,
-            birthday:     app.birthday || "—",
-            dateApplied:  app.created_at || "",
-            status:       capitalizeStatus(app.application_status),
-            notes:        app.notes || "",
-            organization: app.organization || "",
-            fieldsWithBackground: app.fields_with_background || [],
-            fieldsOfInterest:     app.fields_of_interest     || [],
-            hoursPerWeek:         app.hours_per_week         || "—",
-          }));
-          setApplicants(mapped);
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Server returned ${res.status}`);
         }
+
+        const data = await res.json();
+
+        // Guard: if data is not an array, the endpoint returned an error object
+        if (!Array.isArray(data)) {
+          throw new Error(data.error || "Unexpected response from server.");
+        }
+
+        const mapped = data.map((app) => ({
+          id:                   app.volunteer_application_id,
+          name:                 app.name || "—",
+          email:                app.email || "—",
+          contact:              app.contact_number || "—",
+          birthday:             app.birthday || "—",
+          dateApplied:          app.created_at || "",
+          status:               capitalizeStatus(app.application_status),
+          notes:                app.notes || "",
+          // ── Fix: gender_identity is the DB column name ──
+          gender:               app.gender_identity || "—",
+          // ── Fix: city lives on volunteer_applications, not a join ──
+          city:                 app.city || "—",
+          // ── Fix: fields_with_background and fields_of_interest are JSONB arrays ──
+          fieldsWithBackground: Array.isArray(app.fields_with_background)
+                                  ? app.fields_with_background
+                                  : [],
+          fieldsOfInterest:     Array.isArray(app.fields_of_interest)
+                                  ? app.fields_of_interest
+                                  : [],
+          hoursPerWeek:         app.hours_per_week || "—",
+          organizationId:       app.organization_id || null,
+        }));
+
+        setApplicants(mapped);
       } catch (err) {
-        console.error("Failed to load volunteer applications", err);
+        console.error("Failed to load volunteer applications:", err);
       } finally {
         setLoading(false);
       }
@@ -352,20 +379,20 @@ export default function VolunteerManagement() {
       const q = search.toLowerCase();
       list = list.filter(
         (a) =>
-          a.name.toLowerCase().includes(q) ||
-          a.email.toLowerCase().includes(q) ||
+          (a.name || "").toLowerCase().includes(q) ||
+          (a.email || "").toLowerCase().includes(q) ||
           String(a.id).includes(q)
       );
     }
 
     // Status filter
-    if (filters.status) {
-      list = list.filter((a) => a.status === filters.status);
+    if (activeFilters.status && activeFilters.status !== "All") {
+      list = list.filter((a) => a.status === activeFilters.status);
     }
 
     // Date applied filter
-    if (filters.dateApplied) {
-      const range = getDateRangeFromFilter(filters.dateApplied);
+    if (activeFilters.dateApplied) {
+      const range = getDateRangeFromFilter(activeFilters.dateApplied);
       if (range) {
         list = list.filter((a) =>
           isDateInRange(a.dateApplied, range.startDate, range.endDate)
@@ -373,22 +400,35 @@ export default function VolunteerManagement() {
       }
     }
 
-    // Organization filter
-    if (filters.organization) {
-      list = list.filter((a) => a.organization === filters.organization);
+    // Gender filter (maps to gender_identity in DB, stored as `gender` in mapped obj)
+    if (activeFilters.gender && activeFilters.gender !== "All") {
+      const q = activeFilters.gender.toLowerCase();
+      list = list.filter((a) => (a.gender || "").toLowerCase().includes(q));
     }
 
-    // Extra text filters
-    if (filters.name) {
-      const q = filters.name.toLowerCase();
-      list = list.filter((a) => a.name.toLowerCase().includes(q));
+    // City filter (add-filter)
+    if (activeFilters.city && activeFilters.city !== "All") {
+      list = list.filter((a) => a.city === activeFilters.city);
     }
-    if (filters.email) {
-      const q = filters.email.toLowerCase();
-      list = list.filter((a) => a.email.toLowerCase().includes(q));
+
+    // Fields with background filter (add-filter) — JSONB array
+    if (activeFilters.fieldsWithBackground && activeFilters.fieldsWithBackground !== "All") {
+      list = list.filter((a) =>
+        Array.isArray(a.fieldsWithBackground) &&
+        a.fieldsWithBackground.some(f =>
+          f.toLowerCase().includes(activeFilters.fieldsWithBackground.toLowerCase())
+        )
+      );
     }
-    if (filters.contact) {
-      list = list.filter((a) => (a.contact || "").includes(filters.contact));
+
+    // Fields of interest filter (add-filter) — JSONB array
+    if (activeFilters.fieldsOfInterest && activeFilters.fieldsOfInterest !== "All") {
+      list = list.filter((a) =>
+        Array.isArray(a.fieldsOfInterest) &&
+        a.fieldsOfInterest.some(f =>
+          f.toLowerCase().includes(activeFilters.fieldsOfInterest.toLowerCase())
+        )
+      );
     }
 
     // Sort
@@ -406,19 +446,21 @@ export default function VolunteerManagement() {
     });
 
     return list;
-  }, [applicants, search, filters, sortField, sortDir]);
+  }, [applicants, search, activeFilters, sortField, sortDir]);
 
-  useEffect(() => { setPage(1); }, [search, filters, sortField]);
+  useEffect(() => { setPage(1); }, [search, activeFilters, sortField]);
 
-  const totalPages   = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated    = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Stats
   const stats = useMemo(() => [
-    { num: applicants.filter((a) => a.status === "Pending").length,   label: "New Applicants",          hasNew: true },
-    { num: applicants.filter((a) => a.status === "Reviewing").length, label: "Under Review",             hasNew: true },
-    { num: applicants.filter((a) => a.status === "Approved").length,  label: "Approved Applications",   hasNew: false },
+    { num: applicants.filter((a) => a.status === "Pending").length,   label: "New Applicants",        hasNew: true },
+    { num: applicants.filter((a) => a.status === "Reviewing").length, label: "Under Review",           hasNew: true },
+    { num: applicants.filter((a) => a.status === "Approved").length,  label: "Approved Applications", hasNew: false },
   ], [applicants]);
+
+  const hasActiveFilters = Object.values(activeFilters).some(v => v && v !== "All" && v !== "");
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -463,7 +505,7 @@ export default function VolunteerManagement() {
                 icon={<img src="VolunteerIconPending.png" alt="" className={styles.actionIconImg} />}
                 title="See Pending Applications"
                 description="Review all applications currently awaiting action."
-                onView={() => setFilters({ status: "Pending" })}
+                onView={() => { setActiveFilters({ status: "Pending" }); setPage(1); }}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -471,7 +513,7 @@ export default function VolunteerManagement() {
                 icon={<img src="VolunteerIconReview.png" alt="" className={styles.actionIconImg} />}
                 title="Under Review"
                 description="Applications currently being reviewed by the team."
-                onView={() => setFilters({ status: "Reviewing" })}
+                onView={() => { setActiveFilters({ status: "Reviewing" }); setPage(1); }}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -479,7 +521,7 @@ export default function VolunteerManagement() {
                 icon={<img src="VolunteerIconApproved.png" alt="" className={styles.actionIconImg} />}
                 title="Approved Applications"
                 description="View and manage approved volunteer applications."
-                onView={() => setFilters({ status: "Approved" })}
+                onView={() => { setActiveFilters({ status: "Approved" }); setPage(1); }}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -487,7 +529,7 @@ export default function VolunteerManagement() {
                 icon={<img src="VolunteerIconAll.png" alt="" className={styles.actionIconImg} />}
                 title="View All Applicants"
                 description="Browse the complete list of all volunteer applicants."
-                onView={() => setFilters({})}
+                onView={() => { setActiveFilters({}); setSearch(""); setPage(1); }}
               />
             </div>
           </div>
@@ -504,8 +546,8 @@ export default function VolunteerManagement() {
             {/* ── Top bar: filter + search ── */}
             <div className={styles.tableTopBar}>
               <FilterMenu
-                filters={filters}
-                onFilterChange={(f) => { setFilters(f); setPage(1); }}
+                activeFilters={activeFilters}
+                onFilterChange={(f) => { setActiveFilters(f); setPage(1); }}
                 onSearch={(v) => { setSearch(v); setPage(1); }}
                 searchValue={search}
               />
@@ -516,15 +558,22 @@ export default function VolunteerManagement() {
               {filtered.length === applicants.length
                 ? `Showing all ${applicants.length} applicant${applicants.length !== 1 ? "s" : ""}`
                 : `Showing ${filtered.length} of ${applicants.length} applicant${applicants.length !== 1 ? "s" : ""}`}
-              {Object.keys(filters).some(k => filters[k]) && (
+              {(hasActiveFilters || search) && (
                 <button
                   className={styles.clearFiltersBtn}
-                  onClick={() => { setFilters({}); setSearch(""); }}
+                  onClick={() => { setActiveFilters({}); setSearch(""); }}
                 >
                   Clear filters
                 </button>
               )}
             </p>
+
+            {/* ── Error state ── */}
+            {error && (
+              <div className={styles.errorState}>
+                ⚠️ Failed to load applications: {error}
+              </div>
+            )}
 
             {/* ── Table ── */}
             {loading ? (
@@ -539,13 +588,7 @@ export default function VolunteerManagement() {
                 onPageChange={setPage}
                 onRowClick={(a) => router.push(`/volunteer/view?id=${a.id}`)}
                 onUpdateStatus={(selected) => {
-                  // Bulk update: open modal for the first selected
-                  if (selected.length === 1) {
-                    openUpdate(selected[0]);
-                  } else {
-                    // Multi-select: for now open the modal on first
-                    openUpdate(selected[0]);
-                  }
+                  if (selected.length >= 1) openUpdate(selected[0]);
                 }}
                 sortField={sortField}
                 sortDir={sortDir}
