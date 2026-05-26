@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FiX, FiSearch } from "react-icons/fi";
+import { FiFilter, FiX, FiChevronDown, FiSearch } from "react-icons/fi";
 import styles from "./FilterMenu.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -389,7 +389,7 @@ export default function FilterMenu({ filters, onFilterChange, onSearch, searchVa
           title="Add filter"
           aria-label="Open filter menu"
         >
-          ⊞
+          <FiFilter size={15} />
           {activeFilterCount > 0 && (
             <span className={styles.filterBadge}>{activeFilterCount}</span>
           )}
