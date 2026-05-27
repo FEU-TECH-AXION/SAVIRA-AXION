@@ -117,3 +117,7 @@ app.use('/api/screening_question_set', screeningQuestionSetRouter)
 // Route for screening_answers tbl
 const screeningAnswersRouter = require('./routes/screening_answers.routes')
 app.use('/api/screening_answers', screeningAnswersRouter)
+
+// Route for volunteer_application_analysis tbl
+const volunteerApplicationAnalysisRouter = require('./routes/volunteer_application_analysis.routes')
+app.use('/api/volunteer_application_analysis', volunteerApplicationAnalysisRouter)
