@@ -107,6 +107,7 @@ export default function UsersTable({
   totalRecords = 0,
   pageSize = 8,
   onPageChange,
+  onView,
   onEdit,
   onDeactivate,
   sortField,
@@ -233,7 +234,8 @@ export default function UsersTable({
                   <tr
                     key={u.user_id}
                     className={`${styles.row} ${isSelected ? styles.rowSelected : ""}`}
-                    style={{ background: rowBg }}
+                    style={{ background: rowBg, cursor: "pointer" }}
+                    onDoubleClick={() => onView && onView(u)}
                   >
                     <td
                       className={`${styles.td} ${styles.checkTd}`}

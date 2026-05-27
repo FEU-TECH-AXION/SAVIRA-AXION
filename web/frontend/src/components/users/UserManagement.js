@@ -1169,6 +1169,7 @@ export default function AdminDashboard() {
                     totalRecords={sortedFiltered.length}
                     pageSize={PAGE_SIZE}
                     onPageChange={setPage}
+                    onView={(u) => openView(u)}
                     onEdit={(u) => openEdit(u)}
                     onDeactivate={(u) => openDelete(u)}
                     sortField={sortField}
