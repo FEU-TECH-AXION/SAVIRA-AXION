@@ -24,6 +24,53 @@
   color: var(--sasha-text);
 }
 
+/* ════════════════════════════════════════════════════════
+   ADD THESE TO THE BOTTOM OF ProjectManagement.module.css
+   ════════════════════════════════════════════════════════ */
+
+/* ── Table top bar (filter row above the table) ── */
+
+.tableWrap {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+}
+
+.tableTopBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Record count label ── */
+.recordLabel {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.clearFiltersBtn {
+  background: none;
+  border: none;
+  color: #037F81;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.12s;
+}
+
+.clearFiltersBtn:hover {
+  color: #025f61;
+}
+
 /* ════════════════════════════════════════
    HERO BANNER
    ════════════════════════════════════════ */

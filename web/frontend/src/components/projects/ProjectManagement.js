@@ -1,22 +1,13 @@
 "use client";
 
-/**
- * ProjectManagement.js  (updated)
- *
- * Changes:
- *  - "Create a Project" and "Update Project Information" action cards now
- *    navigate to a full-page <CreateEditProject> component instead of a modal.
- *  - Project data now carries all new SASHA-specific fields.
- *  - Public-approved projects surface to page.js and events/page.js.
- *
- * SUPABASE integration points are left as TODO comments.
- */
-
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import CreateEditProject from "@/components/projects/CreateEditProject";
+import ProjectsTable from "@/components/projects/ProjectsTable";
+import ProjectFilterMenu from "@/components/projects/ProjectFilterMenu";
 import styles from "./ProjectManagement.module.css";
-import { FiSearch, FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle } from "react-icons/fi";
+import { FiX } from "react-icons/fi";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Placeholder data — replace with Supabase fetch
@@ -50,6 +41,7 @@ const PLACEHOLDER_PROJECTS = [
     approvalStatus: "approved",
     image: "/project-1.jpg",
     imagePreview: null,
+    createdAt: "2026-01-10T00:00:00.000Z",
   },
   {
     id: 2,
@@ -78,6 +70,7 @@ const PLACEHOLDER_PROJECTS = [
     approvalStatus: "approved",
     image: "/project-2.jpg",
     imagePreview: null,
+    createdAt: "2026-01-15T00:00:00.000Z",
   },
   {
     id: 3,
@@ -106,6 +99,7 @@ const PLACEHOLDER_PROJECTS = [
     approvalStatus: "approved",
     image: "/project-3.jpg",
     imagePreview: null,
+    createdAt: "2025-01-05T00:00:00.000Z",
   },
   {
     id: 4,
@@ -134,19 +128,11 @@ const PLACEHOLDER_PROJECTS = [
     approvalStatus: "pending",
     image: "/project-4.jpg",
     imagePreview: null,
+    createdAt: "2026-03-20T00:00:00.000Z",
   },
 ];
 
-const CATEGORIES = [
-  "New Projects",
-  "Happening Soon",
-  "Youth Leadership Programs",
-  "Legal & Policy Education",
-  "Awareness Campaign",
-  "Community Outreach",
-];
-
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 function nextId(list) {
   return list.length ? Math.max(...list.map((p) => p.id)) + 1 : 1;
@@ -160,43 +146,41 @@ function getCookie(name) {
   return null;
 }
 
-// ── Status Badge ──────────────────────────────────────────────────────────────
-function ProjectBadge({ status }) {
-  const map = {
-    Active:    { bg: "#d1fae5", color: "#065f46" },
-    Upcoming:  { bg: "#dbeafe", color: "#1e40af" },
-    Completed: { bg: "#f3f4f6", color: "#374151" },
-  };
-  const s = map[status] || { bg: "#f3f4f6", color: "#374151" };
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.78rem", fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: s.bg, color: s.color }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
-      {status}
-    </span>
-  );
+// ── Date range helpers ────────────────────────────────────────────────────────
+function getDateRangeFromFilter(filterVal) {
+  if (!filterVal || filterVal === "") return null;
+  const now = new Date();
+  if (filterVal === "today") {
+    const s = new Date(now); s.setHours(0, 0, 0, 0);
+    const e = new Date(now); e.setHours(23, 59, 59, 999);
+    return { startDate: s, endDate: e };
+  }
+  if (filterVal === "thisWeek") {
+    const s = new Date(now); s.setDate(now.getDate() - now.getDay()); s.setHours(0, 0, 0, 0);
+    const e = new Date(s); e.setDate(s.getDate() + 6); e.setHours(23, 59, 59, 999);
+    return { startDate: s, endDate: e };
+  }
+  if (filterVal === "thisMonth") {
+    const s = new Date(now.getFullYear(), now.getMonth(), 1);
+    const e = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { startDate: s, endDate: e };
+  }
+  if (filterVal === "thisYear") {
+    const s = new Date(now.getFullYear(), 0, 1);
+    const e = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    return { startDate: s, endDate: e };
+  }
+  if (filterVal.startsWith("custom|")) {
+    const [, start, end] = filterVal.split("|");
+    return { startDate: new Date(start), endDate: new Date(end + "T23:59:59") };
+  }
+  return null;
 }
 
-// ── Visibility Badge ───────────────────────────────────────────────────────────
-function VisibilityBadge({ visibility, approvalStatus }) {
-  if (visibility === "public" && approvalStatus === "approved")
-    return <span style={{ fontSize: "0.72rem", fontWeight: 600, background: "#d1fae5", color: "#065f46", padding: "2px 8px", borderRadius: 999 }}>🌐 Public</span>;
-  if (visibility === "public" && approvalStatus === "pending")
-    return <span style={{ fontSize: "0.72rem", fontWeight: 600, background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: 999 }}>⏳ Pending Approval</span>;
-  return <span style={{ fontSize: "0.72rem", fontWeight: 600, background: "#f3f4f6", color: "#374151", padding: "2px 8px", borderRadius: 999 }}>🔒 Private</span>;
-}
-
-// ── Pagination ─────────────────────────────────────────────────────────────────
-function Pagination({ current, total, onChange }) {
-  const pages = Array.from({ length: total }, (_, i) => i + 1);
-  return (
-    <div className={styles.pagination}>
-      <button className={styles.pageArrow} onClick={() => onChange(current - 1)} disabled={current === 1}>←</button>
-      {pages.map((p) => (
-        <button key={p} className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`} onClick={() => onChange(p)}>{p}</button>
-      ))}
-      <button className={styles.pageArrow} onClick={() => onChange(current + 1)} disabled={current === total}>→</button>
-    </div>
-  );
+function isDateInRange(dateStr, startDate, endDate) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return d >= startDate && d <= endDate;
 }
 
 // ── Action Card ───────────────────────────────────────────────────────────────
@@ -216,7 +200,6 @@ function ActionCard({ icon, title, description, onView }) {
 }
 
 // ── Modal Shell ───────────────────────────────────────────────────────────────
-import { FiX } from "react-icons/fi";
 function Modal({ open, onClose, title, children }) {
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -237,47 +220,6 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
-// ── View Project Modal (now expanded with all fields) ────────────────────────
-function ViewProjectModal({ open, onClose, project }) {
-  if (!project) return null;
-  const rows = [
-    ["Title", project.title],
-    ["Tagline", project.tagline || "—"],
-    ["Category", project.category],
-    ["Status", <ProjectBadge status={project.status} />],
-    ["Visibility", <VisibilityBadge visibility={project.visibility} approvalStatus={project.approvalStatus} />],
-    ["Start Date", project.dateStart],
-    ["End Date", project.dateEnd || "—"],
-    ["Activity Mode", project.activityMode],
-    ["Venue", project.venue || "—"],
-    ["Online Link", project.onlineLink || "—"],
-    ["Target Participants", project.targetParticipants || "—"],
-    ["Partner Organizations", project.partnerOrganizations || "—"],
-    ["Due Date", project.dueDate || "—"],
-    // Internal
-    ["Project Officers", (project.projectOfficers || []).filter(Boolean).join(", ") || "—"],
-    ["Committee Members", (project.projectCommitteeMembers || []).filter(Boolean).join(", ") || "—"],
-    ["Logistical Requirements", project.logisticalRequirements || "—"],
-    ["Financial Requirements", project.financialRequirements || "—"],
-    ["Operational Requirements", project.operationalRequirements || "—"],
-  ];
-  return (
-    <Modal open={open} onClose={onClose} title="Project Details">
-      <div className={styles.viewGrid}>
-        {rows.map(([k, v]) => (
-          <div key={k} className={styles.viewRow}>
-            <span className={styles.viewKey}>{k}</span>
-            <span className={styles.viewVal}>{v}</span>
-          </div>
-        ))}
-      </div>
-      <div className={styles.modalFooter}>
-        <button className={styles.btnPrimary} onClick={onClose}>Close</button>
-      </div>
-    </Modal>
-  );
-}
-
 // ── Delete Project Modal ──────────────────────────────────────────────────────
 function DeleteProjectModal({ open, onClose, project, onConfirm }) {
   if (!project) return null;
@@ -293,51 +235,6 @@ function DeleteProjectModal({ open, onClose, project, onConfirm }) {
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
         <button className={styles.btnDanger} onClick={() => { onConfirm(project.id); onClose(); }}>Delete Project</button>
-      </div>
-    </Modal>
-  );
-}
-
-// ── Select Project Modal ──────────────────────────────────────────────────────
-function SelectProjectModal({ open, onClose, projects, title, actionLabel, actionBtnClass, onAction }) {
-  const [q, setQ] = useState("");
-  const filtered = useMemo(() => {
-    if (!q.trim()) return projects;
-    return projects.filter((p) => p.title.toLowerCase().includes(q.toLowerCase()));
-  }, [projects, q]);
-  return (
-    <Modal open={open} onClose={onClose} title={title}>
-      <div className={styles.searchWrap} style={{ marginBottom: "1rem" }}>
-        <input className={styles.searchInput} type="text" placeholder="Search projects…"
-          value={q} onChange={(e) => setQ(e.target.value)} />
-        <span className={styles.searchIcon}><FiSearch /></span>
-      </div>
-      <div className={styles.tableWrap} style={{ maxHeight: "55vh", overflowY: "auto" }}>
-        <table className={styles.table}>
-          <thead><tr><th>Title</th><th>Category</th><th>Status</th><th>Visibility</th><th>Action</th></tr></thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={5} className={styles.emptyState}>No projects found.</td></tr>
-            ) : (
-              filtered.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.title}</td>
-                  <td>{p.category}</td>
-                  <td><ProjectBadge status={p.status} /></td>
-                  <td><VisibilityBadge visibility={p.visibility} approvalStatus={p.approvalStatus} /></td>
-                  <td>
-                    <button className={actionBtnClass} onClick={() => { onAction(p); onClose(); }}>
-                      {actionLabel}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className={styles.modalFooter}>
-        <button className={styles.btnPrimary} onClick={onClose}>Close</button>
       </div>
     </Modal>
   );
@@ -364,11 +261,13 @@ export default function ProjectManagement() {
   // ── State ──────────────────────────────────────────────────────
   const [projects, setProjects] = useState(PLACEHOLDER_PROJECTS);
   const [search, setSearch]     = useState("");
-  const [activeSort, setActiveSort] = useState(null);
+  const [activeFilters, setActiveFilters] = useState({});
   const [page, setPage]         = useState(1);
   const [toast, setToast]       = useState(null);
   const [modal, setModal]       = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [sortField, setSortField] = useState("id");
+  const [sortDir, setSortDir]     = useState("asc");
 
   // Full-page form mode: null | "create" | "edit"
   const [formMode, setFormMode] = useState(null);
@@ -380,8 +279,18 @@ export default function ProjectManagement() {
     setTimeout(() => setToast(null), 3500);
   }
   function closeModal() { setModal(null); }
-  function openView(p)   { setSelectedProject(p); setModal("view"); }
   function openDelete(p) { setSelectedProject(p); setModal("delete"); }
+
+  // ── Sort handler ───────────────────────────────────────────────
+  function handleSort(field) {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
 
   // ── Full-page handlers ─────────────────────────────────────────
   function openCreate() {
@@ -394,7 +303,7 @@ export default function ProjectManagement() {
   }
   function handleFormSave(data) {
     if (formMode === "create") {
-      const newProject = { ...data, id: nextId(projects) };
+      const newProject = { ...data, id: nextId(projects), createdAt: new Date().toISOString() };
       setProjects((prev) => [newProject, ...prev]);
       showToast(`Project "${data.title}" created. ${data.visibility === "public" ? "Submitted for admin approval." : ""}`);
     } else {
@@ -416,26 +325,123 @@ export default function ProjectManagement() {
     showToast(`Project "${title}" deleted.`, "danger");
   }
 
+  // ── Bulk delete ────────────────────────────────────────────────
+  function handleBulkDelete(selected) {
+    const ids = new Set(selected.map(p => p.id));
+    setProjects(prev => prev.filter(p => !ids.has(p.id)));
+    showToast(`${selected.length} project${selected.length !== 1 ? "s" : ""} deleted.`, "danger");
+  }
+
   // ── Stats ──────────────────────────────────────────────────────
   const stats = useMemo(() => [
-    { num: projects.filter((p) => p.status === "Active").length, label: "Active Projects", hasNew: true },
-    { num: projects.filter((p) => p.visibility === "public" && p.approvalStatus === "approved").length, label: "Public Events", hasNew: false },
-    { num: projects.filter((p) => p.visibility === "public" && p.approvalStatus === "pending").length, label: "Pending Approval", hasNew: false },
+    { num: projects.filter((p) => p.status === "Active").length, label: "Active Projects" },
+    { num: projects.filter((p) => p.visibility === "public" && p.approvalStatus === "approved").length, label: "Public Events" },
+    { num: projects.filter((p) => p.visibility === "public" && p.approvalStatus === "pending").length, label: "Pending Approval" },
   ], [projects]);
 
-  // ── Filtered & paginated list ──────────────────────────────────
-  const filtered = useMemo(() => projects.filter((p) => {
-    const matchSearch = !search.trim()
-      || p.title.toLowerCase().includes(search.toLowerCase())
-      || p.category.toLowerCase().includes(search.toLowerCase());
-    if (!matchSearch) return false;
-    if (activeSort) return p.category === activeSort;
-    return true;
-  }), [projects, search, activeSort]);
+  // ── Filtered & sorted list ──────────────────────────────────────
+  const filtered = useMemo(() => {
+    let list = [...projects];
 
-  useEffect(() => { setPage(1); }, [search, activeSort]);
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        String(p.id).includes(q)
+      );
+    }
+
+    // Status filter
+    if (activeFilters.status && activeFilters.status !== "All") {
+      list = list.filter(p => p.status === activeFilters.status);
+    }
+
+    // Visibility filter
+    if (activeFilters.visibility && activeFilters.visibility !== "All") {
+      list = list.filter(p => p.visibility === activeFilters.visibility.toLowerCase());
+    }
+
+    // Approval status filter
+    if (activeFilters.approvalStatus && activeFilters.approvalStatus !== "All") {
+      list = list.filter(p => p.approvalStatus === activeFilters.approvalStatus.toLowerCase());
+    }
+
+    // Due Date filter
+    if (activeFilters.dueDate) {
+      const range = getDateRangeFromFilter(activeFilters.dueDate);
+      if (range) list = list.filter(p => isDateInRange(p.dueDate, range.startDate, range.endDate));
+    }
+
+    // Date Created filter
+    if (activeFilters.dateCreated) {
+      const range = getDateRangeFromFilter(activeFilters.dateCreated);
+      if (range) list = list.filter(p => isDateInRange(p.createdAt, range.startDate, range.endDate));
+    }
+
+    // Project Officer (additional filter)
+    if (activeFilters.projectOfficer) {
+      const q = activeFilters.projectOfficer.toLowerCase();
+      list = list.filter(p =>
+        (p.projectOfficers || []).some(o => o.toLowerCase().includes(q))
+      );
+    }
+
+    // Project Member (additional filter)
+    if (activeFilters.projectMember) {
+      const q = activeFilters.projectMember.toLowerCase();
+      list = list.filter(p =>
+        (p.projectCommitteeMembers || []).some(m => m.toLowerCase().includes(q))
+      );
+    }
+
+    // Activity Conduct (additional filter)
+    if (activeFilters.activityConduct && activeFilters.activityConduct !== "All") {
+      list = list.filter(p => p.activityMode === activeFilters.activityConduct);
+    }
+
+    // Venue (additional filter)
+    if (activeFilters.venue) {
+      const q = activeFilters.venue.toLowerCase();
+      list = list.filter(p => (p.venue || "").toLowerCase().includes(q));
+    }
+
+    // Inclusive Start Date (additional filter)
+    if (activeFilters.inclusiveStartDate) {
+      const bound = new Date(activeFilters.inclusiveStartDate);
+      list = list.filter(p => p.dateStart && new Date(p.dateStart) >= bound);
+    }
+
+    // Inclusive End Date (additional filter)
+    if (activeFilters.inclusiveEndDate) {
+      const bound = new Date(activeFilters.inclusiveEndDate + "T23:59:59");
+      list = list.filter(p => p.dateEnd && new Date(p.dateEnd) <= bound);
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      let av = a[sortField] ?? "";
+      let bv = b[sortField] ?? "";
+      if (sortField === "id") { av = Number(av); bv = Number(bv); }
+      if (sortField === "dueDate" || sortField === "dateCreated") {
+        av = new Date(av).getTime() || 0;
+        bv = new Date(bv).getTime() || 0;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }, [projects, search, activeFilters, sortField, sortDir]);
+
+  useEffect(() => { setPage(1); }, [search, activeFilters, sortField]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const hasActiveFilters = Object.values(activeFilters).some(v => v && v !== "All" && v !== "");
 
   // ── If in full-page form mode, render the form instead ─────────
   if (formMode) {
@@ -464,10 +470,9 @@ export default function ProjectManagement() {
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Project Management</h1>
               <div className="row g-3 justify-content-center">
-                {stats.map(({ num, label, hasNew }) => (
+                {stats.map(({ num, label }) => (
                   <div key={label} className="col-12 col-md-4">
                     <div className={styles.statCard}>
-                      {/* {hasNew && <span className={styles.statDot} />} */}
                       <p className={styles.statNum}>{num}</p>
                       <p className={styles.statLabel}>{label}</p>
                     </div>
@@ -498,7 +503,9 @@ export default function ProjectManagement() {
                 icon={<img src="ProjectIconDelete.png" alt="" className={styles.actionIconImg} />}
                 title="Delete a Project"
                 description="Permanently remove an existing project."
-                onView={() => setModal("selectDelete")}
+                onView={() => {
+                  if (projects.length > 0) openDelete(projects[0]);
+                }}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -506,7 +513,9 @@ export default function ProjectManagement() {
                 icon={<img src="ProjectIconEdit.png" alt="" className={styles.actionIconImg} />}
                 title="Update Project Information"
                 description="Edit all details of an existing project or event."
-                onView={() => setModal("selectEdit")}
+                onView={() => {
+                  if (projects.length > 0) openEdit(projects[0]);
+                }}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -514,104 +523,69 @@ export default function ProjectManagement() {
                 icon={<img src="ProjectIconView.png" alt="" className={styles.actionIconImg} />}
                 title="View All Projects"
                 description="Browse active, upcoming, and completed projects."
-                onView={() => setModal("selectView")}
+                onView={() => {
+                  setActiveFilters({});
+                  setSearch("");
+                  setPage(1);
+                  document.getElementById("projects-table-section")?.scrollIntoView({ behavior: "smooth" });
+                }}
               />
             </div>
           </div>
         </div>
 
-        {/* ── All Projects List ── */}
-        <section className={styles.allList}>
+        {/* ── All Projects Table ── */}
+        <section className={styles.allList} id="projects-table-section">
           <div className="container-xl">
             <div className={styles.sectionHeading}>
               <h2 className={styles.sectionTitle}>All the List of Projects</h2>
               <div className={styles.headingLine} />
             </div>
-            <div className={styles.layout}>
-              <div>
-                {paginated.length === 0 ? (
-                  <div className={styles.emptyState}>No projects found.</div>
-                ) : (
-                  paginated.map((p) => (
-                    <div key={p.id} style={{ background: "#037F81", borderRadius: 14, marginBottom: "1rem", overflow: "hidden" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 1.25rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                          <span style={{ color: "#fff", fontWeight: 700, fontSize: "1rem" }}>{p.title}</span>
-                          <VisibilityBadge visibility={p.visibility} approvalStatus={p.approvalStatus} />
-                        </div>
-                        <button className={styles.viewBtn} onClick={() => openView(p)}>View →</button>
-                      </div>
-                      <div style={{ background: "#fff", padding: "1rem 1.25rem", display: "flex", gap: "1.25rem", alignItems: "flex-start" }}>
-                        <div style={{ width: 120, height: 80, background: "#e1f5f5", borderRadius: 8, flexShrink: 0, overflow: "hidden" }}>
-                          {p.image ? (
-                            <img src={p.image} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          ) : (
-                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem" }}>📁</div>
-                          )}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          {p.tagline && <p style={{ margin: "0 0 0.25rem", fontSize: "0.82rem", color: "#037F81", fontStyle: "italic" }}>{p.tagline}</p>}
-                          <p style={{ margin: "0 0 0.5rem", fontSize: "0.88rem", color: "#6b7280" }}>{p.description}</p>
-                          <p style={{ margin: 0, fontSize: "0.82rem", color: "#292929" }}>
-                            📅 {p.dateStart}{p.dateEnd ? ` – ${p.dateEnd}` : ""} &nbsp;|&nbsp; {p.activityMode}
-                          </p>
-                        </div>
-                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                          <button className={styles.tblBtnEdit} onClick={() => openEdit(p)}>Edit</button>
-                          <button className={styles.tblBtnDelete} onClick={() => openDelete(p)}>Delete</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-                <Pagination current={page} total={totalPages} onChange={setPage} />
-              </div>
 
-              <aside className={styles.sidebar}>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Search</h3>
-                  <div className={styles.searchWrap}>
-                    <input className={styles.searchInput} type="text" placeholder="Search"
-                      value={search} onChange={(e) => setSearch(e.target.value)} />
-                    <span className={styles.searchIcon}><FiSearch /></span>
-                  </div>
-                </div>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Sort By Category</h3>
-                  <div className={styles.roleList}>
-                    {CATEGORIES.map((cat) => (
-                      <button key={cat}
-                        className={`${styles.roleBtn} ${activeSort === cat ? styles.roleBtnActive : ""}`}
-                        onClick={() => setActiveSort(activeSort === cat ? null : cat)}>
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </aside>
+            {/* ── Top bar: filter + search ── */}
+            <div className={styles.tableTopBar}>
+              <ProjectFilterMenu
+                activeFilters={activeFilters}
+                onFilterChange={(f) => { setActiveFilters(f); setPage(1); }}
+                onSearch={(v) => { setSearch(v); setPage(1); }}
+                searchValue={search}
+              />
             </div>
+
+            {/* ── Record count label ── */}
+            <p className={styles.recordLabel}>
+              {filtered.length === projects.length
+                ? `Showing all ${projects.length} project${projects.length !== 1 ? "s" : ""}`
+                : `Showing ${filtered.length} of ${projects.length} project${projects.length !== 1 ? "s" : ""}`}
+              {(hasActiveFilters || search) && (
+                <button
+                  className={styles.clearFiltersBtn}
+                  onClick={() => { setActiveFilters({}); setSearch(""); }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </p>
+
+            {/* ── Table ── */}
+            <ProjectsTable
+              paginated={paginated}
+              page={page}
+              totalPages={totalPages}
+              totalRecords={filtered.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+              onRowDoubleClick={openEdit}
+              onDeleteSelected={handleBulkDelete}
+              sortField={sortField}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
           </div>
         </section>
       </main>
 
       {/* ══ MODALS ══ */}
-      <SelectProjectModal
-        open={modal === "selectView"} onClose={closeModal} projects={projects}
-        title="Select a Project to View" actionLabel="View"
-        actionBtnClass={styles.tblBtnView}
-        onAction={(p) => { closeModal(); openView(p); }} />
-      <SelectProjectModal
-        open={modal === "selectEdit"} onClose={closeModal} projects={projects}
-        title="Select a Project to Edit" actionLabel="Edit"
-        actionBtnClass={styles.tblBtnEdit}
-        onAction={(p) => { closeModal(); openEdit(p); }} />
-      <SelectProjectModal
-        open={modal === "selectDelete"} onClose={closeModal} projects={projects}
-        title="Select a Project to Delete" actionLabel="Delete"
-        actionBtnClass={styles.tblBtnDelete}
-        onAction={(p) => { closeModal(); openDelete(p); }} />
-      <ViewProjectModal
-        open={modal === "view"} onClose={closeModal} project={selectedProject} />
       <DeleteProjectModal
         open={modal === "delete"} onClose={closeModal}
         project={selectedProject} onConfirm={handleDelete} />

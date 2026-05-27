@@ -1,0 +1,348 @@
+/* ════════════════════════════════════════════
+   ProjectsTable.module.css
+   SASHA Design tokens (inherit from :root)
+   ════════════════════════════════════════════ */
+
+/* ── Wrapper ── */
+.tableWrap {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Bulk action bar ── */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: #e1f5f5;
+  border-bottom: 1px solid #b2e0e0;
+  animation: slideDown 0.15s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.bulkCount {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #037F81;
+}
+
+.bulkActions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.bulkBtn {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid #037F81;
+  background: #037F81;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s;
+}
+
+.bulkBtn:hover {
+  background: #025f61;
+  transform: translateY(-1px);
+}
+
+.bulkBtnDelete {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.bulkBtnDelete:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.bulkClear {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: color 0.12s, background 0.12s;
+}
+
+.bulkClear:hover {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+/* ── Scrollable table area ── */
+.tableScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 720px;
+}
+
+/* ── Header row ── */
+.headerRow {
+  background: #ffffff;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.th {
+  padding: 0.85rem 0.9rem;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sortableTh {
+  cursor: pointer;
+}
+
+.sortableTh:hover {
+  color: #037F81;
+}
+
+.sortNeutral {
+  opacity: 0.3;
+  font-size: 0.72rem;
+  margin-left: 3px;
+}
+
+.sortActive {
+  color: #037F81;
+  font-size: 0.72rem;
+  margin-left: 3px;
+}
+
+/* Checkbox column */
+.checkTh,
+.checkTd {
+  width: 44px;
+  padding-left: 1rem;
+  padding-right: 0.5rem;
+}
+
+/* Trailing empty column */
+.columnsTh {
+  width: 24px;
+}
+
+/* ── Rows ── */
+.row {
+  border-bottom: 1px solid #f1f3f5;
+  transition: background 0.1s;
+  cursor: pointer;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: #f0fffe !important;
+}
+
+.rowSelected {
+  background: #e1f5f5 !important;
+}
+
+/* ── Cells ── */
+.td {
+  padding: 0.7rem 0.9rem;
+  color: #292929;
+  vertical-align: middle;
+}
+
+.idTd {
+  white-space: nowrap;
+}
+
+.idText {
+  font-weight: 700;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.titleTd {
+  min-width: 200px;
+}
+
+.titleStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.titleText {
+  font-weight: 600;
+  color: #292929;
+  font-size: 0.875rem;
+}
+
+.taglineText {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.dateText {
+  font-size: 0.81rem;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.muted {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Empty state ── */
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  font-size: 0.88rem;
+}
+
+/* Checkbox */
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #037F81;
+  cursor: pointer;
+}
+
+/* ── Pagination bar ── */
+.paginationBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.pageArrow {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+
+.pageArrow:hover:not(:disabled) {
+  border-color: #037F81;
+  color: #037F81;
+  background: #f0fffe;
+}
+
+.pageArrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pageNumbers {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.pageBtn {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.pageBtn:hover {
+  border-color: #037F81;
+  color: #037F81;
+}
+
+.pageBtnActive {
+  background: #037F81 !important;
+  color: #ffffff !important;
+  border-color: #037F81 !important;
+  font-weight: 700;
+}
+
+.ellipsis {
+  color: #9ca3af;
+  font-size: 0.82rem;
+  padding: 0 4px;
+}
+
+.recordCount {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.recordCaret {
+  font-size: 0.6rem;
+  color: #9ca3af;
+}
