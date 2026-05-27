@@ -845,6 +845,69 @@
   padding: 1rem 1.25rem 1.25rem;
 }
 
+/* ── Card top row: Case ID (left) + "Updated X ago" (right) ── */
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.cardCaseId {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  letter-spacing: 0.01em;
+}
+
+.cardUpdated {
+  font-size: 0.75rem;
+  color: var(--sasha-muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+
+/* ── Two-column meta grid: Date Submitted | Assigned Personnel ── */
+.cardMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--sasha-border);
+}
+
+.cardMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cardMetaLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sasha-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cardMetaValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--sasha-text);
+}
+
+/* "Unassigned" shown in muted italic */
+.cardMetaUnassigned {
+  color: var(--sasha-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+
+
 .reportMetaRow {
   display: flex;
   justify-content: space-between;

@@ -1010,10 +1010,11 @@ function timeAgo(dateString) {
 }
 
 // ── Application Status Card ────────────────────────────────────────────────────────
-function ApplicationStatusCard({ applicationData, reportNumber }) {
+function ApplicationStatusCard({ applicationData, applicationNumber }) {
   const router = useRouter();
   const {
     id                  = "—",
+    applicationId       = null,
     applicationStatus   = "pending",
     dateApplied         = "—",
     assignedEvaluator   = null,
@@ -1038,7 +1039,7 @@ function ApplicationStatusCard({ applicationData, reportNumber }) {
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
-        <span>Application {reportNumber}</span>
+        <span>Application {applicationNumber}</span>
         <button
           className={styles.headerViewBtn}
           onClick={() => router.push(`/volunteer/view?id=${id}`)}
@@ -1054,19 +1055,6 @@ function ApplicationStatusCard({ applicationData, reportNumber }) {
           {updatedAgo && (
             <span className={styles.cardUpdated}>Updated {updatedAgo}</span>
           )}
-        </div>
-
-        {/* ── Status badge ── */}
-        <div style={{ marginBottom: "0.5rem" }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "3px 10px", borderRadius: 999,
-            fontSize: "0.78rem", fontWeight: 700,
-            background: badgeStyle.bg, color: badgeStyle.color,
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
-            {applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1)}
-          </span>
         </div>
 
         {/* ── Meta grid ── */}
@@ -1318,38 +1306,38 @@ export default function CreateApplication({
         )}
 
         {/* ── Your Application Status ── */}
-<div className={`${styles.sectionHeading} mt-5`}>
-  <h2 className={styles.sectionTitle}>Your Application Status</h2>
-  <div className={styles.headingLine} />
-</div>
-<div className="row g-3">
-  {appsLoading ? (
-    <p>Loading applications...</p>
-  ) : myApplications.length === 0 ? (
-    <p>No applications submitted yet.</p>
-  ) : (
-    myApplications.map((app, i) => (
-      <div className="col-12" key={app.volunteer_application_id}>
-        <ApplicationStatusCard
-          reportNumber={i + 1}
-          applicationData={{
-            id: app.volunteer_application_id,
-            applicationStatus: app.application_status || "pending",
-            dateApplied: app.created_at
-              ? new Date(app.created_at).toLocaleDateString("en-PH", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              : "—",
-            assignedEvaluator: app.assigned_evaluator ?? null,
-            lastUpdated: app.updated_at ?? app.created_at ?? null,
-          }}
-        />
-      </div>
-    ))
-  )}
-</div>
+        <div className={`${styles.sectionHeading} mt-5`}>
+          <h2 className={styles.sectionTitle}>Your Application Status</h2>
+          <div className={styles.headingLine} />
+        </div>
+        <div className="row g-3">
+          {appsLoading ? (
+            <p>Loading applications...</p>
+          ) : myApplications.length === 0 ? (
+            <p>No applications submitted yet.</p>
+          ) : (
+            myApplications.map((app, i) => (
+              <div className="col-12" key={app.volunteer_application_id}>
+                <ApplicationStatusCard
+                  applicationNumber={i + 1}
+                  applicationData={{
+                    id: app.volunteer_application_id,
+                    applicationStatus: app.application_status || "pending",
+                    dateApplied: app.created_at
+                      ? new Date(app.created_at).toLocaleDateString("en-PH", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "—",
+                    assignedEvaluator: app.assigned_evaluator ?? null,
+                    lastUpdated: app.updated_at ?? app.created_at ?? null,
+                  }}
+                />
+              </div>
+            ))
+          )}
+        </div>
 
 
         </div>
