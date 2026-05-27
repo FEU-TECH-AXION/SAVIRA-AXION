@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import styles from "./ApplyApplicationForm.module.css";
+import { useRouter } from "next/navigation";
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
@@ -11,6 +12,14 @@ const STEPS = [
   // { id: 3, label: "Supporting Credentials" },
   { id: 3, label: "Review & Submit" },
 ];
+
+const APP_STATUS_DISPLAY = {
+  "pending":   { middle: "Under Review",  phase: 1 },
+  "reviewing": { middle: "Being Evaluated", phase: 1 },
+  "approved":  { middle: "Approved",      phase: 2 },
+  "rejected":  { middle: "Rejected",      phase: 2 },
+  "withdrawn": { middle: "Withdrawn",     phase: 2 },
+};
 
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
 function WizardStepper({ current }) {
@@ -949,25 +958,132 @@ function StatusStepper({ steps, current }) {
   );
 }
 
+function ApplicationStepper({ statusRaw }) {
+  const key    = (statusRaw || "pending").toLowerCase();
+  const { middle, phase } = APP_STATUS_DISPLAY[key] ?? { middle: "In Progress", phase: 1 };
+  const steps  = ["Submitted", middle, "Resolved"];
+
+  return (
+    <div className={styles.stepper}>
+      {steps.map((label, i) => {
+        const done   = i < phase;
+        const active = i === phase;
+        return (
+          <div key={i} className={styles.stepItem}>
+            {i > 0 && (
+              <div className={`${styles.stepLine} ${done || active ? styles.stepLineDone : ""}`} />
+            )}
+            <div className={`${styles.stepDot} ${active ? styles.stepDotActive : ""} ${done ? styles.stepDotDone : ""}`} />
+            <span className={`${styles.stepLabel} ${active ? styles.stepLabelActive : ""}`}>{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function timeAgo(dateString) {
+  if (!dateString) return null;
+
+  const now = new Date();
+  const past = new Date(dateString);
+
+  const seconds = Math.floor((now - past) / 1000);
+
+  const intervals = [
+    { label: "year", seconds: 31536000 },
+    { label: "month", seconds: 2592000 },
+    { label: "day", seconds: 86400 },
+    { label: "hour", seconds: 3600 },
+    { label: "minute", seconds: 60 },
+  ];
+
+  for (const interval of intervals) {
+    const count = Math.floor(seconds / interval.seconds);
+
+    if (count >= 1) {
+      return `${count} ${interval.label}${count > 1 ? "s" : ""} ago`;
+    }
+  }
+
+  return "Just now";
+}
+
 // ── Application Status Card ────────────────────────────────────────────────────────
-function ApplicationStatusCard({ applicationData, onView, index }) {
-  const steps = ["Submitted", "Under Review", "Resolved"];
-  const { description = "—", dateApplied = "—", id = "—", currentStep = 0 } = applicationData ?? {};
+function ApplicationStatusCard({ applicationData, reportNumber }) {
+  const router = useRouter();
+  const {
+    id                  = "—",
+    applicationStatus   = "pending",
+    dateApplied         = "—",
+    assignedEvaluator   = null,
+    lastUpdated         = null,
+  } = applicationData ?? {};
+
+  const displayId       = `APP-${String(id).padStart(5, "0")}`;
+  const evaluatorLabel  = assignedEvaluator ?? "Unassigned";
+  const updatedAgo      = timeAgo(lastUpdated);
+
+  // Status badge colors
+  const STATUS_COLORS_APP = {
+    pending:   { bg: "#fef9c3", color: "#854d0e" },
+    reviewing: { bg: "#dbeafe", color: "#1e40af" },
+    approved:  { bg: "#d1fae5", color: "#065f46" },
+    rejected:  { bg: "#fee2e2", color: "#991b1b" },
+    withdrawn: { bg: "#f3f4f6", color: "#374151" },
+  };
+  const statusKey = (applicationStatus || "pending").toLowerCase();
+  const badgeStyle = STATUS_COLORS_APP[statusKey] || { bg: "#f3f4f6", color: "#374151" };
+
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
-        <span>Application {index + 1}</span>
-        <button className={styles.headerViewBtn} onClick={onView}>View →</button>
+        <span>Application {reportNumber}</span>
+        <button
+          className={styles.headerViewBtn}
+          onClick={() => router.push(`/volunteer/view?id=${id}`)}
+        >
+          View →
+        </button>
       </div>
       <div className={styles.statusCardBody}>
-        <div className={styles.applicationMetaRow}>
-          <div>
-            <p className={styles.statusMeta}>Description: {description}</p>
-            <p className={styles.statusMeta}>Date Applied: {dateApplied}</p>
-          </div>
-          <span className={styles.applicationId}>ID: {id}</span>
+
+        {/* ── Top row: Application ID + last updated ── */}
+        <div className={styles.cardTopRow}>
+          <span className={styles.cardCaseId}>{displayId}</span>
+          {updatedAgo && (
+            <span className={styles.cardUpdated}>Updated {updatedAgo}</span>
+          )}
         </div>
-        <StatusStepper steps={steps} current={currentStep} />
+
+        {/* ── Status badge ── */}
+        <div style={{ marginBottom: "0.5rem" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: "3px 10px", borderRadius: 999,
+            fontSize: "0.78rem", fontWeight: 700,
+            background: badgeStyle.bg, color: badgeStyle.color,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
+            {applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1)}
+          </span>
+        </div>
+
+        {/* ── Meta grid ── */}
+        <div className={styles.cardMetaGrid}>
+          <div className={styles.cardMetaItem}>
+            <span className={styles.cardMetaLabel}>Date Applied</span>
+            <span className={styles.cardMetaValue}>{dateApplied}</span>
+          </div>
+          <div className={styles.cardMetaItem}>
+            <span className={styles.cardMetaLabel}>Assigned Evaluator</span>
+            <span className={`${styles.cardMetaValue} ${!assignedEvaluator ? styles.cardMetaUnassigned : ""}`}>
+              {evaluatorLabel}
+            </span>
+          </div>
+        </div>
+
+        <ApplicationStepper statusRaw={applicationStatus} />
       </div>
     </div>
   );
@@ -1202,39 +1318,41 @@ export default function CreateApplication({
         )}
 
         {/* ── Your Application Status ── */}
-        <div className={`${styles.sectionHeading} mt-5`}>
-          <h2 className={styles.sectionTitle}>Your Application Status</h2>
-          <div className={styles.headingLine} />
-        </div>
+        {/* ── Your Application Status ── */}
+<div className={`${styles.sectionHeading} mt-5`}>
+  <h2 className={styles.sectionTitle}>Your Application Status</h2>
+  <div className={styles.headingLine} />
+</div>
+<div className="row g-3">
+  {appsLoading ? (
+    <p>Loading applications...</p>
+  ) : myApplications.length === 0 ? (
+    <p>No applications submitted yet.</p>
+  ) : (
+    myApplications.map((app, i) => (
+      <div className="col-12" key={app.volunteer_application_id}>
+        <ApplicationStatusCard
+          reportNumber={i + 1}
+          applicationData={{
+            id: app.volunteer_application_id,
+            applicationStatus: app.application_status || "pending",
+            dateApplied: app.created_at
+              ? new Date(app.created_at).toLocaleDateString("en-PH", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })
+              : "—",
+            assignedEvaluator: app.assigned_evaluator ?? null,
+            lastUpdated: app.updated_at ?? app.created_at ?? null,
+          }}
+        />
+      </div>
+    ))
+  )}
+</div>
 
-        <div className="row g-3">
-            {appsLoading ? (
-                <div className="col-12">
-                    <p className={styles.stepDesc}>Loading your applications...</p>
-                </div>
-            ) : myApplications.length === 0 ? (
-                <div className="col-12">
-                    <p className={styles.stepDesc}>You have not submitted any applications yet.</p>
-                </div>
-            ) : (
-                myApplications.map((app, index) => (      // ← it's here
-                    <div className="col-12" key={app.volunteer_application_id}>
-                        <ApplicationStatusCard
-                            applicationData={{
-                                id:          app.volunteer_application_id,
-                                description: app.essay_response,
-                                dateApplied: new Date(app.created_at).toLocaleDateString(),
-                                currentStep: app.application_status === 'pending'      ? 0
-                                          : app.application_status === 'under_review' ? 1
-                                          : 2,
-                            }}
-                            index={index}
-                            onView={() => {}}
-                        />
-                    </div>
-                ))
-            )}
-        </div>
+
         </div>
       </div>
     </main>

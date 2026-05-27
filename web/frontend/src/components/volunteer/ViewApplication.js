@@ -182,9 +182,151 @@ function UpdateStatusModal({ open, onClose, appData, onSave }) {
   );
 }
 
+// ─── Screening answer badge ───────────────────────────────────────────────────
+
+function YesNoBadge({ value }) {
+  const raw = String(value || "").toLowerCase().trim();
+  const isYes = raw === "yes" || raw === "true" || raw === "1" || raw === "strongly agree" || raw === "agree";
+  const isNo  = raw === "no"  || raw === "false" || raw === "0" || raw === "disagree" || raw === "strongly disagree";
+  if (!value || value === "—") return <span style={{ fontSize: "0.875rem", color: "#9ca3af" }}>—</span>;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 700,
+      background: isYes ? "#d1fae5" : isNo ? "#fee2e2" : "#f3f4f6",
+      color:      isYes ? "#065f46" : isNo ? "#991b1b" : "#374151",
+    }}>
+      {isYes ? "✓ Yes" : isNo ? "✗ No" : value}
+    </span>
+  );
+}
+
+function ScreeningGrid({ rows }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+      {rows.map(([label, value]) => (
+        <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.45rem 0.75rem", background: "#f9fafb", borderRadius: 8, border: "1px solid #f1f3f5" }}>
+          <span style={{ fontSize: "0.85rem", color: "#374151", lineHeight: 1.4 }}>{label}</span>
+          <YesNoBadge value={value} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Applicant Scores Tab (visible to applicant when Approved/Rejected) ────────
+
+function ApplicantScoresTab({ appData }) {
+  const [scores, setScores] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!appData?.id) return;
+    async function fetchScores() {
+      try {
+        const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const [essayRes, interviewRes] = await Promise.all([
+          fetch(`${API}/api/volunteer_applications/${appData.id}/essay_evaluation`, { credentials: "include" }),
+          fetch(`${API}/api/volunteer_applications/${appData.id}/interview_evaluation`, { credentials: "include" }),
+        ]);
+        const essayJson     = essayRes.ok     ? await essayRes.json()     : {};
+        const interviewJson = interviewRes.ok ? await interviewJson.json() : {};
+        setScores({
+          essay:     essayJson.data     || essayJson     || {},
+          interview: interviewJson.data || interviewJson || {},
+        });
+      } catch (_) {}
+      finally { setLoading(false); }
+    }
+    fetchScores();
+  }, [appData?.id]);
+
+  const ScoreBar = ({ score, max = 10 }) => {
+    const pct = Math.min(100, (score / max) * 100);
+    const c   = pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626";
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+        <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: c, borderRadius: 999 }} />
+        </div>
+        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: c, minWidth: 36 }}>{score}/{max}</span>
+      </div>
+    );
+  };
+
+  if (loading) return <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>Loading your scores…</p>;
+
+  const statusColor = appData.applicationStatus === "Approved" ? { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" } : { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Result banner */}
+      <div style={{ background: statusColor.bg, border: `1px solid ${statusColor.border}`, borderRadius: 12, padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: "1.75rem" }}>{appData.applicationStatus === "Approved" ? "🎉" : "📋"}</span>
+        <div>
+          <p style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: statusColor.text }}>
+            Application {appData.applicationStatus}
+          </p>
+          <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: statusColor.text, opacity: 0.8 }}>
+            {appData.applicationStatus === "Approved"
+              ? "Congratulations! You have been selected as a SASHA volunteer."
+              : "Thank you for applying. You may reapply in the next cycle."}
+          </p>
+        </div>
+      </div>
+
+      {/* Essay scores breakdown */}
+      {scores?.essay && Object.keys(scores.essay).some(k => ["alignment","maturity","commitment","clarity","experience"].includes(k)) && (
+        <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>✍️ Essay Evaluation</h3>
+          {[
+            { key: "alignment",  label: "Alignment with SASHA's Mission",        weight: 30 },
+            { key: "maturity",   label: "Maturity and Judgment",                  weight: 20 },
+            { key: "commitment", label: "Commitment and Reliability",              weight: 20 },
+            { key: "clarity",    label: "Writing Clarity and Thoughtfulness",      weight: 15 },
+            { key: "experience", label: "Relevant Experience / Transferable Skills", weight: 15 },
+          ].map(c => scores.essay[c.key] > 0 ? (
+            <div key={c.key} style={{ marginBottom: "0.85rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151" }}>{c.label}</span>
+                <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{c.weight}% weight</span>
+              </div>
+              <ScoreBar score={scores.essay[c.key]} max={10} />
+            </div>
+          ) : null)}
+          {scores.essay.notes && (
+            <div style={{ marginTop: "0.75rem", padding: "0.65rem 0.85rem", background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+              <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>Reviewer Notes</p>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.6 }}>{scores.essay.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Interview score */}
+      {scores?.interview?.score > 0 && (
+        <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+          <h3 style={{ margin: "0 0 0.75rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>🎙️ Interview Score</h3>
+          <ScoreBar score={scores.interview.score} max={10} />
+          {scores.interview.notes && (
+            <div style={{ marginTop: "0.75rem", padding: "0.65rem 0.85rem", background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+              <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>Reviewer Notes</p>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.6 }}>{scores.interview.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!scores?.essay && !scores?.interview?.score && (
+        <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>Scores are not yet available for this application.</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Application Details Tab ──────────────────────────────────────────────────
 
-function ApplicationDetailsTab({ appData }) {
+function ApplicationDetailsTab({ appData, isStaff }) {
   const [showScreening, setShowScreening] = useState(false);
 
   const isScoutOrg = appData.organization === "BSP" || appData.organization === "GSP";
@@ -257,6 +399,7 @@ function ApplicationDetailsTab({ appData }) {
       </Section>
 
       {/* Screening Questions (collapsible) */}
+      <Section title="Screening Questions">
       <section className={styles.section}>
         <button
           className={styles.screeningToggle}
@@ -271,7 +414,7 @@ function ApplicationDetailsTab({ appData }) {
 
             <div className={styles.screeningGroup}>
               <h3 className={styles.screeningGroupTitle}>Values &amp; Conduct</h3>
-              <DetailGrid rows={[
+              <ScreeningGrid rows={[
                 ["Survivors deserve dignity & respect",                              appData.survivorDignity],
                 ["Follow confidentiality & safeguarding policies",                  appData.confidentialityPolicy],
                 ["Harassment, discrimination & victim-blaming are unacceptable",    appData.noHarassment],
@@ -283,7 +426,7 @@ function ApplicationDetailsTab({ appData }) {
 
             <div className={styles.screeningGroup}>
               <h3 className={styles.screeningGroupTitle}>Advocacy &amp; Participation</h3>
-              <DetailGrid rows={[
+              <ScreeningGrid rows={[
                 ["In favor of safer environments",   appData.saferEnvironments],
                 ["Support advocacy efforts",         appData.advocacySupport],
                 ["Enthusiastic to contribute",       appData.enthusiasm],
@@ -295,7 +438,7 @@ function ApplicationDetailsTab({ appData }) {
 
             <div className={styles.screeningGroup}>
               <h3 className={styles.screeningGroupTitle}>Learning &amp; Awareness</h3>
-              <DetailGrid rows={[
+              <ScreeningGrid rows={[
                 ["Familiar with gender equality issues",     appData.genderAwareness],
                 ["Stays informed on social issues",          appData.stayInformed],
                 ["Open to learning",                         appData.openToLearn],
@@ -308,7 +451,11 @@ function ApplicationDetailsTab({ appData }) {
 
             <div className={styles.screeningDivider} />
 
-            <div className={styles.screeningGroup}>
+            
+
+          </div>
+        )}
+        <div className={styles.screeningGroup}>
               <h3 className={styles.screeningGroupTitle}>Expertise &amp; Interest</h3>
               <DetailGrid rows={[
                 ["Fields with Background", appData.fieldsWithBackground],
@@ -316,10 +463,8 @@ function ApplicationDetailsTab({ appData }) {
                 ["Hours per Week",         appData.hoursPerWeek],
               ]} />
             </div>
-
-          </div>
-        )}
       </section>
+      </Section>
 
       {/* Essay */}
       <Section title="✍️ Essay">
@@ -332,9 +477,10 @@ function ApplicationDetailsTab({ appData }) {
       {/* Application Status summary */}
       <Section title="📋 Application Status">
         <DetailGrid rows={[
-          ["Current Status", <StatusBadge key="s" status={appData.applicationStatus} />],
-          ["Date Applied",   appData.dateApplied],
-          ["Reviewer Notes", appData.reviewNotes || "No notes yet."],
+          ["Current Status",     <StatusBadge key="s" status={appData.applicationStatus} />],
+          ["Date Applied",       appData.dateApplied],
+          ["Assigned Evaluator", appData.assignedEvaluator || "Unassigned"],
+          ["Reviewer Notes",     appData.reviewNotes || "No notes yet."],
         ]} />
       </Section>
     </div>
@@ -402,7 +548,7 @@ function RatingStars({ value, onChange, disabled }) {
   );
 }
 
-function ApplicationEvaluationTab({ appData, isAdmin }) {
+function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -578,6 +724,26 @@ function ApplicationEvaluationTab({ appData, isAdmin }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
+      {/* ── Management Actions ── */}
+      <div style={{
+        background: "#f9fafb", borderRadius: 10, padding: "1rem 1.25rem",
+        border: "1px solid #e5e7eb",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem",
+      }}>
+        <div>
+          <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 700, color: "#374151" }}>Assigned Evaluator</p>
+          <p style={{ margin: "2px 0 0", fontSize: "0.9rem", fontWeight: 600, color: appData.assignedEvaluator ? "#037F81" : "#9ca3af" }}>
+            {appData.assignedEvaluator || "Unassigned"}
+          </p>
+        </div>
+        <button
+          className={styles.btnPrimary}
+          onClick={onUpdateStatus}
+        >
+          Update Status
+        </button>
+      </div>
+
       {/* ── Notice ── */}
       <div style={{
         background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
@@ -702,6 +868,28 @@ function ApplicationEvaluationTab({ appData, isAdmin }) {
       </div>
 
       {/* ════════════════════════════════════════════
+          ESSAY RESPONSE (visible before rubric for grading ease)
+          ════════════════════════════════════════════ */}
+      {appData.essayDescription && appData.essayDescription !== "—" && (
+        <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #86efac" }}>
+          <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem", fontWeight: 800, color: "#065f46" }}>
+            📄 Applicant's Essay Response
+          </h3>
+          <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem", color: "#166534" }}>
+            Read this before scoring the rubric below.
+          </p>
+          <div style={{
+            background: "#fff", border: "1px solid #d1fae5",
+            borderRadius: 8, padding: "1rem 1.1rem",
+            fontSize: "0.9rem", color: "#1f2937", lineHeight: 1.75,
+            whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto",
+          }}>
+            {appData.essayDescription}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════
           SECTION 2 – QUALITATIVE: Essay Rubric
           ════════════════════════════════════════════ */}
       <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
@@ -712,23 +900,6 @@ function ApplicationEvaluationTab({ appData, isAdmin }) {
           Rate each criterion from <strong>1 (lowest)</strong> to <strong>10 (highest)</strong>.
           Scores are weighted and automatically compute the essay total.
         </p>
-
-        {/* Essay text reminder */}
-        {appData.essayDescription && appData.essayDescription !== "—" && (
-          <details style={{ marginBottom: "1rem" }}>
-            <summary style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, color: "#037F81", userSelect: "none" }}>
-              📄 View Essay (click to expand)
-            </summary>
-            <div style={{
-              marginTop: 8, background: "#fff", border: "1px solid #e5e7eb",
-              borderRadius: 8, padding: "0.85rem 1rem",
-              fontSize: "0.85rem", color: "#374151", lineHeight: 1.7,
-              maxHeight: 220, overflowY: "auto", whiteSpace: "pre-wrap",
-            }}>
-              {appData.essayDescription}
-            </div>
-          </details>
-        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {ESSAY_CRITERIA.map((c) => (
@@ -1254,7 +1425,15 @@ export default function ViewApplication() {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Application not found.");
         }
-        const data = await res.json();
+        const raw = await res.json();
+
+        // The /:id route reuses getItems which returns ALL records as an array.
+        // Find the one that matches the requested appId.
+        const data = Array.isArray(raw)
+          ? raw.find((r) => String(r.volunteer_application_id) === String(appId))
+          : raw;
+
+        if (!data) throw new Error("Application not found.");
 
         const computedAge = (() => {
           if (data.age) return String(data.age);
@@ -1272,6 +1451,7 @@ export default function ViewApplication() {
           id:                    data.volunteer_application_id,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.notes || "",
+          assignedEvaluator:     data.assigned_evaluator || data.assigned_staff || null,
           dateApplied:           data.created_at
             ? new Date(data.created_at).toLocaleDateString("en-PH", {
                 day: "2-digit", month: "short", year: "numeric",
@@ -1381,13 +1561,22 @@ export default function ViewApplication() {
     );
   }
 
-  // ── Tab definitions — staff gets details + NLP, applicant gets details only ──
+  // ── Tab definitions — role-based ──
+  // Admin/Staff: Details + Evaluation + NLP
+  // User: Details only; if Approved or Rejected, also see Scores tab
+
+  const userCanSeeScores =
+    !isStaff &&
+    (appData.applicationStatus === "Approved" || appData.applicationStatus === "Rejected");
 
   const tabs = [
-    { id: "details",    label: "📄 Application Details",   staffOnly: false },
+    { id: "details",    label: "📄 Application Details" },
     ...(isStaff ? [
-      { id: "evaluation", label: "📋 Application Evaluation", staffOnly: true },
-      { id: "nlp",        label: "🤖 AI / NLP Analysis",      staffOnly: true },
+      { id: "evaluation", label: "📋 Application Evaluation" },
+      { id: "nlp",        label: "🤖 AI / NLP Analysis" },
+    ] : []),
+    ...(userCanSeeScores ? [
+      { id: "scores", label: "📊 My Scores" },
     ] : []),
   ];
 
@@ -1426,25 +1615,12 @@ export default function ViewApplication() {
 
           <div className={styles.headerTop}>
             <div>
-              <h1 className={styles.headerName}>{appData.name}</h1>
-              <p className={styles.headerMeta}>
-                App ID: <strong>{appData.id}</strong>
-                {" · "}
-                Date Applied: <strong>{appData.dateApplied}</strong>
+              <h1 className={styles.caseTitle}>APP-{String(appData.id).padStart(4, "0")}</h1>
+              <p className={styles.caseSubtitle}>
+                Date Applied: {appData.dateApplied}
               </p>
             </div>
-            <div className={styles.headerRight}>
-              <StatusBadge status={appData.applicationStatus} />
-              {isStaff && (
-                <button
-                  className={styles.btnPrimary}
-                  onClick={() => setModal("updateStatus")}
-                  style={{ marginTop: "0.5rem" }}
-                >
-                  Update Status
-                </button>
-              )}
-            </div>
+            <StatusBadge status={appData.applicationStatus} />
           </div>
 
           {appData.reviewNotes && (
@@ -1475,15 +1651,23 @@ export default function ViewApplication() {
 
           {/* Tab content */}
           {activeTab === "details" && userLoaded && (
-            <ApplicationDetailsTab appData={appData} />
+            <ApplicationDetailsTab appData={appData} isStaff={isStaff} />
           )}
 
           {activeTab === "evaluation" && isStaff && userLoaded && (
-            <ApplicationEvaluationTab appData={appData} isAdmin={isAdmin} />
+            <ApplicationEvaluationTab
+              appData={appData}
+              isAdmin={isAdmin}
+              onUpdateStatus={() => setModal("updateStatus")}
+            />
           )}
 
           {activeTab === "nlp" && isStaff && userLoaded && (
             <NLPEssayTab appId={appData.id} isAdmin={isAdmin} />
+          )}
+
+          {activeTab === "scores" && userLoaded && (
+            <ApplicantScoresTab appData={appData} />
           )}
 
         </div>
