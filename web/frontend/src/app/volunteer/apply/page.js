@@ -14,11 +14,35 @@ const STEPS = [
 ];
 
 const APP_STATUS_DISPLAY = {
-  "pending":   { middle: "Under Review",  phase: 1 },
-  "reviewing": { middle: "Being Evaluated", phase: 1 },
-  "approved":  { middle: "Approved",      phase: 2 },
-  "rejected":  { middle: "Rejected",      phase: 2 },
-  "withdrawn": { middle: "Withdrawn",     phase: 2 },
+  pending: {
+    middle: "Under Review",
+    final: "Pending",
+    phase: 1,
+  },
+
+  reviewing: {
+    middle: "Being Evaluated",
+    final: "Pending",
+    phase: 1,
+  },
+
+  approved: {
+    middle: "Being Evaluated",
+    final: "Approved",
+    phase: 2,
+  },
+
+  rejected: {
+    middle: "Being Evaluated",
+    final: "Rejected",
+    phase: 2,
+  },
+
+  withdrawn: {
+    middle: "Being Evaluated",
+    final: "Withdrawn",
+    phase: 2,
+  },
 };
 
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
@@ -959,22 +983,49 @@ function StatusStepper({ steps, current }) {
 }
 
 function ApplicationStepper({ statusRaw }) {
-  const key    = (statusRaw || "pending").toLowerCase();
-  const { middle, phase } = APP_STATUS_DISPLAY[key] ?? { middle: "In Progress", phase: 1 };
-  const steps  = ["Submitted", middle, "Resolved"];
+  const key = (statusRaw || "pending").toLowerCase();
+
+  const {
+    middle,
+    final,
+    phase,
+  } = APP_STATUS_DISPLAY[key] ?? {
+    middle: "In Progress",
+    final: "Pending",
+    phase: 1,
+  };
+
+  const steps = ["Submitted", middle, final];
 
   return (
     <div className={styles.stepper}>
       {steps.map((label, i) => {
-        const done   = i < phase;
+        const done = i < phase;
         const active = i === phase;
+
         return (
           <div key={i} className={styles.stepItem}>
             {i > 0 && (
-              <div className={`${styles.stepLine} ${done || active ? styles.stepLineDone : ""}`} />
+              <div
+                className={`${styles.stepLine} ${
+                  done || active ? styles.stepLineDone : ""
+                }`}
+              />
             )}
-            <div className={`${styles.stepDot} ${active ? styles.stepDotActive : ""} ${done ? styles.stepDotDone : ""}`} />
-            <span className={`${styles.stepLabel} ${active ? styles.stepLabelActive : ""}`}>{label}</span>
+
+            <div
+              className={`${styles.stepDot} ${
+                active ? styles.stepDotActive : ""
+              } ${done ? styles.stepDotDone : ""}`}
+            />
+
+            <span
+              className={`${styles.stepLabel} ${
+                active ? styles.stepLabelActive : ""
+              }`}
+            >
+              {label}
+            </span>
           </div>
         );
       })}
