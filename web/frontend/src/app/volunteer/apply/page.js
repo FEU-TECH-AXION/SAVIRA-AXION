@@ -1318,7 +1318,6 @@ export default function CreateApplication({
         )}
 
         {/* ── Your Application Status ── */}
-        {/* ── Your Application Status ── */}
 <div className={`${styles.sectionHeading} mt-5`}>
   <h2 className={styles.sectionTitle}>Your Application Status</h2>
   <div className={styles.headingLine} />
