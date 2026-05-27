@@ -13,7 +13,6 @@ const APPLICATION_STATUSES = [
   "Approved",
   "Rejected",
   "Withdrawn",
-  "Forfeited",
 ];
 
 const GENDER_OPTIONS = [
@@ -57,31 +56,28 @@ const CITY_OPTIONS = [
 
 const FIELDS_WITH_BACKGROUND_OPTIONS = [
   "All",
-  "Legal / Law",
-  "Social Work",
-  "Counseling / Psychology",
-  "Healthcare / Medicine",
-  "Education",
-  "Community Organizing",
-  "Research",
-  "Communications / Media",
-  "IT / Technology",
-  "Administration",
-  "Other",
+  "News Writing",
+  "Creative Writing",
+  "Photography",
+  "Videography",
+  "Graphic Designing",
+  "Layouting",
+  "Video Editing",
+  "Social Media Management",
+  "Content Creation",
 ];
 
 const FIELDS_OF_INTEREST_OPTIONS = [
   "All",
-  "Survivor Support",
-  "Legal Advocacy",
-  "Counseling / Psychosocial Support",
-  "Public Awareness & Education",
-  "Research & Documentation",
-  "Policy Advocacy",
-  "Community Outreach",
-  "Administrative Support",
-  "Communications",
-  "Other",
+  "News Writing",
+  "Creative Writing",
+  "Photography",
+  "Videography",
+  "Graphic Designing",
+  "Layouting",
+  "Video Editing",
+  "Social Media Management",
+  "Content Creation",
 ];
 
 // ─── Default filter fields ────────────────────────────────────────────────────
@@ -365,8 +361,9 @@ function DefaultFilterDropdown({ field, value, onChange }) {
  *  onFilterChange   — (newFilters) => void
  *  onSearch         — (searchString) => void
  *  searchValue      — controlled search string
+ *  onExtraColumnsChange — (newExtraColumns) => void
  */
-export default function FilterMenu({ activeFilters, onFilterChange, onSearch, searchValue }) {
+export default function FilterMenu({ activeFilters, onFilterChange, onSearch, searchValue, onExtraColumnsChange }) {
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [extraFields, setExtraFields] = useState([]);
   const menuRef = useRef(null);
@@ -392,14 +389,21 @@ export default function FilterMenu({ activeFilters, onFilterChange, onSearch, se
   }
 
   function toggleExtraField(key) {
-    setExtraFields(prev => {
-      if (prev.includes(key)) {
-        onFilterChange({ ...(activeFilters || {}), [key]: "" });
-        return prev.filter(k => k !== key);
-      }
-      return [...prev, key];
+  const next = extraFields.includes(key)
+    ? extraFields.filter(k => k !== key)
+    : [...extraFields, key];
+
+  setExtraFields(next);
+
+  onExtraColumnsChange?.(next);
+
+  if (extraFields.includes(key)) {
+    onFilterChange({
+      ...(activeFilters || {}),
+      [key]: "",
     });
   }
+}
 
   const extraFieldDefs = ALL_FILTER_FIELDS.filter(f => extraFields.includes(f.key));
 

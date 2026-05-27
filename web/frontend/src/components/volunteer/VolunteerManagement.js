@@ -80,7 +80,7 @@ function isDateInRange(dateString, startDate, endDate) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn", "Forfeited"];
+const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS BADGE
@@ -92,7 +92,6 @@ const STATUS_COLORS = {
   "Approved":  { bg: "#d1fae5", color: "#065f46" },
   "Rejected":  { bg: "#fee2e2", color: "#991b1b" },
   "Withdrawn": { bg: "#f3f4f6", color: "#374151" },
-  "Forfeited": { bg: "#f3f4f6", color: "#6b7280" },
 };
 
 function StatusBadge({ status }) {
@@ -275,6 +274,8 @@ export default function VolunteerManagement() {
   const [toast, setToast]           = useState(null);
   const [modal, setModal]           = useState(null);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [extraColumns, setExtraColumns] = useState([]);
+
 
   // Table state
   const [search, setSearch]         = useState("");
@@ -402,8 +403,9 @@ export default function VolunteerManagement() {
 
     // Gender filter (maps to gender_identity in DB, stored as `gender` in mapped obj)
     if (activeFilters.gender && activeFilters.gender !== "All") {
-      const q = activeFilters.gender.toLowerCase();
-      list = list.filter((a) => (a.gender || "").toLowerCase().includes(q));
+      list = list.filter((a) =>
+        (a.gender || "").toLowerCase() === activeFilters.gender.toLowerCase()
+      );
     }
 
     // City filter (add-filter)
@@ -532,6 +534,14 @@ export default function VolunteerManagement() {
                 onView={() => { setActiveFilters({}); setSearch(""); setPage(1); }}
               />
             </div>
+            <div className="col-12 col-sm-6">
+              <ActionCard
+                icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
+                title="Edit Screening Questions"
+                description="Manage the screening questions shown to applicants on the volunteer application form."
+                onView={() => router.push("/volunteer/screening-questions")}
+              />
+            </div>
           </div>
         </div>
 
@@ -550,6 +560,7 @@ export default function VolunteerManagement() {
                 onFilterChange={(f) => { setActiveFilters(f); setPage(1); }}
                 onSearch={(v) => { setSearch(v); setPage(1); }}
                 searchValue={search}
+                onExtraColumnsChange={setExtraColumns}
               />
             </div>
 
@@ -593,6 +604,7 @@ export default function VolunteerManagement() {
                 sortField={sortField}
                 sortDir={sortDir}
                 onSort={handleSort}
+                extraColumns={extraColumns}
               />
             )}
           </div>

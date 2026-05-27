@@ -32,7 +32,6 @@ const STATUS_COLORS = {
   "Approved":  { bg: "#d1fae5", color: "#065f46" },
   "Rejected":  { bg: "#fee2e2", color: "#991b1b" },
   "Withdrawn": { bg: "#f3f4f6", color: "#374151" },
-  "Forfeited": { bg: "#f3f4f6", color: "#6b7280" },
 };
 
 function StatusBadge({ status }) {
@@ -100,7 +99,7 @@ function Modal({ open, onClose, title, children }) {
 
 // ─── Update Status Modal ──────────────────────────────────────────────────────
 
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn", "Forfeited"];
+const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn",];
 
 function UpdateStatusModal({ open, onClose, appData, onSave }) {
   const [status, setStatus] = useState("Pending");
@@ -1372,7 +1371,7 @@ export default function ViewApplication() {
   if (error || !appData) {
     return (
       <div className={styles.pageWrapper} style={{ padding: "2rem" }}>
-        <button className={styles.backBtn} onClick={() => router.push("/volunteer/manage")}>
+        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
           <IoIosArrowBack /> Back to Volunteer Management
         </button>
         <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", color: "#991b1b" }}>
@@ -1421,7 +1420,7 @@ export default function ViewApplication() {
 
         {/* ── Header card ── */}
         <div className={styles.headerCard}>
-          <button className={styles.backBtn} onClick={() => router.push("/volunteer/manage")}>
+          <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
             <IoIosArrowBack /> Back to Volunteer Management
           </button>
 

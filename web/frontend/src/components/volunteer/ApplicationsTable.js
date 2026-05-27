@@ -13,6 +13,12 @@ const STATUS_COLORS = {
   "Withdrawn": { bg: "#f3f4f6", color: "#374151" },
 };
 
+const EXTRA_COLUMN_DEFS = {
+  city:                { label: "City",                    render: a => a.city || "—" },
+  fieldsWithBackground:{ label: "Fields with Background",    render: a => Array.isArray(a.fieldsWithBackground) ? a.fieldsWithBackground.join(", ") || "—" : "—" },
+  fieldsOfInterest:    { label: "Fields of Interest",      render: a => Array.isArray(a.fieldsOfInterest)     ? a.fieldsOfInterest.join(", ")     || "—" : "—" },
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
@@ -129,6 +135,7 @@ export default function ApplicationsTable({
   sortField,
   sortDir,
   onSort,
+  extraColumns,
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
 
@@ -228,12 +235,14 @@ export default function ApplicationsTable({
                   aria-label="Select all"
                 />
               </th>
-              <SortableTh field="id">App ID</SortableTh>
+              <SortableTh field="id">Application ID</SortableTh>
               <SortableTh field="name">Applicant Name</SortableTh>
               <SortableTh field="status">Status</SortableTh>
-              <th className={styles.th}>Organization</th>
-              <th className={styles.th}>Contact</th>
+              <th className={styles.th}>Gender</th>
               <SortableTh field="dateApplied">Date Applied</SortableTh>
+              {(extraColumns || []).map(key => (
+                <th key={key} className={styles.th}>{EXTRA_COLUMN_DEFS[key]?.label}</th>
+              ))}
               <th className={`${styles.th} ${styles.columnsTh}`}>
                 <ColumnsBtn />
               </th>
@@ -294,19 +303,21 @@ export default function ApplicationsTable({
                     </td>
 
                     <td className={styles.td}>
-                      {a.organization
-                        ? <span className={styles.orgText}>{a.organization === "BSP" ? "BSP" : a.organization === "GSP" ? "GSP" : "Other"}</span>
+                      {a.gender
+                        ? <span className={styles.orgText}>{a.gender}</span>
                         : <span className={styles.muted}>—</span>
                       }
                     </td>
 
                     <td className={styles.td}>
-                      <span className={styles.contactText}>{a.contact || <span className={styles.muted}>—</span>}</span>
-                    </td>
-
-                    <td className={styles.td}>
                       <span className={styles.dateText}>{formatDate(a.dateApplied)}</span>
                     </td>
+
+                    {(extraColumns || []).map(key => (
+                      <td key={key} className={styles.td}>
+                        {EXTRA_COLUMN_DEFS[key]?.render(a)}
+                      </td>
+                    ))}
 
                     <td className={styles.td} />
                   </tr>
