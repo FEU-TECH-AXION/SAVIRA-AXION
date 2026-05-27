@@ -254,9 +254,7 @@ export default function UsersTable({
                     </td>
 
                     {/* Name */}
-                    <td className={styles.td}>
-                      <strong>{u.name}</strong>
-                    </td>
+                    <td className={styles.td}>{u.name}</td>
 
                     {/* Status */}
                     <td className={styles.td}>
