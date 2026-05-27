@@ -172,7 +172,7 @@ const createItem = async (req, res) => {
             rank:                      applicant.rank             || null,
             non_negotiable_passed:     nonNegotiablePassed,
             negotiable_score:          negotiableScore,
-            application_status:        nonNegotiablePassed ? 'pending' : 'forfeited',
+            application_status:        nonNegotiablePassed ? 'pending' : 'rejected',
             interview_required:        nonNegotiablePassed ? true : false,
             birthday:                   applicant.birthday ? new Date(applicant.birthday) : null,
             fields_with_background: screeningQuestions.withBackground   || [],
