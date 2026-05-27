@@ -542,45 +542,34 @@ export default function ProjectManagement() {
               <div className={styles.headingLine} />
             </div>
 
-            {/* ── Top bar: filter + search ── */}
-            <div className={styles.tableTopBar}>
-              <ProjectFilterMenu
-                activeFilters={activeFilters}
-                onFilterChange={(f) => { setActiveFilters(f); setPage(1); }}
-                onSearch={(v) => { setSearch(v); setPage(1); }}
-                searchValue={search}
-              />
+            <div className={styles.layout}>
+              <div>
+                {/* ── Top bar: filter + search ── */}
+                <div className={styles.tableTopBar}>
+                  <ProjectFilterMenu
+                    activeFilters={activeFilters}
+                    onFilterChange={(f) => { setActiveFilters(f); setPage(1); }}
+                    onSearch={(v) => { setSearch(v); setPage(1); }}
+                    searchValue={search}
+                  />
+                </div>
+
+                {/* ── Table ── */}
+                <ProjectsTable
+                  paginated={paginated}
+                  page={page}
+                  totalPages={totalPages}
+                  totalRecords={filtered.length}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                  onRowDoubleClick={openEdit}
+                  onDeleteSelected={handleBulkDelete}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              </div>
             </div>
-
-            {/* ── Record count label ── */}
-            <p className={styles.recordLabel}>
-              {filtered.length === projects.length
-                ? `Showing all ${projects.length} project${projects.length !== 1 ? "s" : ""}`
-                : `Showing ${filtered.length} of ${projects.length} project${projects.length !== 1 ? "s" : ""}`}
-              {(hasActiveFilters || search) && (
-                <button
-                  className={styles.clearFiltersBtn}
-                  onClick={() => { setActiveFilters({}); setSearch(""); }}
-                >
-                  Clear filters
-                </button>
-              )}
-            </p>
-
-            {/* ── Table ── */}
-            <ProjectsTable
-              paginated={paginated}
-              page={page}
-              totalPages={totalPages}
-              totalRecords={filtered.length}
-              pageSize={PAGE_SIZE}
-              onPageChange={setPage}
-              onRowDoubleClick={openEdit}
-              onDeleteSelected={handleBulkDelete}
-              sortField={sortField}
-              sortDir={sortDir}
-              onSort={handleSort}
-            />
           </div>
         </section>
       </main>

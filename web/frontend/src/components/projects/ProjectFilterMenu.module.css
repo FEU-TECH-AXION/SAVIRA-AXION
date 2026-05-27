@@ -7,9 +7,12 @@
 .filterBarWrap {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
   flex-wrap: wrap;
   flex: 1;
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
 }
 
 /* ── Search box ── */
