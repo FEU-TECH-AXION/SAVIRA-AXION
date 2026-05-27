@@ -297,12 +297,6 @@
 }
 
 /* ── Two-column layout ── */
-.layout {
-  display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 1.5rem;
-  align-items: start;
-}
 
 /* ── Table ── */
 .tableWrap {
@@ -310,6 +304,14 @@
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   overflow: hidden;
+}
+
+.tableTopBar {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem; padding: 1rem;
+  background: var(--sasha-white);
+  border-radius: 10px;
+  border: 1px solid var(--sasha-border);
 }
 
 .table {

@@ -6,15 +6,16 @@ import styles from "./UserManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
 import { fetchUsers } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import UsersTable from "./UsersTable";
+import UserFilterMenu from "./UserFilterMenu";
 
 const ROLES = [
   "All",
   "Admin",
   "Case Officer",
-  "Legal",
-  "Member",
-  "Complainants",
-  "Volunteers",
+  "Legal Personnel",
+  "Staff",
+  "User",
 ];
 
 const ROLES_MAP = {
@@ -54,6 +55,10 @@ function normalizeUser(raw) {
 
   const role = raw.roles?.role_name || raw.role_name || raw.role || "Unknown";
 
+  const ROLE_NAME_TO_ID = {
+  "User": 1, "Staff": 2, "Admin": 3, "Legal Personnel": 4, "Case Officer": 5,
+};
+
   // Status driven by is_active column
   const status = raw.is_active === false ? "Inactive" : "Active";
 
@@ -75,8 +80,10 @@ function normalizeUser(raw) {
     user_name:      raw.user_name      ?? "",
     contact_number: raw.contact_number ?? "",
     profile_img:    raw.profile_img    ?? "",
-    role_id:        raw.role_id        ?? null,
+    role_id: raw.role_id ?? raw.roles?.id ?? ROLE_NAME_TO_ID[role] ?? null,
     is_active:      raw.is_active      ?? true,
+    committee_id:   raw.committee_id   ?? raw.committee?.committee_id ?? "",
+    committee:      raw.committee?.committee_name ?? raw.committee_name ?? raw.committee ?? "",
   };
 }
 
@@ -432,11 +439,18 @@ function ViewUserModal({ open, onClose, user }) {
 // ══════════════════════════════════════════════════════════════════
 // EDIT USER MODAL
 // ══════════════════════════════════════════════════════════════════
+const COMMITTEES = [
+  "Ways and Means",
+  "Membership",
+  "Publication",
+  "Education and Research",
+];
+
 function EditUserModal({ open, onClose, user, onSave }) {
   const EMPTY_FORM = {
     first_name: "", middle_name: "", last_name: "", extension_name: "",
     user_name: "", password: "", contact_number: "", profile_img: "",
-    role_id: "", role: "", status: "Active",
+    role_id: "", role: "", status: "Active", committee_id: "",
   };
 
   const [form, setForm]               = useState(EMPTY_FORM);
@@ -463,9 +477,10 @@ function EditUserModal({ open, onClose, user, onSave }) {
         password:       "",
         contact_number: user.contact_number ?? "",
         profile_img:    user.profile_img    ?? "",
-        role_id:        user.role_id        ?? "",
+        role_id:        user.role_id != null ? String(user.role_id) : "",
         role:           user.role           ?? "",
         status:         user.status         ?? "Active",
+        committee_id:   user.committee_id   ?? user.committee ?? "",
       });
       setPreview(user.profile_img || null);
       setErrors({});
@@ -480,6 +495,9 @@ function EditUserModal({ open, onClose, user, onSave }) {
     if (form.password && form.password.length < 6)
       e.password = "Password must be at least 6 characters.";
     if (!form.role_id) e.role_id = "Role is required.";
+    const matchedRole = roleOptions.find((r) => String(r.id) === String(form.role_id));
+    if (matchedRole?.role_name === "Staff" && !form.committee_id)
+      e.committee_id = "Committee is required for Staff role.";
     return e;
   }
 
@@ -557,15 +575,32 @@ function EditUserModal({ open, onClose, user, onSave }) {
           <select
             className={`${styles.formInput} ${errors.role_id ? styles.inputError : ""}`}
             value={form.role_id}
-            onChange={(e) => setForm((prev) => ({ ...prev, role_id: e.target.value }))}
+            onChange={(e) => setForm((prev) => ({ ...prev, role_id: e.target.value, committee_id: "" }))}
           >
             <option value="">Select a role…</option>
             {roleOptions.map((r) => (
-              <option key={r.id} value={r.id}>{r.role_name}</option>
+              <option key={r.id} value={String(r.id)}>{r.role_name}</option>
             ))}
           </select>
           {errors.role_id && <span className={styles.errorMsg}>{errors.role_id}</span>}
         </div>
+        {/* Committee — required only when role is Staff */}
+        {roleOptions.find((r) => String(r.id) === String(form.role_id))?.role_name === "Staff" && (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Committee *</label>
+            <select
+              className={`${styles.formInput} ${errors.committee_id ? styles.inputError : ""}`}
+              value={form.committee_id}
+              onChange={(e) => setForm((prev) => ({ ...prev, committee_id: e.target.value }))}
+            >
+              <option value="">— Select Committee —</option>
+              {COMMITTEES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            {errors.committee_id && <span className={styles.errorMsg}>{errors.committee_id}</span>}
+          </div>
+        )}
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Status</label>
           <div className={styles.radioGroup}>
@@ -772,8 +807,10 @@ export default function AdminDashboard() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [search, setSearch]       = useState("");
-  const [activeRole, setActiveRole] = useState("All");
   const [page, setPage]           = useState(1);
+  const [advancedFilters, setAdvancedFilters] = useState({});
+  const [sortField, setSortField] = useState("dateCreated");
+  const [sortDir, setSortDir]     = useState("desc");
 
   const [modal, setModal]                 = useState(null);
   const [selectedUser, setSelectedUser]   = useState(null);
@@ -829,8 +866,9 @@ export default function AdminDashboard() {
       extension_name: updated.extension_name,
       user_name:      updated.user_name,
       contact_number: updated.contact_number,
-      role_id:        updated.role_id,
+      role_id:        updated.role_id ? parseInt(updated.role_id) : null,
       is_active:      updated.status === "Active",
+      committee_id:   updated.role === "Staff" && updated.committee_id ? updated.committee_id : null,
     };
 
     if (updated.password) payload.password = updated.password;
@@ -922,18 +960,84 @@ export default function AdminDashboard() {
   // ── Filter + search ───────────────────────────────────────────
   const filtered = useMemo(() => {
     return users.filter((u) => {
-      const matchRole   = activeRole === "All" || u.role === activeRole;
+      // Search
       const matchSearch =
+        !search.trim() ||
         (u.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        String(u.user_id ?? "").includes(search) ||
         (u.role ?? "").toLowerCase().includes(search.toLowerCase());
-      return matchRole && matchSearch;
+
+      // Role filter
+      const matchRole = !advancedFilters.role || advancedFilters.role === "All" || u.role === advancedFilters.role;
+
+      // Status filter
+      const matchStatus = !advancedFilters.status || advancedFilters.status === "All" || u.status === advancedFilters.status;
+
+      // Date Created filter
+      const matchDate = (() => {
+        const f = advancedFilters.dateCreated;
+        if (!f || f === "" || f === "All") return true;
+        const raw = u.created_at || u.date_created;
+        if (!raw) return false;
+        const d = new Date(raw);
+        const now = new Date();
+        if (f === "today") {
+          return d.toDateString() === now.toDateString();
+        } else if (f === "thisWeek") {
+          const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0,0,0,0);
+          return d >= start;
+        } else if (f === "thisMonth") {
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        } else if (f === "thisYear") {
+          return d.getFullYear() === now.getFullYear();
+        } else if (f === "last30Days") {
+          const start = new Date(now); start.setDate(now.getDate() - 30);
+          return d >= start;
+        } else if (f.startsWith("custom|")) {
+          const [, s, e] = f.split("|");
+          return d >= new Date(s + "T00:00:00") && d <= new Date(e + "T23:59:59");
+        }
+        return true;
+      })();
+
+      // Committee filter (only applicable when role = Staff)
+      const matchCommittee = (() => {
+        const f = advancedFilters.committee;
+        if (!f || f === "All") return true;
+        if (u.role !== "Staff") return false;
+        return (u.committee ?? u.committee_name ?? "") === f;
+      })();
+
+      // City filter
+      const matchCity = !advancedFilters.city || advancedFilters.city === "All" ||
+        (u.city ?? "").toLowerCase().includes(advancedFilters.city.toLowerCase());
+
+      // Verification Status filter
+      const matchVerification = !advancedFilters.verificationStatus || advancedFilters.verificationStatus === "All" ||
+        (u.verification_status ?? u.verificationStatus ?? "Unverified") === advancedFilters.verificationStatus;
+
+      return matchSearch && matchRole && matchStatus && matchDate && matchCommittee && matchCity && matchVerification;
     });
-  }, [users, activeRole, search]);
+  }, [users, search, advancedFilters]);
 
-  useEffect(() => { setPage(1); }, [search, activeRole]);
+  // ── Sort ──────────────────────────────────────────────────────
+  const sortedFiltered = useMemo(() => {
+    if (!sortField) return filtered;
+    return [...filtered].sort((a, b) => {
+      let av = a[sortField] ?? "";
+      let bv = b[sortField] ?? "";
+      if (typeof av === "string") av = av.toLowerCase();
+      if (typeof bv === "string") bv = bv.toLowerCase();
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filtered, sortField, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [search, advancedFilters]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / PAGE_SIZE));
+  const paginated  = sortedFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── Modal helpers ─────────────────────────────────────────────
   function openView(u)   { setSelectedUser(u); setModal("view"); }
@@ -1023,84 +1127,48 @@ export default function AdminDashboard() {
               <div className={styles.headingLine} />
             </div>
             <div className={styles.layout}>
-              <div className={styles.tableWrap}>
-                {loading ? (
-                  <div className={styles.loadingState}>Loading users…</div>
-                ) : error ? (
-                  <div className={styles.errorState}>Error loading users: {error}</div>
-                ) : (
-                  <>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Role</th>
-                          <th>Status</th>
-                          <th>Date Created</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginated.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className={styles.emptyState}>No users found.</td>
-                          </tr>
-                        ) : (
-                          paginated.map((u) => (
-                            <tr key={u.user_id}>
-                              <td>{u.name}</td>
-                              <td>{u.role}</td>
-                              <td><StatusBadge status={u.status} /></td>
-                              <td>{u.dateCreated}</td>
-                              <td>
-                                <div className={styles.actionBtns}>
-                                  <button className={styles.tblBtnView} onClick={() => openView(u)}>View</button>
-                                  <button className={styles.tblBtnEdit} onClick={() => openEdit(u)}>Edit</button>
-                                  <button className={styles.tblBtnDelete} onClick={() => openDelete(u)}>
-                                    {u.status === "Inactive" ? "Manage" : "Deactivate"}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                    <Pagination current={page} total={totalPages} onChange={setPage} />
-                  </>
-                )}
-              </div>
-
-              {/* Sidebar */}
-              <aside className={styles.sidebar}>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Search</h3>
-                  <div className={styles.searchWrap}>
+              <div>
+                <div className={styles.tableTopBar}>
+                  <div className={styles.searchWrap} style={{ flex: 1 }}>
                     <input
                       className={styles.searchInput}
                       type="text"
-                      placeholder="Search"
+                      placeholder="Search by User ID, Name, or Role…"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
                     <span className={styles.searchIcon}><FiSearch /></span>
                   </div>
+                  <UserFilterMenu
+                    activeFilters={advancedFilters}
+                    onFilterChange={setAdvancedFilters}
+                    onDone={() => {}}
+                  />
                 </div>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Sort By</h3>
-                  <div className={styles.roleList}>
-                    {ROLES.filter((r) => r !== "All").map((role) => (
-                      <button
-                        key={role}
-                        className={`${styles.roleBtn} ${activeRole === role ? styles.roleBtnActive : ""}`}
-                        onClick={() => setActiveRole(activeRole === role ? "All" : role)}
-                      >
-                        {role}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </aside>
+                {loading ? (
+                  <div className={styles.loadingState}>Loading users…</div>
+                ) : error ? (
+                  <div className={styles.errorState}>Error loading users: {error}</div>
+                ) : (
+                  <UsersTable
+                    paginated={paginated}
+                    page={page}
+                    totalPages={totalPages}
+                    totalRecords={sortedFiltered.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setPage}
+                    onEdit={(u) => openEdit(u)}
+                    onDeactivate={(u) => openDelete(u)}
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    onSort={(field) => {
+                      if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+                      else { setSortField(field); setSortDir("asc"); }
+                    }}
+                    activeRoleFilter={advancedFilters.role || "All"}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </section>
