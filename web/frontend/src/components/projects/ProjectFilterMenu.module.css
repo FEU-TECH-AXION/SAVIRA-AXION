@@ -10,9 +10,6 @@
   gap: 1rem;
   flex-wrap: wrap;
   flex: 1;
-  background: var(--sasha-white);
-  border-radius: var(--sasha-card-radius);
-  border: 1px solid var(--sasha-border);
 }
 
 /* ── Search box ── */

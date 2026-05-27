@@ -287,26 +287,33 @@
   background: #025f61;
 }
 
-/* ── Extra filter wrapper (removable) ── */
+/* ── Extra filter wrapper (removable pill) ── */
 .extraFilterWrap {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+.extraFilterWrap .defaultFilterBtn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .removeExtraBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: none;
+  width: 24px;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid #e5e7eb;
+  border-left: none;
   background: #fee2e2;
   color: #991b1b;
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   transition: background 0.12s;
+  flex-shrink: 0;
 }
 
 .removeExtraBtn:hover {
