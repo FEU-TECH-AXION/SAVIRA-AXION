@@ -22,6 +22,7 @@
   background: var(--sasha-offwhite);
   min-height: 100vh;
   padding-bottom: 4rem;
+  margin-top: 64px;
 }
 
 /* ── Header bar ── */
