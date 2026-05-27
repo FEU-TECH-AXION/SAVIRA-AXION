@@ -12,13 +12,11 @@ const create = async (payload) => {
     const { data, error } = await supabase
         .from('volunteer_applications')
         .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
-    if (error) throw error
-
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
-    return data[0]
-}
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
 
 const update = async (id, payload) => {
     const { data, error } = await supabase
@@ -38,5 +36,6 @@ const getByEmail = async (email) => {
         .order('created_at', { ascending: false });
     if (error) throw error
     return data                                                                                                                                                                                                                                                
-}                   
+}
+
 module.exports = { getAll, create, update, getByEmail }

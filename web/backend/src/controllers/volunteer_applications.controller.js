@@ -4,6 +4,8 @@ const ScreeningAnswerModel      = require('../models/screening_answers.model')
 const ScreeningQuestionSetModel = require('../models/screening_question_set.model')
 const OrganizationsModel         = require('../models/organizations.model')
 const supabase                     = require('../config/supabase')
+const { runVolunteerEssayAnalysis } = require('../services/volunteerNlp.service')
+
 
 // Maps your form keys to question_key values in the database
 const ANSWER_MAP = {
@@ -187,6 +189,22 @@ const createItem = async (req, res) => {
         }))
 
         await ScreeningAnswerModel.createMany(answersWithAppId)
+
+        // ── Trigger NLP essay analysis (fire-and-forget, non-blocking) ──
+        if (essay.description && essay.description.trim().length >= 20) {
+            runVolunteerEssayAnalysis({
+                volunteer_application_id: application.volunteer_application_id,
+                essay_response:           essay.description,
+            });
+            // intentionally no await — same fire-and-forget pattern as case reports
+        }
+
+        res.status(201).json({
+            message:            'Application submitted successfully.',
+            application,
+            nonNegotiablePassed,
+            negotiableScore,
+        })
 
         res.status(201).json({
             message:            'Application submitted successfully.',

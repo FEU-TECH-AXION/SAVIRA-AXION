@@ -7,6 +7,10 @@ from pipeline.preprocessor import preprocess
 from pipeline.anonymizer import anonymize
 from pipeline.groq_client import analyze
 
+from pipeline.essay_grader import grade_essay
+from pipeline.preprocessor import preprocess
+from pipeline.anonymizer  import anonymize
+
 load_dotenv()
 
 app = FastAPI(title="SAVIRA NLP Service", version="1.0.0")
@@ -116,3 +120,119 @@ async def analyze_report(report: ReportRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    # ── Volunteer Application ────────────────────────────────────────
+
+    # ── Request schema ────────────────────────────────────────────────
+class EssayRequest(BaseModel):
+    volunteer_application_id: int
+    essay_response:           str
+
+# ── Response schema ───────────────────────────────────────────────
+class EssayAnalysisResponse(BaseModel):
+    volunteer_application_id: int
+    # Scores
+    mission_alignment_score:  float
+    maturity_judgment_score:  float
+    commitment_score:         float
+    writing_clarity_score:    float
+    relevant_experience_score: float
+    essay_weighted_total:     float   # out of 100
+    essay_score_out_of_50:    float   # scaled for aggregate
+    # Notes
+    mission_alignment_notes:  str
+    maturity_judgment_notes:  str
+    commitment_notes:         str
+    writing_clarity_notes:    str
+    relevant_experience_notes: str
+    # Recommendation
+    recommendation:           str     # RECOMMEND | REVIEW | REJECT
+    recommendation_notes:     str
+    threshold_passed:         bool
+    # Meta
+    anonymized_essay:         str
+    language_detected:        str
+
+
+@app.post("/analyze/essay", response_model=EssayAnalysisResponse)
+async def analyze_essay(request: EssayRequest):
+    """
+    Essay NLP pipeline:
+    1. Anonymize PII from raw essay text (Presidio)
+    2. Preprocess anonymized text (normalize, language detect)
+    3. Send to Groq for essay grading against SASHA criteria
+    4. Compute weighted total server-side
+    5. Return structured scores, notes, and recommendation
+    """
+    try:
+        if not request.essay_response.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Essay response is required for analysis."
+            )
+
+        # Step 1 — Anonymize PII first on raw essay
+        anonymized = anonymize(request.essay_response)
+
+        # Step 2 — Preprocess anonymized essay (language detection only)
+        preprocessed = preprocess(anonymized["anonymized_text"])
+
+        # Step 3 — Grade essay via Groq
+        result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: grade_essay(anonymized["anonymized_text"])
+        )
+
+        scores = result.get("scores", {})
+        notes  = result.get("notes", {})
+
+        # Step 4 — Determine if threshold passed
+        # Essay must score at least 50/100 weighted to pass
+        threshold_passed = result["essay_weighted_total"] >= 50.0
+
+        # Step 5 — Return structured result
+        return EssayAnalysisResponse(
+            volunteer_application_id  = request.volunteer_application_id,
+
+            # Scores for DB
+            mission_alignment_score   = scores.get("mission_alignment", 0),
+            maturity_judgment_score   = scores.get("maturity_judgment", 0),
+            commitment_score          = scores.get("commitment", 0),
+            writing_clarity_score     = scores.get("writing_clarity", 0),
+            relevant_experience_score = scores.get("relevant_experience", 0),
+            essay_weighted_total      = result["essay_weighted_total"],
+            essay_score_out_of_50     = result["essay_score_out_of_50"],
+
+            # Notes for DB
+            mission_alignment_notes   = notes.get("mission_alignment", ""),
+            maturity_judgment_notes   = notes.get("maturity_judgment", ""),
+            commitment_notes          = notes.get("commitment", ""),
+            writing_clarity_notes     = notes.get("writing_clarity", ""),
+            relevant_experience_notes = notes.get("relevant_experience", ""),
+
+            # NLPEssayTab fields
+            summary                   = result.get("summary", ""),
+            overall_score             = result.get("overall_score", 0),
+            overall_label             = result.get("overall_label", ""),
+            dimensions                = result.get("dimensions", {}),
+            strengths                 = result.get("strengths", []),
+            concerns                  = result.get("concerns", []),
+            recommendation            = result.get("recommendation", ""),
+            recommend_approve         = result.get("recommend_approve", False),
+
+            # Meta
+            anonymized_essay          = anonymized["anonymized_text"],
+            language_detected         = preprocessed["language"],
+            word_count                = len(request.essay_response.split()),
+            threshold_passed          = result["essay_weighted_total"] >= 50.0,
+            recommendation_label      = result.get("overall_label", ""),
+            recommendation_notes      = notes.get("mission_alignment", ""),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Essay analysis failed: {str(e)}"
+        )
