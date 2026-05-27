@@ -342,7 +342,7 @@ function CreateUserModal({ open, onClose, onSave }) {
           >
             <option value="">— Select Role —</option>
             {ROLES.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
+              <option key={r.role_id} value={r.role_id}>{r.name}</option>
             ))}
           </select>
           {errors.role_id && <span className={styles.errorMsg}>{errors.role_id}</span>}
@@ -446,6 +446,12 @@ const COMMITTEES = [
   "Education and Research",
 ];
 
+// Pre-seeded from ROLES_MAP so the dropdown is never empty while Supabase loads
+const LOCAL_ROLE_OPTIONS = Object.entries(ROLES_MAP).map(([id, name]) => ({
+  role_id: Number(id),
+  role_name: name,
+}));
+
 function EditUserModal({ open, onClose, user, onSave }) {
   const EMPTY_FORM = {
     first_name: "", middle_name: "", last_name: "", extension_name: "",
@@ -456,13 +462,19 @@ function EditUserModal({ open, onClose, user, onSave }) {
   const [form, setForm]               = useState(EMPTY_FORM);
   const [errors, setErrors]           = useState({});
   const [preview, setPreview]         = useState(null);
-  const [roleOptions, setRoleOptions] = useState([]);
+  const [roleOptions, setRoleOptions] = useState(LOCAL_ROLE_OPTIONS);
 
   useEffect(() => {
     async function loadRoles() {
-      const { data, error } = await supabase.from("roles").select("id, role_name");
-      if (!error && data) setRoleOptions(data);
+      const { data, error } = await supabase
+        .from("roles")
+        .select("role_id, role_name");
+
+      if (!error && data && data.length > 0) {
+        setRoleOptions(data);
+      }
     }
+
     loadRoles();
   }, []);
 
@@ -495,7 +507,7 @@ function EditUserModal({ open, onClose, user, onSave }) {
     if (form.password && form.password.length < 6)
       e.password = "Password must be at least 6 characters.";
     if (!form.role_id) e.role_id = "Role is required.";
-    const matchedRole = roleOptions.find((r) => String(r.id) === String(form.role_id));
+    const matchedRole = roleOptions.find((r) => String(r.role_id) === String(form.role_id));
     if (matchedRole?.role_name === "Staff" && !form.committee_id)
       e.committee_id = "Committee is required for Staff role.";
     return e;
@@ -515,7 +527,7 @@ function EditUserModal({ open, onClose, user, onSave }) {
     const updatedName = [form.first_name, form.middle_name, form.last_name, form.extension_name]
       .filter(Boolean).join(" ");
 
-    const matchedRole = roleOptions.find((r) => String(r.id) === String(form.role_id));
+    const matchedRole = roleOptions.find((r) => String(r.role_id) === String(form.role_id));
 
     onSave({
       ...user,
@@ -577,15 +589,15 @@ function EditUserModal({ open, onClose, user, onSave }) {
             value={form.role_id}
             onChange={(e) => setForm((prev) => ({ ...prev, role_id: e.target.value, committee_id: "" }))}
           >
-            <option value="">Select a role…</option>
+            <option value="">Select a role</option>
             {roleOptions.map((r) => (
-              <option key={r.id} value={String(r.id)}>{r.role_name}</option>
+              <option key={r.role_id} value={String(r.role_id)}>{r.role_name}</option>
             ))}
           </select>
           {errors.role_id && <span className={styles.errorMsg}>{errors.role_id}</span>}
         </div>
         {/* Committee — required only when role is Staff */}
-        {roleOptions.find((r) => String(r.id) === String(form.role_id))?.role_name === "Staff" && (
+        {roleOptions.find((r) => String(r.role_id) === String(form.role_id))?.role_name === "Staff" && (
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Committee *</label>
             <select
@@ -593,7 +605,7 @@ function EditUserModal({ open, onClose, user, onSave }) {
               value={form.committee_id}
               onChange={(e) => setForm((prev) => ({ ...prev, committee_id: e.target.value }))}
             >
-              <option value="">— Select Committee —</option>
+              <option value="">Select a committee</option>
               {COMMITTEES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
