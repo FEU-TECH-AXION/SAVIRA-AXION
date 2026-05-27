@@ -1,0 +1,407 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import styles from "./LegalTable.module.css";
+
+// ─── Status badge colors ─────────────────────────────────────────────────────
+
+const STATUS_COLORS = {
+  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" },
+  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" },
+  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" },
+  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" },
+  "Dismissed":             { bg: "#f1f5f9", color: "#475569" },
+  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" },
+};
+
+// Row background tints per legal status
+const ROW_STATUS_ROW_COLOR = {
+  "Under Case Evaluation": "#faf5ff",
+  "Case Filed":            "#fff7ed",
+  "Investigation Ongoing": "#f0fffe",
+  "Hearing Ongoing":       "#fff0f8",
+  "Dismissed":             "#f8fafc",
+  "Perpetrator Convicted": "#f0fdf4",
+};
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function StatusBadge({ status }) {
+  const s = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
+  return (
+    <span
+      className={styles.statusBadge}
+      style={{ background: s.bg, color: s.color, border: s.border || "none" }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function PendingBadge() {
+  return (
+    <span className={styles.pendingBadge}>
+      ⏱ Pending
+    </span>
+  );
+}
+
+// ─── Pagination ──────────────────────────────────────────────────────────────
+
+function Pagination({ current, total, totalRecords, pageSize, onChange }) {
+  const start = Math.min((current - 1) * pageSize + 1, totalRecords);
+  const end   = Math.min(current * pageSize, totalRecords);
+
+  // Build visible page numbers: always show first, last, current ±1, with ellipsis
+  const pages = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    const set = new Set([1, total, current, current - 1, current + 1].filter(p => p >= 1 && p <= total));
+    const sorted = [...set].sort((a, b) => a - b);
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i] - sorted[i - 1] > 1) pages.push("...");
+      pages.push(sorted[i]);
+    }
+  }
+
+  return (
+    <div className={styles.paginationBar}>
+      {/* Left arrow */}
+      <button
+        className={styles.pageArrow}
+        onClick={() => onChange(current - 1)}
+        disabled={current === 1}
+        aria-label="Previous page"
+      >
+        ‹
+      </button>
+
+      {/* Page buttons */}
+      <div className={styles.pageNumbers}>
+        {pages.map((p, i) =>
+          p === "..." ? (
+            <span key={`ellipsis-${i}`} className={styles.ellipsis}>…</span>
+          ) : (
+            <button
+              key={p}
+              className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`}
+              onClick={() => onChange(p)}
+            >
+              {p}
+            </button>
+          )
+        )}
+      </div>
+
+      {/* Right arrow */}
+      <button
+        className={styles.pageArrow}
+        onClick={() => onChange(current + 1)}
+        disabled={current === total}
+        aria-label="Next page"
+      >
+        ›
+      </button>
+
+      {/* Record count — bottom right */}
+      <div className={styles.recordCount}>
+        {start}–{end} out of {totalRecords} records
+        <span className={styles.recordCaret}>▾</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Columns toggle button ────────────────────────────────────────────────────
+
+function ColumnsBtn() {
+  return (
+    <button className={styles.columnsBtn} title="Toggle columns" aria-label="Manage columns">
+      {/* 2×3 grid icon */}
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.7" />
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.7" />
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.3" />
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.3" />
+      </svg>
+    </button>
+  );
+}
+
+// ─── Main CasesTable ─────────────────────────────────────────────────────────
+
+/**
+ * Props:
+ *  paginated              — array of legal case objects for current page
+ *  page                   — current page number (1-based)
+ *  totalPages             — total number of pages
+ *  totalRecords           — total filtered records count
+ *  pageSize               — records per page (e.g. 10)
+ *  onPageChange(p)        — callback when page changes
+ *  onRowDoubleClick(c)    — callback when a row is double-clicked (opens ViewLegalCase)
+ *  onParalegal(cases[])   — bulk paralegal action for selected cases
+ *  onEndorse(cases[])     — bulk endorse action for selected cases
+ *  onMonitor(cases[])     — bulk monitor action for selected cases
+ *  onStatus(cases[])      — bulk status update for selected cases
+ *  isAdmin                — boolean
+ *  sortField              — current sort field key
+ *  sortDir                — "asc" | "desc"
+ *  onSort(field)          — callback when a sortable header is clicked
+ */
+export default function LegalTable({
+  paginated = [],
+  page = 1,
+  totalPages = 1,
+  totalRecords = 0,
+  pageSize = 10,
+  onPageChange,
+  onRowDoubleClick,
+  onParalegal,
+  onEndorse,
+  onMonitor,
+  onStatus,
+  isAdmin,
+  sortField,
+  sortDir,
+  onSort,
+}) {
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Sync selection: clear if paginated changes (page turn)
+  const pageIds = useMemo(() => paginated.map(c => c.id), [paginated]);
+
+  const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const someSelected = pageIds.some(id => selectedIds.has(id));
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        pageIds.forEach(id => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        pageIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  }
+
+  function toggleRow(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const selectedCases = paginated.filter(c => selectedIds.has(c.id));
+  const selectionCount = selectedCases.length;
+
+  // Format submission date like image: "14-Aug-2024 10:10 AM"
+  function formatDate(dateStr) {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr; // fallback if already formatted
+    return d.toLocaleString("en-PH", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).replace(",", "");
+  }
+
+  // Sort indicator
+  function SortIcon({ field }) {
+    if (sortField !== field) return <span className={styles.sortNeutral}>↕</span>;
+    return <span className={styles.sortActive}>{sortDir === "asc" ? "↑" : "↓"}</span>;
+  }
+
+  function SortableTh({ field, children }) {
+    return (
+      <th
+        className={`${styles.th} ${styles.sortableTh}`}
+        onClick={() => onSort && onSort(field)}
+      >
+        {children} <SortIcon field={field} />
+      </th>
+    );
+  }
+
+  return (
+    <div className={styles.tableWrap}>
+      {/* Bulk action bar — appears when rows are selected */}
+      {selectionCount > 0 && (
+        <div className={styles.bulkBar}>
+          <span className={styles.bulkCount}>{selectionCount} selected</span>
+          <div className={styles.bulkActions}>
+            <button
+              className={styles.bulkBtn}
+              onClick={() => onParalegal && onParalegal(selectedCases)}
+            >
+              Paralegal
+            </button>
+            <button
+              className={styles.bulkBtn}
+              onClick={() => onEndorse && onEndorse(selectedCases)}
+            >
+              Endorse
+            </button>
+            <button
+              className={styles.bulkBtn}
+              onClick={() => onMonitor && onMonitor(selectedCases)}
+            >
+              Monitor
+            </button>
+            <button
+              className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`}
+              onClick={() => onStatus && onStatus(selectedCases)}
+            >
+              Status
+            </button>
+          </div>
+          <button
+            className={styles.bulkClear}
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className={styles.tableScroll}>
+        <table className={styles.table}>
+          <thead>
+            <tr className={styles.headerRow}>
+              {/* Master checkbox */}
+              <th className={`${styles.th} ${styles.checkTh}`}>
+                <input
+                  type="checkbox"
+                  className={styles.checkbox}
+                  checked={allSelected}
+                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                  onChange={toggleAll}
+                  aria-label="Select all"
+                />
+              </th>
+              <SortableTh field="id">Case ID</SortableTh>
+              <SortableTh field="status">Status</SortableTh>
+              <th className={styles.th}>Case Type</th>
+              <SortableTh field="reporterId">Reporter ID</SortableTh>
+              <th className={styles.th}>Legal Officer</th>
+              <SortableTh field="dateReported">
+                Submission Date
+              </SortableTh>
+              {/* Columns toggle button */}
+              <th className={`${styles.th} ${styles.columnsTh}`}>
+                <ColumnsBtn />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.length === 0 ? (
+              <tr>
+                <td colSpan={8} className={styles.emptyState}>
+                  No cases found.
+                </td>
+              </tr>
+            ) : (
+              paginated.map((c, idx) => {
+                const isSelected = selectedIds.has(c.id);
+                const rowBg = isSelected
+                  ? "#e1f5f5"
+                  : idx % 2 === 1
+                  ? "#f7f9fb"
+                  : "#ffffff";
+
+                return (
+                  <tr
+                    key={c.id}
+                    className={`${styles.row} ${isSelected ? styles.rowSelected : ""}`}
+                    style={{ background: rowBg }}
+                    onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(c)}
+                    onClick={(e) => {
+                      // Single click only selects via checkbox; don't navigate
+                      if (e.target.type === "checkbox") return;
+                    }}
+                  >
+                    {/* Checkbox — stop propagation so click doesn't also navigate */}
+                    <td
+                      className={`${styles.td} ${styles.checkTd}`}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        className={styles.checkbox}
+                        checked={isSelected}
+                        onChange={() => toggleRow(c.id)}
+                        aria-label={`Select case ${c.id}`}
+                      />
+                    </td>
+
+                    {/* Case ID */}
+                    <td className={`${styles.td} ${styles.caseIdTd}`}>
+                      <span className={styles.caseIdText}>{c.id}</span>
+                    </td>
+
+                    {/* Status */}
+                    <td className={styles.td}>
+                      <StatusBadge status={c.status} />
+                      {c.pendingApproval && (
+                        <div style={{ marginTop: 3 }}>
+                          <PendingBadge />
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Case Type */}
+                    <td className={styles.td}>
+                      {c.caseType || <span className={styles.muted}>—</span>}
+                    </td>
+
+                    {/* Reporter ID */}
+                    <td className={`${styles.td} ${styles.reporterIdTd}`}>
+                      <strong>{c.reporterId}</strong>
+                    </td>
+
+                    {/* Legal Officer */}
+                    <td className={styles.td}>
+                      {c.assignedLegalOfficer || (
+                        <span className={styles.muted}>Unassigned</span>
+                      )}
+                    </td>
+
+                    {/* Submission Date */}
+                    <td className={styles.td}>
+                      <span className={styles.dateText}>
+                        {formatDate(c.dateReported)}
+                      </span>
+                    </td>
+
+                    {/* Empty column under the columns button */}
+                    <td className={styles.td} />
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination bar */}
+      <Pagination
+        current={page}
+        total={totalPages}
+        totalRecords={totalRecords}
+        pageSize={pageSize}
+        onChange={onPageChange}
+      />
+    </div>
+  );
+}

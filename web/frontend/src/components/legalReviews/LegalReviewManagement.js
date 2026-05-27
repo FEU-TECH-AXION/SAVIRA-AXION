@@ -2,6 +2,8 @@
 import { useState, useEffect, useMemo } from "react";
 import styles from "./LegalReviewManagement.module.css";
 import { FiSearch, FiX, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiAlertTriangle } from "react-icons/fi";
+import LegalTable from "./LegalTable";
+import FilterMenu from "./FilterMenu";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -861,7 +863,16 @@ export default function LegalReviewManagement() {
 
   const [cases, setCases] = useState(PLACEHOLDER_CASES);
   const [search, setSearch] = useState("");
-  const [activeSort, setActiveSort] = useState(null);
+  const [activeFilters, setActiveFilters] = useState({
+    status: "",
+    assignedLegalOfficer: "",
+    caseType: "",
+    dateReported: "",
+    endorsedTo: "",
+    city: "",
+  });
+  const [sortField, setSortField] = useState("dateReported");
+  const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [toast, setToast] = useState(null);
 
@@ -915,13 +926,38 @@ export default function LegalReviewManagement() {
   const filtered = useMemo(() =>
     cases.filter((c) => {
       const ms = !search.trim() || c.id.includes(search) || c.region.toLowerCase().includes(search.toLowerCase());
-      return ms && (!activeSort || c.status === activeSort);
+      let mf = true;
+      if (activeFilters.status && activeFilters.status !== "" && activeFilters.status !== "All") {
+        mf = mf && c.status === activeFilters.status;
+      }
+      if (activeFilters.assignedLegalOfficer && activeFilters.assignedLegalOfficer !== "" && activeFilters.assignedLegalOfficer !== "All") {
+        mf = mf && (c.assignedLegalOfficer || "").toLowerCase().includes(activeFilters.assignedLegalOfficer.toLowerCase());
+      }
+      if (activeFilters.caseType && activeFilters.caseType !== "" && activeFilters.caseType !== "All") {
+        mf = mf && (c.caseType || "") === activeFilters.caseType;
+      }
+      if (activeFilters.endorsedTo && activeFilters.endorsedTo !== "" && activeFilters.endorsedTo !== "All") {
+        mf = mf && (c.endorsedTo || "") === activeFilters.endorsedTo;
+      }
+      if (activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All") {
+        mf = mf && (c.region || "").toLowerCase().includes(activeFilters.city.toLowerCase());
+      }
+      return ms && mf;
     }),
-    [cases, search, activeSort]
+    [cases, search, activeFilters]
   );
-  useEffect(() => setPage(1), [search, activeSort]);
+  useEffect(() => setPage(1), [search, activeFilters]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sorted = useMemo(() => {
+    if (!sortField) return filtered;
+    return [...filtered].sort((a, b) => {
+      const av = a[sortField] ?? "";
+      const bv = b[sortField] ?? "";
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortField, sortDir]);
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pendingCases = useMemo(() => cases.filter((c) => c.pendingApproval), [cases]);
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1001,75 +1037,39 @@ export default function LegalReviewManagement() {
               <h2 className={styles.sectionTitle}>All Legal Cases</h2>
               <div className={styles.headingLine} />
             </div>
-            <div className={styles.layout}>
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Case ID</th>
-                      <th>Reporter ID</th>
-                      <th>Region</th>
-                      <th>Status</th>
-                      <th>Legal Officer</th>
-                      <th>Endorsed To</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.length === 0
-                      ? <tr><td colSpan={7} className={styles.emptyState}>No cases found.</td></tr>
-                      : paginated.map((c) => (
-                        <tr key={c.id}>
-                          <td>{c.id}</td>
-                          <td>{c.reporterId}</td>
-                          <td>{c.region}</td>
-                          <td>
-                            <StatusBadge status={c.status} />
-                            {c.pendingApproval && <div style={{ marginTop: 3 }}><PendingBadge /></div>}
-                          </td>
-                          <td>{c.assignedLegalOfficer || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Unassigned</span>}</td>
-                          <td>{c.endorsedTo ? <span style={{ fontSize: "0.78rem" }}>{c.endorsedTo}</span> : <span style={{ color: "#9ca3af", fontStyle: "italic", fontSize: "0.78rem" }}>Not yet</span>}</td>
-                          <td>
-                            <div className={styles.actionBtns}>
-                              <button className={styles.tblBtnView}   onClick={() => open(c, "view")}>View</button>
-                              <button className={styles.tblBtnEdit}   onClick={() => open(c, "paralegal")}>Paralegal</button>
-                              <button className={styles.tblBtnStatus} onClick={() => open(c, "endorse")}>Endorse</button>
-                              <button className={styles.tblBtnMonitor} onClick={() => open(c, "monitor")}>Monitor</button>
-                              {!c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin) && (
-                                <button className={styles.tblBtnStatusChange} onClick={() => open(c, "statusChange")}>Status</button>
-                              )}
-                              {isAdmin && c.pendingApproval && (
-                                <button className={styles.tblBtnApprove} onClick={() => open(c, "approval")}>Review</button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    }
-                  </tbody>
-                </table>
-                <Pagination current={page} total={totalPages} onChange={setPage} />
-              </div>
 
-              <aside className={styles.sidebar}>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Search</h3>
-                  <div className={styles.searchWrap}>
-                    <input className={styles.searchInput} placeholder="Case ID, region…" value={search} onChange={(e) => setSearch(e.target.value)} />
-                    <span className={styles.searchIcon}><FiSearch /></span>
-                  </div>
-                </div>
-                <div className={styles.sidebarBlock}>
-                  <h3 className={styles.sidebarLabel}>Filter by Status</h3>
-                  <div className={styles.filterList}>
-                    <button className={`${styles.filterBtn} ${!activeSort ? styles.filterBtnActive : ""}`} onClick={() => setActiveSort(null)}>All</button>
-                    {LEGAL_CASE_STATUSES.map((s) => (
-                      <button key={s} className={`${styles.filterBtn} ${activeSort === s ? styles.filterBtnActive : ""}`} onClick={() => setActiveSort(activeSort === s ? null : s)}>{s}</button>
-                    ))}
-                  </div>
-                </div>
-              </aside>
+            {/* Search + Filter bar */}
+            <div className={styles.tableTopBar}>
+              <div className={styles.searchWrap} style={{ flex: 1 }}>
+                <input className={styles.searchInput} placeholder="Search Case ID, region…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <span className={styles.searchIcon}><FiSearch /></span>
+              </div>
+              <FilterMenu
+                activeFilters={activeFilters}
+                onFilterChange={setActiveFilters}
+              />
             </div>
+
+            <LegalTable
+              paginated={paginated}
+              page={page}
+              totalPages={totalPages}
+              totalRecords={filtered.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+              onRowDoubleClick={(c) => open(c, "view")}
+              onParalegal={(cases) => { setSelectedCase(cases[0]); setModal("paralegal"); }}
+              onEndorse={(cases) => { setSelectedCase(cases[0]); setModal("endorse"); }}
+              onMonitor={(cases) => { setSelectedCase(cases[0]); setModal("monitor"); }}
+              onStatus={(cases) => { setSelectedCase(cases[0]); setModal("statusChange"); }}
+              isAdmin={isAdmin}
+              sortField={sortField}
+              sortDir={sortDir}
+              onSort={(field) => {
+                if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+                else { setSortField(field); setSortDir("asc"); }
+              }}
+            />
           </div>
         </section>
       </main>
