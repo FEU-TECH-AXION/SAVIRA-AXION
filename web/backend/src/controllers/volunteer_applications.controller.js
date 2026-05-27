@@ -3,7 +3,7 @@ const VolunteerApplicantModel = require("../models/volunteer_applicants.model");
 const ScreeningAnswerModel      = require('../models/screening_answers.model')
 const ScreeningQuestionSetModel = require('../models/screening_question_set.model')
 const OrganizationsModel         = require('../models/organizations.model')
-const supabase                   = require('../config/supabase')
+const supabase                     = require('../config/supabase')
 
 // Maps your form keys to question_key values in the database
 const ANSWER_MAP = {
@@ -31,6 +31,43 @@ const getItems = async (req, res) => {
     } catch (err) {
         // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
+    }
+}
+
+const getItem = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const { data, error } = await supabase
+            .from('volunteer_applications')
+            .select(`
+                *,
+                organizations (
+                    organization,
+                    organization_name,
+                    organization_type,
+                    organization_type_other,
+                    council,
+                    region,
+                    organization_city,
+                    user_city
+                ),
+                screening_answers (
+                    answer_value,
+                    screening_questions (
+                        question_key
+                    )
+                )
+            `)
+            .eq('volunteer_application_id', id)
+            .single()
+
+        if (error || !data) return res.status(404).json({ error: 'Application not found.' })
+
+        res.status(200).json(data)
+
+    } catch (error) {
+        res.status(500).json({ error: error.message })
     }
 }
 
@@ -125,6 +162,7 @@ const createItem = async (req, res) => {
             name:                      applicant.name             || null,
             age:                       parseInt(applicant.age)    || null,
             gender_identity:           applicant.gender           || null,
+            pronouns:                  applicant.pronouns         || null,
             email:                     applicant.email            || null,
             city:                      applicant.userCity         || null,
             province:                  'Metro Manila',
@@ -207,6 +245,6 @@ const getMyApplications = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem, updateItem, getMyApplications }
+module.exports = { getItems, getItem, createItem, updateItem, getMyApplications }
 
 

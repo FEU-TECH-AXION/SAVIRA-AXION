@@ -1425,13 +1425,8 @@ export default function ViewApplication() {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Application not found.");
         }
-        const raw = await res.json();
-
-        // The /:id route reuses getItems which returns ALL records as an array.
-        // Find the one that matches the requested appId.
-        const data = Array.isArray(raw)
-          ? raw.find((r) => String(r.volunteer_application_id) === String(appId))
-          : raw;
+        
+        const data = await res.json();
 
         if (!data) throw new Error("Application not found.");
 
@@ -1447,16 +1442,25 @@ export default function ViewApplication() {
           return String(age);
         })();
 
+        const answerMap = {}
+        if (Array.isArray(data.screening_answers)) {
+          data.screening_answers.forEach(a => {
+            if (a.screening_questions?.question_key) {
+              answerMap[a.screening_questions.question_key] = a.answer_value
+                  }
+            })
+        }
+
         setAppData({
           id:                    data.volunteer_application_id,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.notes || "",
           assignedEvaluator:     data.assigned_evaluator || data.assigned_staff || null,
           dateApplied:           data.created_at
-            ? new Date(data.created_at).toLocaleDateString("en-PH", {
-                day: "2-digit", month: "short", year: "numeric",
-              })
-            : "—",
+              ? new Date(data.created_at).toLocaleDateString("en-PH", {
+                  day: "2-digit", month: "short", year: "numeric",
+                })
+              : "—",
 
           // ── Step 0: Applicant's Info ──
           name:                  data.name || "—",
@@ -1464,61 +1468,57 @@ export default function ViewApplication() {
           age:                   computedAge,
           gender:                data.gender_identity || "—",
           pronouns:              data.pronouns || "—",
-          organization:          data.organization || "—",
 
-          // Scout fields
-          council:               data.council || null,
-          region:                data.region || "National Capital Region (NCR)",
-          tenureInScouting:      data.tenure_in_scouting ? `${data.tenure_in_scouting} year(s)` : null,
+          // ── Organization from join ──
+          organization:          data.organizations?.organization || "—",
+          council:               data.organizations?.council || null,
+          region:                data.organizations?.region || "National Capital Region (NCR)",
+          tenureInScouting:      data.tenure_years ? `${data.tenure_years} year(s)` : null,
           rank:                  data.rank || null,
           scoutingMembership:    data.scouting_membership || null,
+          organizationType:      data.organizations?.organization_type || null,
+          organizationTypeOther: data.organizations?.organization_type_other || null,
+          orgName:               data.organizations?.organization_name || null,
+          orgCity:               data.organizations?.organization_city || null,
+          userCity:              data.organizations?.user_city || null,
 
-          // Other org fields
-          organizationType:      data.organization_type || null,
-          organizationTypeOther: data.organization_type_other || null,
-          orgName:               data.org_name || null,
-          orgCity:               data.org_city || null,
-          userCity:              data.user_city || null,
-
-          // Contact & consent
+          // ── Contact & Consent ──
           contactNumber:         data.contact_number || "—",
           email:                 data.email || "—",
-          interview:             data.is_willing_for_interview ? "Yes" : "No",
+          interview:             data.interview_required ? "Yes" : "No",
 
-          // ── Step 1: Screening Questions ──
-          // Values & Conduct
-          survivorDignity:       data.survivor_dignity || "—",
-          confidentialityPolicy: data.confidentiality_policy || "—",
-          noHarassment:          data.no_harassment || "—",
-          respectfulComms:       data.respectful_comms || "—",
+          // ── Screening Questions ──
+          // These come from screening_answers table — need a separate fetch
+          // For now mapping from flat data won't work since they're not columns
 
-          // Advocacy & Participation
-          saferEnvironments:     data.safer_environments || "—",
-          advocacySupport:       data.advocacy_support || "—",
-          enthusiasm:            data.enthusiasm || "—",
-          professionalism:       data.professionalism || "—",
+          survivorDignity:       answerMap['survivor_dignity']       || "—",
+          confidentialityPolicy: answerMap['confidentiality_policy'] || "—",
+          noHarassment:          answerMap['no_harassment']          || "—",
+          respectfulComms:       answerMap['respectful_comms']       || "—",
+          saferEnvironments:     answerMap['safer_environments']     || "—",
+          advocacySupport:       answerMap['advocacy_support']       || "—",
+          enthusiasm:            answerMap['enthusiasm']             || "—",
+          professionalism:       answerMap['professionalism']        || "—",
+          genderAwareness:       answerMap['gender_awareness']       || "—",
+          stayInformed:          answerMap['stay_informed']          || "—",
+          openToLearn:           answerMap['open_to_learn']          || "—",
+          diverseTeams:          answerMap['diverse_teams']          || "—",
+          orientationWilling:    answerMap['orientation_willing']    || "—",
+          timeCommitment:        answerMap['time_commitment']        || "—",
+          feedbackWilling:       answerMap['feedback_willing']       || "—",
 
-          // Learning & Awareness
-          genderAwareness:       data.gender_awareness || "—",
-          stayInformed:          data.stay_informed || "—",
-          openToLearn:           data.open_to_learn || "—",
-          diverseTeams:          data.diverse_teams || "—",
-          orientationWilling:    data.orientation_willing || "—",
-          timeCommitment:        data.time_commitment || "—",
-          feedbackWilling:       data.feedback_willing || "—",
-
-          // Expertise & Interest
+          // ── Expertise & Interest ──
           fieldsWithBackground:  Array.isArray(data.fields_with_background)
-            ? data.fields_with_background.join(", ")
-            : data.fields_with_background || "—",
+              ? data.fields_with_background.join(", ")
+              : data.fields_with_background || "—",
           fieldsOfInterest:      Array.isArray(data.fields_of_interest)
-            ? data.fields_of_interest.join(", ")
-            : data.fields_of_interest || "—",
+              ? data.fields_of_interest.join(", ")
+              : data.fields_of_interest || "—",
           hoursPerWeek:          data.hours_per_week || "—",
 
-          // ── Step 2: Essay ──
-          essayDescription:      data.essay_description || data.description || "—",
-        });
+          // ── Essay ──
+          essayDescription:      data.essay_response || "—",
+      });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1528,6 +1528,7 @@ export default function ViewApplication() {
 
     fetchApp();
   }, [appId]);
+  
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
