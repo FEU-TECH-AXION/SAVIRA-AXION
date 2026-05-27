@@ -1116,7 +1116,7 @@ function ReportStatusCard({ reportData, reportNumber, onView }) {
     statusName        = "For Verification",
   } = reportData ?? {};
 
-  const displayId      = caseId ?? `SASHA-${String(id).padStart(5, "0")}`;
+  const displayId      = caseId ?? `CASE-${String(id).padStart(5, "0")}`;
   const personnelLabel = assignedPersonnel ?? "Unassigned";
   const updatedAgo     = timeAgo(lastUpdated);
 
