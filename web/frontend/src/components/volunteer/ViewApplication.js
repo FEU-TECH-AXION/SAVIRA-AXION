@@ -1155,9 +1155,9 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
 // ─── NLP Essay Analysis Tab (staff only) ─────────────────────────────────────
 
 function NLPEssayTab({ appId, isAdmin }) {
-  const [nlpData, setNlpData]       = useState(null);
+  const [nlpData,    setNlpData]    = useState(null);
   const [nlpLoading, setNlpLoading] = useState(false);
-  const [nlpStatus, setNlpStatus]   = useState(null); // "processing" | "error" | null
+  const [nlpStatus,  setNlpStatus]  = useState(null); // "processing" | "error" | null
 
   useEffect(() => {
     if (!appId) return;
@@ -1169,9 +1169,15 @@ function NLPEssayTab({ appId, isAdmin }) {
           credentials: "include",
         });
         if (res.status === 404) { setNlpStatus("processing"); return; }
-        if (!res.ok) { setNlpStatus("error"); return; }
+        if (!res.ok)            { setNlpStatus("error");      return; }
         const json = await res.json();
-        setNlpData(json.data || json);
+        const d    = json.data || json;
+
+        // ── Still pending from DB ──────────────────────────────────────────
+        if (d.status === "pending") { setNlpStatus("processing"); return; }
+        if (d.status === "failed")  { setNlpStatus("error");      return; }
+
+        setNlpData(d);
       } catch {
         setNlpStatus("error");
       } finally {
@@ -1181,28 +1187,33 @@ function NLPEssayTab({ appId, isAdmin }) {
     fetchNlp();
   }, [appId]);
 
-  const QualityBadge = ({ label, color }) => (
-    <span style={{
-      display: "inline-block", padding: "3px 10px", borderRadius: 999,
-      fontSize: "0.78rem", fontWeight: 600,
-      background: color?.bg || "#e1f5f5",
-      color: color?.text || "#037F81",
-      marginRight: 6, marginBottom: 4,
-    }}>{label}</span>
-  );
+  // ── Sub-components ─────────────────────────────────────────────────────────
 
   const ScoreBar = ({ score, max = 10 }) => {
-    const pct = Math.min(100, (score / max) * 100);
+    const pct      = Math.min(100, (score / max) * 100);
     const barColor = pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626";
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
         <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 999, transition: "width 0.4s ease" }} />
         </div>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: barColor, minWidth: 36 }}>{score}/{max}</span>
+        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: barColor, minWidth: 36 }}>
+          {score}/{max}
+        </span>
       </div>
     );
   };
+
+  // ── Dimension config — maps flat DB columns → display labels + weights ─────
+  const DIMENSIONS = [
+    { scoreKey: "mission_alignment_score",   noteKey: "mission_alignment_notes",   label: "Alignment with SASHA's Mission",          weight: 30 },
+    { scoreKey: "maturity_judgment_score",   noteKey: "maturity_judgment_notes",   label: "Maturity and Judgment",                    weight: 20 },
+    { scoreKey: "commitment_score",          noteKey: "commitment_notes",          label: "Commitment and Reliability",               weight: 20 },
+    { scoreKey: "writing_clarity_score",     noteKey: "writing_clarity_notes",     label: "Writing Clarity and Thoughtfulness",       weight: 15 },
+    { scoreKey: "relevant_experience_score", noteKey: "relevant_experience_notes", label: "Relevant Experience / Transferable Skills", weight: 15 },
+  ];
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div>
@@ -1220,12 +1231,14 @@ function NLPEssayTab({ appId, isAdmin }) {
         </span>
       </div>
 
+      {/* Loading */}
       {nlpLoading && (
         <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center", padding: "2rem" }}>
           Loading essay analysis…
         </p>
       )}
 
+      {/* Still processing */}
       {nlpStatus === "processing" && !nlpLoading && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10,
@@ -1237,6 +1250,7 @@ function NLPEssayTab({ appId, isAdmin }) {
         </div>
       )}
 
+      {/* Error */}
       {nlpStatus === "error" && !nlpLoading && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10,
@@ -1248,124 +1262,137 @@ function NLPEssayTab({ appId, isAdmin }) {
         </div>
       )}
 
+      {/* ── Main content — only when data is loaded ── */}
       {nlpData && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-          {/* Essay Summary */}
-          {nlpData.summary && (
-            <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                📄 Essay Summary
-              </h4>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>
-                {nlpData.summary}
-              </p>
-            </div>
-          )}
-
-          {/* Overall Quality Score */}
-          {nlpData.overall_score != null && (
-            <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                🏆 Overall Quality Score
-              </h4>
-              <ScoreBar score={nlpData.overall_score} max={10} />
-              {nlpData.overall_label && (
-                <div style={{ marginTop: 8 }}>
-                  <QualityBadge
-                    label={nlpData.overall_label}
-                    color={
-                      nlpData.overall_score >= 7
-                        ? { bg: "#d1fae5", text: "#065f46" }
-                        : nlpData.overall_score >= 4
-                        ? { bg: "#fef3c7", text: "#92400e" }
-                        : { bg: "#fee2e2", text: "#991b1b" }
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Dimension Scores */}
-          {nlpData.dimensions && Object.keys(nlpData.dimensions).length > 0 && (
-            <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 12px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                📊 Evaluation Dimensions
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {Object.entries(nlpData.dimensions).map(([dim, score]) => (
-                  <div key={dim}>
-                    <p style={{ margin: "0 0 2px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "capitalize" }}>
-                      {dim.replace(/_/g, " ")}
-                    </p>
-                    <ScoreBar score={score} max={10} />
-                  </div>
-                ))}
+          {/* ── Aggregate scores ── */}
+          <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+            <h4 style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
+              🏆 Essay Score Summary
+            </h4>
+            <p style={{ margin: "0 0 1rem", fontSize: "0.78rem", color: "#6b7280" }}>
+              Weighted across all five evaluation criteria (total out of 50 pts).
+            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "#6b7280" }}>Weighted Total (out of 100)</p>
+                <p style={{
+                  margin: "2px 0 0", fontSize: "2rem", fontWeight: 900, lineHeight: 1,
+                  color: nlpData.essay_weighted_total >= 70 ? "#16a34a"
+                       : nlpData.essay_weighted_total >= 40 ? "#d97706"
+                       : "#dc2626",
+                }}>
+                  {nlpData.essay_weighted_total ?? "—"}
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/100</span>
+                </p>
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "#6b7280" }}>Score (out of 50 pts)</p>
+                <p style={{
+                  margin: "2px 0 0", fontSize: "2rem", fontWeight: 900, lineHeight: 1,
+                  color: nlpData.essay_score_out_of_50 >= 35 ? "#16a34a"
+                       : nlpData.essay_score_out_of_50 >= 20 ? "#d97706"
+                       : "#dc2626",
+                }}>
+                  {nlpData.essay_score_out_of_50 ?? "—"}
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/50</span>
+                </p>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Strengths */}
-          {nlpData.strengths?.length > 0 && (
-            <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#166534" }}>
-                ✅ Strengths
-              </h4>
-              <ul style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 4 }}>
-                {nlpData.strengths.map((s, i) => (
-                  <li key={i} style={{ fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{s}</li>
-                ))}
-              </ul>
+          {/* ── Per-dimension scores with notes ── */}
+          <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
+            <h4 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
+              📊 Evaluation Dimensions
+            </h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              {DIMENSIONS.map(({ scoreKey, noteKey, label, weight }) => {
+                const score = nlpData[scoreKey];
+                const note  = nlpData[noteKey];
+                if (score == null) return null;
+                return (
+                  <div key={scoreKey} style={{
+                    background: "#fff", borderRadius: 8, padding: "0.85rem 1rem",
+                    border: "1px solid #e5e7eb",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <span style={{ fontSize: "0.83rem", fontWeight: 700, color: "#1f2937" }}>
+                        {label}
+                      </span>
+                      <span style={{
+                        fontSize: "0.72rem", fontWeight: 700,
+                        background: "#e1f5f5", color: "#037F81",
+                        padding: "2px 8px", borderRadius: 999,
+                      }}>
+                        {weight}% weight
+                      </span>
+                    </div>
+                    <ScoreBar score={score} max={10} />
+                    {note && (
+                      <p style={{
+                        margin: "6px 0 0", fontSize: "0.78rem",
+                        color: "#6b7280", lineHeight: 1.55,
+                        padding: "6px 8px", background: "#f9fafb",
+                        borderRadius: 6, border: "1px solid #f1f3f5",
+                      }}>
+                        {note}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
 
-          {/* Concerns */}
-          {nlpData.concerns?.length > 0 && (
-            <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#9a3412" }}>
-                ⚠️ Areas of Concern
-              </h4>
-              <ul style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 4 }}>
-                {nlpData.concerns.map((c, i) => (
-                  <li key={i} style={{ fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{c}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Recommendation */}
+          {/* ── Recommendation ── */}
           {nlpData.recommendation && (
             <div style={{
-              background: nlpData.recommend_approve ? "#f0fdf4" : "#fff7ed",
-              border: `1px solid ${nlpData.recommend_approve ? "#86efac" : "#fdba74"}`,
+              background: nlpData.threshold_passed ? "#f0fdf4" : "#fff7ed",
+              border: `1px solid ${nlpData.threshold_passed ? "#86efac" : "#fdba74"}`,
               borderRadius: 8, padding: "14px 16px",
             }}>
               <h4 style={{
                 margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700,
-                color: nlpData.recommend_approve ? "#166534" : "#9a3412",
+                color: nlpData.threshold_passed ? "#166534" : "#9a3412",
               }}>
-                {nlpData.recommend_approve ? "👍 Recommended for Approval" : "👎 Further Review Suggested"}
+                {nlpData.threshold_passed ? "👍 Recommended for Approval" : "👎 Further Review Suggested"}
               </h4>
               <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>
                 {nlpData.recommendation}
               </p>
+              {/* recommendation_notes only if non-empty */}
+              {nlpData.recommendation_notes && (
+                <p style={{
+                  margin: "8px 0 0", fontSize: "0.78rem",
+                  color: "#6b7280", lineHeight: 1.55, fontStyle: "italic",
+                }}>
+                  {nlpData.recommendation_notes}
+                </p>
+              )}
             </div>
           )}
 
-          {/* Admin: technical details */}
+          {/* ── Technical details (admin only) ── */}
           {isAdmin && (
             <details style={{ fontSize: "0.78rem", color: "#6b7280" }}>
-              <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>Technical Details</summary>
+              <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
+                Technical Details
+              </summary>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8, paddingLeft: 8 }}>
-                {nlpData.model_used && <span><strong>Model:</strong> {nlpData.model_used}</span>}
+                {nlpData.model_used        && <span><strong>Model:</strong> {nlpData.model_used}</span>}
                 {nlpData.language_detected && <span><strong>Language detected:</strong> {nlpData.language_detected}</span>}
-                {nlpData.word_count != null && <span><strong>Word count:</strong> {nlpData.word_count}</span>}
-                {nlpData.anonymized_text && (
+                {nlpData.analyzed_at       && <span><strong>Analyzed at:</strong> {new Date(nlpData.analyzed_at).toLocaleString("en-PH")}</span>}
+                {nlpData.anonymized_essay  && (
                   <>
-                    <span><strong>Anonymized text:</strong></span>
-                    <p style={{ margin: "4px 0 0", background: "#f3f4f6", padding: "8px 10px", borderRadius: 6, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                      {nlpData.anonymized_text}
+                    <span><strong>Anonymized essay:</strong></span>
+                    <p style={{
+                      margin: "4px 0 0", background: "#f3f4f6",
+                      padding: "8px 10px", borderRadius: 6,
+                      lineHeight: 1.6, whiteSpace: "pre-wrap",
+                    }}>
+                      {nlpData.anonymized_essay}
                     </p>
                   </>
                 )}

@@ -111,9 +111,9 @@ const createItem = async (req, res) => {
 
         // ── 3. Fetch active question set + all 15 questions ──
         const questionSet = await ScreeningQuestionSetModel.getActive()
-        // console.log('questionSet:', JSON.stringify(questionSet, null, 2))
+        
         const questions   = questionSet.screening_questions
-        // console.log('questions count:', questions?.length)
+        
 
         // ── 4. Evaluate answers ──
         let nonNegotiablePassed = true
@@ -198,13 +198,6 @@ const createItem = async (req, res) => {
             });
             // intentionally no await — same fire-and-forget pattern as case reports
         }
-
-        res.status(201).json({
-            message:            'Application submitted successfully.',
-            application,
-            nonNegotiablePassed,
-            negotiableScore,
-        })
 
         res.status(201).json({
             message:            'Application submitted successfully.',
