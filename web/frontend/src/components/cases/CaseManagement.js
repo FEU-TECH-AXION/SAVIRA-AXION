@@ -1689,10 +1689,10 @@ useEffect(() => {
   const [advancedFilters, setAdvancedFilters] = useState({
     status: "",
     assignedOfficer: "",
-    violenceType: "",
-    region: "",
+    caseType: "",
     dateSubmitted: "",
-    reporterId: "",
+    primaryCategory: "",
+    city: "",
   });
   const [sortField, setSortField] = useState("dateSubmitted");
   const [sortDir, setSortDir]     = useState("desc");
@@ -1729,14 +1729,11 @@ useEffect(() => {
       if (advancedFilters.status && advancedFilters.status !== "" && advancedFilters.status !== "All") {
         mf = mf && c.status === advancedFilters.status;
       }
-      if (advancedFilters.assignedOfficer && advancedFilters.assignedOfficer !== "") {
+      if (advancedFilters.assignedOfficer && advancedFilters.assignedOfficer !== "" && advancedFilters.assignedOfficer !== "All") {
         mf = mf && (c.assignedOfficer || "").toLowerCase().includes(advancedFilters.assignedOfficer.toLowerCase());
       }
-      if (advancedFilters.violenceType && advancedFilters.violenceType !== "") {
-        mf = mf && (c.violenceType || "").toLowerCase().includes(advancedFilters.violenceType.toLowerCase());
-      }
-      if (advancedFilters.region && advancedFilters.region !== "") {
-        mf = mf && (c.region || "").toLowerCase().includes(advancedFilters.region.toLowerCase());
+      if (advancedFilters.caseType && advancedFilters.caseType !== "" && advancedFilters.caseType !== "All") {
+        mf = mf && (c.caseType || "") === advancedFilters.caseType;
       }
       if (advancedFilters.dateSubmitted && advancedFilters.dateSubmitted !== "") {
         const range = getDateRangeFromFilter(advancedFilters.dateSubmitted);
@@ -1744,8 +1741,11 @@ useEffect(() => {
           mf = mf && isDateInRange(c.dateSubmitted, range.startDate, range.endDate);
         }
       }
-      if (advancedFilters.reporterId && advancedFilters.reporterId !== "") {
-        mf = mf && (c.reporterId || "").includes(advancedFilters.reporterId);
+      if (advancedFilters.primaryCategory && advancedFilters.primaryCategory !== "" && advancedFilters.primaryCategory !== "All") {
+        mf = mf && (c.primaryCategory || "") === advancedFilters.primaryCategory;
+      }
+      if (advancedFilters.city && advancedFilters.city !== "" && advancedFilters.city !== "All") {
+        mf = mf && (c.region || "").toLowerCase().includes(advancedFilters.city.toLowerCase());
       }
       
       return ms && mf;
@@ -2003,6 +2003,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
                     else { setSortField(field); setSortDir("asc"); }
                   }}
+                  activeFilters={advancedFilters}
                 />
               </div>
             </div>
@@ -2112,4 +2113,3 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     </>
   );
 }
-
