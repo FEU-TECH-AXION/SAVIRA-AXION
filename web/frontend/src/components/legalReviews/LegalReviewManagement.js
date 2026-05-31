@@ -1198,9 +1198,6 @@ export default function LegalReviewManagement() {
               <ActionCard icon={<img src="LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
             </div>
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<img src="LegalIconMonitor.png" alt="" className={styles.actionIconImg} />} title="Monitoring & Follow-Up" description="Log monitoring updates: whether referrals were received, services provided, complainant contacted." onView={() => setModal("selectMonitor")} />
-            </div>
-            <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Advance a case through Case Filed → Investigation → Hearing → Dismissed / Convicted. Requires admin approval." onView={() => setModal("selectStatus")} />
             </div>
             {(isAdmin || isLegal) && (
