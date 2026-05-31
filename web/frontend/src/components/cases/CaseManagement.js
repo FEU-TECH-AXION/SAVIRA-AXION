@@ -110,15 +110,15 @@ const ENDORSEMENT_BODIES = [
 ];
 
 const VIOLENCE_TYPES = [
-  "Sexual harassment",
-  "Online sexual harassment",
-  "Non-consensual sharing of intimate images/videos",
-  "Sexual assault / unwanted sexual touching",
-  "Rape / attempted rape",
   "Child sexual abuse",
+  "Gender-based sexual harassment in institutions",
+  "Non-consensual sharing of intimate images/videos",
+  "Online sexual harassment",
+  "Rape / attempted rape",
+  "Sexual assault / unwanted sexual touching",
   "Sexual exploitation / trafficking-related sexual abuse",
   "Stalking with sexual nature or intent",
-  "Gender-based sexual harassment in institutions",
+  "Sexual harassment",
 ];
 
 const OFFICERS = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
