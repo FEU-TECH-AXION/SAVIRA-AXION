@@ -171,8 +171,13 @@ export default function CasesTable({
   sortField,
   sortDir,
   onSort,
+  activeFilters = {},
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Derived: which extra columns to show based on active extra filters
+  const showPrimaryCategory = !!(activeFilters.primaryCategory && activeFilters.primaryCategory !== "" && activeFilters.primaryCategory !== "All");
+  const showCity = !!(activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All");
 
   // Sync selection: clear if paginated changes (page turn)
   const pageIds = useMemo(() => paginated.map(c => c.id), [paginated]);
@@ -294,6 +299,8 @@ export default function CasesTable({
               <SortableTh field="dateSubmitted">
                 Submission Date
               </SortableTh>
+              {showPrimaryCategory && <th className={styles.th}>Primary Category</th>}
+              {showCity && <th className={styles.th}>City</th>}
               {/* Columns toggle button */}
               <th className={`${styles.th} ${styles.columnsTh}`}>
                 <ColumnsBtn />
@@ -303,7 +310,7 @@ export default function CasesTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8} className={styles.emptyState}>
+                <td colSpan={8 + (showPrimaryCategory ? 1 : 0) + (showCity ? 1 : 0)} className={styles.emptyState}>
                   No cases found.
                 </td>
               </tr>
@@ -379,6 +386,20 @@ export default function CasesTable({
                         {formatDate(c.dateSubmitted)}
                       </span>
                     </td>
+
+                    {/* Extra: Primary Category */}
+                    {showPrimaryCategory && (
+                      <td className={styles.td}>
+                        {c.primaryCategory || <span className={styles.muted}>—</span>}
+                      </td>
+                    )}
+
+                    {/* Extra: City */}
+                    {showCity && (
+                      <td className={styles.td}>
+                        {c.region || <span className={styles.muted}>—</span>}
+                      </td>
+                    )}
 
                     {/* Empty column under the columns button */}
                     <td className={styles.td} />

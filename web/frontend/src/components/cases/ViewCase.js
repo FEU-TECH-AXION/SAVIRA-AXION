@@ -1425,12 +1425,12 @@ export default function ViewCase() {
           assignedOfficer:      data.assigned_officer || null,
           dateSubmitted:        new Date(data.created_at).toLocaleDateString("en-PH"),
           description:          data.incident_description || "—",
-          incidentLocationType: data.incident_location_type || "Physical Location",
+          incidentLocationType: data.incident_location_type || null,
           incidentCity:         data.incident_city,
           incidentLocation:     data.incident_location,
           incidentLocationDisplay: data.incident_location_type === "Online"
             ? data.incident_location || "Online"
-            : [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", "),
+            : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "—",
           incidentDate:            data.incident_date,
           incidentTime:            data.incident_time,
           perpetratorKnown:        data.is_perpetrator_known,
