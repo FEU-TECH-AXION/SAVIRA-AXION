@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./LegalReviewManagement.module.css";
 import { FiSearch, FiX, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiAlertTriangle } from "react-icons/fi";
 import LegalTable from "./LegalTable";
@@ -26,24 +27,27 @@ const ENDORSEMENT_BODIES = [
   "Court (with lawyer)",
 ];
 
+// These are used as fallbacks; actual lists are fetched from backend
 const LEGAL_OFFICERS = ["Ryan Dela Paz", "Noel Ramos", "Lena Cruz", "Mia Villanueva"];
 const PARALEGALS = ["Sofia Reyes", "Carlo Tan", "Tricia Bautista"];
 const PAGE_SIZE = 8;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PLACEHOLDER DATA
-// ─────────────────────────────────────────────────────────────────────────────
+// Maps case_status_id (from DB) to status label
+const STATUS_STEP = {
+  1: "For Verification",
+  2: "Undergoing Review",
+  3: "Verified - True",
+  4: "Verified - False",
+  5: "Under Case Evaluation",
+  6: "Case Filed",
+  7: "Investigation Ongoing",
+  8: "Hearing Ongoing",
+  9: "Dismissed",
+  10: "Perpetrator Convicted",
+};
 
-const PLACEHOLDER_CASES = [
-  { id: "SASHA-00001", reporterId: "12345678", region: "NCR",         status: "Under Case Evaluation", assignedLegalOfficer: "Ryan Dela Paz", assignedParalegal: "Sofia Reyes",  dateReported: "03/01/2026", pendingApproval: null, endorsedTo: null, endorsementDetails: null, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [{ status: "Under Case Evaluation", date: "03/01/2026", by: "Camille Torres", notes: "Case forwarded to legal." }] },
-  { id: "SASHA-00002", reporterId: "12345679", region: "NCR",         status: "Case Filed",            assignedLegalOfficer: "Noel Ramos",    assignedParalegal: "",             dateReported: "03/02/2026", pendingApproval: null, endorsedTo: "PNP Women and Children Protection Desk", endorsementDetails: { "Station": "QCPD-WCPD", "Blotter No.": "BLO-2026-042", "Investigator": "SPO1 Cruz", "Sworn Statements": "Yes", "Medico-Legal Advised": "Yes", "Forwarded to Prosecutor": "Pending" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [{ status: "Case Filed", date: "03/02/2026", by: "Noel Ramos", notes: "Filed with PNP WCPD." }] },
-  { id: "SASHA-00003", reporterId: "12345680", region: "NCR",         status: "Investigation Ongoing", assignedLegalOfficer: "Ryan Dela Paz", assignedParalegal: "Carlo Tan",    dateReported: "02/15/2026", pendingApproval: null, endorsedTo: "DSWD", endorsementDetails: { "Receiving Office": "DSWD-NCR", "Reference No.": "DSWD-2026-009", "Follow-up Date": "05/20/2026", "Survivor Contacted": "Yes", "Services Provided": "Counseling, temporary shelter" }, paralegalRecord: { organizedBy: "Carlo Tan", date: "02/20/2026", documents: "Sworn statement, photos, timeline" }, lawyerRecord: { assessedBy: "Atty. Reyes", date: "02/25/2026", recommendation: "Refer to PNP and DSWD simultaneously." }, monitoringLog: [{ date: "03/15/2026", by: "Ryan Dela Paz", update: "DSWD confirmed receipt. Counseling started." }], statusHistory: [] },
-  { id: "SASHA-00004", reporterId: "12345681", region: "Region III",  status: "Under Case Evaluation", assignedLegalOfficer: "",              assignedParalegal: "",             dateReported: "03/05/2026", pendingApproval: null, endorsedTo: null, endorsementDetails: null, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
-  { id: "SASHA-00005", reporterId: "12345682", region: "Region IV-A", status: "Hearing Ongoing",       assignedLegalOfficer: "Lena Cruz",     assignedParalegal: "Tricia Bautista", dateReported: "01/10/2026", pendingApproval: null, endorsedTo: "Court (with lawyer)", endorsementDetails: { "Case No.": "Criminal Case 2026-1234", "Court Branch": "RTC Branch 42, QC", "Filing Date": "01/20/2026", "Counsel": "Atty. Marcos", "Next Hearing": "05/28/2026", "Postponements": "1 (April 10, 2026)" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
-  { id: "SASHA-00006", reporterId: "12345683", region: "NCR",         status: "Dismissed",             assignedLegalOfficer: "Noel Ramos",    assignedParalegal: "",             dateReported: "12/05/2025", pendingApproval: null, endorsedTo: "School/Workplace CODI", endorsementDetails: { "CODI Focal Person": "Dr. Santos", "Receipt Confirmed": "Yes", "Investigation Schedule": "Jan–Feb 2026", "Final Decision": "Dismissed — insufficient evidence", "Anti-Retaliation Confirmed": "Yes" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
-  { id: "SASHA-00007", reporterId: "12345684", region: "NCR",         status: "Perpetrator Convicted", assignedLegalOfficer: "Ryan Dela Paz", assignedParalegal: "Sofia Reyes",  dateReported: "10/01/2025", pendingApproval: null, endorsedTo: "Court (with lawyer)", endorsementDetails: { "Case No.": "Criminal Case 2025-0987", "Court Branch": "RTC Branch 14, Manila", "Judgment": "Guilty — 6–12 years reclusion temporal", "Sanctions": "Imprisonment + damages", "Survivor Support": "Ongoing counseling" }, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
-  { id: "SASHA-00008", reporterId: "12345685", region: "Region I",    status: "Under Case Evaluation", assignedLegalOfficer: "Lena Cruz",     assignedParalegal: "",             dateReported: "04/01/2026", pendingApproval: { proposedStatus: "Case Filed", submittedBy: "Lena Cruz", date: "04/05/2026", notes: "Recommends filing with PNP WCPD. Evidence sufficient." }, endorsedTo: null, endorsementDetails: null, paralegalRecord: null, lawyerRecord: null, monitoringLog: [], statusHistory: [] },
-];
+// Only cases with this status from Case Management are passed to Legal Review
+const VERIFIED_TRUE_STATUS = "Verified - True";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS COLORS
@@ -786,6 +790,94 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ASSIGN LEGAL MODAL — assign case to legal team member + send email notification
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSave, showToast }) {
+  const [selectedPersonnelId, setSelectedPersonnelId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (open) { setSelectedPersonnelId(""); setError(""); }
+  }, [open]);
+
+  if (!caseData) return null;
+
+  async function handleAssign() {
+    if (!selectedPersonnelId) { setError("Please select a legal team member."); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      // Assign the case to the legal personnel
+      const res = await fetch(`${API_URL}/api/legal_personnels/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          case_report_id: caseData.id,
+          legal_personnel_id: selectedPersonnelId,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to assign case.");
+      }
+      const selected = legalPersonnels.find((p) => String(p.legal_personnel_id) === String(selectedPersonnelId));
+      const personnelName = selected
+        ? `${selected.first_name || ""} ${selected.last_name || ""}`.trim() || selected.name || selectedPersonnelId
+        : selectedPersonnelId;
+      onSave({ ...caseData, assignedLegalOfficer: personnelName });
+      showToast(`Case ${caseData.id || caseData.caseId} assigned to ${personnelName}. Email notification sent.`);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Assign to Legal Team Member" wide>
+      <div className={styles.formGrid}>
+        <FormGroup label="Case ID"><FInput value={caseData.caseId || caseData.id} disabled /></FormGroup>
+        <FormGroup label="Legal Team Member" required error={error}>
+          <FSelect
+            value={selectedPersonnelId}
+            onChange={(e) => { setSelectedPersonnelId(e.target.value); setError(""); }}
+            error={error}
+          >
+            <option value="">— Select Legal Team Member —</option>
+            {legalPersonnels.length > 0 ? (
+              legalPersonnels.map((p) => {
+                const name = `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.name || `Personnel #${p.legal_personnel_id}`;
+                return (
+                  <option key={p.legal_personnel_id} value={p.legal_personnel_id}>
+                    {name}{p.role ? ` — ${p.role}` : ""}
+                  </option>
+                );
+              })
+            ) : (
+              <option disabled>No legal personnel found</option>
+            )}
+          </FSelect>
+        </FormGroup>
+      </div>
+      <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem" }}>
+        The assigned legal team member will receive an email notification about this case.
+      </p>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleAssign} disabled={saving || legalPersonnels.length === 0}>
+          {saving ? "Assigning…" : "Assign & Notify"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SELECT CASE MODAL (for action cards)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -845,6 +937,7 @@ function getCookie(name) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function LegalReviewManagement() {
+  const router = useRouter();
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
   useEffect(() => {
@@ -861,7 +954,81 @@ export default function LegalReviewManagement() {
   const isAdmin   = user.role?.toLowerCase() === "admin";
   const isLegal   = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
 
-  const [cases, setCases] = useState(PLACEHOLDER_CASES);
+  const [cases, setCases] = useState([]);
+  const [casesLoading, setCasesLoading] = useState(true);
+  // Legal personnels fetched from backend (for assign dropdown + filter)
+  const [legalPersonnels, setLegalPersonnels] = useState([]);
+
+  // Fetch verified-true cases from Case Management API
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: "include" });
+        if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
+        const { data } = await res.json();
+
+        // Only cases that are Verified - True are passed to Legal Review
+        const mapped = data
+          .filter((r) => STATUS_STEP[r.case_status_id] === VERIFIED_TRUE_STATUS ||
+            // also include cases already in legal review pipeline
+            ["Under Case Evaluation","Case Filed","Investigation Ongoing","Hearing Ongoing","Dismissed","Perpetrator Convicted"]
+              .includes(STATUS_STEP[r.case_status_id])
+          )
+          .map((r) => {
+            const year = new Date(r.created_at).getFullYear();
+            return {
+              id:                    r.case_report_id,
+              caseId:                `${year}-` + String(r.case_report_id).padStart(3, "0"),
+              reporterId:            String(r.complainant_id),
+              region:                r.incident_province || r.incident_city || "—",
+              city:                  r.incident_city || "—",
+              status:                STATUS_STEP[r.case_status_id] || "Verified - True",
+              assignedOfficer:       r.assigned_officer || null,
+              assignedLegalOfficer:  r.assigned_legal_officer || null,
+              assignedParalegal:     r.assigned_paralegal || null,
+              dateReported:          r.created_at,
+              caseType:              r.case_type || null,
+              pendingApproval:       null,
+              endorsedTo:            null,
+              endorsementDetails:    null,
+              paralegalRecord:       null,
+              lawyerRecord:          null,
+              monitoringLog:         [],
+              statusHistory: [{
+                status: STATUS_STEP[r.case_status_id] || "Verified - True",
+                date:   new Date(r.created_at).toLocaleDateString("en-PH"),
+                by:     r.assigned_officer || "System",
+                notes:  "Case passed to Legal Review.",
+              }],
+            };
+          });
+        setCases(mapped);
+      } catch (err) {
+        console.error("[LegalReview] fetch error:", err);
+      } finally {
+        setCasesLoading(false);
+      }
+    };
+    fetchCases();
+  }, []);
+
+  // Fetch legal personnels for filters and assign dropdown
+  useEffect(() => {
+    const fetchPersonnels = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/legal_personnels`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setLegalPersonnels(Array.isArray(data) ? data : data.data || []);
+        }
+      } catch (err) {
+        console.error("[LegalReview] failed to fetch legal personnels:", err);
+      }
+    };
+    fetchPersonnels();
+  }, []); 
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState({
     status: "",
@@ -925,7 +1092,7 @@ export default function LegalReviewManagement() {
 
   const filtered = useMemo(() =>
     cases.filter((c) => {
-      const ms = !search.trim() || c.id.includes(search) || c.region.toLowerCase().includes(search.toLowerCase());
+      const ms = !search.trim() || String(c.id).includes(search) || c.caseId?.includes(search) || (c.region || "").toLowerCase().includes(search.toLowerCase());
       let mf = true;
       if (activeFilters.status && activeFilters.status !== "" && activeFilters.status !== "All") {
         mf = mf && c.status === activeFilters.status;
@@ -936,11 +1103,36 @@ export default function LegalReviewManagement() {
       if (activeFilters.caseType && activeFilters.caseType !== "" && activeFilters.caseType !== "All") {
         mf = mf && (c.caseType || "") === activeFilters.caseType;
       }
+      if (activeFilters.dateReported && activeFilters.dateReported !== "") {
+        const getDateRangeFromFilter = (filterValue) => {
+          if (!filterValue) return null;
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          let startDate, endDate;
+          switch (filterValue) {
+            case "today":      startDate = new Date(today); endDate = new Date(today); endDate.setDate(endDate.getDate() + 1); break;
+            case "thisWeek":   startDate = new Date(today); startDate.setDate(startDate.getDate() - today.getDay()); endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 7); break;
+            case "thisMonth":  startDate = new Date(today.getFullYear(), today.getMonth(), 1); endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1); break;
+            case "thisYear":   startDate = new Date(today.getFullYear(), 0, 1); endDate = new Date(today.getFullYear() + 1, 0, 1); break;
+            case "last30Days": endDate = new Date(today); endDate.setDate(endDate.getDate() + 1); startDate = new Date(today); startDate.setDate(startDate.getDate() - 30); break;
+            default:
+              if (filterValue.startsWith("custom|")) {
+                const parts = filterValue.split("|");
+                if (parts.length === 3) { startDate = new Date(parts[1] + "T00:00:00"); endDate = new Date(parts[2] + "T23:59:59"); }
+              }
+          }
+          return startDate && endDate ? { startDate, endDate } : null;
+        };
+        const range = getDateRangeFromFilter(activeFilters.dateReported);
+        if (range) {
+          const d = c.dateReported ? new Date(c.dateReported) : null;
+          mf = mf && !!d && d >= range.startDate && d <= range.endDate;
+        }
+      }
       if (activeFilters.endorsedTo && activeFilters.endorsedTo !== "" && activeFilters.endorsedTo !== "All") {
         mf = mf && (c.endorsedTo || "") === activeFilters.endorsedTo;
       }
       if (activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All") {
-        mf = mf && (c.region || "").toLowerCase().includes(activeFilters.city.toLowerCase());
+        mf = mf && (c.city || c.region || "").toLowerCase().includes(activeFilters.city.toLowerCase());
       }
       return ms && mf;
     }),
@@ -1057,11 +1249,12 @@ export default function LegalReviewManagement() {
               totalRecords={filtered.length}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}
-              onRowDoubleClick={(c) => open(c, "view")}
+              onRowDoubleClick={(c) => router.push(`/legal-review/view?caseId=${c.id}&from=legal-review`)}
               onParalegal={(cases) => { setSelectedCase(cases[0]); setModal("paralegal"); }}
               onEndorse={(cases) => { setSelectedCase(cases[0]); setModal("endorse"); }}
               onMonitor={(cases) => { setSelectedCase(cases[0]); setModal("monitor"); }}
               onStatus={(cases) => { setSelectedCase(cases[0]); setModal("statusChange"); }}
+              onAssignLegal={(cases) => { setSelectedCase(cases[0]); setModal("assignLegal"); }}
               isAdmin={isAdmin}
               sortField={sortField}
               sortDir={sortDir}
@@ -1069,13 +1262,13 @@ export default function LegalReviewManagement() {
                 if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
                 else { setSortField(field); setSortDir("asc"); }
               }}
+              activeFilters={activeFilters}
             />
           </div>
         </section>
       </main>
 
       {/* ══ MODALS ══ */}
-      <ViewCaseModal        open={modal === "view"}         onClose={closeModal} caseData={selectedCase} />
       <AssignPersonnelModal open={modal === "assign"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} />
       <ParalegalSupportModal open={modal === "paralegal"}   onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       {/* <LawyerConsultModal   open={modal === "lawyer"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} /> */}
@@ -1083,6 +1276,7 @@ export default function LegalReviewManagement() {
       <MonitoringModal      open={modal === "monitor"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <StatusChangeModal    open={modal === "statusChange"} onClose={closeModal} caseData={selectedCase} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} />
       <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
+      <AssignLegalModal     open={modal === "assignLegal"}  onClose={closeModal} caseData={selectedCase} legalPersonnels={legalPersonnels} onSave={saveCase} showToast={showToast} />
 
       {/* Action card → select case → action */}
       <SelectCaseModal open={modal === "selectParalegal"} onClose={closeModal} cases={cases} title="Select Case for Paralegal Support" actionLabel="Paralegal" onAction={(c) => open(c, "paralegal")} />
