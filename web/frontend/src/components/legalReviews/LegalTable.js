@@ -161,12 +161,18 @@ export default function LegalTable({
   onEndorse,
   onMonitor,
   onStatus,
+  onAssignLegal,
   isAdmin,
   sortField,
   sortDir,
   onSort,
+  activeFilters = {},
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Derived: which extra columns to show based on active extra filters
+  const showEndorsedTo = !!(activeFilters.endorsedTo && activeFilters.endorsedTo !== "" && activeFilters.endorsedTo !== "All");
+  const showCity = !!(activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All");
 
   // Sync selection: clear if paginated changes (page turn)
   const pageIds = useMemo(() => paginated.map(c => c.id), [paginated]);
@@ -241,6 +247,13 @@ export default function LegalTable({
           <span className={styles.bulkCount}>{selectionCount} selected</span>
           <div className={styles.bulkActions}>
             <button
+              className={`${styles.bulkBtn} ${styles.bulkBtnAssign}`}
+              onClick={() => onAssignLegal && onAssignLegal(selectedCases)}
+              title="Assign to legal team member"
+            >
+              Assign
+            </button>
+            <button
               className={styles.bulkBtn}
               onClick={() => onParalegal && onParalegal(selectedCases)}
             >
@@ -298,6 +311,8 @@ export default function LegalTable({
               <SortableTh field="dateReported">
                 Submission Date
               </SortableTh>
+              {showEndorsedTo && <th className={styles.th}>Endorsed To</th>}
+              {showCity && <th className={styles.th}>City</th>}
               {/* Columns toggle button */}
               <th className={`${styles.th} ${styles.columnsTh}`}>
                 <ColumnsBtn />
@@ -307,7 +322,7 @@ export default function LegalTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8} className={styles.emptyState}>
+                <td colSpan={8 + (showEndorsedTo ? 1 : 0) + (showCity ? 1 : 0)} className={styles.emptyState}>
                   No cases found.
                 </td>
               </tr>
@@ -383,6 +398,20 @@ export default function LegalTable({
                         {formatDate(c.dateReported)}
                       </span>
                     </td>
+
+                    {/* Extra: Endorsed To */}
+                    {showEndorsedTo && (
+                      <td className={styles.td}>
+                        {c.endorsedTo || <span className={styles.muted}>—</span>}
+                      </td>
+                    )}
+
+                    {/* Extra: City */}
+                    {showCity && (
+                      <td className={styles.td}>
+                        {c.city || c.region || <span className={styles.muted}>—</span>}
+                      </td>
+                    )}
 
                     {/* Empty column under the columns button */}
                     <td className={styles.td} />
