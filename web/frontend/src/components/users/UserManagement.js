@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./UserManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
-import { fetchUsers } from "@/lib/api";
+import { fetchUsers, fetchCommittees } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import UsersTable from "./UsersTable";
 import UserFilterMenu from "./UserFilterMenu";
@@ -180,7 +180,8 @@ function Modal({ open, onClose, title, children }) {
 // ══════════════════════════════════════════════════════════════════
 // CREATE USER MODAL
 // ══════════════════════════════════════════════════════════════════
-function CreateUserModal({ open, onClose, onSave }) {
+function CreateUserModal({ open, onClose, onSave, committees }) {
+
   const EMPTY = {
     first_name:     "",
     last_name:      "",
@@ -188,6 +189,7 @@ function CreateUserModal({ open, onClose, onSave }) {
     contact_number: "",
     role_id:        "",
     is_active:      true,
+    committee_id:   "",
   };
 
   const ROLES = [
@@ -212,6 +214,11 @@ function CreateUserModal({ open, onClose, onSave }) {
     if (!form.email.trim())      e.email      = "Email is required.";
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email.";
     if (!form.role_id)           e.role_id    = "Role is required.";
+
+    const selectedRole = ROLES.find((r) => String(r.id) === String(form.role_id));
+    if (selectedRole?.name === "Staff" && !form.committee_id)
+    e.committee_id = "Committee is required for Staff role.";
+
     return e;
   }
 
@@ -233,6 +240,7 @@ function CreateUserModal({ open, onClose, onSave }) {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const username = `${form.email.split('@')[0]}${Math.floor(Math.random() * 10000)}`;
 
+      // Step 1: Create the user (no committee_id here)
       const response = await fetch(`${API_URL}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,6 +263,20 @@ function CreateUserModal({ open, onClose, onSave }) {
       }
 
       const newUser = await response.json();
+
+      // Step 2: If Staff, also insert into staff table
+      const selectedRole = ROLES.find((r) => String(r.id) === String(form.role_id));
+      if (selectedRole?.name === "Staff" && form.committee_id) {
+        const { error: staffError } = await supabase
+          .from("staff")
+          .insert({
+            user_id:      newUser.user_id,
+            committee_id: form.committee_id,
+          });
+
+        if (staffError) throw new Error(`User created but staff record failed: ${staffError.message}`);
+      }
+
       onSave(newUser);
       handleClose();
     } catch (err) {
@@ -342,11 +364,32 @@ function CreateUserModal({ open, onClose, onSave }) {
           >
             <option value="">— Select Role —</option>
             {ROLES.map((r) => (
-              <option key={r.role_id} value={r.role_id}>{r.name}</option>
+              <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
           {errors.role_id && <span className={styles.errorMsg}>{errors.role_id}</span>}
         </div>
+
+        {/* Committee — only shown when Staff is selected */}
+        {ROLES.find((r) => String(r.id) === String(form.role_id))?.name === "Staff" && (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Committee *</label>
+            <select
+              className={`${styles.formInput} ${errors.committee_id ? styles.inputError : ""}`}
+              value={form.committee_id}
+              onChange={(e) => {
+                setForm({ ...form, committee_id: e.target.value });
+                setErrors((p) => { const n = {...p}; delete n.committee_id; return n; });
+              }}
+            >
+              <option value="">— Select Committee —</option>
+              {committees.map((c) => (
+                <option key={c.committee_id} value={c.committee_id}>{c.committee_name}</option>
+              ))}
+            </select>
+            {errors.committee_id && <span className={styles.errorMsg}>{errors.committee_id}</span>}
+          </div>
+        )}
 
         {/* Status */}
         <div className={styles.formGroup}>
@@ -439,12 +482,12 @@ function ViewUserModal({ open, onClose, user }) {
 // ══════════════════════════════════════════════════════════════════
 // EDIT USER MODAL
 // ══════════════════════════════════════════════════════════════════
-const COMMITTEES = [
-  "Ways and Means",
-  "Membership",
-  "Publication",
-  "Education and Research",
-];
+// const COMMITTEES = [
+//   "Ways and Means",
+//   "Membership",
+//   "Publication",
+//   "Education and Research",
+// ];
 
 // Pre-seeded from ROLES_MAP so the dropdown is never empty while Supabase loads
 const LOCAL_ROLE_OPTIONS = Object.entries(ROLES_MAP).map(([id, name]) => ({
@@ -452,7 +495,7 @@ const LOCAL_ROLE_OPTIONS = Object.entries(ROLES_MAP).map(([id, name]) => ({
   role_name: name,
 }));
 
-function EditUserModal({ open, onClose, user, onSave }) {
+function EditUserModal({ open, onClose, user, onSave, committees }) {
   const EMPTY_FORM = {
     first_name: "", middle_name: "", last_name: "", extension_name: "",
     user_name: "", password: "", contact_number: "", profile_img: "",
@@ -606,8 +649,8 @@ function EditUserModal({ open, onClose, user, onSave }) {
               onChange={(e) => setForm((prev) => ({ ...prev, committee_id: e.target.value }))}
             >
               <option value="">Select a committee</option>
-              {COMMITTEES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {committees.map((c) => (
+                <option key={c.committee_id} value={c.committee_id}>{c.committee_name}</option>
               ))}
             </select>
             {errors.committee_id && <span className={styles.errorMsg}>{errors.committee_id}</span>}
@@ -818,6 +861,21 @@ export default function AdminDashboard() {
   const [users, setUsers]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
+  const [committees, setCommittees] = useState([]);
+
+  // ── Fetch committees ──────────────────────────────────────────
+  useEffect(() => {
+    async function loadCommittees() {
+      try {
+        const data = await fetchCommittees();
+        setCommittees(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load committees:", err);
+      }
+    }
+    loadCommittees();
+  }, []);
+
   const [search, setSearch]       = useState("");
   const [page, setPage]           = useState(1);
   const [advancedFilters, setAdvancedFilters] = useState({});
@@ -1188,9 +1246,9 @@ export default function AdminDashboard() {
       </main>
 
       {/* Modals */}
-      <CreateUserModal open={modal === "create"} onClose={closeModal} onSave={handleCreate} />
+      <CreateUserModal open={modal === "create"} onClose={closeModal} onSave={handleCreate} committees={committees} />
       <ViewUserModal   open={modal === "view"}   onClose={closeModal} user={selectedUser} />
-      <EditUserModal   open={modal === "edit"}   onClose={closeModal} user={selectedUser} onSave={handleUpdate} />
+      <EditUserModal   open={modal === "edit"}   onClose={closeModal} user={selectedUser} onSave={handleUpdate} committees={committees} />
       <DeleteUserModal
         open={modal === "delete"}
         onClose={closeModal}
