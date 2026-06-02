@@ -1,9 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem } = require('../controllers/interview_slots.controller')
+const { getItems, createItem, createBulk, deleteItem } = require('../controllers/interview_slots.controller')
 
-// Routes are kept thin or short since all the logic is in the controller
-router.get('/', getItems)
-router.post('/', createItem)
+router.get('/',         getItems)
+router.post('/',        createItem)
+router.post('/bulk',    createBulk)
+router.delete('/:id',   deleteItem)
 
 module.exports = router

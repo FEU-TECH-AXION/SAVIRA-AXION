@@ -1,12 +1,33 @@
 const supabase = require('../config/supabase')
 
-const getAll = async () => {
-    const { data, error } = await supabase.from('interview_slots').select('*')
+const getAll = async (filters = {}) => {
+    let query = supabase
+        .from('interview_slots')
+        .select(`
+            *,
+            creator:users!interview_slots_created_by_fkey(user_id, first_name, last_name)
+        `)
 
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
+    if (filters.slot_type)    query = query.eq('slot_type', filters.slot_type)
+    if (filters.created_by)   query = query.eq('created_by', filters.created_by)
+    if (filters.is_available !== undefined) query = query.eq('is_available', filters.is_available)
+
+    // Only return slots from today onwards
+    const today = new Date().toISOString().split('T')[0]
+    query = query.gte('slot_date', today)
+
+    const { data, error } = await query.order('slot_date').order('slot_time')
     if (error) throw error
+    return data
+}
 
+const getById = async (id) => {
+    const { data, error } = await supabase
+        .from('interview_slots')
+        .select('*')
+        .eq('slot_id', id)
+        .single()
+    if (error) throw error
     return data
 }
 
@@ -14,12 +35,45 @@ const create = async (payload) => {
     const { data, error } = await supabase
         .from('interview_slots')
         .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
+        .select()
     if (error) throw error
-
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
     return data[0]
 }
 
-module.exports = { getAll, create }
+// Bulk insert for recurring slot generation
+const createMany = async (payloads) => {
+    const { data, error } = await supabase
+        .from('interview_slots')
+        .insert(payloads)
+        .select()
+    if (error) throw error
+    return data
+}
+
+const markUnavailable = async (id) => {
+    const { data, error } = await supabase
+        .from('interview_slots')
+        .update({ is_available: false })
+        .eq('slot_id', id)
+        .select()
+    if (error) throw error
+    return data[0]
+}
+
+const deleteById = async (id) => {
+    const { error } = await supabase
+        .from('interview_slots')
+        .delete()
+        .eq('slot_id', id)
+    if (error) throw error
+    return { deleted: true }
+}
+
+module.exports = {
+    getAll,
+    getById,
+    create,
+    createMany,
+    markUnavailable,
+    deleteById,
+}
