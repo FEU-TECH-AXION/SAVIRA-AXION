@@ -1935,12 +1935,12 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
             {/* Manage Interviews — case officers */}
             {(isCaseOfficer) && (
               <div className="col-12 col-sm-6 col-lg-3">
-                <Link href="/cases/interviews" style={{ textDecoration: 'none' }}>
+                <Link href="/caseInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard
                     icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
                     title="Manage Interviews"
                     description="Create interview schedules, manage invitations, and track interview progress."
-                    onView={() => router.push("/cases/interviews")}
+                    onView={() => router.push("/caseInterviews")}
                   />
                 </Link>
               </div>

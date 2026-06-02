@@ -31,6 +31,7 @@ const COMPLAINANT_LINKS = [
 const CASE_OFFICER_LINKS = [
   { href: "/dashboard", label: "Home" },
   { href: "/cases", label: "Cases" },
+  { href: "/caseInterviews", label: "Interviews" },
   { href: "/heatmap", label: "Heatmap" },
 ];
 
