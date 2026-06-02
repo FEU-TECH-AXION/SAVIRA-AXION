@@ -945,7 +945,7 @@ function StepEvidence({ data, onChange }) {
 }
 
 // ── Page 4 — Review & Submit ──────────────────────────────────────────────────
-function StepReview({ complainant, incident, evidence }) {
+function StepReview({ complainant, incident, evidence, consents, onConsentChange, consentErrors = {} }) {
   const Row = ({ label, value }) => (
     <div className={styles.reviewRow}>
       <span className={styles.reviewLabel}>{label}</span>
@@ -1043,7 +1043,57 @@ function StepReview({ complainant, incident, evidence }) {
           }
         />
       </div>
+
+      {/* ── Consent & Acknowledgement ── */}
+      <div className={styles.formDivider} />
+      <h3 className={styles.subSectionTitle}>Consent & Acknowledgement</h3>
+      <p className={styles.stepDesc}>
+        Before submitting, please read and confirm the following statements.
+      </p>
+
+      <div className={styles.consentBlock}>
+        {/* Checkbox 1 — Data Privacy */}
+        <label className={`${styles.consentLabel} ${consentErrors?.dataPrivacy ? styles.consentLabelError : ""}`}>
+          <input
+            type="checkbox"
+            className={styles.consentCheckbox}
+            checked={consents.dataPrivacy}
+            onChange={(e) => onConsentChange("dataPrivacy", e.target.checked)}
+          />
+          <span>
+            I understand and agree that the information I have provided in this report will be collected,
+            stored, and processed by the institution solely for the purpose of case management and resolution.
+            All data will be handled in accordance with the{" "}
+            <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> and the institution's
+            privacy policy. My information will not be shared with unauthorized third parties without my consent.
+          </span>
+        </label>
+        {consentErrors?.dataPrivacy && (
+          <p className={styles.fieldError}>You must agree to the data privacy terms to proceed.</p>
+        )}
+
+        {/* Checkbox 2 — Case Analysis (NLP, softened) */}
+        <label className={`${styles.consentLabel} ${consentErrors?.caseAnalysis ? styles.consentLabelError : ""}`}>
+          <input
+            type="checkbox"
+            className={styles.consentCheckbox}
+            checked={consents.caseAnalysis}
+            onChange={(e) => onConsentChange("caseAnalysis", e.target.checked)}
+          />
+          <span>
+            I agree that the narrative details of my report may be used to support ongoing efforts to
+            improve case handling and outcomes. Any such use will be conducted on{" "}
+            <strong>anonymized, de-identified data only</strong> — personally identifiable information
+            such as names, contact details, and age will be excluded and will not be retained or
+            linked to any analysis.
+          </span>
+        </label>
+        {consentErrors?.caseAnalysis && (
+          <p className={styles.fieldError}>You must acknowledge the case analysis terms to proceed.</p>
+        )}
+      </div>
     </div>
+
   );
 }
 
@@ -1173,6 +1223,11 @@ export default function CreateReport({
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
 
+  const [consents, setConsents] = useState({
+    dataPrivacy: false,
+    caseAnalysis: false,
+  });
+
   const [complainant, setComplainant] = useState({
     name: "", age: "", gender: "", organization: "", reporteeType: "",
     council: "", region: "",
@@ -1229,6 +1284,14 @@ export default function CreateReport({
   };
 
     const handleSubmit = async () => {
+    // Validate consents first
+    const consentErrs = {};
+    if (!consents.dataPrivacy)  consentErrs.dataPrivacy  = true;
+    if (!consents.caseAnalysis) consentErrs.caseAnalysis = true;
+    if (Object.keys(consentErrs).length > 0) {
+    setStepErrors(consentErrs);
+    return;
+  }
     setSubmissionError(null);
     setIsSubmitting(true);
     fetchUserReports();
@@ -1361,6 +1424,9 @@ export default function CreateReport({
                     complainant={complainant}
                     incident={incident}
                     evidence={evidence}
+                    consents={consents}
+                    onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))}
+                    consentErrors={stepErrors}
                   />
                 )}
               </div>
