@@ -890,8 +890,13 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   // Inline state for assign paralegal / referral modals
   const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
-  const [caseTypeVal, setCaseTypeVal]   = useState(caseData.caseType || "");
-  const [categoryVal, setCategoryVal]   = useState(caseData.primaryCategory || "");
+  const [caseTypeVal, setCaseTypeVal] = useState(
+    Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []
+  );
+  const [primaryCatVal, setPrimaryCatVal] = useState(caseData.primaryCategory || "");
+  const [alsoCatVal, setAlsoCatVal] = useState(
+    Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []
+  );
   const [referralVal, setReferralVal]   = useState(caseData.referralBody || "");
   const [referralReq, setReferralReq]   = useState(caseData.referralRequired ? "yes" : "no");
   const [endorseBody, setEndorseBody]   = useState("");
@@ -918,8 +923,12 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           {[
             ["Assigned Case Officer", caseData.assignedOfficer || "—"],
             ["Assigned Paralegal",    caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "N/A")],
-            ["Case Type",             caseData.caseType || "Not set"],
-            ["Primary Category",      caseData.primaryCategory || "Not set"],
+            ["Case Type",        Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not set"],
+            ["Primary Category", caseData.primaryCategory
+              ? caseData.alsoInvolves?.length
+                ? `${caseData.primaryCategory} (also: ${caseData.alsoInvolves.join(", ")})`
+                : caseData.primaryCategory
+              : "Not set"],
             ["Referral Required",     caseData.referralRequired ? "Yes" : "No"],
             ["Referral Body",         caseData.referralBody || "—"],
             ["Endorsement Status",    caseData.endorsementStatus || "Not endorsed"],
@@ -1033,36 +1042,121 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       <ConvictedModal      open={modal === "convicted"}     onClose={() => setModal("statusRouter")} caseData={caseData} onSubmit={submitForApproval} actorName={actorName} />
 
       {/* Set Case Type */}
-      <Modal open={modal === "setCaseType"} onClose={() => setModal(null)} title="Set Case Type">
+      <Modal open={modal === "setCaseType"} onClose={() => setModal(null)} title="Set Case Type" wide>
+        <p className={styles.formDesc}>
+          Check all case types that apply. More than one may be relevant.
+        </p>
         <div className={styles.formGrid}>
-          <FormGroup label="Case Type" required>
-            <FSelect value={caseTypeVal} onChange={(e) => setCaseTypeVal(e.target.value)}>
-              <option value="">— Select case type —</option>
-              {VIOLENCE_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
-            </FSelect>
+          <FormGroup label="Case Type(s)" required>
+            <div className={styles.checkGroup}>
+              {VIOLENCE_TYPES.map((v) => (
+                <label key={v} className={styles.checkLabel}>
+                  <input
+                    type="checkbox"
+                    className={styles.checkInput}
+                    checked={caseTypeVal.includes(v)}
+                    onChange={() =>
+                      setCaseTypeVal((prev) =>
+                        prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
+                      )
+                    }
+                  />
+                  {v}
+                </label>
+              ))}
+            </div>
+            {caseTypeVal.length === 0 && (
+              <span className={styles.errorMsg}>Select at least one case type.</span>
+            )}
           </FormGroup>
         </div>
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={() => { setCaseData((p) => ({ ...p, caseType: caseTypeVal })); showToast("Case type updated."); setModal(null); }} disabled={!caseTypeVal}>Save</button>
+          <button
+            className={styles.btnPrimary}
+            disabled={caseTypeVal.length === 0}
+            onClick={() => {
+              setCaseData((p) => ({ ...p, caseType: caseTypeVal }));
+              showToast("Case type updated.");
+              setModal(null);
+            }}
+          >
+            Save
+          </button>
         </div>
       </Modal>
 
-      {/* Set Primary Category */}
-      <Modal open={modal === "setCategory"} onClose={() => setModal(null)} title="Set Primary Category">
+      {/* Set Category */}
+      <Modal open={modal === "setCategory"} onClose={() => setModal(null)} title="Set Category" wide>
+        <p className={styles.formDesc}>
+          Select the dominant medium of the incident as the primary category.
+          If the case spans more than one medium, check the others under "Also involves".
+        </p>
         <div className={styles.formGrid}>
-          <FormGroup label="Primary Category" required>
-            <FSelect value={categoryVal} onChange={(e) => setCategoryVal(e.target.value)}>
-              <option value="">— Select category —</option>
-              <option>Physical</option>
-              <option>Verbal</option>
-              <option>Virtual / Online</option>
+
+          <FormGroup label="Primary Category" required hint="The dominant medium — pick one.">
+            <FSelect
+              value={primaryCatVal}
+              onChange={(e) => {
+                const selected = e.target.value;
+                setPrimaryCatVal(selected);
+                // Remove from "also involves" if it was checked there
+                setAlsoCatVal((prev) => prev.filter((c) => c !== selected));
+              }}
+            >
+              <option value="">— Select primary category —</option>
+              <option value="Physical">Physical</option>
+              <option value="Virtual">Virtual</option>
+              <option value="Verbal">Verbal</option>
             </FSelect>
           </FormGroup>
+
+          <FormGroup
+            label="Also involves (optional)"
+            hint="Check any other mediums this case spans — separate from the primary."
+          >
+            <div className={styles.checkGroup}>
+              {["Physical", "Virtual", "Verbal"]
+                .filter((c) => c !== primaryCatVal)
+                .map((c) => (
+                  <label key={c} className={styles.checkLabel}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkInput}
+                      checked={alsoCatVal.includes(c)}
+                      onChange={() =>
+                        setAlsoCatVal((prev) =>
+                          prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+                        )
+                      }
+                    />
+                    {c}
+                  </label>
+                ))}
+            </div>
+            {!primaryCatVal && (
+              <span className={styles.formHint}>Select a primary category first to enable this.</span>
+            )}
+          </FormGroup>
+
         </div>
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={() => { setCaseData((p) => ({ ...p, primaryCategory: categoryVal })); showToast("Primary category updated."); setModal(null); }} disabled={!categoryVal}>Save</button>
+          <button
+            className={styles.btnPrimary}
+            disabled={!primaryCatVal}
+            onClick={() => {
+              setCaseData((p) => ({
+                ...p,
+                primaryCategory: primaryCatVal,
+                alsoInvolves: alsoCatVal,
+              }));
+              showToast("Category updated.");
+              setModal(null);
+            }}
+          >
+            Save
+          </button>
         </div>
       </Modal>
 
