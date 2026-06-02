@@ -22,6 +22,7 @@
   min-height: 100vh;
   color: var(--sasha-text);
   padding-bottom: 2rem;
+  margin-top: 64px;
 }
 
 .pageContainer {
@@ -66,7 +67,7 @@
   color: var(--sasha-white);
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 800;
-  margin: 0 0 1rem 0;
+  margin: 0 0 2.5rem 0;
 }
 
 .heroSubtitle {
@@ -85,13 +86,18 @@
 }
 
 .statCard {
-  background: var(--sasha-white);
-  border: 1px solid var(--sasha-border);
-  border-radius: var(--sasha-card-radius);
-  padding: 1.5rem;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 24px;
+  padding: 2rem 1.75rem;
+  backdrop-filter: blur(10px);
+  height: 100%;
+  position: relative;
+  overflow: visible;
 }
 
 .statCard:hover {
@@ -101,18 +107,21 @@
 }
 
 .statNumber {
-  display: block;
-  font-size: 2.5rem;
+  color: var(--sasha-white);
+  font-size: 3.5rem;
   font-weight: 800;
-  color: var(--sasha-teal);
-  margin-bottom: 0.5rem;
+  line-height: 1;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .statLabel {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--sasha-muted);
+  color: var(--sasha-white);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0;
+  text-align: left;
 }
 
 /* ── Action Bar ── */

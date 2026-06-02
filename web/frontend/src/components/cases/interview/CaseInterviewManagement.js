@@ -165,8 +165,12 @@ export default function CaseInterviewManagement() {
       );
     }
 
-    if (filters.interviewStatus && filters.interviewStatus !== "All") {
+    if (filters.interviewStatus && filters.interviewStatus !== "All" && filters.interviewStatus !== "") {
       result = result.filter((i) => i.interviewStatus === filters.interviewStatus);
+    }
+
+    if (filters.interviewType && filters.interviewType !== "All" && filters.interviewType !== "") {
+      result = result.filter((i) => i.interviewType === filters.interviewType);
     }
 
     return result;
@@ -178,7 +182,7 @@ export default function CaseInterviewManagement() {
   };
 
   const handleClearFilters = () => {
-    setFilters({ interviewStatus: "All", dateRange: "" });
+    setFilters({ interviewStatus: "All", dateRange: "", interviewType: "All" });
     setSearchTerm("");
     setCurrentPage(1);
   };
@@ -250,30 +254,27 @@ export default function CaseInterviewManagement() {
         {/* Hero Banner */}
         <div className={styles.heroBanner}>
           <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle}>📅 Interview Management</h1>
-            <p className={styles.heroSubtitle}>
-              Create schedules, manage invitations, and track interview progress
-            </p>
-          </div>
-        </div>
+            <h1 className={styles.heroTitle}>Interview Management</h1>
 
-        {/* Stats Bar */}
-        <div className={styles.statsBar}>
-          <div className={styles.statCard}>
-            <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Invited").length}</span>
-            <span className={styles.statLabel}>Pending Invitations</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Scheduled").length}</span>
-            <span className={styles.statLabel}>Scheduled</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Confirmed").length}</span>
-            <span className={styles.statLabel}>Confirmed</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Completed").length}</span>
-            <span className={styles.statLabel}>Completed</span>
+            {/* Stats Bar */}
+            <div className={styles.statsBar}>
+              <div className={styles.statCard}>
+                <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Invited").length}</span>
+                <span className={styles.statLabel}>Pending Invitations</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Scheduled").length}</span>
+                <span className={styles.statLabel}>Scheduled</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Confirmed").length}</span>
+                <span className={styles.statLabel}>Confirmed</span>
+              </div>
+              <div className={styles.statCard}>
+                <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Completed").length}</span>
+                <span className={styles.statLabel}>Completed</span>
+              </div>
+            </div>
           </div>
         </div>
 

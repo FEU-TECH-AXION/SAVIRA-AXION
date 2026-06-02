@@ -90,8 +90,36 @@
   to   { opacity: 1; transform: none; }
 }
 
-/* ── Select option ── */
-.selectOption {
+/* ── Officer search ── */
+.officerSearchWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.officerSearchIcon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.officerSearchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.82rem;
+  color: #374151;
+  font-family: inherit;
+  background: transparent;
+}
+
+.officerList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.officerOption {
   display: block;
   width: 100%;
   text-align: left;
@@ -106,92 +134,73 @@
   transition: background 0.1s, color 0.1s;
 }
 
-.selectOption:last-child {
+.officerOption:last-child {
   border-bottom: none;
 }
 
-.selectOption:hover {
+.officerOption:hover {
   background: #e1f5f5;
   color: #037F81;
 }
 
-.selectOptionActive {
+.officerOptionActive {
   background: #e1f5f5;
   color: #037F81;
   font-weight: 700;
 }
 
-/* ── Date Range Filter ── */
-.dateRangeFilter {
+.officerEmpty {
   padding: 0.75rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  text-align: center;
 }
 
-.dateRangeMode {
+/* ── Dropdown footer (date / officer) ── */
+.defaultFilterFooter {
   display: flex;
+  justify-content: flex-end;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid #e5e7eb;
 }
 
-.dateRangeMode button {
-  flex: 1;
-  padding: 0.4rem 0.6rem;
-  border: none;
-  background: none;
-  color: #6b7280;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.12s;
-}
-
-.dateRangeModeActive {
-  color: #037F81 !important;
-  border-bottom-color: #037F81 !important;
-}
-
-.presetOptions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.presetOption {
-  padding: 0.5rem 0.6rem;
-  text-align: left;
+.clearBtn {
   background: none;
   border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  color: #374151;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  color: #6b7280;
   cursor: pointer;
-  transition: all 0.12s;
+  transition: color 0.12s, background 0.12s;
 }
 
-.presetOption:hover {
-  background: #e1f5f5;
-  border-color: #037F81;
-  color: #037F81;
+.clearBtn:hover {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
-.presetOptionActive {
-  background: #e1f5f5;
-  border-color: #037F81;
-  color: #037F81;
+.doneBtn {
+  background: #037F81;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.12s;
 }
 
-.customDateInputs {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.doneBtn:hover {
+  background: #025f61;
 }
 
 .dateInput {
-  flex: 1;
-  padding: 0.45rem 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -206,100 +215,266 @@
   box-shadow: 0 0 0 2px rgba(3, 127, 129, 0.1);
 }
 
-.applyCustomBtn {
-  padding: 0.45rem 0.75rem;
-  background: #037F81;
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
+/* ── Extra filter wrapper (removable pill) ── */
+.extraFilterWrap {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+.extraFilterWrap .defaultFilterBtn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.removeExtraBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid #e5e7eb;
+  border-left: none;
+  background: #fee2e2;
+  color: #991b1b;
   cursor: pointer;
+  font-size: 0.75rem;
   transition: background 0.12s;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.applyCustomBtn:hover {
-  background: #025f61;
+.removeExtraBtn:hover {
+  background: #fca5a5;
 }
 
-/* ── Filter Menu Button ── */
+/* ══════════════════════════════════════════
+   Filter Menu Button (⊞)
+   ══════════════════════════════════════════ */
+
+.filterMenuWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .filterMenuBtn {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   width: 34px;
   height: 34px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: #374151;
   cursor: pointer;
-  transition: all 0.12s;
-  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  position: relative;
 }
 
-.filterMenuBtn:hover {
+.filterMenuBtn:hover,
+.filterMenuBtnOpen {
   background: #f5fffe;
   border-color: #037F81;
   color: #037F81;
 }
 
-/* ── Add Filters Dropdown ── */
-.addFiltersDropdown {
+.filterBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  background: #E8663A;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-weight: 700;
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 900;
+  top: -6px;
+  right: -6px;
+}
+
+/* ── Filter Menu dropdown panel ── */
+.filterDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  min-width: 180px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  min-width: 300px;
+  max-width: 360px;
   animation: dropIn 0.14s ease;
 }
 
-.addFilterOption {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.6rem 0.9rem;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #374151;
+.filterDropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filterDropdownTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #292929;
+  margin: 0;
+}
+
+.filterDropdownClose {
   background: none;
   border: none;
-  border-bottom: 1px solid #f3f4f6;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
 }
 
-.addFilterOption:last-child {
-  border-bottom: none;
-}
-
-.addFilterOption:hover {
+.filterDropdownClose:hover {
   background: #e1f5f5;
   color: #037F81;
 }
 
-/* ── Clear All Button ── */
-.clearAllBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0.45rem 0.75rem;
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #991b1b;
-  cursor: pointer;
-  transition: all 0.12s;
+.filterDropdownHint {
+  font-size: 0.78rem;
+  color: #6b7280;
+  padding: 0.6rem 1.1rem 0;
+  margin: 0;
+  line-height: 1.5;
 }
 
-.clearAllBtn:hover {
-  background: #fecaca;
-  border-color: #f87171;
+.filterFieldsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 48vh;
+  overflow-y: auto;
+  padding: 0.4rem 0;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.filterField:last-child {
+  border-bottom: none;
+}
+
+.filterFieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #292929;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filterFieldCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #037F81;
+  flex-shrink: 0;
+}
+
+.filterFieldInput {
+  margin-top: 0.2rem;
+}
+
+.filterFieldTextInput {
+  width: 100%;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #292929;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.12s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.filterFieldTextInput:focus {
+  border-color: #037F81;
+}
+
+.filterDropdownFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.filterClearBtn {
+  background: #f5f7f8;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.filterClearBtn:hover {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.filterDoneBtn {
+  background: #037F81;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s;
+  flex: 1;
+}
+
+.filterDoneBtn:hover {
+  background: #025f61;
+  transform: translateY(-1px);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .defaultFiltersRow {
+    gap: 0.4rem;
+  }
+
+  .defaultFilterBtn {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .filterDropdown {
+    right: auto;
+    left: 0;
+    min-width: 280px;
+    max-width: 320px;
+  }
 }

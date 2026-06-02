@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import styles from "./InterviewsTable.module.css";
 
 const INTERVIEW_STATUS_COLORS = {
@@ -11,16 +11,6 @@ const INTERVIEW_STATUS_COLORS = {
   Cancelled: { bg: "#fee2e2", color: "#991b1b" },
   Expired: { bg: "#f1f5f9", color: "#475569" },
   Rejected: { bg: "#fecdd3", color: "#be123c" },
-};
-
-const INTERVIEW_STATUS_ROW_COLOR = {
-  Invited: "#fffbf0",
-  Scheduled: "#fffdf0",
-  Confirmed: "#f0fdf4",
-  Completed: "#f0fdf4",
-  Cancelled: "#fff0f0",
-  Expired: "#f8fafc",
-  Rejected: "#fff0f0",
 };
 
 function InterviewStatusBadge({ status }) {
@@ -104,27 +94,36 @@ export default function InterviewsTable({
   pageSize = 10,
 }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const paginatedInterviews = useMemo(() => {
+  const start = (currentPage - 1) * pageSize;
+  return interviews.slice(start, start + pageSize);
+}, [interviews, currentPage, pageSize]);
 
-  const groupedInterviews = useMemo(() => {
-    const groups = {};
-    interviews.forEach((interview) => {
-      const status = interview.interviewStatus || "Invited";
-      if (!groups[status]) groups[status] = [];
-      groups[status].push(interview);
-    });
-    return groups;
-  }, [interviews]);
+useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(interviews.length / pageSize)
+    );
 
-  const statusOrder = ["Invited", "Scheduled", "Confirmed", "Completed", "Cancelled", "Expired", "Rejected"];
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [interviews.length, pageSize, currentPage]);
 
-  const handleSelectAll = (status, checked) => {
-    const statusInterviews = groupedInterviews[status] || [];
-    const statusIds = statusInterviews.map((i) => i.id);
+  const pageIds = useMemo(
+    () => paginatedInterviews.map((i) => i.id),
+    [paginatedInterviews]
+  );
+
+  const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.includes(id));
+  const someSelected = pageIds.some(id => selectedIds.includes(id));
+
+  const handleSelectAll = (checked) => {
     let newSelected = [...selectedIds];
     if (checked) {
-      newSelected = [...new Set([...selectedIds, ...statusIds])];
+      newSelected = [...new Set([...selectedIds, ...pageIds])];
     } else {
-      newSelected = newSelected.filter((id) => !statusIds.includes(id));
+      newSelected = newSelected.filter((id) => !pageIds.includes(id));
     }
     onSelectionChange(newSelected);
   };
@@ -143,90 +142,12 @@ export default function InterviewsTable({
     return <div className={styles.loading}>Loading interviews...</div>;
   }
 
-  if (Object.keys(groupedInterviews).length === 0) {
+  if (interviews.length === 0) {
     return <div className={styles.empty}>No interviews found</div>;
   }
 
   return (
     <div className={styles.tableWrapper}>
-      {statusOrder.map((status) => {
-        const statusInterviews = groupedInterviews[status];
-        if (!statusInterviews || statusInterviews.length === 0) return null;
-
-        const statusChecked =
-          statusInterviews.length > 0 &&
-          statusInterviews.every((i) => selectedIds.includes(i.id));
-        const statusIndeterminate =
-          statusInterviews.some((i) => selectedIds.includes(i.id)) && !statusChecked;
-
-        return (
-          <div key={status} className={styles.statusGroup}>
-            <div className={styles.statusGroupHeader}>
-              <div className={styles.statusGroupTitle}>
-                <input
-                  type="checkbox"
-                  checked={statusChecked}
-                  indeterminate={statusIndeterminate}
-                  onChange={(e) => handleSelectAll(status, e.target.checked)}
-                  className={styles.checkbox}
-                />
-                <span className={styles.statusGroupName}>{status}</span>
-                <span className={styles.statusGroupCount}>({statusInterviews.length})</span>
-              </div>
-            </div>
-
-            <table className={styles.interviewTable}>
-              <thead>
-                <tr>
-                  <th className={styles.colCheckbox}></th>
-                  <th className={styles.colCaseId}>Case ID</th>
-                  <th className={styles.colInterviewee}>Interviewee Name</th>
-                  <th className={styles.colType}>Interview Type</th>
-                  <th className={styles.colDateTime}>Date & Time</th>
-                  <th className={styles.colStatus}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {statusInterviews.map((interview) => {
-                  const isSelected = selectedIds.includes(interview.id);
-                  return (
-                    <tr
-                      key={interview.id}
-                      className={`${styles.tableRow} ${isSelected ? styles.tableRowSelected : ""}`}
-                      style={{ backgroundColor: INTERVIEW_STATUS_ROW_COLOR[status] }}
-                      onDoubleClick={() => onViewDetails(interview)}
-                    >
-                      <td className={styles.colCheckbox}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => handleSelectRow(interview.id, e.target.checked)}
-                          className={styles.checkbox}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                      <td className={styles.colCaseId}>
-                        <span className={styles.caseIdBadge}>{interview.caseId}</span>
-                      </td>
-                      <td className={styles.colInterviewee}>{interview.intervieweeName}</td>
-                      <td className={styles.colType}>{interview.interviewType || "Initial"}</td>
-                      <td className={styles.colDateTime}>
-                        {interview.scheduledDate && interview.scheduledTime
-                          ? `${new Date(interview.scheduledDate).toLocaleDateString()} ${interview.scheduledTime}`
-                          : "—"}
-                      </td>
-                      <td className={styles.colStatus}>
-                        <InterviewStatusBadge status={status} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
-
       {selectedIds.length > 0 && (
         <div className={styles.bulkActionsBar}>
           <span className={styles.bulkActionsCount}>
@@ -254,6 +175,72 @@ export default function InterviewsTable({
           </div>
         </div>
       )}
+
+      <table className={styles.interviewTable}>
+        <thead>
+          <tr>
+            <th className={styles.colCheckbox}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+                className={styles.checkbox}
+                aria-label="Select all"
+              />
+            </th>
+            <th className={styles.colCaseId}>Case ID</th>
+            <th className={styles.colInterviewee}>Interviewee Name</th>
+            <th className={styles.colType}>Interview Type</th>
+            <th className={styles.colDateTime}>Date & Time</th>
+            <th className={styles.colStatus}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedInterviews.map((interview, idx) => {
+            const isSelected = selectedIds.includes(interview.id);
+            const status = interview.interviewStatus || "Invited";
+            const rowBg = isSelected
+              ? "#e1f5f5"
+              : idx % 2 === 1
+              ? "#f7f9fb"
+              : "#ffffff";
+
+            return (
+              <tr
+                key={interview.id}
+                className={`${styles.tableRow} ${isSelected ? styles.tableRowSelected : ""}`}
+                style={{ backgroundColor: rowBg }}
+                onDoubleClick={() => onViewDetails(interview)}
+              >
+                <td className={styles.colCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => handleSelectRow(interview.id, e.target.checked)}
+                    className={styles.checkbox}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select interview ${interview.id}`}
+                  />
+                </td>
+                <td className={styles.colCaseId}>
+                  <span className={styles.caseIdBadge}>{interview.caseId}</span>
+                </td>
+                <td className={styles.colInterviewee}>{interview.intervieweeName}</td>
+                <td className={styles.colType}>{interview.interviewType || "Initial"}</td>
+                <td className={styles.colDateTime}>
+                  {interview.scheduledDate && interview.scheduledTime
+                    ? `${new Date(interview.scheduledDate).toLocaleDateString()} ${interview.scheduledTime}`
+                    : "—"}
+                </td>
+                <td className={styles.colStatus}>
+                  <InterviewStatusBadge status={status} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
       {interviews.length > pageSize && (
         <Pagination
