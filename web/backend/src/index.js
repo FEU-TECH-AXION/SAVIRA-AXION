@@ -125,3 +125,13 @@ app.use('/api/volunteer_application_analysis', volunteerApplicationAnalysisRoute
 // Route for volunteer_application_evaluation tbl
 const volunteerApplicationEvaluationsRouter = require('./routes/volunteer_application_evaluations.routes')
 app.use('/api/volunteer_application_evaluations', volunteerApplicationEvaluationsRouter)
+
+// ── ROUTES FOR INTERVIEWS RELATED TABLES ───────────────────────────────
+
+// Route for interviews tbl
+const interviewsRouter = require('./routes/interviews.routes')
+app.use('/api/interviews', interviewsRouter)
+
+// Route for interview_slots tbl
+const interviewSlotsRouter = require('./routes/interview_slots.routes')
+app.use('/api/interview_slots', interviewSlotsRouter)
