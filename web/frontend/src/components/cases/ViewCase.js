@@ -889,6 +889,9 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   const transitions = getAvailableTransitions();
 
+  const [caseTypeConfirmed, setCaseTypeConfirmed] = useState(false);
+  const [categoryConfirmed, setCategoryConfirmed] = useState(false);
+
   // Inline state for assign paralegal / referral modals
   const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
   const [caseTypeVal, setCaseTypeVal] = useState(
@@ -1045,54 +1048,141 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       {/* Set Case Type */}
       <Modal open={modal === "setCaseType"} onClose={() => setModal(null)} title="Set Case Type" wide>
         <p className={styles.formDesc}>
-          Check all case types that apply. More than one may be relevant.
+          Check all case types that apply. Hover or select a type to see its definition. More than one may be relevant.
         </p>
+
+        {/* Confirmation notice at top */}
+        <div style={{
+          background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
+          padding: "10px 14px", marginBottom: "1.25rem",
+          fontSize: "0.82rem", color: "#92400e",
+          display: "flex", gap: 8, alignItems: "flex-start"
+        }}>
+          <FiAlertTriangle style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>Case type classification affects how this report is processed and which referral pathways are considered. Review each definition carefully before checking.</span>
+        </div>
+
         <div className={styles.formGrid}>
           <FormGroup label="Case Type(s)" required>
             <div className={styles.checkGroup}>
-              {VIOLENCE_TYPES.map((v) => (
-                <label key={v} className={styles.checkLabel}>
-                  <input
-                    type="checkbox"
-                    className={styles.checkInput}
-                    checked={caseTypeVal.includes(v)}
-                    onChange={() =>
-                      setCaseTypeVal((prev) =>
-                        prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-                      )
-                    }
-                  />
-                  {v}
-                </label>
-              ))}
+              {VIOLENCE_TYPES.map((v) => {
+                const isChecked = caseTypeVal.includes(v);
+                return (
+                  <div key={v} style={{ marginBottom: "0.5rem" }}>
+                    <label className={styles.checkLabel} style={{
+                      background: isChecked ? "#f5f3ff" : "transparent",
+                      border: isChecked ? "1px solid #ddd6fe" : "1px solid transparent",
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      transition: "all 0.15s",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}>
+                      <input
+                        type="checkbox"
+                        className={styles.checkInput}
+                        checked={isChecked}
+                        style={{ marginTop: 2, flexShrink: 0 }}
+                        onChange={() =>
+                          setCaseTypeVal((prev) =>
+                            prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
+                          )
+                        }
+                      />
+                      <div>
+                        <span style={{
+                          fontWeight: isChecked ? 700 : 500,
+                          color: isChecked ? "#5b21b6" : "inherit",
+                          fontSize: "0.875rem",
+                          display: "block",
+                        }}>
+                          {v}
+                        </span>
+                        {isChecked && CASE_TYPE_DESCRIPTIONS[v] && (
+                          <span style={{
+                            display: "block",
+                            marginTop: 4,
+                            fontSize: "0.8rem",
+                            color: "#6b21a8",
+                            lineHeight: 1.55,
+                            fontStyle: "italic",
+                          }}>
+                            {CASE_TYPE_DESCRIPTIONS[v]}
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                );
+              })}
             </div>
             {caseTypeVal.length === 0 && (
               <span className={styles.errorMsg}>Select at least one case type.</span>
             )}
           </FormGroup>
         </div>
+
+        {/* Summary of selected types */}
+        {caseTypeVal.length > 0 && (
+          <div style={{
+            background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
+            padding: "10px 14px", margin: "0.5rem 0 1rem",
+            fontSize: "0.82rem", color: "#166534",
+          }}>
+            <strong>Selected ({caseTypeVal.length}):</strong> {caseTypeVal.join(" · ")}
+          </div>
+        )}
+
+        {/* Confirmation checkbox */}
+        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem", marginTop: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: "0.875rem", color: "#374151" }}>
+            <input
+              type="checkbox"
+              checked={caseTypeConfirmed}
+              onChange={(e) => setCaseTypeConfirmed(e.target.checked)}
+              style={{ marginTop: 3, flexShrink: 0, accentColor: "#5b21b6" }}
+            />
+            <span>
+              I have reviewed the definitions of all selected case type(s) and confirm that this classification accurately reflects the nature of the incident as reported.
+            </span>
+          </label>
+        </div>
+
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
           <button
             className={styles.btnPrimary}
-            disabled={caseTypeVal.length === 0}
+            disabled={caseTypeVal.length === 0 || !caseTypeConfirmed}
             onClick={() => {
               setCaseData((p) => ({ ...p, caseType: caseTypeVal }));
+              setCaseTypeConfirmed(false); // reset for next open
               showToast("Case type updated.");
               setModal(null);
             }}
           >
             Save
-          </button>
+          </button>                             
         </div>
-      </Modal>
+      </Modal>  
 
       {/* Set Category */}
-      <Modal open={modal === "setCategory"} onClose={() => setModal(null)} title="Set Category" wide>
+      <Modal open={modal === "setCategory"} onClose={() => { setModal(null); setCategoryConfirmed(false); }} title="Set Category" wide>
         <p className={styles.formDesc}>
           Select the dominant medium of the incident as the primary category.
           If the case spans more than one medium, check the others under "Also involves".
         </p>
+
+        <div style={{
+          background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
+          padding: "10px 14px", marginBottom: "1.25rem",
+          fontSize: "0.82rem", color: "#92400e",
+          display: "flex", gap: 8, alignItems: "flex-start"
+        }}>
+          <FiAlertTriangle style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>Primary category determines how the incident medium is recorded and affects referral routing. Select carefully.</span>
+        </div>
+
         <div className={styles.formGrid}>
 
           <FormGroup label="Primary Category" required hint="The dominant medium — pick one.">
@@ -1101,8 +1191,8 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
               onChange={(e) => {
                 const selected = e.target.value;
                 setPrimaryCatVal(selected);
-                // Remove from "also involves" if it was checked there
                 setAlsoCatVal((prev) => prev.filter((c) => c !== selected));
+                setCategoryConfirmed(false);
               }}
             >
               <option value="">— Select primary category —</option>
@@ -1110,6 +1200,19 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
               <option value="Virtual">Virtual</option>
               <option value="Verbal">Verbal</option>
             </FSelect>
+
+            {/* Inline description shown after selection */}
+            {primaryCatVal && (
+              <div style={{
+                marginTop: 8, background: "#f5f3ff", border: "1px solid #ddd6fe",
+                borderRadius: 8, padding: "8px 12px", fontSize: "0.82rem",
+                color: "#5b21b6", lineHeight: 1.55, fontStyle: "italic",
+              }}>
+                {primaryCatVal === "Physical" && "The incident involved direct in-person physical contact or conduct — such as touching, assault, or physical presence of the perpetrator."}
+                {primaryCatVal === "Virtual" && "The incident took place through digital means — such as online platforms, messaging apps, social media, email, or any internet-based channel."}
+                {primaryCatVal === "Verbal" && "The incident involved spoken or written words, remarks, threats, or verbal conduct — whether in person, over the phone, or through text."}
+              </div>
+            )}
           </FormGroup>
 
           <FormGroup
@@ -1120,18 +1223,42 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
               {["Physical", "Virtual", "Verbal"]
                 .filter((c) => c !== primaryCatVal)
                 .map((c) => (
-                  <label key={c} className={styles.checkLabel}>
+                  <label key={c} className={styles.checkLabel} style={{
+                    background: alsoCatVal.includes(c) ? "#f5f3ff" : "transparent",
+                    border: alsoCatVal.includes(c) ? "1px solid #ddd6fe" : "1px solid transparent",
+                    borderRadius: 8, padding: "8px 10px", transition: "all 0.15s",
+                    display: "flex", alignItems: "flex-start", gap: 10,
+                  }}>
                     <input
                       type="checkbox"
                       className={styles.checkInput}
                       checked={alsoCatVal.includes(c)}
+                      style={{ marginTop: 2, flexShrink: 0 }}
                       onChange={() =>
                         setAlsoCatVal((prev) =>
                           prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
                         )
                       }
                     />
-                    {c}
+                    <div>
+                      <span style={{
+                        fontWeight: alsoCatVal.includes(c) ? 700 : 500,
+                        color: alsoCatVal.includes(c) ? "#5b21b6" : "inherit",
+                        fontSize: "0.875rem", display: "block",
+                      }}>
+                        {c}
+                      </span>
+                      {alsoCatVal.includes(c) && (
+                        <span style={{
+                          display: "block", marginTop: 4, fontSize: "0.8rem",
+                          color: "#6b21a8", lineHeight: 1.55, fontStyle: "italic",
+                        }}>
+                          {c === "Physical" && "The incident also involved direct in-person physical contact or conduct."}
+                          {c === "Virtual" && "The incident also took place through digital means or online platforms."}
+                          {c === "Verbal" && "The incident also involved spoken or written words, remarks, or verbal conduct."}
+                        </span>
+                      )}
+                    </div>
                   </label>
                 ))}
             </div>
@@ -1141,17 +1268,42 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           </FormGroup>
 
         </div>
+
+        {/* Summary */}
+        {primaryCatVal && (
+          <div style={{
+            background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
+            padding: "10px 14px", margin: "0.5rem 0 1rem",
+            fontSize: "0.82rem", color: "#166534",
+          }}>
+            <strong>Primary:</strong> {primaryCatVal}
+            {alsoCatVal.length > 0 && <> &nbsp;·&nbsp; <strong>Also involves:</strong> {alsoCatVal.join(", ")}</>}
+          </div>
+        )}
+
+        {/* Confirmation checkbox */}
+        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem", marginTop: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: "0.875rem", color: "#374151" }}>
+            <input
+              type="checkbox"
+              checked={categoryConfirmed}
+              onChange={(e) => setCategoryConfirmed(e.target.checked)}
+              style={{ marginTop: 3, flexShrink: 0, accentColor: "#ec4899" }}
+            />
+            <span>
+              I have reviewed the category definitions and confirm that this classification accurately reflects the medium through which the incident occurred.
+            </span>
+          </label>
+        </div>
+
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
           <button
             className={styles.btnPrimary}
-            disabled={!primaryCatVal}
+            disabled={!primaryCatVal || !categoryConfirmed}
             onClick={() => {
-              setCaseData((p) => ({
-                ...p,
-                primaryCategory: primaryCatVal,
-                alsoInvolves: alsoCatVal,
-              }));
+              setCaseData((p) => ({ ...p, primaryCategory: primaryCatVal, alsoInvolves: alsoCatVal }));
+              setCategoryConfirmed(false);
               showToast("Category updated.");
               setModal(null);
             }}
