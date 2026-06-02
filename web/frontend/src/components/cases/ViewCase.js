@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { IoIosArrowBack } from "react-icons/io";
 import styles from "./ViewCase.module.css";
+import InterviewTab from "./interview/InterviewTab";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1498,6 +1499,14 @@ export default function ViewCase() {
     setUserLoaded(true);
   }, []);
 
+  // Set active tab from search params
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
     const fetchCase = async () => {
@@ -1594,9 +1603,12 @@ export default function ViewCase() {
     );
   }
 
-  // Tab definitions — staff gets 3 tabs, complainant gets 1
+  // Tab definitions — staff gets 4 tabs, complainant gets 2 (details + interview if eligible)
   const tabs = [
     { id: "details", label: "📄 Case Details", staffOnly: false },
+    ...(caseData.isWillingForInterview ? [
+      { id: "interview", label: "📅 Interview", staffOnly: false },
+    ] : []),
     ...(isStaff ? [
       { id: "management", label: "⚙️ Case Management", staffOnly: true },
       { id: "nlp",        label: "🤖 AI / NLP Analysis", staffOnly: true },
@@ -1661,6 +1673,15 @@ export default function ViewCase() {
           {/* Tab content */}
           {activeTab === "details" && userLoaded && (
             <CaseDetailsTab caseData={caseData} isStaff={isStaff} />
+          )}
+
+          {activeTab === "interview" && caseData.isWillingForInterview && userLoaded && (
+            <InterviewTab
+              caseData={caseData}
+              isStaff={isStaff}
+              isCaseOfficer={isCaseOfficer}
+              showToast={showToast}
+            />
           )}
 
           {activeTab === "management" && isStaff && userLoaded && (

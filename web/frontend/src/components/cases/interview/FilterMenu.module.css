@@ -1,0 +1,305 @@
+/* ════════════════════════════════════════════
+   FilterMenu.module.css - Interview Management
+   SASHA Design tokens (inherit from :root)
+   ════════════════════════════════════════════ */
+
+/* ── Outer wrapper for the entire filter bar ── */
+.filterBarWrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ── Row of default filter dropdowns + filter menu button ── */
+.defaultFiltersRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ── Each default filter dropdown trigger ── */
+.defaultFilter {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.defaultFilterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.45rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.defaultFilterBtn:hover {
+  border-color: #037F81;
+  color: #037F81;
+  background: #f5fffe;
+}
+
+.defaultFilterBtnActive {
+  border-color: #037F81;
+  background: #e1f5f5;
+  color: #037F81;
+  font-weight: 600;
+}
+
+.defaultFilterLabel {
+  font-weight: 700;
+  color: inherit;
+  font-size: 0.8rem;
+}
+
+.defaultFilterValue {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 0.8rem;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Dropdown panel shared by all default filters ── */
+.defaultFilterDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 900;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  min-width: 170px;
+  max-width: 260px;
+  animation: dropIn 0.14s ease;
+  overflow: hidden;
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Select option ── */
+.selectOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.selectOption:last-child {
+  border-bottom: none;
+}
+
+.selectOption:hover {
+  background: #e1f5f5;
+  color: #037F81;
+}
+
+.selectOptionActive {
+  background: #e1f5f5;
+  color: #037F81;
+  font-weight: 700;
+}
+
+/* ── Date Range Filter ── */
+.dateRangeFilter {
+  padding: 0.75rem;
+}
+
+.dateRangeMode {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.75rem;
+}
+
+.dateRangeMode button {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  background: none;
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.12s;
+}
+
+.dateRangeModeActive {
+  color: #037F81 !important;
+  border-bottom-color: #037F81 !important;
+}
+
+.presetOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.presetOption {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.presetOption:hover {
+  background: #e1f5f5;
+  border-color: #037F81;
+  color: #037F81;
+}
+
+.presetOptionActive {
+  background: #e1f5f5;
+  border-color: #037F81;
+  color: #037F81;
+  font-weight: 700;
+}
+
+.customDateInputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dateInput {
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #374151;
+  background: #ffffff;
+  outline: none;
+  font-family: inherit;
+}
+
+.dateInput:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 2px rgba(3, 127, 129, 0.1);
+}
+
+.applyCustomBtn {
+  padding: 0.45rem 0.75rem;
+  background: #037F81;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.applyCustomBtn:hover {
+  background: #025f61;
+}
+
+/* ── Filter Menu Button ── */
+.filterMenuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+
+.filterMenuBtn:hover {
+  background: #f5fffe;
+  border-color: #037F81;
+  color: #037F81;
+}
+
+/* ── Add Filters Dropdown ── */
+.addFiltersDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 900;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  min-width: 180px;
+  animation: dropIn 0.14s ease;
+}
+
+.addFilterOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.addFilterOption:last-child {
+  border-bottom: none;
+}
+
+.addFilterOption:hover {
+  background: #e1f5f5;
+  color: #037F81;
+}
+
+/* ── Clear All Button ── */
+.clearAllBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.45rem 0.75rem;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #991b1b;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.clearAllBtn:hover {
+  background: #fecaca;
+  border-color: #f87171;
+}

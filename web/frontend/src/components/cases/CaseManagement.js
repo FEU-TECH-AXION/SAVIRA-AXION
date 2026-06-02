@@ -6,6 +6,7 @@ import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
+import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -1930,6 +1931,20 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                 onView={() => setModal("viewAll")}
               />
             </div>
+
+            {/* Manage Interviews — case officers */}
+            {(isCaseOfficer) && (
+              <div className="col-12 col-sm-6 col-lg-3">
+                <Link href="/cases/interviews" style={{ textDecoration: 'none' }}>
+                  <ActionCard
+                    icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
+                    title="Manage Interviews"
+                    description="Create interview schedules, manage invitations, and track interview progress."
+                    onView={() => router.push("/cases/interviews")}
+                  />
+                </Link>
+              </div>
+            )}
 
             {/* Assign Officer — admin only */}
             {(isAdmin) && (

@@ -1,0 +1,402 @@
+/* ════════════════════════════════════════════
+   InterviewTab.module.css
+   SASHA Design system
+   ════════════════════════════════════════════ */
+
+.interviewTab {
+  padding: 1.5rem 0;
+}
+
+/* ── Status Section ── */
+.statusSection {
+  margin-bottom: 2rem;
+}
+
+.statusHeader {
+  margin-bottom: 1.5rem;
+}
+
+.statusTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.statusDesc {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* ── Status Badges ── */
+.statusBadgeWrapper {
+  margin-bottom: 1rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* ── Slots Container ── */
+.slotsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.slotCard {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: all 0.12s;
+  cursor: pointer;
+}
+
+.slotCard:hover {
+  border-color: #037F81;
+  box-shadow: 0 4px 12px rgba(3, 127, 129, 0.15);
+  transform: translateY(-2px);
+}
+
+.slotHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dayOfWeek {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.date {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.slotTime {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #037F81;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.duration {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.selectSlotBtn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: #037F81;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.selectSlotBtn:hover {
+  background: #025f61;
+}
+
+/* ── Countdown Timer ── */
+.countdown {
+  color: #E8663A;
+  font-weight: 600;
+}
+
+/* ── Selected Slot / Confirmed Details ── */
+.selectedSlot,
+.confirmedDetails {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+}
+
+.slotInfo,
+.detailRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.slotLabel,
+.detailLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.slotValue,
+.detailValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.detailRow {
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.meetingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: #037F81;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.12s;
+}
+
+.meetingLink:hover {
+  background: #025f61;
+  transform: translateY(-1px);
+}
+
+/* ── Messages ── */
+.waitingMessage,
+.confirmMessage,
+.completedMessage,
+.reasonBox {
+  background: #e1f5f5;
+  border: 1px solid #037F81;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #025f61;
+  font-weight: 500;
+  margin-top: 1rem;
+}
+
+.reasonBox {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+/* ── Action Section ── */
+.actionSection {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.addMeetingBtn {
+  padding: 0.6rem 1.5rem;
+  background: #037F81;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.addMeetingBtn:hover {
+  background: #025f61;
+  box-shadow: 0 4px 12px rgba(3, 127, 129, 0.2);
+  transform: translateY(-1px);
+}
+
+/* ── Modal ── */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalBox {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  max-width: 450px;
+  width: 90%;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modalTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.modalClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.modalClose:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.modalBody {
+  padding: 1.5rem;
+}
+
+.formLabel {
+  display: block;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.required {
+  color: #ef4444;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1f2937;
+  background: #ffffff;
+  transition: all 0.12s;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.1);
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+}
+
+.errorMsg {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #991b1b;
+  font-weight: 500;
+}
+
+.modalFooter {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.cancelBtn {
+  padding: 0.6rem 1.5rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn {
+  padding: 0.6rem 1.5rem;
+  background: #037F81;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: #025f61;
+  box-shadow: 0 4px 12px rgba(3, 127, 129, 0.2);
+  transform: translateY(-1px);
+}
+
+.saveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
