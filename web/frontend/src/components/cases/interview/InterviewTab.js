@@ -101,145 +101,188 @@ function ExpiryCountdown({ expiresAt }) {
   );
 }
 
-// ─── Slot Picker Calendar ─────────────────────────────────────────────────────
+// ─── Calendar Helpers ─────────────────────────────────────────────────────────
+
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year, month) {
+  return new Date(year, month, 1).getDay();
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// ─── Slot Picker Calendar (Month View) ─────────────────────────────────────────
 
 function SlotPickerCalendar({ slots, onSelectSlot }) {
-  // Group slots by week
-  const today     = new Date();
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
 
-  // Get Monday of the displayed week
-  const getWeekStart = (offset) => {
-    const d = new Date(today);
-    const day = d.getDay() || 7; // ISO: Mon=1
-    d.setDate(d.getDate() - (day - 1) + offset * 7);
-    return d;
-  };
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDayOfMonth = getFirstDayOfMonth(viewYear, viewMonth);
 
-  const weekStart = getWeekStart(weekOffset);
-  const weekDays  = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const isoDate = (d) => d.toISOString().split("T")[0];
-
+  // Group slots by date string
   const slotsByDate = {};
   slots.forEach((s) => {
     if (!slotsByDate[s.date]) slotsByDate[s.date] = [];
     slotsByDate[s.date].push(s);
   });
 
-  const formatDay   = (d) => d.toLocaleDateString("en-PH", { weekday: "short" });
-  const formatDate  = (d) => d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-  const formatTime  = (t) => {
+  const goToToday = () => {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+  };
+
+  const prevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  };
+
+  const nextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  };
+
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const isoDate = (d) => d.toISOString().split("T")[0];
+  const formatTime = (t) => {
     const [h, m] = t.split(":").map(Number);
     const ampm = h >= 12 ? "PM" : "AM";
     return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
   };
 
-  const isPast      = (d) => d < today;
-  const isToday     = (d) => isoDate(d) === isoDate(today);
-
-  const prevLabel = weekOffset === 0 ? null : "← Prev week";
-  const nextLabel = "Next week →";
-
-  // Find the next week that has any slots available (for auto-advance hint)
-  const hasAnySlotInWeek = weekDays.some((d) =>
-    (slotsByDate[isoDate(d)] || []).some((s) => s.status === "free" && !isPast(d))
-  );
+  // Build calendar grid
+  const cells = [];
+  for (let i = 0; i < firstDayOfMonth; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
-    <div>
-      {/* Week navigation */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+    <div className={styles.calendarWrapper}>
+      {/* Calendar header */}
+      <div className={styles.calendarHeader}>
+        <div className={styles.calendarNav}>
+          <button className={styles.calNavBtn} onClick={prevMonth}>
+            ← Prev
+          </button>
+          <span className={styles.calMonthLabel}>
+            {MONTH_NAMES[viewMonth]} {viewYear}
+          </span>
+          <button className={styles.calNavBtn} onClick={nextMonth}>
+            Next →
+          </button>
+        </div>
         <button
-          onClick={() => setWeekOffset((p) => p - 1)}
-          disabled={weekOffset === 0}
-          style={{
-            padding: "6px 14px", borderRadius: 6, border: "1px solid #d1d5db",
-            background: weekOffset === 0 ? "#f9fafb" : "#fff", color: weekOffset === 0 ? "#9ca3af" : "#374151",
-            fontWeight: 600, fontSize: "0.82rem", cursor: weekOffset === 0 ? "not-allowed" : "pointer",
-          }}
+          className={styles.calTodayBtn}
+          onClick={goToToday}
+          title="Go to today"
         >
-          ← Prev
-        </button>
-        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#374151" }}>
-          {formatDate(weekDays[0])} – {formatDate(weekDays[6])}
-        </span>
-        <button
-          onClick={() => setWeekOffset((p) => p + 1)}
-          style={{
-            padding: "6px 14px", borderRadius: 6, border: "1px solid #d1d5db",
-            background: "#fff", color: "#374151", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
-          }}
-        >
-          Next →
+          Today
         </button>
       </div>
 
-      {/* Calendar grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "0.5rem" }}>
-        {weekDays.map((d) => {
-          const key   = isoDate(d);
-          const past  = isPast(d);
-          const today_ = isToday(d);
-          const daySlots = (slotsByDate[key] || []).filter((s) => s.status === "free");
+      {/* Color legend for available slots */}
+      <div className={styles.calLegend}>
+        <span className={styles.calLegendItem}>
+          <span className={styles.calLegendDot} style={{ background: "#0ea5e9" }} />
+          Available Slots
+        </span>
+        <span className={styles.calLegendItem}>
+          <span className={styles.calLegendDot} style={{ background: "#d1d5db" }} />
+          No Available Slots
+        </span>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className={styles.calGrid}>
+        {DAY_NAMES.map((d) => (
+          <div key={d} className={styles.calDayName}>
+            {d}
+          </div>
+        ))}
+
+        {/* Calendar cells */}
+        {cells.map((day, idx) => {
+          if (!day)
+            return (
+              <div
+                key={`empty-${idx}`}
+                className={styles.calCell}
+                style={{ background: "transparent" }}
+              />
+            );
+
+          const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const dateObj = new Date(viewYear, viewMonth, day);
+          const daySlots = (slotsByDate[dateStr] || []).filter(
+            (s) => s.status === "free" && dateObj >= today
+          );
+          const isToday = dateStr === todayStr;
+          const isPast = dateObj < today;
 
           return (
-            <div key={key} style={{
-              minHeight: 90,
-              borderRadius: 8,
-              border: today_ ? "2px solid #037F81" : "1px solid #e5e7eb",
-              background: past ? "#f9fafb" : "#fff",
-              padding: "0.5rem 0.4rem",
-              display: "flex", flexDirection: "column", gap: 4,
-              opacity: past ? 0.55 : 1,
-            }}>
-              <div style={{ textAlign: "center", marginBottom: 4 }}>
-                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: today_ ? "#037F81" : "#6b7280", textTransform: "uppercase" }}>
-                  {formatDay(d)}
-                </div>
-                <div style={{
-                  fontSize: "0.9rem", fontWeight: today_ ? 800 : 600,
-                  color: today_ ? "#037F81" : "#111827",
-                  background: today_ ? "#e0f2f2" : "transparent",
-                  borderRadius: 999, width: 28, height: 28,
-                  display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto",
-                }}>
-                  {d.getDate()}
-                </div>
-              </div>
+            <div
+              key={dateStr}
+              className={`${styles.calCell} ${isToday ? styles.calCellToday : ""}`}
+              style={{ opacity: isPast ? 0.5 : 1 }}
+            >
+              <div className={styles.calDayNum}>{day}</div>
 
-              {past || daySlots.length === 0 ? (
-                <div style={{ textAlign: "center", fontSize: "0.7rem", color: "#9ca3af", marginTop: 4 }}>
-                  {past ? "—" : "No slots"}
-                </div>
-              ) : (
-                daySlots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    onClick={() => onSelectSlot(slot)}
-                    className={styles.selectSlotBtn}
-                    style={{ fontSize: "0.72rem", padding: "4px 6px" }}
-                    title={`Select ${formatTime(slot.time)}`}
-                  >
-                    {formatTime(slot.time)}
-                  </button>
-                ))
-              )}
+              {/* Slots for this day */}
+              <div className={styles.calSlotList}>
+                {isPast ? (
+                  <div className={styles.calNoSlots}>—</div>
+                ) : daySlots.length === 0 ? (
+                  <div className={styles.calNoSlots}>No slots</div>
+                ) : (
+                  daySlots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      className={styles.calSlotChip}
+                      onClick={() => onSelectSlot(slot)}
+                      title={`Select ${formatTime(slot.time)}`}
+                    >
+                      <span className={styles.calSlotTime}>{formatTime(slot.time)}</span>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {!hasAnySlotInWeek && (
-        <p style={{ textAlign: "center", fontSize: "0.82rem", color: "#9ca3af", marginTop: "0.75rem" }}>
-          No available slots this week — try the next week.
-        </p>
+      {/* Helpful message for no slots */}
+      {Object.values(slotsByDate).every(
+        (daySlots) => daySlots.every((s) => s.status !== "free" || s.date <= todayStr)
+      ) && (
+        <div style={{
+          textAlign: "center",
+          fontSize: "0.875rem",
+          color: "#9ca3af",
+          marginTop: "1rem",
+          padding: "1rem",
+          background: "#f9fafb",
+          borderRadius: "8px"
+        }}>
+          No available slots. Please contact your case officer.
+        </div>
       )}
     </div>
   );
@@ -612,7 +655,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   });
 
   // ── Complainant view: status-driven ──────────────────────────────────────────
-  if (!isStaff) {
+  if (!isStaff && !isCaseOfficer) {
     if (loading) {
       return <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Loading interview details…</p>;
     }

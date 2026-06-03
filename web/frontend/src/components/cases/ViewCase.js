@@ -1031,7 +1031,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           </button>
 
           {/* Invite to Interview — only for the assigned case officer, only when status allows interviews */}
-          {isCaseOfficer && caseData.assignedOfficer === actorName && ["Verified - True", "Under Case Evaluation", "Case Filed"].includes(caseData.status) && (
+          {isCaseOfficer && caseData.isWillingForInterview === true && (
             <button onClick={() => setModal("inviteInterview")} style={btnStyle("#0891b2")}>
               📅 Invite to Interview
             </button>

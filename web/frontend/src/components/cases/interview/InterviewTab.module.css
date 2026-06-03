@@ -103,9 +103,56 @@
   color: #6b7280;
 }
 
-.selectSlotBtn {
-  width: 100%;
-  padding: 0.6rem 1rem;
+/* ── Calendar Wrapper ── */
+.calendarWrapper {
+  margin: 1rem 0;
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 250px;
+}
+
+.calNavBtn {
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.calNavBtn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.calMonthLabel {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1f2937;
+  text-align: center;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.calTodayBtn {
+  padding: 0.5rem 1rem;
   background: #037F81;
   color: #ffffff;
   border: none;
@@ -116,8 +163,174 @@
   transition: all 0.12s;
 }
 
-.selectSlotBtn:hover {
+.calTodayBtn:hover {
   background: #025f61;
+  transform: translateY(-1px);
+}
+
+/* ── Calendar Legend ── */
+.calLegend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.calLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6b7280;
+}
+
+.calLegendDot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Calendar Grid ── */
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Day of Week Headers ── */
+.calDayName {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #6b7280;
+  padding: 0.75rem 0.5rem;
+  text-transform: uppercase;
+}
+
+/* ── Calendar Cell (Day) ── */
+.calCell {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+  transition: all 0.12s;
+}
+
+.calCell:hover {
+  border-color: #0ea5e9;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+}
+
+.calCellToday {
+  border: 2px solid #037F81;
+  background: #f0fdf4;
+}
+
+.calCellToday .calDayNum {
+  color: #037F81;
+  font-weight: 800;
+  background: #e0f2f2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.calDayNum {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+/* ── Slot List ── */
+.calSlotList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.calNoSlots {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  padding: 0.5rem 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Slot Chip (Time Button) ── */
+.calSlotChip {
+  padding: 0.4rem 0.6rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calSlotChip:hover {
+  background: #bfdbfe;
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.2);
+}
+
+.calSlotTime {
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+/* ── Responsive Design ── */
+@media (max-width: 768px) {
+  .calGrid {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+  }
+
+  .calCell {
+    min-height: 100px;
+    padding: 0.5rem 0.35rem;
+  }
+
+  .calDayNum {
+    font-size: 0.9rem;
+  }
+
+  .calSlotChip {
+    font-size: 0.65rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .calLegend {
+    gap: 1rem;
+    font-size: 0.8rem;
+  }
+
+  .calMonthLabel {
+    font-size: 0.95rem;
+  }
 }
 
 /* ── Countdown Timer ── */
