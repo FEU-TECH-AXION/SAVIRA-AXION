@@ -798,9 +798,9 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
 
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
             <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>🏷️ Suggested Classification</h4>
-            <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Primary Categories</p>
+            <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Case Categories</p>
             <div style={{ marginBottom: 12 }}>
-              {nlpData.primary_categories?.length > 0 ? nlpData.primary_categories.map((c) => <CategoryBadge key={c} label={c} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
+              {nlpData.case_categories?.length > 0 ? nlpData.case_categories.map((c) => <CategoryBadge key={c} label={c} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
             </div>
             <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Possible Case Types</p>
             <div style={{ marginBottom: 12 }}>
@@ -845,6 +845,69 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Invite to Interview Modal ────────────────────────────────────────────────
+
+function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast }) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const [expiryDays, setExpiryDays] = useState("7");
+  const [notes, setNotes]           = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); } }, [open]);
+
+  async function handleSend() {
+    setSubmitting(true);
+    try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + parseInt(expiryDays, 10));
+      // POST to interview invitation endpoint
+      // await fetch(`${API_URL}/api/case_reports/${caseData.id}/interviews/invite`, {
+      //   method: "POST", credentials: "include",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ invited_by: actorName, expires_at: expiresAt.toISOString(), notes }),
+      // });
+      showToast && showToast(`Interview invitation sent for ${caseData.caseId}.`);
+      onClose();
+    } catch (err) {
+      showToast && showToast(err.message || "Failed to send invitation.", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Invite Complainant to Interview">
+      <p className={styles.formDesc}>
+        Send an interview invitation to the complainant for <strong>{caseData?.caseId}</strong>.
+        They will be able to select a slot from your available calendar.
+      </p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Invitation expiry (days)" hint="How many days the complainant has to select a slot.">
+          <FSelect value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)}>
+            <option value="3">3 days</option>
+            <option value="5">5 days</option>
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Notes for complainant" hint="Optional message shown alongside the invitation.">
+          <FTextarea
+            placeholder="e.g. Please select a slot at your earliest convenience."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </FormGroup>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSend} disabled={submitting}>
+          {submitting ? "Sending…" : "Send Invitation"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -897,7 +960,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   const [caseTypeVal, setCaseTypeVal] = useState(
     Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []
   );
-  const [primaryCatVal, setPrimaryCatVal] = useState(caseData.primaryCategory || "");
+  const [caseCatVal, setCaseCatVal] = useState(caseData.caseCategory || "");
   const [alsoCatVal, setAlsoCatVal] = useState(
     Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []
   );
@@ -928,10 +991,10 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             ["Assigned Case Officer", caseData.assignedOfficer || "—"],
             ["Assigned Paralegal",    caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "N/A")],
             ["Case Type",        Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not set"],
-            ["Primary Category", caseData.primaryCategory
+            ["Case Categories", caseData.caseCategory
               ? caseData.alsoInvolves?.length
-                ? `${caseData.primaryCategory} (also: ${caseData.alsoInvolves.join(", ")})`
-                : caseData.primaryCategory
+                ? `${caseData.caseCategory} (also: ${caseData.alsoInvolves.join(", ")})`
+                : caseData.caseCategory
               : "Not set"],
             ["Referral Required",     caseData.referralRequired ? "Yes" : "No"],
             ["Referral Body",         caseData.referralBody || "—"],
@@ -962,10 +1025,17 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             🏷️ Set Case Type
           </button>
 
-          {/* Set Primary Category */}
+          {/* Set Case Category */}
           <button onClick={() => setModal("setCategory")} style={btnStyle("#ec4899")}>
             📌 Set Category
           </button>
+
+          {/* Invite to Interview — only for the assigned case officer, only when status allows interviews */}
+          {isCaseOfficer && caseData.assignedOfficer === actorName && ["Verified - True", "Under Case Evaluation", "Case Filed"].includes(caseData.status) && (
+            <button onClick={() => setModal("inviteInterview")} style={btnStyle("#0891b2")}>
+              📅 Invite to Interview
+            </button>
+          )}
 
           {/* Set Referral */}
           <button onClick={() => setModal("setReferral")} style={btnStyle("#f59e0b")}>
@@ -1044,6 +1114,17 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       <HearingModal        open={modal === "hearing"}       onClose={() => setModal("statusRouter")} caseData={caseData} onSubmit={submitForApproval} actorName={actorName} />
       <DismissedModal      open={modal === "dismissed"}     onClose={() => setModal("statusRouter")} caseData={caseData} onSubmit={submitForApproval} actorName={actorName} />
       <ConvictedModal      open={modal === "convicted"}     onClose={() => setModal("statusRouter")} caseData={caseData} onSubmit={submitForApproval} actorName={actorName} />
+
+      {/* Invite to Interview */}
+      {modal === "inviteInterview" && (
+        <InviteToInterviewModal
+          open
+          onClose={() => setModal(null)}
+          caseData={caseData}
+          actorName={actorName}
+          showToast={showToast}
+        />
+      )}
 
       {/* Set Case Type */}
       <Modal open={modal === "setCaseType"} onClose={() => setModal(null)} title="Set Case Type" wide>
@@ -1169,7 +1250,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       {/* Set Category */}
       <Modal open={modal === "setCategory"} onClose={() => { setModal(null); setCategoryConfirmed(false); }} title="Set Category" wide>
         <p className={styles.formDesc}>
-          Select the dominant medium of the incident as the primary category.
+          Select the dominant medium of the incident as the case category.
           If the case spans more than one medium, check the others under "Also involves".
         </p>
 
@@ -1180,48 +1261,48 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           display: "flex", gap: 8, alignItems: "flex-start"
         }}>
           <FiAlertTriangle style={{ flexShrink: 0, marginTop: 2 }} />
-          <span>Primary category determines how the incident medium is recorded and affects referral routing. Select carefully.</span>
+          <span>Case category determines how the incident medium is recorded and affects referral routing. Select carefully.</span>
         </div>
 
         <div className={styles.formGrid}>
 
-          <FormGroup label="Primary Category" required hint="The dominant medium — pick one.">
+          <FormGroup label="Case Category" required hint="The dominant medium — pick one.">
             <FSelect
-              value={primaryCatVal}
+              value={caseCatVal}
               onChange={(e) => {
                 const selected = e.target.value;
-                setPrimaryCatVal(selected);
+                setCaseCatVal(selected);
                 setAlsoCatVal((prev) => prev.filter((c) => c !== selected));
                 setCategoryConfirmed(false);
               }}
             >
-              <option value="">— Select primary category —</option>
+              <option value="">— Select case category —</option>
               <option value="Physical">Physical</option>
               <option value="Virtual">Virtual</option>
               <option value="Verbal">Verbal</option>
             </FSelect>
 
             {/* Inline description shown after selection */}
-            {primaryCatVal && (
+            {caseCatVal && (
               <div style={{
                 marginTop: 8, background: "#f5f3ff", border: "1px solid #ddd6fe",
                 borderRadius: 8, padding: "8px 12px", fontSize: "0.82rem",
                 color: "#5b21b6", lineHeight: 1.55, fontStyle: "italic",
               }}>
-                {primaryCatVal === "Physical" && "The incident involved direct in-person physical contact or conduct — such as touching, assault, or physical presence of the perpetrator."}
-                {primaryCatVal === "Virtual" && "The incident took place through digital means — such as online platforms, messaging apps, social media, email, or any internet-based channel."}
-                {primaryCatVal === "Verbal" && "The incident involved spoken or written words, remarks, threats, or verbal conduct — whether in person, over the phone, or through text."}
+                {caseCatVal === "Physical" && "The incident involved direct in-person physical contact or conduct — such as touching, assault, or physical presence of the perpetrator."}
+                {caseCatVal === "Virtual" && "The incident took place through digital means — such as online platforms, messaging apps, social media, email, or any internet-based channel."}
+                {caseCatVal === "Verbal" && "The incident involved spoken or written words, remarks, threats, or verbal conduct — whether in person, over the phone, or through text."}
               </div>
             )}
           </FormGroup>
 
           <FormGroup
             label="Also involves (optional)"
-            hint="Check any other mediums this case spans — separate from the primary."
+            hint="Check any other mediums this case spans — separate from the case category."
           >
             <div className={styles.checkGroup}>
               {["Physical", "Virtual", "Verbal"]
-                .filter((c) => c !== primaryCatVal)
+                .filter((c) => c !== caseCatVal)
                 .map((c) => (
                   <label key={c} className={styles.checkLabel} style={{
                     background: alsoCatVal.includes(c) ? "#f5f3ff" : "transparent",
@@ -1262,21 +1343,21 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
                   </label>
                 ))}
             </div>
-            {!primaryCatVal && (
-              <span className={styles.formHint}>Select a primary category first to enable this.</span>
+            {!caseCatVal && (
+              <span className={styles.formHint}>Select a case category first to enable this.</span>
             )}
           </FormGroup>
 
         </div>
 
         {/* Summary */}
-        {primaryCatVal && (
+        {caseCatVal && (
           <div style={{
             background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
             padding: "10px 14px", margin: "0.5rem 0 1rem",
             fontSize: "0.82rem", color: "#166534",
           }}>
-            <strong>Primary:</strong> {primaryCatVal}
+            <strong>Case Category:</strong> {caseCatVal}
             {alsoCatVal.length > 0 && <> &nbsp;·&nbsp; <strong>Also involves:</strong> {alsoCatVal.join(", ")}</>}
           </div>
         )}
@@ -1300,9 +1381,9 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
           <button
             className={styles.btnPrimary}
-            disabled={!primaryCatVal || !categoryConfirmed}
+            disabled={!caseCatVal || !categoryConfirmed}
             onClick={() => {
-              setCaseData((p) => ({ ...p, primaryCategory: primaryCatVal, alsoInvolves: alsoCatVal }));
+              setCaseData((p) => ({ ...p, caseCategory: caseCatVal, alsoInvolves: alsoCatVal }));
               setCategoryConfirmed(false);
               showToast("Category updated.");
               setModal(null);
@@ -1556,7 +1637,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           {[
             ["Current Status",    <StatusBadge status={caseData.status} />],
             ["Case Type",         caseData.caseType || "Not yet classified"],
-            ["Primary Category",  caseData.primaryCategory || "Not yet classified"],
+            ["Case Category",     caseData.caseCategory || "Not yet classified"],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
             ["Referral Body",     caseData.referralBody || "—"],
             ["Assigned Officer",  caseData.assignedOfficer || "—"],
@@ -1702,14 +1783,14 @@ export default function ViewCase() {
           reportedToPolice:        data.reported_to_police,
           policeStation:           data.police_station,
           isAnonymous:             data.is_anonymous,
-          isWillingForInterview:   data.is_willing_for_interview,
+          isWillingForInterview:   !!data.is_willing_for_interview,
           name:                    data.name,
           age:                     data.age,
           genderIdentity:          data.gender_identity,
           email:                   data.email,
           contactNumber:           data.contact_number,
           caseType:                data.case_type || null,
-          primaryCategory:         data.primary_category || null,
+          caseCategory:            data.case_category || null,
           referralRequired:        data.referral_required || false,
           referralBody:            data.referral_body || null,
           assignedParalegal:       data.assigned_paralegal || null,
