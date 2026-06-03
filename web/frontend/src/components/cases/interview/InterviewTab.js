@@ -117,173 +117,232 @@ const MONTH_NAMES = [
 ];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// ─── Slot Picker Calendar (Month View) ─────────────────────────────────────────
+// ─── Slot Picker Calendar — Calendly-style two-panel layout ──────────────────
+//
+//  LEFT  — compact month grid; days with free slots are highlighted/clickable
+//  RIGHT — 3-state panel:
+//            (1) prompt   → pick a day
+//            (2) slots    → list of time chips for selected day
+//            (3) confirm  → summary card with Back / Confirm buttons
+//
 
 function SlotPickerCalendar({ slots, onSelectSlot }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear]     = useState(today.getFullYear());
+  const [viewMonth, setViewMonth]   = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD"
+  const [pendingSlot, setPendingSlot]   = useState(null); // slot object
 
-  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const daysInMonth    = getDaysInMonth(viewYear, viewMonth);
   const firstDayOfMonth = getFirstDayOfMonth(viewYear, viewMonth);
 
-  // Group slots by date string
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  // Group slots by date string — only future free slots
   const slotsByDate = {};
   slots.forEach((s) => {
+    if (s.status !== "free") return;
+    const slotDate = new Date(s.date);
+    slotDate.setHours(0, 0, 0, 0);
+    if (slotDate < today) return;
     if (!slotsByDate[s.date]) slotsByDate[s.date] = [];
     slotsByDate[s.date].push(s);
   });
 
-  const goToToday = () => {
-    setViewYear(today.getFullYear());
-    setViewMonth(today.getMonth());
-  };
-
   const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else {
-      setViewMonth((m) => m - 1);
-    }
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
   };
-
   const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else {
-      setViewMonth((m) => m + 1);
-    }
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
   };
 
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-  const isoDate = (d) => d.toISOString().split("T")[0];
   const formatTime = (t) => {
     const [h, m] = t.split(":").map(Number);
     const ampm = h >= 12 ? "PM" : "AM";
     return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
   };
 
+  const formatDateLong = (dateStr) =>
+    new Date(dateStr + "T00:00:00").toLocaleDateString("en-PH", {
+      weekday: "long", month: "long", day: "numeric", year: "numeric",
+    });
+
+  const formatDateShort = (dateStr) =>
+    new Date(dateStr + "T00:00:00").toLocaleDateString("en-PH", {
+      weekday: "short", month: "short", day: "numeric",
+    });
+
   // Build calendar grid
   const cells = [];
   for (let i = 0; i < firstDayOfMonth; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  return (
-    <div className={styles.calendarWrapper}>
-      {/* Calendar header */}
-      <div className={styles.calendarHeader}>
-        <div className={styles.calendarNav}>
-          <button className={styles.calNavBtn} onClick={prevMonth}>
-            ← Prev
-          </button>
-          <span className={styles.calMonthLabel}>
-            {MONTH_NAMES[viewMonth]} {viewYear}
-          </span>
-          <button className={styles.calNavBtn} onClick={nextMonth}>
-            Next →
-          </button>
-        </div>
-        <button
-          className={styles.calTodayBtn}
-          onClick={goToToday}
-          title="Go to today"
-        >
-          Today
-        </button>
-      </div>
+  const slotsForSelected = selectedDate ? (slotsByDate[selectedDate] || []) : [];
 
-      {/* Color legend for available slots */}
-      <div className={styles.calLegend}>
-        <span className={styles.calLegendItem}>
-          <span className={styles.calLegendDot} style={{ background: "#0ea5e9" }} />
-          Available Slots
-        </span>
-        <span className={styles.calLegendItem}>
-          <span className={styles.calLegendDot} style={{ background: "#d1d5db" }} />
-          No Available Slots
-        </span>
-      </div>
+  // ── Right-panel content ──────────────────────────────────────────────────
+  let rightPanel;
 
-      {/* Day-of-week headers */}
-      <div className={styles.calGrid}>
-        {DAY_NAMES.map((d) => (
-          <div key={d} className={styles.calDayName}>
-            {d}
+  if (pendingSlot) {
+    // Step 3 — Confirmation card
+    rightPanel = (
+      <div className={styles.rpConfirm}>
+        <div className={styles.rpConfirmIcon}>✅</div>
+        <h3 className={styles.rpConfirmTitle}>Confirm your slot?</h3>
+        <div className={styles.rpConfirmCard}>
+          <div className={styles.rpConfirmRow}>
+            <span className={styles.rpConfirmLabel}>📅 Date</span>
+            <span className={styles.rpConfirmValue}>{formatDateLong(pendingSlot.date)}</span>
           </div>
-        ))}
-
-        {/* Calendar cells */}
-        {cells.map((day, idx) => {
-          if (!day)
-            return (
-              <div
-                key={`empty-${idx}`}
-                className={styles.calCell}
-                style={{ background: "transparent" }}
-              />
-            );
-
-          const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const dateObj = new Date(viewYear, viewMonth, day);
-          const daySlots = (slotsByDate[dateStr] || []).filter(
-            (s) => s.status === "free" && dateObj >= today
-          );
-          const isToday = dateStr === todayStr;
-          const isPast = dateObj < today;
-
-          return (
-            <div
-              key={dateStr}
-              className={`${styles.calCell} ${isToday ? styles.calCellToday : ""}`}
-              style={{ opacity: isPast ? 0.5 : 1 }}
-            >
-              <div className={styles.calDayNum}>{day}</div>
-
-              {/* Slots for this day */}
-              <div className={styles.calSlotList}>
-                {isPast ? (
-                  <div className={styles.calNoSlots}>—</div>
-                ) : daySlots.length === 0 ? (
-                  <div className={styles.calNoSlots}>No slots</div>
-                ) : (
-                  daySlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      className={styles.calSlotChip}
-                      onClick={() => onSelectSlot(slot)}
-                      title={`Select ${formatTime(slot.time)}`}
-                    >
-                      <span className={styles.calSlotTime}>{formatTime(slot.time)}</span>
-                    </button>
-                  ))
-                )}
-              </div>
+          <div className={styles.rpConfirmRow}>
+            <span className={styles.rpConfirmLabel}>🕐 Time</span>
+            <span className={styles.rpConfirmValue}>{formatTime(pendingSlot.time)}</span>
+          </div>
+          {pendingSlot.duration && (
+            <div className={styles.rpConfirmRow}>
+              <span className={styles.rpConfirmLabel}>⏱ Duration</span>
+              <span className={styles.rpConfirmValue}>{pendingSlot.duration} minutes</span>
             </div>
-          );
-        })}
+          )}
+        </div>
+        <p className={styles.rpConfirmNote}>
+          Once confirmed, your case officer will be notified and will send the meeting details shortly.
+        </p>
+        <div className={styles.rpConfirmActions}>
+          <button className={styles.rpBackBtn} onClick={() => setPendingSlot(null)}>
+            ← Back
+          </button>
+          <button className={styles.rpConfirmBtn} onClick={() => onSelectSlot(pendingSlot)}>
+            Confirm Slot
+          </button>
+        </div>
+      </div>
+    );
+  } else if (selectedDate) {
+    // Step 2 — Time slot list for selected day
+    rightPanel = (
+      <div className={styles.rpSlots}>
+        <div className={styles.rpSlotsHeader}>
+          <button className={styles.rpBackLink} onClick={() => setSelectedDate(null)}>← Back</button>
+          <div>
+            <p className={styles.rpSlotsDay}>{formatDateShort(selectedDate)}</p>
+            <p className={styles.rpSlotsCount}>
+              {slotsForSelected.length} slot{slotsForSelected.length !== 1 ? "s" : ""} available
+            </p>
+          </div>
+        </div>
+        {slotsForSelected.length === 0 ? (
+          <p className={styles.rpNoSlots}>No available slots for this day.</p>
+        ) : (
+          <div className={styles.rpSlotList}>
+            {slotsForSelected.map((slot) => (
+              <button
+                key={slot.id}
+                className={styles.rpSlotBtn}
+                onClick={() => setPendingSlot(slot)}
+              >
+                <span className={styles.rpSlotTime}>{formatTime(slot.time)}</span>
+                {slot.duration && (
+                  <span className={styles.rpSlotDur}>{slot.duration} min</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    // Step 1 — Prompt to pick a date
+    const hasAnySlots = Object.keys(slotsByDate).length > 0;
+    rightPanel = (
+      <div className={styles.rpPrompt}>
+        <div className={styles.rpPromptIcon}>📅</div>
+        {hasAnySlots ? (
+          <>
+            <p className={styles.rpPromptTitle}>Select a date</p>
+            <p className={styles.rpPromptSub}>
+              Highlighted dates have available slots. Click a date to see the times.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={styles.rpPromptTitle}>No slots available</p>
+            <p className={styles.rpPromptSub}>
+              Please contact your case officer to arrange an interview time.
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.slotPickerLayout}>
+      {/* ── LEFT: compact month calendar ── */}
+      <div className={styles.calPanel}>
+        {/* Month navigation */}
+        <div className={styles.calPanelHeader}>
+          <button className={styles.calNavBtn} onClick={prevMonth}>‹</button>
+          <span className={styles.calMonthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</span>
+          <button className={styles.calNavBtn} onClick={nextMonth}>›</button>
+        </div>
+
+        {/* Day-of-week headers */}
+        <div className={styles.calMiniGrid}>
+          {DAY_NAMES.map((d) => (
+            <div key={d} className={styles.calMiniDayName}>{d}</div>
+          ))}
+
+          {cells.map((day, idx) => {
+            if (!day) return <div key={`e-${idx}`} />;
+
+            const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const dateObj = new Date(viewYear, viewMonth, day);
+            const hasSlots = !!(slotsByDate[dateStr]?.length);
+            const isPast   = dateObj < today;
+            const isToday  = dateStr === todayStr;
+            const isSelected = dateStr === selectedDate;
+
+            return (
+              <button
+                key={dateStr}
+                disabled={isPast || !hasSlots}
+                onClick={() => { setSelectedDate(dateStr); setPendingSlot(null); }}
+                className={[
+                  styles.calMiniDay,
+                  isToday    ? styles.calMiniToday    : "",
+                  isSelected ? styles.calMiniSelected : "",
+                  hasSlots && !isPast ? styles.calMiniHasSlots : "",
+                  isPast     ? styles.calMiniPast     : "",
+                ].filter(Boolean).join(" ")}
+                title={hasSlots ? `${slotsByDate[dateStr].length} slot(s) on this day` : undefined}
+              >
+                {day}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className={styles.calMiniLegend}>
+          <span>
+            <span className={styles.calMiniLegendDot} style={{ background: "transparent", border: "2px solid #037F81" }} />
+            Available slots
+          </span>
+          <span>
+            <span className={styles.calMiniLegendDot} style={{ background: "#037F81" }} />
+            Selected
+          </span>
+        </div>
       </div>
 
-      {/* Helpful message for no slots */}
-      {Object.values(slotsByDate).every(
-        (daySlots) => daySlots.every((s) => s.status !== "free" || s.date <= todayStr)
-      ) && (
-        <div style={{
-          textAlign: "center",
-          fontSize: "0.875rem",
-          color: "#9ca3af",
-          marginTop: "1rem",
-          padding: "1rem",
-          background: "#f9fafb",
-          borderRadius: "8px"
-        }}>
-          No available slots. Please contact your case officer.
-        </div>
-      )}
+      {/* ── RIGHT: dynamic panel ── */}
+      <div className={styles.rightPanel}>
+        {rightPanel}
+      </div>
     </div>
   );
 }
@@ -291,54 +350,32 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
 // ─── Complainant: Invited view (Select a Slot) ────────────────────────────────
 
 function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  const [slots, setSlots]         = useState([]);
-  const [loadingSlots, setLoading] = useState(true);
+  // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
+  const MOCK_SLOTS = [
+    { id: "slot-1", date: "2026-06-05", time: "09:00", duration: 30, status: "free" },
+    { id: "slot-2", date: "2026-06-05", time: "14:00", duration: 30, status: "free" },
+    { id: "slot-3", date: "2026-06-09", time: "10:00", duration: 45, status: "free" },
+    { id: "slot-4", date: "2026-06-09", time: "15:30", duration: 30, status: "free" },
+    { id: "slot-5", date: "2026-06-11", time: "09:30", duration: 30, status: "free" },
+    { id: "slot-6", date: "2026-06-12", time: "13:00", duration: 60, status: "free" },
+    { id: "slot-7", date: "2026-06-16", time: "11:00", duration: 30, status: "free" },
+  ];
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const [slots, setSlots]         = useState(MOCK_SLOTS);
+  const [loadingSlots, setLoading] = useState(false); // no loading needed for mock
   const [confirming, setConfirming] = useState(false);
   const [pendingSlot, setPendingSlot] = useState(null);
 
-  useEffect(() => {
-    const fetchSlots = async () => {
-      try {
-        // Fetch available slots from the assigned officer
-        const res = await fetch(
-          `${API_URL}/api/officers/${caseData.assignedOfficer}/slots?status=free`,
-          { credentials: "include" }
-        );
-        if (res.ok) {
-          const { data } = await res.json();
-          setSlots(data || []);
-        }
-      } catch (_) {
-        // fall through — show empty state
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSlots();
-  }, [caseData.assignedOfficer]);
-
   async function handleConfirmSlot(slot) {
     setConfirming(true);
-    try {
-      const res = await fetch(
-        `${API_URL}/api/case_reports/${caseData.id}/interviews/${interview.id}/select-slot`,
-        {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slot_id: slot.id }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to select slot.");
-      showToast && showToast("Slot selected! Your case officer will confirm shortly.");
-      onSlotSelected && onSlotSelected({ ...interview, interviewStatus: "Scheduled", slot });
-    } catch (err) {
-      showToast && showToast(err.message || "An error occurred.", "error");
-    } finally {
-      setConfirming(false);
-      setPendingSlot(null);
-    }
+    // ── MOCK: simulate network delay ──────────────────────────────────────
+    await new Promise((r) => setTimeout(r, 800));
+    showToast && showToast("Slot selected! Your case officer will confirm shortly.");
+    onSlotSelected && onSlotSelected({ ...interview, interviewStatus: "Scheduled", slot });
+    setConfirming(false);
+    setPendingSlot(null);
+    // ─────────────────────────────────────────────────────────────────────
   }
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
@@ -365,7 +402,7 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
       {/* Invitation expiry countdown */}
       {interview.expiresAt && <ExpiryCountdown expiresAt={interview.expiresAt} />}
 
-      {/* Slot picker */}
+      {/* Slot picker — calendar + right panel are fully self-contained */}
       {loadingSlots ? (
         <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Loading available slots…</p>
       ) : slots.length === 0 ? (
@@ -376,48 +413,16 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
           ⚠️ No available slots at the moment. Please contact your case officer directly.
         </div>
       ) : (
-        <div className={styles.statusSection}>
-          <SlotPickerCalendar slots={slots} onSelectSlot={(slot) => setPendingSlot(slot)} />
-        </div>
+        <SlotPickerCalendar
+          slots={slots}
+          onSelectSlot={(slot) => handleConfirmSlot(slot)}
+        />
       )}
 
-      {/* Confirmation prompt */}
-      {pendingSlot && (
-        <div style={{
-          background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10,
-          padding: "1rem 1.25rem",
-        }}>
-          <p style={{ margin: "0 0 0.75rem", fontSize: "0.95rem", fontWeight: 700, color: "#166534" }}>
-            ✅ Confirm this slot?
-          </p>
-          <p style={{ margin: "0 0 1rem", fontSize: "0.875rem", color: "#374151" }}>
-            <strong>{formatDate(pendingSlot.date)}</strong> at <strong>{formatTime(pendingSlot.time)}</strong>
-            {pendingSlot.duration && ` · ${pendingSlot.duration} minutes`}
-          </p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => setPendingSlot(null)}
-              style={{
-                padding: "7px 16px", background: "#f3f4f6", border: "1px solid #d1d5db",
-                borderRadius: 7, fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", color: "#374151",
-              }}
-            >
-              Back
-            </button>
-            <button
-              onClick={() => handleConfirmSlot(pendingSlot)}
-              disabled={confirming}
-              style={{
-                padding: "7px 20px", background: "#037F81", border: "none",
-                borderRadius: 7, fontWeight: 700, fontSize: "0.875rem",
-                cursor: confirming ? "not-allowed" : "pointer", color: "#fff",
-                opacity: confirming ? 0.7 : 1,
-              }}
-            >
-              {confirming ? "Confirming…" : "Yes, select this slot"}
-            </button>
-          </div>
-        </div>
+      {confirming && (
+        <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center" }}>
+          ⏳ Confirming your slot…
+        </p>
       )}
     </div>
   );
@@ -425,7 +430,7 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
 
 // ─── Complainant: Scheduled view (Waiting for Link) ───────────────────────────
 
-function ScheduledView({ interview }) {
+function ScheduledView({ interview, onReschedule }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -437,11 +442,18 @@ function ScheduledView({ interview }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      <div>
-        <h2 className={styles.statusTitle}>🕐 Waiting for Meeting Link</h2>
-        <p className={styles.statusDesc}>
-          Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly.
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <h2 className={styles.statusTitle}>🕐 Waiting for Meeting Link</h2>
+          <p className={styles.statusDesc}>
+            Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly.
+          </p>
+        </div>
+        {onReschedule && (
+          <button className={styles.rescheduleBtn} onClick={onReschedule}>
+            🔄 Reschedule
+          </button>
+        )}
       </div>
 
       <div className={styles.selectedSlot}>
@@ -472,7 +484,7 @@ function ScheduledView({ interview }) {
 
 // ─── Complainant: Confirmed view (Interview is Confirmed) ─────────────────────
 
-function ConfirmedView({ interview }) {
+function ConfirmedView({ interview, onReschedule }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -485,11 +497,18 @@ function ConfirmedView({ interview }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      <div>
-        <h2 className={styles.statusTitle}>✅ Your Interview is Confirmed</h2>
-        <p className={styles.statusDesc}>
-          Everything is set. See the details below and join at the scheduled time.
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <h2 className={styles.statusTitle}>✅ Your Interview is Confirmed</h2>
+          <p className={styles.statusDesc}>
+            Everything is set. See the details below and join at the scheduled time.
+          </p>
+        </div>
+        {onReschedule && (
+          <button className={styles.rescheduleBtn} onClick={onReschedule}>
+            🔄 Reschedule
+          </button>
+        )}
       </div>
 
       <div className={styles.confirmedDetails}>
@@ -536,7 +555,131 @@ function ConfirmedView({ interview }) {
 
       <div className={styles.confirmMessage}>
         🎉 Your interview has been confirmed. Please join using the link above at the scheduled time.
-        If you need to reschedule, please contact your case officer.
+      </div>
+    </div>
+  );
+}
+
+// ─── Staff: Reschedule Modal ──────────────────────────────────────────────────
+//
+// Opens when staff/case officer clicks "Reschedule" on an interview card.
+// Pre-fills current date/time/location and lets them pick a new one.
+//
+
+function RescheduleModal({ interview, onClose, onConfirm }) {
+  const formatDateInput = (dateStr) => dateStr || "";
+  const formatTimeInput = (timeStr) => timeStr || "";
+
+  const [form, setForm] = useState({
+    interviewDate: formatDateInput(interview.interview_date || interview.scheduledDate),
+    interviewTime: formatTimeInput(interview.interview_time || interview.scheduledTime),
+    location:      interview.location || "",
+    notes:         interview.notes   || "",
+  });
+  const [errors, setErrors]       = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  function validate() {
+    const e = {};
+    if (!form.interviewDate) e.interviewDate = "Required.";
+    if (!form.interviewTime) e.interviewTime = "Required.";
+    if (!form.location.trim()) e.location = "Required.";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function handleConfirm() {
+    if (!validate()) return;
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 600));
+    onConfirm({
+      ...interview,
+      interview_date:  form.interviewDate,
+      interview_time:  form.interviewTime,
+      scheduledDate:   form.interviewDate,
+      scheduledTime:   form.interviewTime,
+      location:        form.location,
+      notes:           form.notes,
+      interviewStatus: "Scheduled",
+      status:          "Scheduled",
+    });
+    setSubmitting(false);
+  }
+
+  const inputStyle = (hasErr) => ({
+    width: "100%",
+    padding: "8px 10px",
+    border: `1px solid ${hasErr ? "#ef4444" : "#d1d5db"}`,
+    borderRadius: 8,
+    fontSize: "0.875rem",
+    fontFamily: "inherit",
+    outline: "none",
+    boxSizing: "border-box",
+  });
+
+  return (
+    <div className={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={styles.modalBox}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>🔄 Reschedule Interview</h3>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
+            Update the date, time, or location below. The complainant will be notified of the change.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                New Date <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input type="date" value={form.interviewDate} onChange={set("interviewDate")} style={inputStyle(errors.interviewDate)} />
+              {errors.interviewDate && <span style={{ fontSize: "0.78rem", color: "#ef4444" }}>{errors.interviewDate}</span>}
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                New Time <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input type="time" value={form.interviewTime} onChange={set("interviewTime")} style={inputStyle(errors.interviewTime)} />
+              {errors.interviewTime && <span style={{ fontSize: "0.78rem", color: "#ef4444" }}>{errors.interviewTime}</span>}
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                Location / Platform <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. SASHA Office — Room 204, or Zoom link"
+                value={form.location}
+                onChange={set("location")}
+                style={inputStyle(errors.location)}
+              />
+              {errors.location && <span style={{ fontSize: "0.78rem", color: "#ef4444" }}>{errors.location}</span>}
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                Reason / Notes
+              </label>
+              <textarea
+                placeholder="Briefly explain the reason for rescheduling (optional)…"
+                value={form.notes}
+                onChange={set("notes")}
+                rows={3}
+                style={{ ...inputStyle(false), resize: "vertical" }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
+            Keep Original
+          </button>
+          <button className={styles.saveBtn} onClick={handleConfirm} disabled={submitting}>
+            {submitting ? "Saving…" : "Confirm Reschedule"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -545,12 +688,45 @@ function ConfirmedView({ interview }) {
 // ─── Main InterviewTab component ──────────────────────────────────────────────
 
 export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToast }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
+  // Switch MOCK_VIEW to see each complainant state:
+  //   "Invited" | "Scheduled" | "Confirmed" | "Completed" | "Cancelled" | "Expired"
+  const MOCK_VIEW = "Invited";
 
-  const [interviews, setInterviews]   = useState([]);
-  const [loading, setLoading]         = useState(true);
+  const MOCK_INTERVIEWS = [
+    {
+      id: "iv-1",
+      interview_date: "2026-06-09",
+      interview_time: "10:00",
+      scheduledDate:  "2026-06-09",
+      scheduledTime:  "10:00",
+      location:       "SASHA Office — Room 204",
+      notes:          "Please bring a valid ID and any supporting documents.",
+      interviewStatus: MOCK_VIEW,
+      status:          MOCK_VIEW,
+      meetingLink:    "https://meet.google.com/abc-defg-hij",
+      expiresAt:      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+    },
+    {
+      id: "iv-2",
+      interview_date: "2026-05-20",
+      interview_time: "14:00",
+      location:       "Zoom",
+      notes:          "",
+      interviewStatus: "Cancelled",
+      status:          "Cancelled",
+    },
+  ];
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const [interviews, setInterviews]   = useState(MOCK_INTERVIEWS);
+  const [loading, setLoading]         = useState(false); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
   const [submitting, setSubmitting]   = useState(false);
+  // Reschedule state: null = closed; string = interview id being rescheduled (staff)
+  const [rescheduleId, setRescheduleId]         = useState(null);
+  // Complainant reschedule: flip back to Invited so they can pick a new slot
+  const [complainantRescheduling, setComplainantRescheduling] = useState(false);
 
   const [form, setForm] = useState({
     interviewDate: "",
@@ -560,27 +736,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   });
   const [errors, setErrors] = useState({});
 
-  // Fetch existing interviews for this case
-  useEffect(() => {
-    if (!caseData?.id) return;
-    const fetchInterviews = async () => {
-      try {
-        const res = await fetch(
-          `${API_URL}/api/case_reports/${caseData.id}/interviews`,
-          { credentials: "include" }
-        );
-        if (res.ok) {
-          const { data } = await res.json();
-          setInterviews(data || []);
-        }
-      } catch (_) {
-        // silently fail — show empty state
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInterviews();
-  }, [caseData?.id]);
+  // ── MOCK: no fetch needed — data is hardcoded above for design preview ──
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
@@ -596,51 +752,41 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   async function handleSchedule() {
     if (!validate()) return;
     setSubmitting(true);
-    try {
-      const res = await fetch(
-        `${API_URL}/api/case_reports/${caseData.id}/interviews`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            interview_date: form.interviewDate,
-            interview_time: form.interviewTime,
-            location:       form.location,
-            notes:          form.notes,
-          }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to schedule interview.");
-      const { data } = await res.json();
-      setInterviews((prev) => [data, ...prev]);
-      setForm({ interviewDate: "", interviewTime: "", location: "", notes: "" });
-      setErrors({});
-      setShowForm(false);
-      showToast && showToast("Interview scheduled successfully.");
-    } catch (err) {
-      showToast && showToast(err.message || "An error occurred.", "error");
-    } finally {
-      setSubmitting(false);
-    }
+    // ── MOCK: simulate save ───────────────────────────────────────────────
+    await new Promise((r) => setTimeout(r, 600));
+    const newInterview = {
+      id: `iv-mock-${Date.now()}`,
+      interview_date: form.interviewDate,
+      interview_time: form.interviewTime,
+      location:       form.location,
+      notes:          form.notes,
+      interviewStatus: "Scheduled",
+      status:          "Scheduled",
+    };
+    setInterviews((prev) => [newInterview, ...prev]);
+    setForm({ interviewDate: "", interviewTime: "", location: "", notes: "" });
+    setErrors({});
+    setShowForm(false);
+    showToast && showToast("Interview scheduled successfully.");
+    setSubmitting(false);
+    // ─────────────────────────────────────────────────────────────────────
   }
 
   async function handleCancel(interviewId) {
-    try {
-      const res = await fetch(
-        `${API_URL}/api/case_reports/${caseData.id}/interviews/${interviewId}/cancel`,
-        { method: "PATCH", credentials: "include" }
-      );
-      if (!res.ok) throw new Error("Failed to cancel interview.");
-      setInterviews((prev) =>
-        prev.map((iv) =>
-          iv.id === interviewId ? { ...iv, status: "Cancelled" } : iv
-        )
-      );
-      showToast && showToast("Interview cancelled.");
-    } catch (err) {
-      showToast && showToast(err.message || "An error occurred.", "error");
-    }
+    // ── MOCK: update state directly ───────────────────────────────────────
+    setInterviews((prev) =>
+      prev.map((iv) =>
+        iv.id === interviewId ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled" } : iv
+      )
+    );
+    showToast && showToast("Interview cancelled.");
+    // ─────────────────────────────────────────────────────────────────────
+  }
+
+  function handleStaffRescheduleConfirm(updated) {
+    setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv));
+    setRescheduleId(null);
+    showToast && showToast("Interview rescheduled successfully.");
   }
 
   const inputStyle = (hasErr) => ({
@@ -670,25 +816,55 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
     const status = activeInterview.interviewStatus || activeInterview.status;
 
-    if (status === "Invited") {
+    // Complainant requested a reschedule → show slot picker again with a banner
+    if (complainantRescheduling || status === "Invited") {
       return (
-        <InvitedView
-          caseData={caseData}
-          interview={activeInterview}
-          onSlotSelected={(updated) =>
-            setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv))
-          }
-          showToast={showToast}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {complainantRescheduling && (
+            <div style={{
+              background: "#fef9c3", border: "1px solid #fde68a", borderRadius: 8,
+              padding: "10px 14px", fontSize: "0.875rem", color: "#92400e",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+            }}>
+              <span>🔄 <strong>Rescheduling:</strong> Please select a new slot below.</span>
+              <button
+                onClick={() => setComplainantRescheduling(false)}
+                style={{ background: "none", border: "none", fontSize: "0.8rem", color: "#92400e", cursor: "pointer", fontWeight: 600 }}
+              >
+                ✕ Keep original
+              </button>
+            </div>
+          )}
+          <InvitedView
+            caseData={caseData}
+            interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
+            onSlotSelected={(updated) => {
+              setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv));
+              setComplainantRescheduling(false);
+              showToast && showToast(complainantRescheduling ? "Slot rescheduled! Your case officer will confirm shortly." : "Slot selected! Your case officer will confirm shortly.");
+            }}
+            showToast={showToast}
+          />
+        </div>
       );
     }
 
     if (status === "Scheduled") {
-      return <ScheduledView interview={activeInterview} />;
+      return (
+        <ScheduledView
+          interview={activeInterview}
+          onReschedule={() => setComplainantRescheduling(true)}
+        />
+      );
     }
 
     if (status === "Confirmed") {
-      return <ConfirmedView interview={activeInterview} />;
+      return (
+        <ConfirmedView
+          interview={activeInterview}
+          onReschedule={() => setComplainantRescheduling(true)}
+        />
+      );
     }
 
     // Completed / Cancelled / Expired — show a simple note
@@ -856,7 +1032,13 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               )}
 
               {(isStaff || isCaseOfficer) && iv.status !== "Cancelled" && iv.status !== "Completed" && (
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+                  <button
+                    onClick={() => setRescheduleId(iv.id)}
+                    style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    🔄 Reschedule
+                  </button>
                   <button
                     onClick={() => handleCancel(iv.id)}
                     style={{ padding: "5px 14px", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
@@ -869,6 +1051,18 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
           ))}
         </div>
       )}
+
+      {/* ── Staff reschedule modal ── */}
+      {rescheduleId && (() => {
+        const iv = interviews.find((x) => x.id === rescheduleId);
+        return iv ? (
+          <RescheduleModal
+            interview={iv}
+            onClose={() => setRescheduleId(null)}
+            onConfirm={handleStaffRescheduleConfirm}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }
