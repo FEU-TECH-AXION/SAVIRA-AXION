@@ -100,6 +100,10 @@ app.use('/api/case_report_analysis', caseReportAnalysisRouter)
 const caseAssignmentsRouter = require('./routes/case_assignments.routes')
 app.use('/api/case_assignments', caseAssignmentsRouter)
 
+// Route for case_status_history tbl
+const caseStatusHistoryRouter = require('./routes/case_status_history.routes')
+app.use('/api/case_status_history', caseStatusHistoryRouter)
+
 // ── ROUTES FOR VOLUNTEER APPLICATION RELATED TABLES ───────────────────────────────
 
 // Route for volunteer_applications tbl
