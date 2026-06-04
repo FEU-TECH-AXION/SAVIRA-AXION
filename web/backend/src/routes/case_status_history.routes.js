@@ -1,9 +1,22 @@
 const express = require('express')
-const router = express.Router()
-const { getItems, createItem } = require('../controllers/case_status_history.controller')
+const router  = express.Router()
+const {
+  getHistory,
+  submitStatusChange,
+  approveStatusChange,
+  rejectStatusChange,
+} = require('../controllers/case_status_history.controller')
 
-// Routes are kept thin or short since all the logic is in the controller
-router.get('/', getItems)
-router.post('/', createItem)
+// Get status timeline for a case (staffView=true query param for staff)
+router.get('/:caseReportId', getHistory)
+
+// Officer submits a status change — creates history + assessment rows
+router.post('/', submitStatusChange)
+
+// Admin approves a pending status change
+router.patch('/:historyId/approve', approveStatusChange)
+
+// Admin rejects a pending status change
+router.patch('/:historyId/reject', rejectStatusChange)
 
 module.exports = router

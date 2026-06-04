@@ -1,5 +1,17 @@
 const supabase = require('../config/supabase')
 
+const ALLOWED_FIELDS = [
+  'case_type',
+  'case_category',
+  'also_involves',
+  'referral_required',
+  'referral_body',
+  'assigned_paralegal',
+  'endorsement_status',
+  'internal_notes',
+  'assigned_officer',
+]
+
 const getAll = async () => {
     const { data, error } = await supabase.from('case_reports').select('*')
 
@@ -162,4 +174,26 @@ async function getAllReports() {
   });
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, }
+const update = async (caseReportId, payload) => {
+  // Filter out any keys not in the whitelist
+  const filtered = Object.fromEntries(
+    Object.entries(payload).filter(([key]) => ALLOWED_FIELDS.includes(key))
+  )
+
+  if (Object.keys(filtered).length === 0) {
+    throw new Error('No valid fields to update')
+  }
+
+  const { data, error } = await supabase
+    .from('case_reports')
+    .update(filtered)
+    .eq('case_report_id', caseReportId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+  
+
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update }

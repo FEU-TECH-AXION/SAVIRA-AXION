@@ -913,7 +913,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast 
 
 // ─── Case Management Tab (staff only) ────────────────────────────────────────
 
-function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, showToast }) {
+function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole,showToast }) {
   const [modal, setModal] = useState(null);
 
   // Determine available status transitions
@@ -941,13 +941,37 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     return [];
   }
 
-  function submitForApproval(proposedStatus, changeDetails) {
-    setCaseData((prev) => ({
-      ...prev,
-      pendingApproval: { proposedStatus, ...changeDetails },
-    }));
-    showToast(`Status change for ${caseData.caseId} submitted for admin approval.`);
-    setModal(null);
+  async function submitForApproval(proposedStatus, changeDetails) {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_status_history`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          case_report_id:  caseData.id,
+          proposed_status: proposedStatus,
+          changed_by_id:   userId,          // add user.id to your user state
+          changed_by_role: userRole,
+          notes:           changeDetails.notes,
+          form_data:       changeDetails.formData,
+          case_officer_id: userId,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to submit.");
+      }
+      // Optimistically mark pending in local state so the banner shows
+      setCaseData((prev) => ({
+        ...prev,
+        pendingApproval: { proposedStatus, ...changeDetails },
+      }));
+      showToast(`Status change submitted for admin approval.`);
+      setModal(null);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
   }
 
   const transitions = getAvailableTransitions();
@@ -1067,7 +1091,20 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
           <button
-            onClick={() => { setCaseData((p) => ({ ...p, internalNotes })); showToast("Notes saved."); }}
+            onClick={async () => {
+            try {
+              const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+              const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ findings: internalNotes, case_officer_id: userId }),
+              });
+              if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
+              setCaseData((p) => ({ ...p, internalNotes }));
+              showToast("Notes saved.");
+            } catch (err) { showToast(err.message, "error"); }
+          }}
             className={styles.btnPrimary}
           >
             Save Notes
@@ -1235,11 +1272,21 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           <button
             className={styles.btnPrimary}
             disabled={caseTypeVal.length === 0 || !caseTypeConfirmed}
-            onClick={() => {
-              setCaseData((p) => ({ ...p, caseType: caseTypeVal }));
-              setCaseTypeConfirmed(false); // reset for next open
-              showToast("Case type updated.");
-              setModal(null);
+            onClick={async () => {
+              try {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+                const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+                  method: "PATCH",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ case_type: caseTypeVal, case_officer_id: userId }),
+                });
+                if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
+                setCaseData((p) => ({ ...p, caseType: caseTypeVal }));
+                setCaseTypeConfirmed(false);
+                showToast("Case type updated.");
+                setModal(null);
+              } catch (err) { showToast(err.message, "error"); }
             }}
           >
             Save
@@ -1382,12 +1429,22 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           <button
             className={styles.btnPrimary}
             disabled={!caseCatVal || !categoryConfirmed}
-            onClick={() => {
-              setCaseData((p) => ({ ...p, caseCategory: caseCatVal, alsoInvolves: alsoCatVal }));
-              setCategoryConfirmed(false);
-              showToast("Category updated.");
-              setModal(null);
-            }}
+              onClick={async () => {
+                try {
+                  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+                  const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+                    method: "PATCH",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ primary_category: caseCatVal, additional_categories: alsoCatVal, case_officer_id: userId }),
+                  });
+                  if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
+                  setCaseData((p) => ({ ...p, primary_category: caseCatVal, alsoInvolves: alsoCatVal }));
+                  setCategoryConfirmed(false);
+                  showToast("Category updated.");
+                  setModal(null);
+                } catch (err) { showToast(err.message, "error"); }
+              }}
           >
             Save
           </button>
@@ -1414,10 +1471,20 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         </div>
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={() => {
-            setCaseData((p) => ({ ...p, referralRequired: referralReq === "yes", referralBody: referralReq === "yes" ? referralVal : null }));
-            showToast("Referral details updated.");
-            setModal(null);
+          <button className={styles.btnPrimary} onClick={async () => {
+            try {
+              const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+              const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ referral_required: referralReq === "yes", referral_body: referralReq === "yes" ? referralVal : null, case_officer_id: userId }),
+              });
+              if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
+              setCaseData((p) => ({ ...p, referralRequired: referralReq === "yes", referralBody: referralReq === "yes" ? referralVal : null }));
+              showToast("Referral details updated.");
+              setModal(null);
+            } catch (err) { showToast(err.message, "error"); }
           }}>Save</button>
         </div>
       </Modal>
@@ -1435,7 +1502,21 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         </div>
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={() => { setCaseData((p) => ({ ...p, assignedParalegal: paralegalVal })); showToast("Paralegal assigned."); setModal(null); }} disabled={!paralegalVal}>Assign</button>
+          <button className={styles.btnPrimary} onClick={async () => {
+              try {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+                const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+                  method: "PATCH",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ assigned_paralegal: paralegalVal, case_officer_id: userId }),
+                });
+                if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
+                setCaseData((p) => ({ ...p, assignedParalegal: paralegalVal }));
+                showToast("Paralegal assigned.");
+                setModal(null);
+              } catch (err) { showToast(err.message, "error"); }
+            }}>Assign</button>
         </div>
       </Modal>
 
@@ -1455,11 +1536,30 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         </div>
         <div className={styles.modalFooter}>
           <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={() => {
+          <button className={styles.btnPrimary} onClick={async () => {
+          try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+            const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+              method: "PATCH",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                endorsement: {
+                  endorsed_to: endorseBody,
+                  notes: endorseNotes,
+                  date: new Date().toISOString(),
+                },
+                referral_body: endorseBody,
+                referral_required: true,
+                case_officer_id: userId,
+              }),
+            });
+            if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
             setCaseData((p) => ({ ...p, endorsementStatus: `Endorsed to ${endorseBody}`, referralBody: endorseBody, referralRequired: true }));
             showToast(`Case endorsed to ${endorseBody}.`);
             setModal(null);
-          }} disabled={!endorseBody}>Endorse</button>
+          } catch (err) { showToast(err.message, "error"); }
+        }} disabled={!endorseBody}>Endorse</button>
         </div>
       </Modal>
     </div>
@@ -1726,7 +1826,7 @@ export default function ViewCase() {
     if (userCookie) {
       try {
         const stored = JSON.parse(userCookie);
-        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name });
+        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name, id: stored.id, });
       } catch (_) {}
     }
     setUserLoaded(true);
@@ -1806,6 +1906,25 @@ export default function ViewCase() {
             },
           ],
         });
+
+        const asmRes = await fetch(`${API_URL}/api/case_assessments/case/${data.case_report_id}`, { credentials: "include" });
+        if (asmRes.ok) {
+          const asmJson = await asmRes.json();
+          const latest = asmJson.data?.[0]; // already ordered by created_at desc
+          if (latest) {
+            setCaseData((prev) => ({
+              ...prev,
+              caseType:          latest.case_type || prev.caseType,
+              caseCategory:    latest.primary_category || prev.caseCategory,
+              alsoInvolves:    latest.additional_categories || [],
+              referralRequired: latest.referral_required ?? prev.referralRequired,
+              referralBody:    latest.referral_body || prev.referralBody,
+              endorsementStatus: latest.endorsement?.endorsed_to
+                ? `Endorsed to ${latest.endorsement.endorsed_to}`
+                : prev.endorsementStatus,
+            }));
+          }
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1925,6 +2044,7 @@ export default function ViewCase() {
               isCaseOfficer={isCaseOfficer}
               isLegal={isLegal}
               actorName={actorName}
+              userRole={user.role}
               showToast={showToast}
             />
           )}

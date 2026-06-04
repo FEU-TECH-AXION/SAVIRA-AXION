@@ -240,4 +240,17 @@ async function getHeatmapMeta(req, res) {
   }
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta }
+const updateItem = async (req, res) => {
+  try {
+    const { id } = req.params
+    const data = await CaseReports.update(id, req.body)
+    res.json({ data })
+  } catch (err) {
+    // 400 for "No valid fields" since it's a client error,
+    // 500 for everything else (DB failures)
+    const status = err.message === 'No valid fields to update' ? 400 : 500
+    res.status(status).json({ error: err.message })
+  }
+}
+
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem }

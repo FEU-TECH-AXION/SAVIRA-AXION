@@ -1,25 +1,62 @@
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('case_assessments').select('*')
+  const { data, error } = await supabase.from('case_assessments').select('*')
+  if (error) throw error
+  return data
+}
 
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
-    if (error) throw error
+// Fetch all assessments for a specific case report — used when
+// loading the Case Management tab to show prior assessments
+const getByCaseReport = async (caseReportId) => {
+  const { data, error } = await supabase
+    .from('case_assessments')
+    .select(`
+      *,
+      case_status_history (
+        display_id,
+        approval_status,
+        approved_at,
+        case_status ( case_status_name )
+      )
+    `)
+    .eq('case_report_id', caseReportId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
 
-    return data
+// Fetch a single assessment by the linked history row — useful
+// for the admin approval panel to show what the officer filled in
+const getByHistoryId = async (statusHistoryId) => {
+  const { data, error } = await supabase
+    .from('case_assessments')
+    .select('*')
+    .eq('status_history_id', statusHistoryId)
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 const create = async (payload) => {
-    const { data, error } = await supabase
-        .from('case_assessments')
-        .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
-    if (error) throw error
-
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
-    return data[0]
+  const { data, error } = await supabase
+    .from('case_assessments')
+    .insert([payload])
+    .select()
+  if (error) throw error
+  return data[0]
 }
 
-module.exports = { getAll, create }
+// Used when admin approves/rejects — lets the assessment record
+// reflect the final outcome alongside the history row
+const updateAssessmentStatus = async (statusHistoryId, assessmentStatus) => {
+  const { data, error } = await supabase
+    .from('case_assessments')
+    .update({ assessment_status: assessmentStatus })
+    .eq('status_history_id', statusHistoryId)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+module.exports = { getAll, getByCaseReport, getByHistoryId, create, updateAssessmentStatus }
