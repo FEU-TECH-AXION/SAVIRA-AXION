@@ -6,16 +6,19 @@ import styles from "./CasesTable.module.css";
 // ─── Status badge colors ─────────────────────────────────────────────────────
 
 const STATUS_COLORS = {
-  "For Verification":      { bg: "#dbeafe", color: "#1e40af" },
-  "Undergoing Review":     { bg: "#fef9c3", color: "#854d0e" },
-  "Verified - True":       { bg: "#dcfce7", color: "#166534" },
-  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" },
-  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" },
-  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" },
-  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" },
-  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" },
-  "Dismissed":             { bg: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
-  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" },
+  "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
+  "For Verification":      { bg: "#dbeafe", color: "#1e40af" }, // Blue
+  "Undergoing Review":     { bg: "#fef9c3", color: "#854d0e" }, // Yellow
+  "Verified - True":       { bg: "#dcfce7", color: "#166534" }, // Green
+  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" }, // Red
+  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" }, // Purple
+  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" }, // Orange
+  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" }, // Cyan
+  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" }, // Pink
+  "Dismissed":             { bg: "#f1f5f9", color: "#475569" }, // Slate/Gray
+  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" }, // Emerald Green
+  "Resolved":              { bg: "#ccfbf1", color: "#115e59" }, // Teal
+  "Withdrawn":             { bg: "#fef3c7", color: "#92400e" }, // Amber/Muted Brown
 };
 
 // Open → warm peach; Closed → soft green (matching image)

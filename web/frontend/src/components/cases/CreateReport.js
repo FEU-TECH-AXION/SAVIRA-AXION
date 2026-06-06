@@ -1330,17 +1330,20 @@ export default function CreateReport({
   const [reportsLoading, setReportsLoading] = useState(true);
 
   const STATUS_NAME_MAP = {
-    'For Verification':      'For Verification',
-    'Undergoing Review':     'Undergoing Review',
-    'Verified - True':       'Verified - True',
-    'Verified - False':      'Verified - False',
-    'Under Case Evaluation': 'Under Case Evaluation',
-    'Case Filed':            'Case Filed',
-    'Investigation Ongoing': 'Investigation Ongoing',
-    'Hearing Ongoing':       'Hearing Ongoing',
-    'Dismissed':             'Dismissed',
-    'Perpetrator Convicted': 'Perpetrator Convicted',
-  };
+  'Submitted':             'Submitted',
+  'For Verification':      'For Verification',
+  'Undergoing Review':     'Undergoing Review',
+  'Verified - True':       'Verified - True',
+  'Verified - False':      'Verified - False',
+  'Under Case Evaluation': 'Under Case Evaluation',
+  'Case Filed':            'Case Filed',
+  'Investigation Ongoing': 'Investigation Ongoing',
+  'Hearing Ongoing':       'Hearing Ongoing',
+  'Dismissed':             'Dismissed',
+  'Perpetrator Convicted': 'Perpetrator Convicted',
+  'Resolved':              'Resolved',
+  'Withdrawn':             'Withdrawn',
+};
 
   const fetchUserReports = async () => {
     try {

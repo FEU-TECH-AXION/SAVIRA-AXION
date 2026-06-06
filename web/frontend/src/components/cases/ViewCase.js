@@ -20,19 +20,23 @@ import InterviewTab from "./interview/InterviewTab";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_STEP = {
-  1:  "For Verification",
-  2:  "Undergoing Review",
-  3:  "Verified - True",
-  4:  "Verified - False",
-  5:  "Under Case Evaluation",
-  6:  "Case Filed",
-  7:  "Investigation Ongoing",
-  8:  "Hearing Ongoing",
-  9:  "Dismissed",
-  10: "Perpetrator Convicted",
+  1:  "Submitted",
+  2:  "For Verification",
+  3:  "Undergoing Review",
+  4:  "Verified - True",
+  5:  "Verified - False",
+  6:  "Under Case Evaluation",
+  7:  "Case Filed",
+  8:  "Investigation Ongoing",
+  9:  "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn",
 };
 
 const ALL_STATUSES = [
+  "Submitted",
   "For Verification",
   "Undergoing Review",
   "Verified - True",
@@ -43,6 +47,8 @@ const ALL_STATUSES = [
   "Hearing Ongoing",
   "Dismissed",
   "Perpetrator Convicted",
+  "Resolved",
+  "Withdrawn",
 ];
 
 const STATUS_MODAL_MAP = {
@@ -179,16 +185,19 @@ const STATUS_EXPLANATIONS = {
 // ─── Shared subcomponents ─────────────────────────────────────────────────────
 
 const STATUS_COLORS = {
-  "For Verification":      { bg: "#fef3c7", color: "#92400e" },
-  "Undergoing Review":     { bg: "#dbeafe", color: "#1e40af" },
-  "Verified - True":       { bg: "#d1fae5", color: "#065f46" },
-  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" },
-  "Under Case Evaluation": { bg: "#ede9fe", color: "#5b21b6" },
-  "Case Filed":            { bg: "#e0f2fe", color: "#0c4a6e" },
-  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" },
-  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" },
-  "Dismissed":             { bg: "#f1f5f9", color: "#475569" },
-  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" },
+  "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
+  "For Verification":      { bg: "#dbeafe", color: "#1e40af" }, // Blue
+  "Undergoing Review":     { bg: "#fef9c3", color: "#854d0e" }, // Yellow
+  "Verified - True":       { bg: "#dcfce7", color: "#166534" }, // Green
+  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" }, // Red
+  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" }, // Purple
+  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" }, // Orange
+  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" }, // Cyan
+  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" }, // Pink
+  "Dismissed":             { bg: "#f1f5f9", color: "#475569" }, // Slate/Gray
+  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" }, // Emerald Green
+  "Resolved":              { bg: "#ccfbf1", color: "#115e59" }, // Teal
+  "Withdrawn":             { bg: "#fef3c7", color: "#92400e" }, // Amber/Muted Brown
 };
 
 function StatusBadge({ status }) {

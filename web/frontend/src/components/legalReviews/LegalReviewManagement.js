@@ -34,16 +34,19 @@ const PAGE_SIZE = 8;
 
 // Maps case_status_id (from DB) to status label
 const STATUS_STEP = {
-  1: "For Verification",
-  2: "Undergoing Review",
-  3: "Verified - True",
-  4: "Verified - False",
-  5: "Under Case Evaluation",
-  6: "Case Filed",
-  7: "Investigation Ongoing",
-  8: "Hearing Ongoing",
-  9: "Dismissed",
-  10: "Perpetrator Convicted",
+  1:  "Submitted",
+  2:  "For Verification",
+  3:  "Undergoing Review",
+  4:  "Verified - True",
+  5:  "Verified - False",
+  6:  "Under Case Evaluation",
+  7:  "Case Filed",
+  8:  "Investigation Ongoing",
+  9:  "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn",
 };
 
 // Only cases with this status from Case Management are passed to Legal Review

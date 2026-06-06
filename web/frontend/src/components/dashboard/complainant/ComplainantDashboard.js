@@ -40,6 +40,8 @@ const STATUS_DISPLAY = {
   "Hearing Ongoing":       { middle: "Hearing Ongoing",       phase: 1 },
   "Dismissed":             { middle: "Dismissed",             phase: 2 },
   "Perpetrator Convicted": { middle: "Perpetrator Convicted", phase: 2 },
+  "Resolved":              { middle: "Resolved",              phase: 2 },
+  "Withdrawn":             { middle: "Withdrawn",             phase: 2 },
 };
 
 // ── Status Stepper ───────────────────────────────────────────────────────────
