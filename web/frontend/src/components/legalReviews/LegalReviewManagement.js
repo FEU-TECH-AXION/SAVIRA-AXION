@@ -1087,7 +1087,7 @@ export default function LegalReviewManagement() {
     const pending = cases.filter((c) => c.pendingApproval).length;
     return [
       { num: cases.filter((c) => c.status === "Under Case Evaluation").length, label: "Under Evaluation" },
-      { num: cases.filter((c) => ["Case Filed", "Investigation Ongoing", "Hearing Ongoing"].includes(c.status)).length, label: "Active Cases" },
+      { num: cases.filter((c) => [ "Verified - True", "Under Case Evaluation", "Case Filed", "Investigation Ongoing", "Hearing Ongoing",].includes(c.status)).length, label: "Active Cases" },
       { num: cases.filter((c) => c.endorsedTo).length, label: "Endorsed Cases" },
       ...(isAdmin ? [{ num: pending, label: "Pending Approvals", highlight: pending > 0 }] : []),
     ];
