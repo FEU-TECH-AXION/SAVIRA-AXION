@@ -194,7 +194,7 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
         <h3 className={styles.rpConfirmTitle}>Confirm your slot?</h3>
         <div className={styles.rpConfirmCard}>
           <div className={styles.rpConfirmRow}>
-            <span className={styles.rpConfirmLabel}>📅 Date</span>
+            <span className={styles.rpConfirmLabel}>Date</span>
             <span className={styles.rpConfirmValue}>{formatDateLong(pendingSlot.date)}</span>
           </div>
           <div className={styles.rpConfirmRow}>
@@ -259,7 +259,6 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
     const hasAnySlots = Object.keys(slotsByDate).length > 0;
     rightPanel = (
       <div className={styles.rpPrompt}>
-        <div className={styles.rpPromptIcon}>📅</div>
         {hasAnySlots ? (
           <>
             <p className={styles.rpPromptTitle}>Select a date</p>
@@ -451,7 +450,7 @@ function ScheduledView({ interview, onReschedule }) {
         </div>
         {onReschedule && (
           <button className={styles.rescheduleBtn} onClick={onReschedule}>
-            🔄 Reschedule
+            Reschedule
           </button>
         )}
       </div>
@@ -499,14 +498,14 @@ function ConfirmedView({ interview, onReschedule }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h2 className={styles.statusTitle}>✅ Your Interview is Confirmed</h2>
+          <h2 className={styles.statusTitle}>Your Interview is Confirmed</h2>
           <p className={styles.statusDesc}>
             Everything is set. See the details below and join at the scheduled time.
           </p>
         </div>
         {onReschedule && (
           <button className={styles.rescheduleBtn} onClick={onReschedule}>
-            🔄 Reschedule
+            Reschedule
           </button>
         )}
       </div>
@@ -623,7 +622,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
     <div className={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={styles.modalBox}>
         <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>🔄 Reschedule Interview</h3>
+          <h3 className={styles.modalTitle}>Reschedule Interview</h3>
           <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className={styles.modalBody}>
@@ -826,7 +825,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               padding: "10px 14px", fontSize: "0.875rem", color: "#92400e",
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
             }}>
-              <span>🔄 <strong>Rescheduling:</strong> Please select a new slot below.</span>
+              <span><strong>Rescheduling:</strong> Please select a new slot below.</span>
               <button
                 onClick={() => setComplainantRescheduling(false)}
                 style={{ background: "none", border: "none", fontSize: "0.8rem", color: "#92400e", cursor: "pointer", fontWeight: 600 }}
@@ -890,7 +889,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#111827" }}>
-            📅 Interview Scheduling
+            Interview Scheduling
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: "0.875rem", color: "#6b7280" }}>
             Manage interview sessions for this complainant.
@@ -1013,7 +1012,6 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: "1rem" }}>📅</span>
                   <strong style={{ fontSize: "0.95rem", color: "#111827" }}>
                     {iv.interview_date} at {iv.interview_time}
                   </strong>
@@ -1037,7 +1035,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                     onClick={() => setRescheduleId(iv.id)}
                     style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
                   >
-                    🔄 Reschedule
+                    Reschedule
                   </button>
                   <button
                     onClick={() => handleCancel(iv.id)}

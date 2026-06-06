@@ -776,7 +776,6 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
     <div>
       {/* AI disclaimer */}
       <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 8, padding: "10px 14px", marginBottom: "1.25rem", fontSize: "0.82rem", color: "#5b21b6", display: "flex", gap: 8, alignItems: "flex-start" }}>
-        <span style={{ fontSize: "1rem", flexShrink: 0 }}>🤖</span>
         <span>This analysis is <strong>AI-generated</strong> and is intended as a guide only. All decisions remain with the case officer and are subject to admin approval.</span>
       </div>
 
@@ -806,7 +805,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
           )}
 
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>🏷️ Suggested Classification</h4>
+            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Classification</h4>
             <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Case Categories</p>
             <div style={{ marginBottom: 12 }}>
               {nlpData.case_categories?.length > 0 ? nlpData.case_categories.map((c) => <CategoryBadge key={c} label={c} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
@@ -824,7 +823,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
           </div>
 
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>📋 Suggested Next Steps</h4>
+            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Next Steps</h4>
             {nlpData.recommended_steps?.length > 0 ? (
               <ol style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 6 }}>
                 {nlpData.recommended_steps.map((step, i) => <li key={i} style={{ fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{step}</li>)}
@@ -834,7 +833,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
 
           <div style={{ background: nlpData.referral_suggested ? "#fffbeb" : "#f0fdf4", border: `1px solid ${nlpData.referral_suggested ? "#fcd34d" : "#86efac"}`, borderRadius: 8, padding: "14px 16px" }}>
             <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: nlpData.referral_suggested ? "#92400e" : "#166534" }}>
-              {nlpData.referral_suggested ? "⚠️ Referral may be appropriate" : "✅ May be resolvable internally"}
+              {nlpData.referral_suggested ? "Referral may be appropriate" : "May be resolvable internally"}
             </h4>
             {nlpData.referral_notes && <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.referral_notes}</p>}
           </div>
@@ -925,30 +924,56 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast 
 function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole,showToast }) {
   const [modal, setModal] = useState(null);
 
+  const NON_TRANSITIONAL_STATUSES = [
+  "Submitted",
+];
+
+const TRANSITION_RULES = {
+  "For Verification": {
+    case_officer: ["Undergoing Review"],
+    admin: ["Undergoing Review"],
+  },
+
+  "Undergoing Review": {
+    case_officer: ["Verified - True", "Verified - False"],
+    admin: ["Verified - True", "Verified - False"],
+  },
+
+  "Verified - True": {
+    case_officer: ["Under Case Evaluation"],
+    admin: ["Under Case Evaluation"],
+  },
+
+  "Under Case Evaluation": {
+    legal: ["Case Filed"],
+    admin: ["Case Filed"],
+  },
+
+  "Case Filed": {
+    legal: ["Investigation Ongoing"],
+    admin: ["Investigation Ongoing"],
+  },
+
+  "Investigation Ongoing": {
+    legal: ["Hearing Ongoing", "Dismissed"],
+    admin: ["Hearing Ongoing", "Dismissed"],
+  },
+
+  "Hearing Ongoing": {
+    legal: ["Dismissed", "Perpetrator Convicted"],
+    admin: ["Dismissed", "Perpetrator Convicted"],
+  },
+};
+
   // Determine available status transitions
   function getAvailableTransitions() {
-    const curr = caseData.status;
-    if (isAdmin) return ALL_STATUSES.filter((s) => s !== curr);
-    if (isCaseOfficer) {
-      const map = {
-        "For Verification":  ["Undergoing Review"],
-        "Undergoing Review":  ["Verified - True", "Verified - False"],
-        "Verified - True":    ["Under Case Evaluation"],
-        "Verified - False":   [],
-      };
-      return map[curr] || [];
-    }
-    if (isLegal) {
-      const map = {
-        "Under Case Evaluation": ["Case Filed"],
-        "Case Filed":            ["Investigation Ongoing"],
-        "Investigation Ongoing": ["Hearing Ongoing", "Dismissed"],
-        "Hearing Ongoing":       ["Dismissed", "Perpetrator Convicted"],
-      };
-      return map[curr] || [];
-    }
-    return [];
-  }
+  const curr = caseData.status;
+  const role = isAdmin ? "admin" : isCaseOfficer ? "case_officer" : isLegal ? "legal" : null;
+
+  if (!role) return [];
+
+  return TRANSITION_RULES[curr]?.[role] || [];
+}
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
@@ -1018,20 +1043,20 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       {/* ── Current Assignment / Classification ── */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>📋 Current Case Assignment</h2>
+        <h2 className={styles.sectionHeadingText}>Current Case Assignment</h2>
         <div className={styles.detailGrid}>
           {[
-            ["Assigned Case Officer", caseData.assignedOfficer || "—"],
-            ["Assigned Paralegal",    caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "N/A")],
-            ["Case Type",        Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not set"],
+            ["Assigned Case Officer", caseData.assignedOfficer || "Unassigned"],
+            ["Assigned Paralegal",    caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "Unassigned")],
+            ["Case Type",        Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not yet classified"],
             ["Case Categories", caseData.caseCategory
               ? caseData.alsoInvolves?.length
                 ? `${caseData.caseCategory} (also: ${caseData.alsoInvolves.join(", ")})`
                 : caseData.caseCategory
-              : "Not set"],
+              : "Not yet classified"],
             ["Referral Required",     caseData.referralRequired ? "Yes" : "No"],
-            ["Referral Body",         caseData.referralBody || "—"],
-            ["Endorsement Status",    caseData.endorsementStatus || "Not endorsed"],
+            ["Referral Body",         caseData.referralBody || "Unassigned"],
+            ["Endorsement Status",    caseData.endorsementStatus || "Not yet endorsed"],
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
@@ -1043,55 +1068,55 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       {/* ── Action Buttons ── */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>⚡ Actions</h2>
+        <h2 className={styles.sectionHeadingText}>Actions</h2>
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
 
           {/* Update Status */}
           {transitions.length > 0 && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusRouter")} style={btnStyle("#3b82f6")}>
-              📊 Update Status
+            <button onClick={() => setModal("statusRouter")} style={btnStyle("#037F81")}>
+              Update Status
             </button>
           )}
 
           {/* Set Case Type */}
-          <button onClick={() => setModal("setCaseType")} style={btnStyle("#8b5cf6")}>
-            🏷️ Set Case Type
+          <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>
+            Set Case Type
           </button>
 
           {/* Set Case Category */}
-          <button onClick={() => setModal("setCategory")} style={btnStyle("#ec4899")}>
-            📌 Set Category
+          <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>
+            Set Category
           </button>
 
           {/* Invite to Interview — only for the assigned case officer, only when status allows interviews */}
           {isCaseOfficer && caseData.isWillingForInterview === true && (
-            <button onClick={() => setModal("inviteInterview")} style={btnStyle("#0891b2")}>
-              📅 Invite to Interview
+            <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>
+              Invite to Interview
             </button>
           )}
 
           {/* Set Referral */}
-          <button onClick={() => setModal("setReferral")} style={btnStyle("#f59e0b")}>
-            🔀 Referral
+          <button onClick={() => setModal("setReferral")} style={btnStyle("#037F81")}>
+          Referral
           </button>
 
           {/* Assign Paralegal — only when Verified - True */}
           {caseData.status === "Verified - True" && (
-            <button onClick={() => setModal("assignParalegal")} style={btnStyle("#10b981")}>
-              👤 Assign Paralegal
+            <button onClick={() => setModal("assignParalegal")} style={btnStyle("#037F81")}>
+              Assign Paralegal
             </button>
           )}
 
           {/* Endorse Case */}
-          <button onClick={() => setModal("endorse")} style={btnStyle("#0ea5e9")}>
-            📤 Endorse
+          <button onClick={() => setModal("endorse")} style={btnStyle("#037F81")}>
+            Endorse
           </button>
         </div>
       </section>
 
       {/* ── Internal Notes ── */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>🗒️ Internal Notes / Action Log</h2>
+        <h2 className={styles.sectionHeadingText}>Internal Notes / Action Log</h2>
         <textarea
           placeholder="Add notes about case management actions, decisions, or observations..."
           value={internalNotes}
@@ -1641,7 +1666,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Complainant Details */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>👤 Complainant Details</h2>
+        <h2 className={styles.sectionHeadingText}>Complainant Details</h2>
         <div className={styles.detailGrid}>
           {[
             ["Name",                    caseData.name],
@@ -1662,7 +1687,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Incident Details */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>📍 Incident Details</h2>
+        <h2 className={styles.sectionHeadingText}>Incident Details</h2>
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
             ["Location Type", caseData.incidentLocationType],
@@ -1677,7 +1702,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ))}
         </div>
         <div>
-          <p className={styles.detailKey}>Description</p>
+          <p className={styles.detailKey}>Incident Description</p>
           <p className={styles.descriptionVal}>{caseData.description}</p>
         </div>
       </section>
@@ -1723,7 +1748,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Additional Context */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>ℹ️ Additional Context</h2>
+        <h2 className={styles.sectionHeadingText}>Additional Context</h2>
         <div className={styles.detailGrid}>
           {[
             ["Reported to Anyone Else?", caseData.reportedToOthers ? "Yes" : "No"],
@@ -1741,19 +1766,19 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Case Classification — visible to everyone, with explanations for complainants */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>🏷️ Case Classification</h2>
+        <h2 className={styles.sectionHeadingText}>Case Classification</h2>
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
             ["Current Status",    <StatusBadge status={caseData.status} />],
             ["Case Type",         caseData.caseType || "Not yet classified"],
             ["Case Category",     caseData.caseCategory || "Not yet classified"],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
-            ["Referral Body",     caseData.referralBody || "—"],
-            ["Assigned Officer",  caseData.assignedOfficer || "—"],
+            ["Referral Body",     caseData.referralBody || "Unassigned"],
+            ["Assigned Officer",  caseData.assignedOfficer || "Unassigned"],
             ...(caseData.status === "Verified - True" || caseData.assignedParalegal
               ? [["Assigned Paralegal", caseData.assignedParalegal || "Pending assignment"]]
               : []),
-            ["Endorsement",       caseData.endorsementStatus || "—"],
+            ["Endorsement",       caseData.endorsementStatus || "Unassigned"],
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
@@ -1779,7 +1804,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
       {/* Status History — for complainants, use friendly language */}
       {!isStaff ? (
         <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>📅 Your Case History</h2>
+          <h2 className={styles.sectionHeadingText}>Your Case History</h2>
           <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1rem", lineHeight: 1.6 }}>
             Below is a timeline of your case's progress. Each entry shows what status your case moved to, when it changed, and any notes from the SASHA team.
           </p>
@@ -1797,6 +1822,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ViewCase() {
+  
   const router      = useRouter();
   const searchParams = useSearchParams();
 
@@ -1868,7 +1894,11 @@ export default function ViewCase() {
           region:               data.incident_province || data.incident_city || "—",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",
           assignedOfficer:      data.assigned_officer || null,
-          dateSubmitted:        new Date(data.created_at).toLocaleDateString("en-PH"),
+          dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
           description:          data.incident_description || "—",
           incidentLocationType: data.incident_location_type || null,
           incidentCity:         data.incident_city,
@@ -1876,8 +1906,18 @@ export default function ViewCase() {
           incidentLocationDisplay: data.incident_location_type === "Online"
             ? data.incident_location || "Online"
             : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "—",
-          incidentDate:            data.incident_date,
-          incidentTime:            data.incident_time,
+          incidentDate:         new Date(data.incident_date).toLocaleDateString("en-PH", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          incidentTime: data.incident_time
+            ? new Date(`1970-01-01T${data.incident_time}`).toLocaleTimeString("en-PH", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })
+            : "N/A",
           perpetratorKnown:        data.is_perpetrator_known,
           perpetratorName:         data.perpetrator_name,
           perpetratorGender:       data.perpetrator_gender,
@@ -1966,13 +2006,13 @@ export default function ViewCase() {
 
   // Tab definitions — staff gets 4 tabs, complainant gets 2 (details + interview if eligible)
   const tabs = [
-    { id: "details", label: "📄 Case Details", staffOnly: false },
+    { id: "details", label: "Case Details", staffOnly: false },
     ...(caseData.isWillingForInterview ? [
-      { id: "interview", label: "📅 Interview", staffOnly: false },
+      { id: "interview", label: "Interview", staffOnly: false },
     ] : []),
     ...(isStaff ? [
-      { id: "management", label: "⚙️ Case Management", staffOnly: true },
-      { id: "nlp",        label: "🤖 AI / NLP Analysis", staffOnly: true },
+      { id: "management", label: "Case Management", staffOnly: true },
+      { id: "nlp",        label: "NLP Analysis", staffOnly: true },
     ] : []),
   ];
 
