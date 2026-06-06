@@ -368,7 +368,7 @@ export default function CasesTable({
 
                     {/* Case Type */}
                     <td className={styles.td}>
-                      {c.caseType || <span className={styles.muted}>—</span>}
+                      {c.caseType || <span className={styles.muted}>Unassigned</span>}
                     </td>
 
                     {/* Reporter ID */}
