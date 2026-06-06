@@ -1719,15 +1719,44 @@ useEffect(() => {
   function closeModal() { setModal(null); }
 
   // ── Stats ──
-  const stats = useMemo(() => {
-    const pending = cases.filter((c) => c.pendingApproval).length;
-    return [
-      { num: cases.filter((c) => c.status === "For Verification").length, label: "Awaiting Verification" },
-      { num: cases.filter((c) => ["Case Filed", "Investigation Ongoing", "Hearing Ongoing"].includes(c.status)).length, label: "Active Cases" },
-      { num: cases.length, label: "Total Cases" },
-      ...(isAdmin ? [{ num: pending, label: "Pending Approvals", highlight: pending > 0 }] : []),
-    ];
-  }, [cases, isAdmin]);
+  const ACTIVE_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+];
+
+const stats = useMemo(() => {
+  const pending = cases.filter((c) => c.pendingApproval).length;
+
+  return [
+    {
+      num: cases.filter((c) => c.status === "For Verification").length,
+      label: "Awaiting Verification",
+    },
+    {
+      num: cases.filter((c) => ACTIVE_STATUSES.includes(c.status)).length,
+      label: "Active Cases",
+    },
+    {
+      num: cases.length,
+      label: "Total Cases",
+    },
+    ...(isAdmin
+      ? [
+          {
+            num: pending,
+            label: "Pending Approvals",
+            highlight: pending > 0,
+          },
+        ]
+      : []),
+  ];
+}, [cases, isAdmin]);
 
   // ── Filtering ──
   const filtered = useMemo(() =>
