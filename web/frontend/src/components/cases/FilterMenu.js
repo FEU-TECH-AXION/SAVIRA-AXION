@@ -14,6 +14,7 @@ const DEFAULT_FILTERS = [
     type: "select",
     options: [
       "All",
+      "Submitted",
       "For Verification",
       "Undergoing Review",
       "Verified - True",
@@ -24,6 +25,8 @@ const DEFAULT_FILTERS = [
       "Hearing Ongoing",
       "Dismissed",
       "Perpetrator Convicted",
+      "Resolved",
+      "Withdrawn",
     ],
   },
   {

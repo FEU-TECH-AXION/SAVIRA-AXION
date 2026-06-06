@@ -116,16 +116,19 @@ function generateCouncilHeatmapData(reports) {
 }
 
 const STATUS_MAP = {
-  1:  "For Verification",
-  2:  "Undergoing Review",
-  3:  "Verified - True",
-  4:  "Verified - False",
-  5:  "Under Case Evaluation",
-  6:  "Case Filed",
-  7:  "Investigation Ongoing",
-  8:  "Hearing Ongoing",
-  9:  "Dismissed",
-  10: "Perpetrator Convicted",
+  1:  "Submitted",
+  2:  "For Verification",
+  3:  "Undergoing Review",
+  4:  "Verified - True",
+  5:  "Verified - False",
+  6:  "Under Case Evaluation",
+  7:  "Case Filed",
+  8:  "Investigation Ongoing",
+  9:  "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn"
 };
 
 /**

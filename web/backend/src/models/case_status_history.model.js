@@ -3,16 +3,19 @@ const supabase = require('../config/supabase')
 // Reverse map of your frontend STATUS_STEP — needed to convert
 // status name (string) back to case_status_id (int) for DB inserts
 const STATUS_ID_MAP = {
-  "For Verification":      1,
-  "Undergoing Review":     2,
-  "Verified - True":       3,
-  "Verified - False":      4,
-  "Under Case Evaluation": 5,
-  "Case Filed":            6,
-  "Investigation Ongoing": 7,
-  "Hearing Ongoing":       8,
-  "Dismissed":             9,
-  "Perpetrator Convicted": 10,
+  "Submitted":               1,
+  "For Verification":        2,
+  "Undergoing Review":       3,
+  "Verified - True":         4,
+  "Verified - False":        5,
+  "Under Case Evaluation":   6,
+  "Case Filed":              7,
+  "Investigation Ongoing":   8,
+  "Hearing Ongoing":         9,
+  "Dismissed":               10,
+  "Perpetrator Convicted":   11,
+  "Resolved":                12,
+  "Withdrawn":               13
 }
 
 // Fetch all approved history entries for a case — used by the
