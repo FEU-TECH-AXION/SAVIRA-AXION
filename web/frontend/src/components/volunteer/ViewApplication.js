@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock, FiX } from "react-icons/fi";
-import { IoIosArrowBack } from "react-icons/io";
+import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -37,13 +37,8 @@ const STATUS_COLORS = {
 function StatusBadge({ status }) {
   const s = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "4px 12px", borderRadius: 999,
-      fontSize: "0.78rem", fontWeight: 700,
-      background: s.bg, color: s.color,
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
+    <span className={styles.statusBadgeDynamic} style={{ background: s.bg, color: s.color }}>
+      <span className={styles.statusDot} />
       {status}
     </span>
   );
@@ -170,7 +165,7 @@ function UpdateStatusModal({ open, onClose, appData, onSave }) {
             placeholder="Optional reviewer notes…"
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            style={{ resize: "vertical" }}
+className={styles.notesFieldTextarea}
           />
         </div>
       </div>
@@ -188,11 +183,9 @@ function YesNoBadge({ value }) {
   const raw = String(value || "").toLowerCase().trim();
   const isYes = raw === "yes" || raw === "true" || raw === "1" || raw === "strongly agree" || raw === "agree";
   const isNo  = raw === "no"  || raw === "false" || raw === "0" || raw === "disagree" || raw === "strongly disagree";
-  if (!value || value === "—") return <span style={{ fontSize: "0.875rem", color: "#9ca3af" }}>—</span>;
+  if (!value || value === "—") return <span className={styles.yesNoBadgeEmpty}>—</span>;
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 700,
+    <span className={styles.yesNoBadge} style={{
       background: isYes ? "#d1fae5" : isNo ? "#fee2e2" : "#f3f4f6",
       color:      isYes ? "#065f46" : isNo ? "#991b1b" : "#374151",
     }}>
@@ -203,10 +196,10 @@ function YesNoBadge({ value }) {
 
 function ScreeningGrid({ rows }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+    <div className={styles.screeningGridList}>
       {rows.map(([label, value]) => (
-        <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.45rem 0.75rem", background: "#f9fafb", borderRadius: 8, border: "1px solid #f1f3f5" }}>
-          <span style={{ fontSize: "0.85rem", color: "#374151", lineHeight: 1.4 }}>{label}</span>
+        <div key={label} className={styles.screeningGridRow}>
+          <span className={styles.screeningGridLabel}>{label}</span>
           <YesNoBadge value={value} />
         </div>
       ))}
@@ -241,33 +234,21 @@ function ApplicantScoresTab({ appData }) {
     fetchScores();
   }, [appData?.id]);
 
-  const ScoreBar = ({ score, max = 10 }) => {
-    const pct = Math.min(100, (score / max) * 100);
-    const c   = pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626";
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-        <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: c, borderRadius: 999 }} />
-        </div>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: c, minWidth: 36 }}>{score}/{max}</span>
-      </div>
-    );
-  };
+  // ScoreBar is shared — defined at module level
 
-  if (loading) return <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>Loading your scores…</p>;
+  if (loading) return <p className={styles.scoresLoadingText}>Loading your scores…</p>;
 
   const statusColor = appData.applicationStatus === "Approved" ? { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" } : { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className={styles.scoresTabWrap}>
       {/* Result banner */}
-      <div style={{ background: statusColor.bg, border: `1px solid ${statusColor.border}`, borderRadius: 12, padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: "1.75rem" }}>{appData.applicationStatus === "Approved" ? "🎉" : "📋"}</span>
+      <div className={styles.resultBanner} style={{ background: statusColor.bg, border: `1px solid ${statusColor.border}` }}>
         <div>
-          <p style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: statusColor.text }}>
+          <p className={styles.resultBannerTitle} style={{ color: statusColor.text }}>
             Application {appData.applicationStatus}
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: statusColor.text, opacity: 0.8 }}>
+          <p className={styles.resultBannerSub} style={{ color: statusColor.text }}>
             {appData.applicationStatus === "Approved"
               ? "Congratulations! You have been selected as a SASHA volunteer."
               : "Thank you for applying. You may reapply in the next cycle."}
@@ -277,8 +258,8 @@ function ApplicantScoresTab({ appData }) {
 
       {/* Essay scores breakdown */}
       {scores?.essay && Object.keys(scores.essay).some(k => ["alignment","maturity","commitment","clarity","experience"].includes(k)) && (
-        <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>✍️ Essay Evaluation</h3>
+        <div className={styles.evalBlock}>
+          <h3 className={styles.evalBlockTitle}>Essay Evaluation</h3>
           {[
             { key: "alignment",  label: "Alignment with SASHA's Mission",        weight: 30 },
             { key: "maturity",   label: "Maturity and Judgment",                  weight: 20 },
@@ -286,18 +267,18 @@ function ApplicantScoresTab({ appData }) {
             { key: "clarity",    label: "Writing Clarity and Thoughtfulness",      weight: 15 },
             { key: "experience", label: "Relevant Experience / Transferable Skills", weight: 15 },
           ].map(c => scores.essay[c.key] > 0 ? (
-            <div key={c.key} style={{ marginBottom: "0.85rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151" }}>{c.label}</span>
-                <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{c.weight}% weight</span>
+            <div key={c.key} className={styles.evalCriterionItem}>
+              <div className={styles.evalCriterionHeader}>
+                <span className={styles.evalCriterionLabel}>{c.label}</span>
+                <span className={styles.evalCriterionWeight}>{c.weight}% weight</span>
               </div>
               <ScoreBar score={scores.essay[c.key]} max={10} />
             </div>
           ) : null)}
           {scores.essay.notes && (
-            <div style={{ marginTop: "0.75rem", padding: "0.65rem 0.85rem", background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-              <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>Reviewer Notes</p>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.6 }}>{scores.essay.notes}</p>
+            <div className={styles.evalNotesBox}>
+              <p className={styles.evalNotesLabel}>Reviewer Notes</p>
+              <p className={styles.evalNotesText}>{scores.essay.notes}</p>
             </div>
           )}
         </div>
@@ -305,20 +286,20 @@ function ApplicantScoresTab({ appData }) {
 
       {/* Interview score */}
       {scores?.interview?.score > 0 && (
-        <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-          <h3 style={{ margin: "0 0 0.75rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>🎙️ Interview Score</h3>
+        <div className={styles.evalBlock}>
+          <h3 className={styles.evalBlockTitleSm}>Interview Score</h3>
           <ScoreBar score={scores.interview.score} max={10} />
           {scores.interview.notes && (
-            <div style={{ marginTop: "0.75rem", padding: "0.65rem 0.85rem", background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-              <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>Reviewer Notes</p>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.6 }}>{scores.interview.notes}</p>
+            <div className={styles.evalNotesBox}>
+              <p className={styles.evalNotesLabel}>Reviewer Notes</p>
+              <p className={styles.evalNotesText}>{scores.interview.notes}</p>
             </div>
           )}
         </div>
       )}
 
       {!scores?.essay && !scores?.interview?.score && (
-        <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>Scores are not yet available for this application.</p>
+        <p className={styles.scoresEmptyText}>Scores are not yet available for this application.</p>
       )}
     </div>
   );
@@ -335,7 +316,7 @@ function ApplicationDetailsTab({ appData, isStaff }) {
   return (
     <div>
       {/* Applicant's Information */}
-      <Section title="👤 Applicant's Information">
+      <Section title="Applicant's Information">
         <DetailGrid rows={[
           ["Full Name",       appData.name],
           ["Birthday",        appData.birthday],
@@ -357,7 +338,7 @@ function ApplicationDetailsTab({ appData, isStaff }) {
 
       {/* Scout organization details */}
       {isScoutOrg && (
-        <Section title="🏕️ Scout Organization Details">
+        <Section title="Scout Organization Details">
           <DetailGrid rows={[
             ["Council",                      appData.council],
             ["Region",                       appData.region],
@@ -370,7 +351,7 @@ function ApplicationDetailsTab({ appData, isStaff }) {
 
       {/* Other org details */}
       {isOtherOrg && (
-        <Section title="🏢 Affiliation Details">
+        <Section title="Affiliation Details">
           <DetailGrid rows={[
             ["Organization Type",   appData.organizationType],
             ...(appData.organizationType === "Other"
@@ -390,7 +371,7 @@ function ApplicationDetailsTab({ appData, isStaff }) {
       )}
 
       {/* Contact & Consent */}
-      <Section title="📞 Contact & Consent">
+      <Section title="Contact & Consent">
         <DetailGrid rows={[
           ["Contact Number",            appData.contactNumber],
           ["Email",                     appData.email],
@@ -467,15 +448,15 @@ function ApplicationDetailsTab({ appData, isStaff }) {
       </Section>
 
       {/* Essay */}
-      <Section title="✍️ Essay">
+      <Section title="Essay">
         <div className={styles.essayBlock}>
-          <p className={styles.detailKey}>Description / Personal Statement</p>
+          <p className={styles.detailKey}>Applicant Statement</p>
           <p className={styles.essayText}>{appData.essayDescription}</p>
         </div>
       </Section>
 
       {/* Application Status summary */}
-      <Section title="📋 Application Status">
+      <Section title="Application Status">
         <DetailGrid rows={[
           ["Current Status",     <StatusBadge key="s" status={appData.applicationStatus} />],
           ["Date Applied",       appData.dateApplied],
@@ -509,36 +490,28 @@ function ScoreBar({ score, max = 10, color }) {
   const pct = Math.min(100, (score / max) * 100);
   const barColor = color || (pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-      <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 999, transition: "width 0.4s ease" }} />
+    <div className={styles.scoreBarWrap}>
+      <div className={styles.scoreBarTrack}>
+        <div className={styles.scoreBarFill} style={{ width: `${pct}%`, background: barColor }} />
       </div>
-      <span style={{ fontSize: "0.82rem", fontWeight: 700, color: barColor, minWidth: 36 }}>{score}/{max}</span>
+      <span className={styles.scoreBarLabel} style={{ color: barColor }}>{score}/{max}</span>
     </div>
   );
 }
 
 function RatingStars({ value, onChange, disabled }) {
   return (
-    <div style={{ display: "flex", gap: 4 }}>
+    <div className={styles.ratingStarsRow}>
       {[...Array(10)].map((_, i) => {
         const v = i + 1;
+        const active = v <= value;
         return (
           <button
             key={v}
             disabled={disabled}
             onClick={() => onChange(v)}
-            style={{
-              width: 28, height: 28, borderRadius: 6,
-              border: "1px solid",
-              borderColor: v <= value ? "#037F81" : "#d1d5db",
-              background: v <= value ? "#037F81" : "#f9fafb",
-              color: v <= value ? "#fff" : "#6b7280",
-              fontSize: "0.72rem", fontWeight: 700,
-              cursor: disabled ? "default" : "pointer",
-              transition: "all 0.1s",
-              lineHeight: 1,
-            }}
+            className={active ? styles.ratingStarActive : styles.ratingStar}
+            style={{ cursor: disabled ? "default" : "pointer" }}
           >
             {v}
           </button>
@@ -722,17 +695,13 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className={styles.evalTabWrap}>
 
       {/* ── Management Actions ── */}
-      <div style={{
-        background: "#f9fafb", borderRadius: 10, padding: "1rem 1.25rem",
-        border: "1px solid #e5e7eb",
-        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem",
-      }}>
+      <div className={styles.mgmtBar}>
         <div>
-          <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 700, color: "#374151" }}>Assigned Evaluator</p>
-          <p style={{ margin: "2px 0 0", fontSize: "0.9rem", fontWeight: 600, color: appData.assignedEvaluator ? "#037F81" : "#9ca3af" }}>
+          <p className={styles.mgmtLabel}>Assigned Evaluator</p>
+          <p className={styles.mgmtValue} style={{ color: appData.assignedEvaluator ? "#037F81" : "#9ca3af" }}>
             {appData.assignedEvaluator || "Unassigned"}
           </p>
         </div>
@@ -745,12 +714,8 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
       </div>
 
       {/* ── Notice ── */}
-      <div style={{
-        background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
-        padding: "10px 14px", fontSize: "0.82rem", color: "#166534",
-        display: "flex", gap: 8, alignItems: "flex-start",
-      }}>
-        <span style={{ fontSize: "1rem", flexShrink: 0 }}>📋</span>
+      <div className={styles.staffNotice}>
+        <span className={styles.noticeIcon}><IoIosInformationCircle /></span>
         <span>
           This tab is for <strong>Membership Committee staff only.</strong>{" "}
           Scores entered here are saved and contribute to the automated aggregate evaluation of the applicant.
@@ -760,24 +725,24 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
       {/* ════════════════════════════════════════════
           SECTION 1 – QUANTITATIVE: Screening Scores
           ════════════════════════════════════════════ */}
-      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-        <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
-          📊 Quantitative Scores — Screening Responses
+      <div className={styles.evalBlock}>
+        <h3 className={styles.evalBlockTitle}>
+          Quantitative Scores — Screening Responses
         </h3>
 
-        <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.6 }}>
+        <p className={styles.evalBlockDesc}>
           These scores are automatically derived from the applicant's answers to the screening questions.
           Non-negotiables reflect values alignment; negotiables reflect readiness and commitment.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className={styles.quantGrid}>
 
           {/* Non-negotiable block */}
-          <div style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
-            <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 800, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <div className={styles.quantCard}>
+            <p className={styles.quantCardTitle}>
               Non-Negotiables
             </p>
-            <p style={{ margin: "0 0 8px", fontSize: "0.75rem", color: "#6b7280" }}>
+            <p className={styles.quantCardDesc}>
               Core values that every volunteer must hold.
             </p>
             {NON_NEG_FIELDS.map(f => {
@@ -791,38 +756,34 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
               }[f] || f;
               const yes = isYes(appData[f]);
               return (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                  <span style={{
-                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                <div key={f} className={styles.quantFieldRow}>
+                  <span className={styles.quantFieldIcon} style={{
                     background: yes ? "#d1fae5" : "#fee2e2",
                     color: yes ? "#065f46" : "#991b1b",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "0.7rem", fontWeight: 700,
                   }}>{yes ? "✓" : "✗"}</span>
-                  <span style={{ fontSize: "0.78rem", color: "#374151", lineHeight: 1.4 }}>{label}</span>
+                  <span className={styles.quantFieldLabel}>{label}</span>
                 </div>
               );
             })}
-            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>Score</span>
-                <span style={{
-                  fontWeight: 800, fontSize: "0.85rem",
+            <div className={styles.quantScoreFooter}>
+              <div className={styles.quantScoreRow}>
+                <span className={styles.quantScoreText}>Score</span>
+                {/* <span className={styles.quantScoreValue} style={{
                   color: nonNegPassed === nonNegTotal ? "#16a34a" : nonNegPassed >= nonNegTotal - 1 ? "#d97706" : "#dc2626",
                 }}>
                   {nonNegPassed} / {nonNegTotal}
-                </span>
+                </span> */}
               </div>
               <ScoreBar score={nonNegPassed} max={nonNegTotal} color={nonNegPassed === nonNegTotal ? "#16a34a" : nonNegPassed >= nonNegTotal - 1 ? "#d97706" : "#dc2626"} />
             </div>
           </div>
 
           {/* Negotiable block */}
-          <div style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
-            <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 800, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <div className={styles.quantCard}>
+            <p className={styles.quantCardTitle}>
               Negotiables
             </p>
-            <p style={{ margin: "0 0 8px", fontSize: "0.75rem", color: "#6b7280" }}>
+            <p className={styles.quantCardDesc}>
               Readiness, openness, and availability indicators.
             </p>
             {NEG_FIELDS.map(f => {
@@ -839,27 +800,23 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
               }[f] || f;
               const yes = isYes(appData[f]);
               return (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                  <span style={{
-                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                <div key={f} className={styles.quantFieldRow}>
+                  <span className={styles.quantFieldIcon} style={{
                     background: yes ? "#d1fae5" : "#fee2e2",
                     color: yes ? "#065f46" : "#991b1b",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "0.7rem", fontWeight: 700,
                   }}>{yes ? "✓" : "✗"}</span>
-                  <span style={{ fontSize: "0.78rem", color: "#374151", lineHeight: 1.4 }}>{label}</span>
+                  <span className={styles.quantFieldLabel}>{label}</span>
                 </div>
               );
             })}
-            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>Score</span>
-                <span style={{
-                  fontWeight: 800, fontSize: "0.85rem",
+            <div className={styles.quantScoreFooter}>
+              <div className={styles.quantScoreRow}>
+                <span className={styles.quantScoreText}>Score</span>
+                {/* <span className={styles.quantScoreValue} style={{
                   color: negPassed === negTotal ? "#16a34a" : negPassed >= negTotal * 0.6 ? "#d97706" : "#dc2626",
                 }}>
                   {negPassed} / {negTotal}
-                </span>
+                </span> */}
               </div>
               <ScoreBar score={negPassed} max={negTotal} color={negPassed === negTotal ? "#16a34a" : negPassed >= negTotal * 0.6 ? "#d97706" : "#dc2626"} />
             </div>
@@ -871,19 +828,14 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
           ESSAY RESPONSE (visible before rubric for grading ease)
           ════════════════════════════════════════════ */}
       {appData.essayDescription && appData.essayDescription !== "—" && (
-        <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #86efac" }}>
-          <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem", fontWeight: 800, color: "#065f46" }}>
-            📄 Applicant's Essay Response
+        <div className={styles.essayResponseBlock}>
+          <h3 className={styles.essayResponseTitle}>
+            Applicant's Essay Response
           </h3>
-          <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem", color: "#166534" }}>
+          <p className={styles.essayResponseHint}>
             Read this before scoring the rubric below.
           </p>
-          <div style={{
-            background: "#fff", border: "1px solid #d1fae5",
-            borderRadius: 8, padding: "1rem 1.1rem",
-            fontSize: "0.9rem", color: "#1f2937", lineHeight: 1.75,
-            whiteSpace: "pre-wrap", maxHeight: 340, overflowY: "auto",
-          }}>
+          <div className={styles.essayResponseText}>
             {appData.essayDescription}
           </div>
         </div>
@@ -892,31 +844,27 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
       {/* ════════════════════════════════════════════
           SECTION 2 – QUALITATIVE: Essay Rubric
           ════════════════════════════════════════════ */}
-      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-        <h3 style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
-          ✍️ Qualitative Assessment — Essay Rubric
+      <div className={styles.evalBlock}>
+        <h3 className={styles.evalBlockTitle}>
+          Qualitative Assessment — Essay Rubric
         </h3>
-        <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.6 }}>
+        <p className={styles.evalBlockDesc}>
           Rate each criterion from <strong>1 (lowest)</strong> to <strong>10 (highest)</strong>.
           Scores are weighted and automatically compute the essay total.
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div className={styles.criteriaList}>
           {ESSAY_CRITERIA.map((c) => (
-            <div key={c.key} style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+            <div key={c.key} className={styles.criterionCard}>
+              <div className={styles.criterionCardHeader}>
                 <div>
-                  <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#1f2937" }}>
+                  <p className={styles.criterionName}>
                     {c.label}
-                    <span style={{
-                      marginLeft: 8, fontSize: "0.72rem", fontWeight: 700,
-                      background: "#e1f5f5", color: "#037F81",
-                      padding: "2px 8px", borderRadius: 999,
-                    }}>{c.weight}%</span>
+                    <span className={styles.criterionWeight}>{c.weight}%</span>
                   </p>
-                  <p style={{ margin: "2px 0 8px", fontSize: "0.76rem", color: "#6b7280", lineHeight: 1.5 }}>{c.hint}</p>
+                  <p className={styles.criterionHint}>{c.hint}</p>
                 </div>
-                <span style={{ fontSize: "1.1rem", fontWeight: 800, color: essayScores[c.key] > 0 ? "#037F81" : "#d1d5db", minWidth: 32, textAlign: "right" }}>
+                <span className={styles.criterionScore} style={{ color: essayScores[c.key] > 0 ? "#037F81" : "#d1d5db" }}>
                   {essayScores[c.key] > 0 ? essayScores[c.key] : "—"}
                 </span>
               </div>
@@ -925,7 +873,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
                 onChange={(v) => setEssayScores(prev => ({ ...prev, [c.key]: v }))}
               />
               {essayScores[c.key] > 0 && (
-                <div style={{ marginTop: 6 }}>
+                <div className={styles.criterionBarWrap}>
                   <ScoreBar score={essayScores[c.key]} max={10} />
                 </div>
               )}
@@ -934,64 +882,47 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
         </div>
 
         {/* Weighted total */}
-        <div style={{
-          marginTop: "1rem", background: "#fff", borderRadius: 8,
-          padding: "0.85rem 1rem", border: "1px solid #e5e7eb",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-        }}>
+        <div className={styles.weightedTotalRow}>
           <div>
-            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 800, color: "#374151" }}>
+            <p className={styles.weightedTotalLabel}>
               Essay Weighted Total
             </p>
-            <p style={{ margin: "2px 0 0", fontSize: "0.76rem", color: "#6b7280" }}>
+            <p className={styles.weightedTotalSub}>
               Σ (score/10 × weight%) across all criteria
             </p>
           </div>
-          <span style={{
-            fontSize: "1.5rem", fontWeight: 900,
+          <span className={styles.weightedTotalValue} style={{
             color: essayWeightedTotal >= 70 ? "#16a34a" : essayWeightedTotal >= 40 ? "#d97706" : essayWeightedTotal > 0 ? "#dc2626" : "#d1d5db",
           }}>
-            {essayWeightedTotal > 0 ? essayWeightedTotal.toFixed(1) : "—"}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/100</span>
+            {essayWeightedTotal > 0 ? essayWeightedTotal.toFixed(1) : "—"}<span className={styles.weightedTotalDenom}>/100</span>
           </span>
         </div>
 
         {/* Essay reviewer notes */}
-        <div style={{ marginTop: "0.75rem" }}>
-          <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>
-            Essay Reviewer Notes <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+        <div className={styles.notesFieldWrap}>
+          <label className={styles.notesFieldLabel}>
+            Essay Reviewer Notes <span className={styles.notesFieldOptional}>(optional)</span>
           </label>
           <textarea
             rows={3}
             value={essayNotes}
             onChange={e => setEssayNotes(e.target.value)}
             placeholder="Observations, justifications, or flagged concerns about the essay…"
-            style={{
-              width: "100%", padding: "0.55rem 0.85rem",
-              border: "1px solid #d1d5db", borderRadius: 8,
-              fontSize: "0.85rem", color: "#374151",
-              resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
-            }}
+            className={styles.notesFieldTextarea}
           />
         </div>
 
-        <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
+        <div className={styles.saveRow}>
           {essaySaved && (
-            <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>✓ Saved!</span>
+            <span className={styles.savedConfirm}>✓ Saved!</span>
           )}
           {!allEssayFilled && (
-            <span style={{ fontSize: "0.78rem", color: "#9ca3af" }}>Score all criteria to save.</span>
+            <span className={styles.saveHint}>Score all criteria to save.</span>
           )}
           <button
             onClick={saveEssayScores}
             disabled={essaySaving || !allEssayFilled}
-            style={{
-              background: allEssayFilled ? "#037F81" : "#e5e7eb",
-              color: allEssayFilled ? "#fff" : "#9ca3af",
-              border: "none", borderRadius: 999,
-              padding: "0.45rem 1.25rem", fontSize: "0.85rem", fontWeight: 700,
-              cursor: allEssayFilled ? "pointer" : "not-allowed",
-              transition: "background 0.15s",
-            }}
+            className={allEssayFilled ? styles.btnPrimary : styles.btnDisabled}
           >
             {essaySaving ? "Saving…" : "Save Essay Scores"}
           </button>
@@ -1001,66 +932,55 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
       {/* ════════════════════════════════════════════
           SECTION 3 – INTERVIEW SCORE
           ════════════════════════════════════════════ */}
-      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-        <h3 style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
-          🎙️ Interview Score
+      <div className={styles.evalBlock}>
+        <h3 className={styles.evalBlockTitle}>
+          Interview Score
         </h3>
-        <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.6 }}>
+        <p className={styles.evalBlockDesc}>
           If the applicant was interviewed, rate the overall interview performance from <strong>1–10</strong>.
           Leave at 0 if the interview has not yet taken place or is not applicable.
         </p>
 
-        <div style={{ background: "#fff", borderRadius: 8, padding: "0.85rem 1rem", border: "1px solid #e5e7eb" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#1f2937" }}>
+        <div className={styles.quantCard}>
+          <div className={styles.interviewCardHeader}>
+            <p className={styles.interviewCardTitle}>
               Overall Interview Performance
             </p>
-            <span style={{
-              fontSize: "1.3rem", fontWeight: 900,
+            <span className={styles.interviewScoreDisplay} style={{
               color: interviewScore > 0 ? (interviewScore >= 7 ? "#16a34a" : interviewScore >= 4 ? "#d97706" : "#dc2626") : "#d1d5db",
             }}>
-              {interviewScore > 0 ? interviewScore : "—"}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/10</span>
+              {interviewScore > 0 ? interviewScore : "—"}<span className={styles.weightedTotalDenom}>/10</span>
             </span>
           </div>
           <RatingStars value={interviewScore} onChange={setInterviewScore} />
           {interviewScore > 0 && (
-            <div style={{ marginTop: 6 }}>
+            <div className={styles.criterionBarWrap}>
               <ScoreBar score={interviewScore} max={10} />
             </div>
           )}
         </div>
 
-        <div style={{ marginTop: "0.75rem" }}>
-          <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#374151", marginBottom: 4 }}>
-            Interview Notes <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+        <div className={styles.notesFieldWrap}>
+          <label className={styles.notesFieldLabel}>
+            Interview Notes <span className={styles.notesFieldOptional}>(optional)</span>
           </label>
           <textarea
             rows={3}
             value={interviewNotes}
             onChange={e => setInterviewNotes(e.target.value)}
             placeholder="Key impressions, red flags, standout qualities from the interview…"
-            style={{
-              width: "100%", padding: "0.55rem 0.85rem",
-              border: "1px solid #d1d5db", borderRadius: 8,
-              fontSize: "0.85rem", color: "#374151",
-              resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
-            }}
+            className={styles.notesFieldTextarea}
           />
         </div>
 
-        <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
+        <div className={styles.saveRow}>
           {interviewSaved && (
-            <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>✓ Saved!</span>
+            <span className={styles.savedConfirm}>✓ Saved!</span>
           )}
           <button
             onClick={saveInterviewScore}
             disabled={interviewSaving}
-            style={{
-              background: "#037F81", color: "#fff",
-              border: "none", borderRadius: 999,
-              padding: "0.45rem 1.25rem", fontSize: "0.85rem", fontWeight: 700,
-              cursor: "pointer", transition: "background 0.15s",
-            }}
+            className={styles.btnPrimary}
           >
             {interviewSaving ? "Saving…" : "Save Interview Score"}
           </button>
@@ -1070,69 +990,58 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
       {/* ════════════════════════════════════════════
           SECTION 4 – AGGREGATE SCORE SUMMARY
           ════════════════════════════════════════════ */}
-      <div style={{
-        background: "#fff", borderRadius: 10, padding: "1.1rem 1.25rem",
-        border: `2px solid ${aggColor}`,
-      }}>
-        <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: aggColor }}>
-          🏆 Aggregate Evaluation Summary
+      <div className={styles.aggregateBlock} style={{ border: `2px solid ${aggColor}` }}>
+        <h3 className={styles.aggregateTitle} style={{ color: aggColor }}>
+          Evaluation Summary
         </h3>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
+        <div className={styles.aggregateGrid}>
           {[
             { label: "Non-Negotiables", value: nonNegScore.toFixed(1), max: "20", desc: `${nonNegPassed}/${nonNegTotal} passed`, color: nonNegPassed === nonNegTotal ? "#16a34a" : "#dc2626" },
             { label: "Negotiables",     value: negScore.toFixed(1),    max: "10", desc: `${negPassed}/${negTotal} passed`,    color: negPassed >= negTotal * 0.6 ? "#16a34a" : "#d97706" },
             { label: "Essay",           value: essayScore20.toFixed(1), max: "50", desc: `${essayWeightedTotal.toFixed(1)}/100 weighted`, color: essayWeightedTotal >= 70 ? "#16a34a" : essayWeightedTotal >= 40 ? "#d97706" : "#9ca3af" },
             { label: "Interview",       value: interviewScore20.toFixed(1), max: "20", desc: `${interviewScore}/10 raw score`, color: interviewScore >= 7 ? "#16a34a" : interviewScore >= 4 ? "#d97706" : "#9ca3af" },
           ].map(({ label, value, max, desc, color }) => (
-            <div key={label} style={{
-              background: "#f9fafb", borderRadius: 8, padding: "0.75rem 0.85rem",
-              border: "1px solid #e5e7eb", textAlign: "center",
-            }}>
-              <p style={{ margin: "0 0 2px", fontSize: "0.72rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
-              <p style={{ margin: "0 0 2px", fontSize: "1.4rem", fontWeight: 900, color }}>
-                {value}<span style={{ fontSize: "0.75rem", color: "#9ca3af", fontWeight: 600 }}>/{max}</span>
+            <div key={label} className={styles.aggregateCell}>
+              <p className={styles.aggregateCellLabel}>{label}</p>
+              <p className={styles.aggregateCellValue} style={{ color }}>
+                {value}<span className={styles.aggregateCellDenom}>/{max}</span>
               </p>
-              <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af" }}>{desc}</p>
+              <p className={styles.aggregateCellDesc}>{desc}</p>
             </div>
           ))}
         </div>
 
         {/* Aggregate bar */}
-        <div style={{ marginBottom: "0.85rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#374151" }}>Total Score</span>
-            <span style={{ fontSize: "1.6rem", fontWeight: 900, color: aggColor }}>
-              {aggregateTotal.toFixed(1)}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/100</span>
+        <div className={styles.totalScoreSection}>
+          <div className={styles.totalScoreRow}>
+            <span className={styles.totalScoreText}>Total Score</span>
+            <span className={styles.totalScoreValue} style={{ color: aggColor }}>
+              {aggregateTotal.toFixed(1)}<span className={styles.weightedTotalDenom}>/100</span>
             </span>
           </div>
-          <div style={{ height: 12, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{
-              width: `${Math.min(100, aggregateTotal)}%`, height: "100%",
-              background: aggColor, borderRadius: 999, transition: "width 0.5s ease",
+          <div className={styles.totalBarTrack}>
+            <div className={styles.totalBarFill} style={{
+              width: `${Math.min(100, aggregateTotal)}%`,
+              background: aggColor,
             }} />
           </div>
         </div>
 
         {/* Recommendation badge */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          padding: "0.65rem 0.9rem", borderRadius: 8,
+        <div className={styles.recBadge} style={{
           background: aggregateTotal >= 75 ? "#f0fdf4" : aggregateTotal >= 50 ? "#fffbeb" : "#fef2f2",
           border: `1px solid ${aggregateTotal >= 75 ? "#86efac" : aggregateTotal >= 50 ? "#fcd34d" : "#fca5a5"}`,
         }}>
-          <span style={{ fontSize: "1.3rem" }}>
-            {aggregateTotal >= 75 ? "👍" : aggregateTotal >= 50 ? "🔍" : "👎"}
-          </span>
           <div>
-            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 800, color: aggColor }}>
+            <p className={styles.recBadgeTitle} style={{ color: aggColor }}>
               {aggregateTotal >= 75
                 ? "Recommended for Approval"
                 : aggregateTotal >= 50
                 ? "For Further Review"
                 : "Below Passing Threshold"}
             </p>
-            <p style={{ margin: 0, fontSize: "0.76rem", color: "#6b7280" }}>
+            <p className={styles.recBadgeDesc}>
               {aggregateTotal >= 75
                 ? "Applicant meets most evaluation criteria. Final decision rests with reviewing officer."
                 : aggregateTotal >= 50
@@ -1142,8 +1051,8 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
           </div>
         </div>
 
-        <p style={{ margin: "0.75rem 0 0", fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic" }}>
-          ⚠ This aggregate score is a guide for the Membership Committee. Final decisions remain with the reviewing officer.
+        <p className={styles.aggregateDisclaimer}>
+          <IoIosWarning /> This aggregate score is a guide for the Membership Committee. Final decisions remain with the reviewing officer.
           Weights: Non-Negotiables 20 pts · Negotiables 10 pts · Essay 50 pts · Interview 20 pts.
         </p>
       </div>
@@ -1189,20 +1098,7 @@ function NLPEssayTab({ appId, isAdmin }) {
 
   // ── Sub-components ─────────────────────────────────────────────────────────
 
-  const ScoreBar = ({ score, max = 10 }) => {
-    const pct      = Math.min(100, (score / max) * 100);
-    const barColor = pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626";
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-        <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 999, transition: "width 0.4s ease" }} />
-        </div>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: barColor, minWidth: 36 }}>
-          {score}/{max}
-        </span>
-      </div>
-    );
-  };
+  // ScoreBar is shared — defined at module level
 
   // ── Dimension config — maps flat DB columns → display labels + weights ─────
   const DIMENSIONS = [
@@ -1218,13 +1114,8 @@ function NLPEssayTab({ appId, isAdmin }) {
   return (
     <div>
       {/* AI disclaimer */}
-      <div style={{
-        background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 8,
-        padding: "10px 14px", marginBottom: "1.25rem",
-        fontSize: "0.82rem", color: "#5b21b6",
-        display: "flex", gap: 8, alignItems: "flex-start",
-      }}>
-        <span style={{ fontSize: "1rem", flexShrink: 0 }}>🤖</span>
+      <div className={styles.aiDisclaimer}>
+        <span className={styles.noticeIcon}><IoIosInformationCircle /></span>
         <span>
           This analysis is <strong>AI-generated</strong> and is intended as a guide only.
           All decisions on volunteer applications remain with the reviewing officer.
@@ -1233,110 +1124,88 @@ function NLPEssayTab({ appId, isAdmin }) {
 
       {/* Loading */}
       {nlpLoading && (
-        <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center", padding: "2rem" }}>
+        <p className={styles.nlpLoadingText}>
           Loading essay analysis…
         </p>
       )}
 
       {/* Still processing */}
       {nlpStatus === "processing" && !nlpLoading && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8,
-          padding: "12px 16px", fontSize: "0.875rem", color: "#92400e",
-        }}>
-          <FiClock style={{ flexShrink: 0 }} />
+        <div className={styles.nlpProcessing}>
+          <FiClock className={styles.noticeIconSm} />
           NLP analysis is still processing. Refresh in a moment.
         </div>
       )}
 
       {/* Error */}
       {nlpStatus === "error" && !nlpLoading && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8,
-          padding: "12px 16px", fontSize: "0.875rem", color: "#991b1b",
-        }}>
-          <FiAlertCircle style={{ flexShrink: 0 }} />
+        <div className={styles.nlpError}>
+          <FiAlertCircle className={styles.noticeIconSm} />
           Could not load NLP analysis. Make sure the NLP service is running.
         </div>
       )}
 
       {/* ── Main content — only when data is loaded ── */}
       {nlpData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <div className={styles.nlpContentWrap}>
 
           {/* ── Aggregate scores ── */}
-          <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-            <h4 style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
-              🏆 Essay Score Summary
+          <div className={styles.evalBlock}>
+            <h4 className={styles.evalBlockTitle}>
+              Essay Score Summary
             </h4>
-            <p style={{ margin: "0 0 1rem", fontSize: "0.78rem", color: "#6b7280" }}>
+            <p className={styles.evalBlockDescSm}>
               Weighted across all five evaluation criteria (total out of 50 pts).
             </p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div className={styles.nlpScoreSummaryRow}>
               <div>
-                <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "#6b7280" }}>Weighted Total (out of 100)</p>
-                <p style={{
-                  margin: "2px 0 0", fontSize: "2rem", fontWeight: 900, lineHeight: 1,
+                <p className={styles.nlpScoreSubLabel}>Weighted Total (out of 100)</p>
+                <p className={styles.nlpScoreBig} style={{
                   color: nlpData.essay_weighted_total >= 70 ? "#16a34a"
                        : nlpData.essay_weighted_total >= 40 ? "#d97706"
                        : "#dc2626",
                 }}>
                   {nlpData.essay_weighted_total ?? "—"}
-                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/100</span>
+                  <span className={styles.weightedTotalDenom}>/100</span>
                 </p>
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "#6b7280" }}>Score (out of 50 pts)</p>
-                <p style={{
-                  margin: "2px 0 0", fontSize: "2rem", fontWeight: 900, lineHeight: 1,
+                <p className={styles.nlpScoreSubLabel}>Score (out of 50 pts)</p>
+                <p className={styles.nlpScoreBig} style={{
                   color: nlpData.essay_score_out_of_50 >= 35 ? "#16a34a"
                        : nlpData.essay_score_out_of_50 >= 20 ? "#d97706"
                        : "#dc2626",
                 }}>
                   {nlpData.essay_score_out_of_50 ?? "—"}
-                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#9ca3af" }}>/50</span>
+                  <span className={styles.weightedTotalDenom}>/50</span>
                 </p>
               </div>
             </div>
           </div>
 
           {/* ── Per-dimension scores with notes ── */}
-          <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.1rem 1.25rem", border: "1px solid #e5e7eb" }}>
-            <h4 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
-              📊 Evaluation Dimensions
+          <div className={styles.evalBlock}>
+            <h4 className={styles.evalBlockTitle}>
+              Evaluation Dimensions
             </h4>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <div className={styles.dimensionsList}>
               {DIMENSIONS.map(({ scoreKey, noteKey, label, weight }) => {
                 const score = nlpData[scoreKey];
                 const note  = nlpData[noteKey];
                 if (score == null) return null;
                 return (
-                  <div key={scoreKey} style={{
-                    background: "#fff", borderRadius: 8, padding: "0.85rem 1rem",
-                    border: "1px solid #e5e7eb",
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <span style={{ fontSize: "0.83rem", fontWeight: 700, color: "#1f2937" }}>
+                  <div key={scoreKey} className={styles.criterionCard}>
+                    <div className={styles.dimensionCardHeader}>
+                      <span className={styles.dimensionCardLabel}>
                         {label}
                       </span>
-                      <span style={{
-                        fontSize: "0.72rem", fontWeight: 700,
-                        background: "#e1f5f5", color: "#037F81",
-                        padding: "2px 8px", borderRadius: 999,
-                      }}>
+                      <span className={styles.criterionWeight}>
                         {weight}% weight
                       </span>
                     </div>
                     <ScoreBar score={score} max={10} />
                     {note && (
-                      <p style={{
-                        margin: "6px 0 0", fontSize: "0.78rem",
-                        color: "#6b7280", lineHeight: 1.55,
-                        padding: "6px 8px", background: "#f9fafb",
-                        borderRadius: 6, border: "1px solid #f1f3f5",
-                      }}>
+                      <p className={styles.dimensionNote}>
                         {note}
                       </p>
                     )}
@@ -1348,26 +1217,18 @@ function NLPEssayTab({ appId, isAdmin }) {
 
           {/* ── Recommendation ── */}
           {nlpData.recommendation && (
-            <div style={{
+            <div className={styles.nlpRecBlock} style={{
               background: nlpData.threshold_passed ? "#f0fdf4" : "#fff7ed",
               border: `1px solid ${nlpData.threshold_passed ? "#86efac" : "#fdba74"}`,
-              borderRadius: 8, padding: "14px 16px",
             }}>
-              <h4 style={{
-                margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700,
-                color: nlpData.threshold_passed ? "#166534" : "#9a3412",
-              }}>
-                {nlpData.threshold_passed ? "👍 Recommended for Approval" : "👎 Further Review Suggested"}
+              <h4 className={styles.nlpRecTitle} style={{ color: nlpData.threshold_passed ? "#166534" : "#9a3412" }}>
+                {nlpData.threshold_passed ? "Recommended for Approval" : "Further Review Suggested"}
               </h4>
-              <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>
+              <p className={styles.nlpRecText}>
                 {nlpData.recommendation}
               </p>
-              {/* recommendation_notes only if non-empty */}
               {nlpData.recommendation_notes && (
-                <p style={{
-                  margin: "8px 0 0", fontSize: "0.78rem",
-                  color: "#6b7280", lineHeight: 1.55, fontStyle: "italic",
-                }}>
+                <p className={styles.nlpRecNotes}>
                   {nlpData.recommendation_notes}
                 </p>
               )}
@@ -1376,22 +1237,18 @@ function NLPEssayTab({ appId, isAdmin }) {
 
           {/* ── Technical details (admin only) ── */}
           {isAdmin && (
-            <details style={{ fontSize: "0.78rem", color: "#6b7280" }}>
-              <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
+            <details className={styles.techDetails}>
+              <summary className={styles.techDetailsSummary}>
                 Technical Details
               </summary>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8, paddingLeft: 8 }}>
+              <div className={styles.techDetailsBody}>
                 {nlpData.model_used        && <span><strong>Model:</strong> {nlpData.model_used}</span>}
                 {nlpData.language_detected && <span><strong>Language detected:</strong> {nlpData.language_detected}</span>}
                 {nlpData.analyzed_at       && <span><strong>Analyzed at:</strong> {new Date(nlpData.analyzed_at).toLocaleString("en-PH")}</span>}
                 {nlpData.anonymized_essay  && (
                   <>
                     <span><strong>Anonymized essay:</strong></span>
-                    <p style={{
-                      margin: "4px 0 0", background: "#f3f4f6",
-                      padding: "8px 10px", borderRadius: 6,
-                      lineHeight: 1.6, whiteSpace: "pre-wrap",
-                    }}>
+                    <p className={styles.techAnonymized}>
                       {nlpData.anonymized_essay}
                     </p>
                   </>
@@ -1485,19 +1342,25 @@ export default function ViewApplication() {
           assignedEvaluator:     data.assigned_evaluator || data.assigned_staff || null,
           dateApplied:           data.created_at
               ? new Date(data.created_at).toLocaleDateString("en-PH", {
-                  day: "2-digit", month: "short", year: "numeric",
-                })
-              : "—",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+              : "Not Provided",
 
           // ── Step 0: Applicant's Info ──
-          name:                  data.name || "—",
-          birthday:              data.birthday || "—",
+          name:                  data.name || "Not Provided",
+          birthday:              new Date(data.birthday).toLocaleDateString("en-PH", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }) || "Not Provided",
           age:                   computedAge,
-          gender:                data.gender_identity || "—",
-          pronouns:              data.pronouns || "—",
+          gender:                data.gender_identity || "Not Provided",
+          pronouns:              data.pronouns || "Not Provided",
 
           // ── Organization from join ──
-          organization:          data.organizations?.organization || "—",
+          organization:          data.organizations?.organization || "Not Provided",
           council:               data.organizations?.council || null,
           region:                data.organizations?.region || "National Capital Region (NCR)",
           tenureInScouting:      data.tenure_years ? `${data.tenure_years} year(s)` : null,
@@ -1510,8 +1373,8 @@ export default function ViewApplication() {
           userCity:              data.organizations?.user_city || null,
 
           // ── Contact & Consent ──
-          contactNumber:         data.contact_number || "—",
-          email:                 data.email || "—",
+          contactNumber:         data.contact_number || "Not Provided",
+          email:                 data.email || "Not Provided",
           interview:             data.interview_required ? "Yes" : "No",
 
           // ── Screening Questions ──
@@ -1570,19 +1433,19 @@ export default function ViewApplication() {
 
   if (loading) {
     return (
-      <div className={styles.pageWrapper} style={{ padding: "2rem", textAlign: "center" }}>
-        <p style={{ color: "#6b7280", fontSize: "0.95rem" }}>Loading application…</p>
+      <div className={styles.pageWrapper}>
+        <p className={styles.loadingText}>Loading application…</p>
       </div>
     );
   }
 
   if (error || !appData) {
     return (
-      <div className={styles.pageWrapper} style={{ padding: "2rem" }}>
+      <div className={styles.pageWrapper}>
         <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
           <IoIosArrowBack /> Back to Volunteer Management
         </button>
-        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", color: "#991b1b" }}>
+        <div className={styles.errorBox}>
           {error || "Application not found."}
         </div>
       </div>
@@ -1598,28 +1461,17 @@ export default function ViewApplication() {
     (appData.applicationStatus === "Approved" || appData.applicationStatus === "Rejected");
 
   const tabs = [
-    { id: "details",    label: "📄 Application Details" },
+    { id: "details",    label: " Application Details" },
     ...(isStaff ? [
-      { id: "evaluation", label: "📋 Application Evaluation" },
-      { id: "nlp",        label: "🤖 AI / NLP Analysis" },
+      { id: "evaluation", label: "Application Evaluation" },
+      { id: "nlp",        label: "NLP Analysis" },
     ] : []),
     ...(userCanSeeScores ? [
-      { id: "scores", label: "📊 My Scores" },
+      { id: "scores", label: "My Scores" },
     ] : []),
   ];
 
-  const tabStyle = (id) => ({
-    padding: "10px 20px",
-    border: "none",
-    borderBottom: activeTab === id ? "2px solid #037F81" : "2px solid transparent",
-    background: "none",
-    color: activeTab === id ? "#037F81" : "#6b7280",
-    fontWeight: activeTab === id ? 700 : 500,
-    cursor: "pointer",
-    fontSize: "0.875rem",
-    transition: "all 0.15s",
-    whiteSpace: "nowrap",
-  });
+  // tabStyle removed — using CSS classes with active state below
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1653,7 +1505,6 @@ export default function ViewApplication() {
 
           {appData.reviewNotes && (
             <div className={styles.reviewNotice}>
-              <span>📝</span>
               <p><strong>Reviewer Notes:</strong> {appData.reviewNotes}</p>
             </div>
           )}
@@ -1663,15 +1514,9 @@ export default function ViewApplication() {
         <div className={styles.contentCard}>
 
           {/* Tab bar */}
-          <div style={{
-            display: "flex",
-            borderBottom: "1px solid #e5e7eb",
-            marginBottom: "1.75rem",
-            overflowX: "auto",
-            gap: 0,
-          }}>
+          <div className={styles.tabBar}>
             {tabs.map((t) => (
-              <button key={t.id} style={tabStyle(t.id)} onClick={() => setActiveTab(t.id)}>
+              <button key={t.id} className={activeTab === t.id ? styles.tabBtnActive : styles.tabBtn} onClick={() => setActiveTab(t.id)}>
                 {t.label}
               </button>
             ))}
