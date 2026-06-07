@@ -56,7 +56,7 @@ const ADMIN_LINKS = [
   { href: "/projects", label: "Projects" },
   { href: "/volunteer", label: "Volunteers" },
   { href: "/heatmap", label: "Heatmap" },
-  { href: "/reports", label: "Reports" },
+  { href: "/reportGenerator", label: "Report Generator" },
 ];
 
 const ROLE_LABEL = {
