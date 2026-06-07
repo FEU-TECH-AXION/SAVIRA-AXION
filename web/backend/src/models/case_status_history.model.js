@@ -52,7 +52,17 @@ const getByCaseReport = async (caseReportId, { staffView = false } = {}) => {
 
 // Called when an officer submits a status change modal —
 // creates a pending record that waits for admin approval
-const create = async ({ caseReportId, caseStatusId, changedById, changedByRole, notes, formData }) => {
+const create = async ({
+    caseReportId,
+    caseStatusId,
+    changedById,
+    changedByRole,
+    notes,
+    formData,
+    approvalStatus = 'approved',   // default approved — no pending queue for now
+    approvedAt     = null,
+    approvedById   = null,
+}) => {
   const { data, error } = await supabase
     .from('case_status_history')
     .insert([{
@@ -62,7 +72,9 @@ const create = async ({ caseReportId, caseStatusId, changedById, changedByRole, 
       changed_by_role: changedByRole,
       notes,
       form_data:       formData,
-      approval_status: 'pending',
+      approval_status: approvalStatus,
+      approved_at:     approvedAt,
+      approved_by_id:  approvedById,
     }])
     .select()
   if (error) throw error

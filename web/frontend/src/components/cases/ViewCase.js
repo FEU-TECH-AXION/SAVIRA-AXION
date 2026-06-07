@@ -385,28 +385,101 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
 
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
-function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast }) {
+function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const [expiryDays, setExpiryDays] = useState("7");
   const [notes, setNotes]           = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError]           = useState(null);
 
-  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); } }, [open]);
+  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); setError(null); } }, [open]);
 
   async function handleSend() {
     setSubmitting(true);
+    setError(null);
     try {
+      // Validate required data
+      if (!caseData.reporterId) {
+        throw new Error("Complainant information missing. Cannot send invitation.");
+      }
+      if (!userId) {
+        throw new Error("Officer information missing. Cannot send invitation.");
+      }
+
+      // Step 1: Create interview record (status: 'invited')
+      const interviewRes = await fetch(`${API_URL}/api/interviews`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "case_report",
+          case_report_id: caseData.id,
+          interviewee_user_id: caseData.reporterId, // complainant
+          interviewer_user_id: userId, // case officer
+          notes: notes || null,
+        }),
+      });
+      
+      if (!interviewRes.ok) {
+        const body = await interviewRes.json();
+        throw new Error(body.error || "Failed to create interview");
+      }
+
+      const { data: interview } = await interviewRes.json();
+      
+      // Step 2: Create interview slots for complainant to choose from
+      // Slots are created as generic available slots; complainant selects one and it gets linked
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + parseInt(expiryDays, 10));
-      // POST to interview invitation endpoint
-      // await fetch(`${API_URL}/api/case_reports/${caseData.id}/interviews/invite`, {
-      //   method: "POST", credentials: "include",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ invited_by: actorName, expires_at: expiresAt.toISOString(), notes }),
-      // });
-      showToast && showToast(`Interview invitation sent for ${caseData.caseId}.`);
+      
+      // Create 5 sample slots (next 5 business days, 2 slots per day)
+      const slots = [];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 1); // Start tomorrow
+      
+      let slotsCreated = 0;
+      for (let i = 0; i < 10 && slotsCreated < 5; i++) {
+        const slotDate = new Date(startDate);
+        slotDate.setDate(slotDate.getDate() + i);
+        
+        // Skip weekends
+        if (slotDate.getDay() === 0 || slotDate.getDay() === 6) continue;
+        
+        const dateStr = slotDate.toISOString().split("T")[0];
+        slots.push(
+          { date: dateStr, time: "09:00" },
+          { date: dateStr, time: "14:00" }
+        );
+        slotsCreated++;
+      }
+
+      // Create slots in parallel with error checking
+      const slotResults = await Promise.all(slots.map(async (slot) => {
+        const res = await fetch(`${API_URL}/api/interview_slots`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slot_type: "case_report",
+            created_by: userId,
+            slot_date: slot.date,
+            slot_time: slot.time,
+            duration_minutes: 60,
+          }),
+        });
+        
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(`Failed to create slot ${slot.date} ${slot.time}: ${body.error || "Unknown error"}`);
+        }
+        
+        return await res.json();
+      }));
+
+      showToast && showToast(`Interview invitation sent for ${caseData.caseId}. Complainant can now select a slot.`);
       onClose();
     } catch (err) {
+      setError(err.message || "Failed to send invitation");
       showToast && showToast(err.message || "Failed to send invitation.", "error");
     } finally {
       setSubmitting(false);
@@ -419,6 +492,13 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast 
         Send an interview invitation to the complainant for <strong>{caseData?.caseId}</strong>.
         They will be able to select a slot from your available calendar.
       </p>
+      
+      {error && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: "0.875rem", color: "#991b1b" }}>
+          ⚠️ {error}
+        </div>
+      )}
+
       <div className={styles.formGrid}>
         <FormGroup label="Invitation expiry (days)" hint="How many days the complainant has to select a slot.">
           <FSelect value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)}>
@@ -448,7 +528,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast 
 
 // ─── Case Management Tab (staff only) ────────────────────────────────────────
 
-function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole,showToast }) {
+function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
   const [modal, setModal] = useState(null);
 
   const NON_TRANSITIONAL_STATUSES = [
@@ -504,7 +584,7 @@ const TRANSITION_RULES = {
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
       const res = await fetch(`${API_URL}/api/case_status_history`, {
         method: "POST",
         credentials: "include",
@@ -512,26 +592,40 @@ const TRANSITION_RULES = {
         body: JSON.stringify({
           case_report_id:  caseData.id,
           proposed_status: proposedStatus,
-          changed_by_id:   userId,          // add user.id to your user state
+          changed_by_id:   userId,
           changed_by_role: userRole,
           notes:           changeDetails.notes,
           form_data:       changeDetails.formData,
-          case_officer_id: userId,
         }),
-      });
+      })
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to submit.");
+        const body = await res.json()
+        throw new Error(body.error || "Failed to submit.")
       }
-      // Optimistically mark pending in local state so the banner shows
+
+      const responseData = await res.json()
+
+      // Update status immediately — no pending queue
       setCaseData((prev) => ({
         ...prev,
-        pendingApproval: { proposedStatus, ...changeDetails },
-      }));
-      showToast(`Status change submitted for admin approval.`);
-      setModal(null);
+        status:          proposedStatus,  // ← reflect new status right away
+        pendingApproval: null,
+        // Append to local history timeline
+        statusHistory: [
+          ...(prev.statusHistory || []),
+          {
+            status: proposedStatus,
+            date:   new Date().toLocaleDateString("en-PH"),
+            by:     actorName,
+            notes:  changeDetails.notes,
+          },
+        ],
+      }))
+
+      showToast(`Status updated to "${proposedStatus}".`)
+      setModal(null)
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(err.message, "error")
     }
   }
 
@@ -699,6 +793,8 @@ const TRANSITION_RULES = {
           onClose={() => setModal(null)}
           caseData={caseData}
           actorName={actorName}
+          userId={userId}
+          userRole={userRole}
           showToast={showToast}
         />
       )}
@@ -1599,6 +1695,7 @@ export default function ViewCase() {
               isCaseOfficer={isCaseOfficer}
               isLegal={isLegal}
               actorName={actorName}
+              userId={user.id}
               userRole={user.role}
               showToast={showToast}
             />
