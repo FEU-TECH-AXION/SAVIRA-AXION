@@ -32,9 +32,7 @@ const createItem = async (req, res) => {
   }
 }
 
-const patchLatestAssessment = async (req, res) => {
-  // case_type matches what frontend sends (string array)
-  // case_type_ids is removed — frontend doesn't send that
+const recordAssessmentAction  = async (req, res) => {
   const ALLOWED = [
     'case_type',
     'primary_category',
@@ -49,7 +47,6 @@ const patchLatestAssessment = async (req, res) => {
   ]
 
   try {
-    // Strip case_officer_id and anything not in ALLOWED
     const { case_officer_id, ...body } = req.body
 
     const updates = Object.fromEntries(
@@ -59,40 +56,25 @@ const patchLatestAssessment = async (req, res) => {
     if (Object.keys(updates).length === 0)
       return res.status(400).json({ error: 'No valid fields to update.' })
 
-    const { data: existing, error: fetchErr } = await supabase
+    // Always insert a new row — every action is a new audit record.
+    // We never overwrite existing assessments.
+    const { data, error } = await supabase
       .from('case_assessments')
-      .select('case_assessment_id')
-      .eq('case_report_id', req.params.caseReportId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (fetchErr) throw fetchErr
+      .insert([{
+        case_report_id: req.params.caseReportId,
+        changed_by_id:   case_officer_id || null,
+        ...updates,
+      }])
+      .select()
+      .single()
 
-    let result
-    if (existing) {
-      const { data, error } = await supabase
-        .from('case_assessments')
-        .update(updates)
-        .eq('case_assessment_id', existing.case_assessment_id)
-        .select()
-        .single()
-      if (error) throw error
-      result = data
-    } else {
-      const { data, error } = await supabase
-        .from('case_assessments')
-        .insert([{ case_report_id: req.params.caseReportId, ...updates }])
-        .select()
-        .single()
-      if (error) throw error
-      result = data
-    }
+    if (error) throw error
 
-    res.json({ data: result })
+    res.json({ data })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 }
 
 
-module.exports = { getItems, getItemsByCaseReport, createItem, patchLatestAssessment }
+module.exports = { getItems, getItemsByCaseReport, createItem, recordAssessmentAction }
