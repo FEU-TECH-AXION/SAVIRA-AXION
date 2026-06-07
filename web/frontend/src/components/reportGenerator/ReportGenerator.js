@@ -66,6 +66,22 @@ const DATE_RANGES = [
   { label: "Last 30 Days", value: "last30Days" },
 ];
 
+const CASE_STATUS_BY_ID = {
+  1:  "Submitted",
+  2:  "For Verification",
+  3:  "Undergoing Review",
+  4:  "Verified - True",
+  5:  "Verified - False",
+  6:  "Under Case Evaluation",
+  7:  "Case Filed",
+  8:  "Investigation Ongoing",
+  9:  "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn",
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DATE RANGE FILTER — applied client-side after fetch
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,6 +126,84 @@ function filterByDateRange(records, range, ...dateFields) {
     }
     return true;
   });
+}
+
+function toArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.data)) return raw.data;
+  return [];
+}
+
+function titleFromSnake(raw) {
+  if (!raw) return null;
+  return String(raw)
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function normalizeCaseReport(row) {
+  const status =
+    row.status ||
+    row.case_status_name ||
+    row.case_statuses?.case_status_name ||
+    CASE_STATUS_BY_ID[row.case_status_id] ||
+    null;
+
+  const caseType =
+    row.case_type ||
+    row.caseType ||
+    row.case_type_name ||
+    row.case_types?.case_type_name ||
+    row.primary_category ||
+    null;
+
+  return {
+    id: row.id || row.case_report_id,
+    status,
+    case_type: caseType,
+    region:
+      row.region ||
+      row.location_type ||
+      row.incident_location_type ||
+      row.incident_province ||
+      row.incident_city ||
+      null,
+    location_type: row.location_type || row.incident_location_type || null,
+    date_filed: row.date_filed || row.dateSubmitted || row.created_at || null,
+    date_resolved: row.date_resolved || row.dateResolved || row.updated_at || null,
+    created_at: row.created_at || row.date_filed || null,
+    referral_suggested: row.referral_suggested || row.referralSuggested || false,
+  };
+}
+
+function normalizeVolunteerApplication(row) {
+  const rawStatus = row.status || row.application_status;
+  return {
+    id: row.id || row.volunteer_application_id,
+    status: rawStatus === "under_review" ? "Under Review" : titleFromSnake(rawStatus),
+    score: row.score ?? row.negotiable_score ?? null,
+    field_of_background:
+      row.field_of_background ||
+      row.fieldOfBackground ||
+      row.fields_with_background ||
+      null,
+    fieldsOfExpertise:
+      row.fieldsOfExpertise ||
+      row.fields_of_expertise ||
+      row.fields_of_interest ||
+      null,
+    created_at: row.created_at || row.dateApplied || row.applied_at || null,
+  };
+}
+
+function normalizeUser(row) {
+  return {
+    id: row.id || row.user_id,
+    role_name: row.role_name || row.roleName || row.role || row.roles?.role_name || null,
+    is_active: row.is_active ?? row.isActive ?? row.status !== "Inactive",
+    created_at: row.created_at || row.createdAt || row.date_created || null,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -402,10 +496,10 @@ function exportToCSV(reportParts) {
 
 function exportToPDF() {
   document.body.classList.add("printing-report");
-  window.print();
   window.addEventListener("afterprint", () => {
     document.body.classList.remove("printing-report");
   }, { once: true });
+  setTimeout(() => window.print(), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -529,7 +623,7 @@ function ReportSection({ icon, title, children, id }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReportGenerator() {
-  const [dateRange, setDateRange]         = useState("thisMonth");
+  const [dateRange, setDateRange]         = useState("all");
   const [activeModules, setActiveModules] = useState({
     cases:      true,
     legal:      true,
@@ -588,62 +682,42 @@ export default function ReportGenerator() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      // Preferred: single aggregate call
-      const aggRes = await fetch(`${API_URL}/api/reports/aggregate?dateRange=${dateRange}`, {
-        credentials: "include",
-      }).catch(() => null);
+      const [casesRes, volunteersRes, projectsRes, usersRes] = await Promise.allSettled([
+        fetch(`${API_URL}/api/case_reports/all`,        { credentials: "include" }),
+        fetch(`${API_URL}/api/volunteer_applications`,  { credentials: "include" }),
+        fetch(`${API_URL}/api/reports/projects`,        { credentials: "include" }),
+        fetch(`${API_URL}/api/users`,                   { credentials: "include" }),
+      ]);
 
-      if (aggRes && aggRes.ok) {
-        const agg = await aggRes.json();
-        const normalize = (raw) => Array.isArray(raw) ? raw : (raw?.data ?? []);
+      const failed = [
+        casesRes.status !== "fulfilled" || !casesRes.value.ok ? "cases" : null,
+        volunteersRes.status !== "fulfilled" || !volunteersRes.value.ok ? "volunteers" : null,
+        projectsRes.status !== "fulfilled" || !projectsRes.value.ok ? "projects" : null,
+        usersRes.status !== "fulfilled" || !usersRes.value.ok ? "users" : null,
+      ].filter(Boolean);
 
-        rawRef.current = {
-          cases:      normalize(agg.cases),
-          volunteers: normalize(agg.volunteers),
-          projects:   normalize(agg.projects),
-          users:      normalize(agg.users),
-        };
-      } else {
-        // Fallback: individual endpoints
-        const [cRes, vRes, pRes, uRes] = await Promise.allSettled([
-          fetch(`${API_URL}/api/reports/cases`,      { credentials: "include" }),
-          fetch(`${API_URL}/api/reports/volunteers`, { credentials: "include" }),
-          fetch(`${API_URL}/api/reports/projects`,   { credentials: "include" }),
-          fetch(`${API_URL}/api/reports/users`,      { credentials: "include" }),
-        ]);
-
-        const failed = [
-          cRes.status !== "fulfilled" || !cRes.value.ok ? "cases"      : null,
-          vRes.status !== "fulfilled" || !vRes.value.ok ? "volunteers" : null,
-          pRes.status !== "fulfilled" || !pRes.value.ok ? "projects"   : null,
-          uRes.status !== "fulfilled" || !uRes.value.ok ? "users"      : null,
-        ].filter(Boolean);
-
-        if (failed.length) {
-          console.warn("Failed endpoints:", failed.join(", "));
-        }
-
-        const safeJson = async (settled) => {
-          if (settled.status !== "fulfilled" || !settled.value.ok) return null;
-          try { return await settled.value.json(); } catch { return null; }
-        };
-
-        const [casesRaw, volunteersRaw, projectsRaw, usersRaw] = await Promise.all([
-          safeJson(cRes),
-          safeJson(vRes),
-          safeJson(pRes),
-          safeJson(uRes),
-        ]);
-
-        const normalize = (raw) => Array.isArray(raw) ? raw : (raw?.data ?? []);
-
-        rawRef.current = {
-          cases:      normalize(casesRaw),
-          volunteers: normalize(volunteersRaw),
-          projects:   normalize(projectsRaw),
-          users:      normalize(usersRaw),
-        };
+      if (failed.length) {
+        console.warn("Failed report source endpoints:", failed.join(", "));
       }
+
+      const safeJson = async (settled) => {
+        if (settled.status !== "fulfilled" || !settled.value.ok) return null;
+        try { return await settled.value.json(); } catch { return null; }
+      };
+
+      const [casesRaw, volunteersRaw, projectsRaw, usersRaw] = await Promise.all([
+        safeJson(casesRes),
+        safeJson(volunteersRes),
+        safeJson(projectsRes),
+        safeJson(usersRes),
+      ]);
+
+      rawRef.current = {
+        cases:      toArray(casesRaw).map(normalizeCaseReport),
+        volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
+        projects:   toArray(projectsRaw),
+        users:      toArray(usersRaw).map(normalizeUser),
+      };
 
       buildSummaries(rawRef.current, dateRange);
     } catch (err) {
@@ -655,7 +729,10 @@ export default function ReportGenerator() {
   }, [dateRange, buildSummaries]);
 
   useEffect(() => {
-    generateReport();
+    const id = setTimeout(() => {
+      generateReport();
+    }, 0);
+    return () => clearTimeout(id);
   }, [generateReport]);
 
   function toggleModule(key) {
@@ -724,8 +801,8 @@ export default function ReportGenerator() {
                 <button
                   className={styles.exportOption}
                   onClick={() => {
-                    exportToPDF();
                     setExportMenuOpen(false);
+                    exportToPDF();
                   }}
                 >
                   <FiPrinter /> Export as PDF
