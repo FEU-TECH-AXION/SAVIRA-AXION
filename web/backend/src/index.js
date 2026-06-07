@@ -139,3 +139,8 @@ app.use('/api/interviews', interviewsRouter)
 // Route for interview_slots tbl
 const interviewSlotsRouter = require('./routes/interview_slots.routes')
 app.use('/api/interview_slots', interviewSlotsRouter)
+
+// ── ROUTES FOR REPORTS RELATED TABLES ───────────────────────────────
+
+app.use('/api/reports', reportsRouter)
+const reportsRouter = require('./routes/reports.routes')

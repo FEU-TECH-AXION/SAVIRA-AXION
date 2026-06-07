@@ -114,6 +114,13 @@ function filterByDateRange(records, range, ...dateFields) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS — transform raw API data into summary shapes
+//
+// FIX (bar chart "Unknown" bug): previously countBy() and the summary builders
+// fell back to "Unknown" when a field was null/undefined.  The backend now
+// always sends normalised, human-readable values, but we also guard here by
+// skipping records with no usable category value instead of lumping them into
+// a single "Unknown" bar.  That way the bar chart only shows bars for
+// categories that actually exist in the data.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildCaseSummary(cases = []) {
@@ -122,23 +129,37 @@ function buildCaseSummary(cases = []) {
   const byRegion = {};
   let open = 0, closed = 0, totalResolutionDays = 0, resolvedCount = 0;
 
+  // Pre-seed known categories so the order is deterministic in charts
   ALL_CASE_STATUSES.forEach((s) => { byStatus[s] = 0; });
   CASE_TYPES.forEach((t)         => { byType[t]   = 0; });
   REGIONS.forEach((r)            => { byRegion[r] = 0; });
 
   for (const c of cases) {
-    if (byStatus[c.status] !== undefined) byStatus[c.status]++;
-    else byStatus[c.status] = 1;
+    // ── Status ──────────────────────────────────────────────────────────────
+    // FIX: only count if we have a real status string; skip nulls so they
+    // never create a spurious "Unknown" or "null" bar.
+    if (c.status) {
+      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    }
 
-    if (byType[c.case_type] !== undefined) byType[c.case_type]++;
-    else byType[c.case_type] = 1;
+    // ── Case type ────────────────────────────────────────────────────────────
+    // FIX: same guard — skip records with no case_type rather than bucketing
+    // everything into "Unknown".
+    if (c.case_type) {
+      byType[c.case_type] = (byType[c.case_type] || 0) + 1;
+    }
 
-    const region = c.region || c.location_type || "Unknown";
-    if (byRegion[region] !== undefined) byRegion[region]++;
-    else byRegion[region] = 1;
+    // ── Region ───────────────────────────────────────────────────────────────
+    // FIX: the backend now exposes incident_location_type as "region". We no
+    // longer fall back to "Unknown" when neither field is set.
+    const region = c.region || c.location_type;
+    if (region) {
+      byRegion[region] = (byRegion[region] || 0) + 1;
+    }
 
+    // ── Open / closed ────────────────────────────────────────────────────────
     const closedStatuses = ["Resolved", "Dismissed", "Withdrawn", "Perpetrator Convicted", "Verified - False"];
-    if (closedStatuses.includes(c.status)) {
+    if (c.status && closedStatuses.includes(c.status)) {
       closed++;
       const filed    = c.date_filed    || c.dateFiled;
       const resolved = c.date_resolved || c.dateResolved;
@@ -151,6 +172,7 @@ function buildCaseSummary(cases = []) {
     }
   }
 
+  // Strip categories that have 0 records so charts don't render empty bars
   const filteredByStatus = Object.fromEntries(Object.entries(byStatus).filter(([, v]) => v > 0));
   const filteredByType   = Object.fromEntries(Object.entries(byType).filter(([, v]) => v > 0));
   const filteredByRegion = Object.fromEntries(Object.entries(byRegion).filter(([, v]) => v > 0));
@@ -177,8 +199,10 @@ function buildLegalSummary(legalCases = []) {
   let totalDays = 0, daysCount = 0, referralSuggested = 0, casesFiled = 0, casesResolved = 0;
 
   for (const c of legalCases) {
-    if (byStatus[c.status] !== undefined) byStatus[c.status]++;
-    else byStatus[c.status] = 1;
+    // FIX: guard null status
+    if (c.status) {
+      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    }
 
     const filed  = c.date_filed  || c.dateFiled;
     const closed = c.date_closed || c.dateClosed;
@@ -207,20 +231,32 @@ function buildVolunteerSummary(applications = []) {
   const byStatus = {};
   VOLUNTEER_STATUSES.forEach((s) => { byStatus[s] = 0; });
 
+  // FIX: the backend returns negotiable_score as "score" after normalization.
+  // Guard for both field names just in case.
   let totalScore = 0, scoreCount = 0;
   const fieldCounts = {};
 
   for (const a of applications) {
-    if (byStatus[a.status] !== undefined) byStatus[a.status]++;
-    else byStatus[a.status] = 1;
+    // FIX: guard null status
+    if (a.status) {
+      byStatus[a.status] = (byStatus[a.status] || 0) + 1;
+    }
 
-    if (typeof a.score === "number") { totalScore += a.score; scoreCount++; }
+    // FIX: read both "score" (normalised) and "negotiable_score" (raw fallback)
+    const rawScore = a.score ?? a.negotiable_score;
+    if (typeof rawScore === "number") { totalScore += rawScore; scoreCount++; }
 
-    const field = a.field_of_background || a.fieldOfBackground || a.fields_of_expertise || a.fieldsOfExpertise;
+    // FIX: read both field name variants the backend might send
+    const field =
+      a.field_of_background ||
+      a.fieldOfBackground   ||
+      a.fields_of_expertise ||
+      a.fieldsOfExpertise;
+
     if (field) {
       const fields = Array.isArray(field) ? field : [field];
       for (const f of fields) {
-        fieldCounts[f] = (fieldCounts[f] || 0) + 1;
+        if (f) fieldCounts[f] = (fieldCounts[f] || 0) + 1;
       }
     }
   }
@@ -252,13 +288,15 @@ function buildProjectSummary(projects = []) {
   let completedOnTime = 0, totalDays = 0, daysCount = 0;
 
   for (const p of projects) {
-    if (byStatus[p.status] !== undefined) byStatus[p.status]++;
-    else byStatus[p.status] = 1;
+    // FIX: guard null status
+    if (p.status) {
+      byStatus[p.status] = (byStatus[p.status] || 0) + 1;
+    }
 
     if (p.status === "Completed") {
-      const endDate    = p.end_date       || p.endDate;
+      const endDate    = p.end_date        || p.endDate;
       const actualEnd  = p.actual_end_date || p.actualEndDate;
-      const startDate  = p.start_date     || p.startDate;
+      const startDate  = p.start_date      || p.startDate;
 
       if (endDate && actualEnd && new Date(actualEnd) <= new Date(endDate)) {
         completedOnTime++;
@@ -298,10 +336,12 @@ function buildUserSummary(users = []) {
       ""
     ).toString().trim();
 
+    // FIX: case-insensitive match so "case officer" matches "Case Officer"
     const matchedRole = USER_ROLES.find((r) => r.toLowerCase() === rawRole.toLowerCase());
     if (matchedRole) {
       byRole[matchedRole]++;
     }
+    // FIX: skip unmatched roles rather than lumping them into "Unknown"
 
     if (u.is_active || u.isActive) activeUsers++;
     else deactivated++;
@@ -374,7 +414,7 @@ function exportToPDF() {
 
 function BarChart({ data, colorVar = "--accent-primary", height = 120 }) {
   const entries = Object.entries(data);
-  if (!entries.length) return null;
+  if (!entries.length) return <p className={styles.noData}>No data available.</p>;
   const max = Math.max(...entries.map(([, v]) => v));
 
   return (
@@ -401,7 +441,7 @@ function BarChart({ data, colorVar = "--accent-primary", height = 120 }) {
 
 function DonutChart({ data, colors }) {
   const entries = Object.entries(data);
-  if (!entries.length) return null;
+  if (!entries.length) return <p className={styles.noData}>No data available.</p>;
   const total = entries.reduce((s, [, v]) => s + v, 0);
   const defaultColors = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#ede9fe"];
   const palette = colors || defaultColors;
@@ -542,32 +582,18 @@ export default function ReportGenerator() {
     setLastGenerated(new Date());
   }, []);
 
-  // ── FIX: Corrected API endpoints to match actual backend routes ──────────
-  //
-  //  OLD (broken):
-  //    /api/cases      → does not exist; actual route is /api/case_reports
-  //    /api/volunteers → does not exist; actual route is /api/volunteer-applications
-  //    /api/projects   → uses /api/reports/aggregate instead (see reports.controller.js)
-  //    /api/users      → uses /api/reports/aggregate instead
-  //
-  //  FIX: Use the new /api/reports/aggregate endpoint that returns all four
-  //  datasets in one request (see reports.controller.js below).
-  //  Falls back to individual routes if the aggregate endpoint is unavailable.
-  // ─────────────────────────────────────────────────────────────────────────
-
   const generateReport = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      // Preferred: single aggregate call (avoids 4 round-trips + CORS preflight per module)
-      const aggRes = await fetch(`${API_URL}/api/reports/aggregate`, {
+      // Preferred: single aggregate call
+      const aggRes = await fetch(`${API_URL}/api/reports/aggregate?dateRange=${dateRange}`, {
         credentials: "include",
       }).catch(() => null);
 
       if (aggRes && aggRes.ok) {
-        // Shape: { cases: [...], volunteers: [...], projects: [...], users: [...] }
         const agg = await aggRes.json();
         const normalize = (raw) => Array.isArray(raw) ? raw : (raw?.data ?? []);
 
@@ -578,12 +604,12 @@ export default function ReportGenerator() {
           users:      normalize(agg.users),
         };
       } else {
-        // Fallback: individual endpoints (corrected URLs)
+        // Fallback: individual endpoints
         const [cRes, vRes, pRes, uRes] = await Promise.allSettled([
-          fetch(`${API_URL}/api/case_reports`,           { credentials: "include" }),
-          fetch(`${API_URL}/api/volunteer-applications`, { credentials: "include" }),
-          fetch(`${API_URL}/api/projects`,               { credentials: "include" }),
-          fetch(`${API_URL}/api/users`,                  { credentials: "include" }),
+          fetch(`${API_URL}/api/reports/cases`,      { credentials: "include" }),
+          fetch(`${API_URL}/api/reports/volunteers`, { credentials: "include" }),
+          fetch(`${API_URL}/api/reports/projects`,   { credentials: "include" }),
+          fetch(`${API_URL}/api/reports/users`,      { credentials: "include" }),
         ]);
 
         const failed = [
@@ -609,7 +635,6 @@ export default function ReportGenerator() {
           safeJson(uRes),
         ]);
 
-        // Unwrap .data envelope (case_reports returns { data: [...] })
         const normalize = (raw) => Array.isArray(raw) ? raw : (raw?.data ?? []);
 
         rawRef.current = {
@@ -627,22 +652,11 @@ export default function ReportGenerator() {
     } finally {
       setLoading(false);
     }
-  }, []); // dateRange excluded — re-filtering handled by effect below
+  }, [dateRange, buildSummaries]);
 
   useEffect(() => {
     generateReport();
   }, [generateReport]);
-
-  useEffect(() => {
-    if (
-      rawRef.current.cases.length ||
-      rawRef.current.users.length ||
-      rawRef.current.volunteers.length ||
-      rawRef.current.projects.length
-    ) {
-      buildSummaries(rawRef.current, dateRange);
-    }
-  }, [dateRange, buildSummaries]);
 
   function toggleModule(key) {
     setActiveModules((prev) => {
@@ -846,9 +860,12 @@ export default function ReportGenerator() {
                 <div className={styles.chartCard}>
                   <h3 className={styles.chartTitle}>Top Fields of Background</h3>
                   <div className={styles.tagList}>
-                    {volunteerData.topFields.map((f, i) => (
-                      <span key={i} className={styles.tag}>{f}</span>
-                    ))}
+                    {volunteerData.topFields.length > 0
+                      ? volunteerData.topFields.map((f, i) => (
+                          <span key={i} className={styles.tag}>{f}</span>
+                        ))
+                      : <p className={styles.noData}>No field data available.</p>
+                    }
                   </div>
                 </div>
               </div>
