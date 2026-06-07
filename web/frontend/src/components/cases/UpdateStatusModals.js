@@ -93,33 +93,82 @@ const STATUS_COLORS = {
 // ─── Transition Rules ─────────────────────────────────────────────────────────
 
 export const TRANSITION_RULES = {
+  // 1. Initial status when a case is created
+  "Submitted": {
+    case_officer: ["For Verification"],
+    admin:        ["For Verification"],
+    complainant:  ["Withdrawn"], 
+  },
+
+  // 2. Needs to be assigned or looked at
   "For Verification": {
     case_officer: ["Undergoing Review"],
     admin:        ["Undergoing Review"],
+    complainant:  ["Withdrawn"],
   },
+
+  // 3. Actively being reviewed
   "Undergoing Review": {
     case_officer: ["Verified - True", "Verified - False"],
     admin:        ["Verified - True", "Verified - False"],
   },
+
+  // 4. Case is valid -> moves to evaluation
   "Verified - True": {
     case_officer: ["Under Case Evaluation"],
     admin:        ["Under Case Evaluation"],
   },
-  "Under Case Evaluation": {
-    legal: ["Case Filed"],
-    admin: ["Case Filed"],
+
+  // 5. UPDATED: Terminal state for invalid/unverifiable claims
+  "Verified - False": {
+    // Terminal state: No further transitions allowed
+    admin: [], 
+    case_officer: [],
   },
+
+  // 6. Legal team assesses whether to file charges
+  "Under Case Evaluation": {
+    legal: ["Case Filed", "Dismissed"],
+    admin: ["Case Filed", "Dismissed"],
+  },
+
+  // 7. Case formally filed in court/system
   "Case Filed": {
     legal: ["Investigation Ongoing"],
     admin: ["Investigation Ongoing"],
   },
+
+  // 8. Ongoing discovery/investigation
   "Investigation Ongoing": {
     legal: ["Hearing Ongoing", "Dismissed"],
     admin: ["Hearing Ongoing", "Dismissed"],
   },
+
+  // 9. Court/disciplinary hearings
   "Hearing Ongoing": {
     legal: ["Dismissed", "Perpetrator Convicted"],
     admin: ["Dismissed", "Perpetrator Convicted"],
+  },
+
+  // 10. Terminal state for dropped/thrown-out cases
+  "Dismissed": {
+    admin: [], 
+  },
+
+  // 11. Moves to final closing state after conviction
+  "Perpetrator Convicted": {
+    legal: ["Resolved"],
+    admin: ["Resolved"],
+  },
+
+  // 12. Terminal final resolution state
+  "Resolved": {
+    admin: [], 
+  },
+
+  // 13. Terminal state for pulled cases
+  "Withdrawn": {
+    admin: [], 
   },
 };
 
