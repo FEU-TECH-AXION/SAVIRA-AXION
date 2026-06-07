@@ -846,3 +846,19 @@
   .modalOverlay { align-items: flex-end; padding: 0; }
   .actionBtns { flex-direction: column; }
 }
+
+.select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.modalLabel{
+  margin-top: 1rem !important;
+}
+
+.modalDesc{
+  font-size: 0.88rem; color: var(--sasha-muted); line-height: 1.6; margin-bottom: 0;
+}
