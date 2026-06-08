@@ -395,18 +395,28 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
   useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); setError(null); } }, [open]);
 
   async function handleSend() {
+    console.log("handleSend fired", { userId, caseDataId: caseData.id, reporterId: caseData.reporterId });
     setSubmitting(true);
     setError(null);
     try {
-      // Validate required data
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      
+      // Validate reporterId exists
       if (!caseData.reporterId) {
-        throw new Error("Complainant information missing. Cannot send invitation.");
+        throw new Error("Complainant user ID is missing. Cannot create interview. Check that the case has a valid complainant assigned.");
       }
+      
       if (!userId) {
-        throw new Error("Officer information missing. Cannot send invitation.");
+        throw new Error("Officer user ID is missing. Cannot create interview.");
       }
 
-      // Step 1: Create interview record (status: 'invited')
+      console.log("Creating interview with:", {
+        type: "case_report",
+        case_report_id: caseData.id,
+        interviewee_user_id: caseData.reporterId,
+        interviewer_user_id: userId,
+      });
+      
       const interviewRes = await fetch(`${API_URL}/api/interviews`, {
         method: "POST",
         credentials: "include",
@@ -414,72 +424,29 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
         body: JSON.stringify({
           type: "case_report",
           case_report_id: caseData.id,
-          interviewee_user_id: caseData.reporterId, // complainant
-          interviewer_user_id: userId, // case officer
+          interviewee_user_id: caseData.reporterId,
+          interviewer_user_id: userId,
           notes: notes || null,
+          slot_expires_at: new Date(Date.now() + parseInt(expiryDays) * 86400000).toISOString(),
+          status: "invited",
         }),
       });
-      
+
+      console.log("interview response status:", interviewRes.status);
+      const interviewBody = await interviewRes.json();
+      console.log("interview response body:", interviewBody);
+
       if (!interviewRes.ok) {
-        const body = await interviewRes.json();
-        throw new Error(body.error || "Failed to create interview");
+        throw new Error(interviewBody.error || `Failed to create interview (${interviewRes.status})`);
       }
 
-      const { data: interview } = await interviewRes.json();
-      
-      // Step 2: Create interview slots for complainant to choose from
-      // Slots are created as generic available slots; complainant selects one and it gets linked
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + parseInt(expiryDays, 10));
-      
-      // Create 5 sample slots (next 5 business days, 2 slots per day)
-      const slots = [];
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() + 1); // Start tomorrow
-      
-      let slotsCreated = 0;
-      for (let i = 0; i < 10 && slotsCreated < 5; i++) {
-        const slotDate = new Date(startDate);
-        slotDate.setDate(slotDate.getDate() + i);
-        
-        // Skip weekends
-        if (slotDate.getDay() === 0 || slotDate.getDay() === 6) continue;
-        
-        const dateStr = slotDate.toISOString().split("T")[0];
-        slots.push(
-          { date: dateStr, time: "09:00" },
-          { date: dateStr, time: "14:00" }
-        );
-        slotsCreated++;
-      }
-
-      // Create slots in parallel with error checking
-      const slotResults = await Promise.all(slots.map(async (slot) => {
-        const res = await fetch(`${API_URL}/api/interview_slots`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slot_type: "case_report",
-            created_by: userId,
-            slot_date: slot.date,
-            slot_time: slot.time,
-            duration_minutes: 60,
-          }),
-        });
-        
-        if (!res.ok) {
-          const body = await res.json();
-          throw new Error(`Failed to create slot ${slot.date} ${slot.time}: ${body.error || "Unknown error"}`);
-        }
-        
-        return await res.json();
-      }));
-
-      showToast && showToast(`Interview invitation sent for ${caseData.caseId}. Complainant can now select a slot.`);
+      console.log("✓ Interview created successfully");
+      showToast && showToast(`Interview invitation sent for ${caseData.caseId}.`);
       onClose();
+
     } catch (err) {
-      setError(err.message || "Failed to send invitation");
+      console.error("FULL ERROR:", err);
+      setError(err.message);
       showToast && showToast(err.message || "Failed to send invitation.", "error");
     } finally {
       setSubmitting(false);
@@ -711,8 +678,11 @@ const TRANSITION_RULES = {
 
           {/* Invite to Interview — only for the assigned case officer, only when status allows interviews */}
           {isCaseOfficer && caseData.isWillingForInterview === true && (
-            <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>
-              Invite to Interview
+            <button onClick={() => {
+              console.log("invite clicked", { isCaseOfficer, isWillingForInterview: caseData.isWillingForInterview });
+              setModal("inviteInterview");
+            }} style={btnStyle("#037F81")}>
+              Invite to Interview (TEST)
             </button>
           )}
 
@@ -1463,7 +1433,7 @@ export default function ViewCase() {
     if (userCookie) {
       try {
         const stored = JSON.parse(userCookie);
-        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name, id: stored.id, });
+        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name, id: stored.user_id, });
       } catch (_) {}
     }
     setUserLoaded(true);
@@ -1492,7 +1462,7 @@ export default function ViewCase() {
         setCaseData({
           id:                   data.case_report_id,
           caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
-          reporterId:           String(data.complainant_id),
+          reporterId:           data.complainant_user_id,
           region:               data.incident_province || data.incident_city || "—",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",
           assignedOfficer:      data.assigned_officer || null,
@@ -1684,6 +1654,7 @@ export default function ViewCase() {
               isStaff={isStaff}
               isCaseOfficer={isCaseOfficer}
               showToast={showToast}
+              userId={user.id} 
             />
           )}
 

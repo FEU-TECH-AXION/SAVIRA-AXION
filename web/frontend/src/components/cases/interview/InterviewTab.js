@@ -349,32 +349,62 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
 // ─── Complainant: Invited view (Select a Slot) ────────────────────────────────
 
 function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
-  // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
-  const MOCK_SLOTS = [
-    { id: "slot-1", date: "2026-06-05", time: "09:00", duration: 30, status: "free" },
-    { id: "slot-2", date: "2026-06-05", time: "14:00", duration: 30, status: "free" },
-    { id: "slot-3", date: "2026-06-09", time: "10:00", duration: 45, status: "free" },
-    { id: "slot-4", date: "2026-06-09", time: "15:30", duration: 30, status: "free" },
-    { id: "slot-5", date: "2026-06-11", time: "09:30", duration: 30, status: "free" },
-    { id: "slot-6", date: "2026-06-12", time: "13:00", duration: 60, status: "free" },
-    { id: "slot-7", date: "2026-06-16", time: "11:00", duration: 30, status: "free" },
-  ];
-  // ─────────────────────────────────────────────────────────────────────────
 
-  const [slots, setSlots]         = useState(MOCK_SLOTS);
-  const [loadingSlots, setLoading] = useState(false); // no loading needed for mock
+  useEffect(() => {
+    const fetchSlots = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(
+          `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true`,
+          { credentials: "include" }
+        );
+        if (!res.ok) throw new Error("Failed to load slots");
+        const json = await res.json();
+        // Map slot_id → id so SlotPickerCalendar works
+        setSlots((json.data || []).map(s => ({
+          ...s,
+          id: s.slot_id,
+          date: s.slot_date,
+          time: s.slot_time,
+          status: "free",
+        })));
+      } catch {
+        setSlots([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSlots();
+  }, []);
+
+  const [slots, setSlots] = useState([]);
+  const [loadingSlots, setLoading] = useState(true); // no loading needed for mock
   const [confirming, setConfirming] = useState(false);
   const [pendingSlot, setPendingSlot] = useState(null);
 
   async function handleConfirmSlot(slot) {
     setConfirming(true);
-    // ── MOCK: simulate network delay ──────────────────────────────────────
-    await new Promise((r) => setTimeout(r, 800));
-    showToast && showToast("Slot selected! Your case officer will confirm shortly.");
-    onSlotSelected && onSlotSelected({ ...interview, interviewStatus: "Scheduled", slot });
-    setConfirming(false);
-    setPendingSlot(null);
-    // ─────────────────────────────────────────────────────────────────────
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/interviews/${interview.id}/select-slot`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot_id: slot.id }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to confirm slot.");
+      }
+
+      showToast?.("Slot selected! Your case officer will confirm shortly.");
+      onSlotSelected?.({ ...interview, interviewStatus: "Scheduled", slot });
+    } catch (err) {
+      showToast?.(err.message || "Failed to confirm slot.", "error");
+    } finally {
+      setConfirming(false);
+    }
   }
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
@@ -686,40 +716,75 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
 
 // ─── Main InterviewTab component ──────────────────────────────────────────────
 
-export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToast }) {
+export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToast, userId }) {
   // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
   // Switch MOCK_VIEW to see each complainant state:
   //   "Invited" | "Scheduled" | "Confirmed" | "Completed" | "Cancelled" | "Expired"
-  const MOCK_VIEW = "Invited";
+  // const MOCK_VIEW = "Invited";
 
-  const MOCK_INTERVIEWS = [
-    {
-      id: "iv-1",
-      interview_date: "2026-06-09",
-      interview_time: "10:00",
-      scheduledDate:  "2026-06-09",
-      scheduledTime:  "10:00",
-      location:       "SASHA Office — Room 204",
-      notes:          "Please bring a valid ID and any supporting documents.",
-      interviewStatus: MOCK_VIEW,
-      status:          MOCK_VIEW,
-      meetingLink:    "https://meet.google.com/abc-defg-hij",
-      expiresAt:      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
-    },
-    {
-      id: "iv-2",
-      interview_date: "2026-05-20",
-      interview_time: "14:00",
-      location:       "Zoom",
-      notes:          "",
-      interviewStatus: "Cancelled",
-      status:          "Cancelled",
-    },
-  ];
-  // ─────────────────────────────────────────────────────────────────────────
+  // const MOCK_INTERVIEWS = [
+  //   {
+  //     id: "iv-1",
+  //     interview_date: "2026-06-09",
+  //     interview_time: "10:00",
+  //     scheduledDate:  "2026-06-09",
+  //     scheduledTime:  "10:00",
+  //     location:       "SASHA Office — Room 204",
+  //     notes:          "Please bring a valid ID and any supporting documents.",
+  //     interviewStatus: MOCK_VIEW,
+  //     status:          MOCK_VIEW,
+  //     meetingLink:    "https://meet.google.com/abc-defg-hij",
+  //     expiresAt:      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+  //   },
+  //   {
+  //     id: "iv-2",
+  //     interview_date: "2026-05-20",
+  //     interview_time: "14:00",
+  //     location:       "Zoom",
+  //     notes:          "",
+  //     interviewStatus: "Cancelled",
+  //     status:          "Cancelled",
+  //   },
+  // ];
+  // // ─────────────────────────────────────────────────────────────────────────
 
-  const [interviews, setInterviews]   = useState(MOCK_INTERVIEWS);
-  const [loading, setLoading]         = useState(false); // no loading for mock
+  useEffect(() => {
+    const fetchInterviews = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(
+          `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) throw new Error("Failed to load interviews");
+        const json = await res.json();
+
+        console.log("interviews from API:", JSON.stringify(json.data?.[0], null, 2));
+
+        setInterviews(
+          (json.data || []).map((iv) => ({
+            ...iv,
+            id: iv.interview_id,
+            interviewStatus: iv.status.charAt(0).toUpperCase() + iv.status.slice(1),
+            scheduledDate: iv.slot?.slot_date || null,
+            scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
+            interview_date: iv.slot?.slot_date || null,        
+            interview_time: iv.slot?.slot_time?.slice(0, 5) || null, 
+            location: iv.notes || null,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to fetch interviews:", err);
+        setInterviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInterviews();
+  }, [caseData.id]);
+
+  const [interviews, setInterviews] = useState([]);
+  const [loading, setLoading] = useState(true); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
   const [submitting, setSubmitting]   = useState(false);
   // Reschedule state: null = closed; string = interview id being rescheduled (staff)
@@ -751,24 +816,101 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   async function handleSchedule() {
     if (!validate()) return;
     setSubmitting(true);
-    // ── MOCK: simulate save ───────────────────────────────────────────────
-    await new Promise((r) => setTimeout(r, 600));
-    const newInterview = {
-      id: `iv-mock-${Date.now()}`,
-      interview_date: form.interviewDate,
-      interview_time: form.interviewTime,
-      location:       form.location,
-      notes:          form.notes,
-      interviewStatus: "Scheduled",
-      status:          "Scheduled",
-    };
-    setInterviews((prev) => [newInterview, ...prev]);
-    setForm({ interviewDate: "", interviewTime: "", location: "", notes: "" });
-    setErrors({});
-    setShowForm(false);
-    showToast && showToast("Interview scheduled successfully.");
-    setSubmitting(false);
-    // ─────────────────────────────────────────────────────────────────────
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+      // Get complainant UUID from case report
+      const caseRes = await fetch(`${API_URL}/api/case_reports/${caseData.id}`, {
+        credentials: "include",
+      });
+      const caseJson = await caseRes.json();
+      const intervieweeId = caseJson.data?.complainant_user_id;
+
+      if (!intervieweeId) {
+        throw new Error("Complainant not found for this case.");
+      }
+
+      // Step 1: Create the slot
+      const slotRes = await fetch(`${API_URL}/api/interview_slots`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot_type: "case_report",
+          created_by: userId,
+          slot_date: form.interviewDate,
+          slot_time: form.interviewTime,
+          duration_minutes: 60,
+        }),
+      });
+
+      const slotBody = await slotRes.json();
+      if (!slotRes.ok) throw new Error(slotBody.error || "Failed to create slot");
+
+      const slot = slotBody.data;
+
+      // Step 2: Create the interview
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const interviewRes = await fetch(`${API_URL}/api/interviews`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "case_report",
+          case_report_id: caseData.id,
+          interviewee_user_id: intervieweeId,
+          interviewer_user_id: userId,
+          notes: form.notes || null,
+          slot_expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+          status: "invited",
+        }),
+      });
+
+      const interviewBody = await interviewRes.json();
+      if (!interviewRes.ok) throw new Error(interviewBody.error || "Failed to create interview");
+
+      const interview = interviewBody.data;
+
+      // Step 3: Select the slot
+      const selectRes = await fetch(`${API_URL}/api/interviews/${interview.interview_id}/select-slot`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot_id: slot.slot_id }),
+      });
+
+      const selectBody = await selectRes.json();
+      if (!selectRes.ok) throw new Error(selectBody.error || "Failed to select slot");
+
+      // Update local state
+      setInterviews((prev) => [
+        {
+          id: interview.interview_id,
+          interview_date: form.interviewDate,
+          interview_time: form.interviewTime,
+          scheduledDate: form.interviewDate,
+          scheduledTime: form.interviewTime,
+          location: form.location,
+          notes: form.notes,
+          interviewStatus: "Scheduled",
+          status: "Scheduled",
+          meetingLink: null,
+        },
+        ...prev,
+      ]);
+
+      setForm({ interviewDate: "", interviewTime: "", location: "", notes: "" });
+      setErrors({});
+      setShowForm(false);
+      showToast?.("Interview scheduled successfully.");
+    } catch (err) {
+      console.error("Schedule error:", err);
+      showToast?.(err.message || "Failed to schedule interview.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleCancel(interviewId) {
@@ -838,7 +980,11 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             caseData={caseData}
             interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
             onSlotSelected={(updated) => {
-              setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv));
+              setInterviews((json.data || []).map(iv => ({
+                ...iv,
+                id: iv.interview_id,  // normalize
+                interviewStatus: iv.status,
+              })));
               setComplainantRescheduling(false);
               showToast && showToast(complainantRescheduling ? "Slot rescheduled! Your case officer will confirm shortly." : "Slot selected! Your case officer will confirm shortly.");
             }}

@@ -35,15 +35,29 @@ const create = async (payload) => {
 }
 
 async function getCaseById(caseReportId) {
-  const { data, error } = await supabase
+
+  // Step 1: Get the case report
+  const { data: report, error } = await supabase
     .from('case_reports')
     .select('*')
     .eq('case_report_id', caseReportId)
     .eq('is_current', true)
     .maybeSingle();
-
   if (error) throw error;
-  return data;
+  if (!report) return null;
+
+  // Step 2: Get the complainant's user_id using complainant_id
+  const { data: complainant, error: complainantError } = await supabase
+    .from('complainants')
+    .select('user_id')
+    .eq('complainant_id', report.complainant_id)
+    .maybeSingle();
+  if (complainantError) throw complainantError;
+
+  return {
+    ...report,
+    complainant_user_id: complainant?.user_id || null,
+  };
 }
 
 async function getComplainantId(userId) {
