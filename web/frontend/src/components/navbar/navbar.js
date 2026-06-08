@@ -17,6 +17,7 @@ const PUBLIC_LINKS = [
   { href: "/events", label: "Events" },
   { href: "/contact", label: "Contact" },
   { href: "/volunteer", label: "Volunteer" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const COMPLAINANT_LINKS = [
@@ -26,6 +27,7 @@ const COMPLAINANT_LINKS = [
   { href: "/volunteer", label: "Volunteer" },
   { href: "/contact", label: "Contact" },
   { href: "/events", label: "Events" },
+  { href: "/heatmap", label: "Heatmap" },
 ];
 
 const CASE_OFFICER_LINKS = [

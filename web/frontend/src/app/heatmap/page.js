@@ -186,6 +186,26 @@ function StatCard({ title, value, subtext }) {
 
 function FilterSection({ filters, onChange, meta }) {
   const { regions = [], cities = [], councils = [], statuses = [] } = meta;
+  const ALL_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Verified - False",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
+  "Perpetrator Convicted",
+  "Resolved",
+  "Withdrawn",
+];
+
+const STATUS_OPTIONS = ALL_STATUSES.map((status) => ({
+  value: status,
+  label: status,
+}));
   const citiesInRegion = filters.region
     ? regions.find((r) => r.key === filters.region)?.cities || []
     : cities;
@@ -210,9 +230,10 @@ function FilterSection({ filters, onChange, meta }) {
           placeholder: "All Councils",
         },
         {
-          label: "Status", key: "status",
-          options: statuses.map((s) => ({ value: s, label: s })),
-          placeholder: "All Statuses",
+          label: "Status",
+          key: "status",
+          options: STATUS_OPTIONS,
+          placeholder: "All",
         },
         {
           label: "Verification", key: "verification",
