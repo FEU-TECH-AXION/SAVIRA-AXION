@@ -346,6 +346,116 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
   );
 }
 
+// ─── Invite to Interview Modal ────────────────────────────────────────────────
+
+function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const [expiryDays, setExpiryDays] = useState("7");
+  const [notes, setNotes]           = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]           = useState(null);
+
+  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); setError(null); } }, [open]);
+
+  async function handleSend() {
+    console.log("handleSend fired", { userId, caseDataId: caseData.id, reporterId: caseData.reporterId });
+    setSubmitting(true);
+    setError(null);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      
+      // Validate reporterId exists
+      if (!caseData.reporterId) {
+        throw new Error("Complainant user ID is missing. Cannot create interview. Check that the case has a valid complainant assigned.");
+      }
+      
+      if (!userId) {
+        throw new Error("Officer user ID is missing. Cannot create interview.");
+      }
+
+      console.log("Creating interview with:", {
+        type: "case_report",
+        case_report_id: caseData.id,
+        interviewee_user_id: caseData.reporterId,
+        interviewer_user_id: userId,
+      });
+      
+      const interviewRes = await fetch(`${API_URL}/api/interviews`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "case_report",
+          case_report_id: caseData.id,
+          interviewee_user_id: caseData.reporterId,
+          interviewer_user_id: userId,
+          notes: notes || null,
+          slot_expires_at: new Date(Date.now() + parseInt(expiryDays) * 86400000).toISOString(),
+          status: "invited",
+        }),
+      });
+
+      console.log("interview response status:", interviewRes.status);
+      const interviewBody = await interviewRes.json();
+      console.log("interview response body:", interviewBody);
+
+      if (!interviewRes.ok) {
+        throw new Error(interviewBody.error || `Failed to create interview (${interviewRes.status})`);
+      }
+
+      console.log("✓ Interview created successfully");
+      showToast && showToast(`Interview invitation sent for ${caseData.caseId}.`);
+      onClose();
+
+    } catch (err) {
+      console.error("FULL ERROR:", err);
+      setError(err.message);
+      showToast && showToast(err.message || "Failed to send invitation.", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Invite Complainant to Interview">
+      <p className={styles.formDesc}>
+        Send an interview invitation to the complainant for <strong>{caseData?.caseId}</strong>.
+        They will be able to select a slot from your available calendar.
+      </p>
+      
+      {error && (
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: "0.875rem", color: "#991b1b" }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      <div className={styles.formGrid}>
+        <FormGroup label="Invitation expiry (days)" hint="How many days the complainant has to select a slot.">
+          <FSelect value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)}>
+            <option value="3">3 days</option>
+            <option value="5">5 days</option>
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Notes for complainant" hint="Optional message shown alongside the invitation.">
+          <FTextarea
+            placeholder="e.g. Please select a slot at your earliest convenience."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </FormGroup>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSend} disabled={submitting}>
+          {submitting ? "Sending…" : "Send Invitation"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Complainant: Invited view (Select a Slot) ────────────────────────────────
 
 function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
@@ -716,7 +826,8 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
 
 // ─── Main InterviewTab component ──────────────────────────────────────────────
 
-export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToast, userId }) {
+export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToast, userId, actorName,
+  userRole, }) {
   // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
   // Switch MOCK_VIEW to see each complainant state:
   //   "Invited" | "Scheduled" | "Confirmed" | "Completed" | "Cancelled" | "Expired"
@@ -783,6 +894,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     fetchInterviews();
   }, [caseData.id]);
 
+  
+  const [modal, setModal] = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
@@ -1041,9 +1154,13 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             Manage interview sessions for this complainant.
           </p>
         </div>
-        {(isStaff || isCaseOfficer) && !showForm && (
+        {(isStaff || isCaseOfficer) && !showForm && 
+        (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              console.log("invite clicked", { isCaseOfficer, isWillingForInterview: caseData.isWillingForInterview });
+              setModal("inviteInterview");
+            }}
             style={{
               padding: "8px 18px",
               background: "#037F81",
@@ -1055,9 +1172,10 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               cursor: "pointer",
             }}
           >
-            + Schedule Interview
+            Invite to Interview
           </button>
-        )}
+        )
+        }
       </div>
 
       {/* Schedule form */}
@@ -1181,6 +1299,12 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                     onClick={() => setRescheduleId(iv.id)}
                     style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
                   >
+                    Add Meeting Link
+                  </button>
+                  <button
+                    onClick={() => setRescheduleId(iv.id)}
+                    style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                  >
                     Reschedule
                   </button>
                   <button
@@ -1194,6 +1318,19 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             </div>
           ))}
         </div>
+      )}
+
+      {/* Invite to Interview */}
+      {modal === "inviteInterview" && (
+        <InviteToInterviewModal
+          open
+          onClose={() => setModal(null)}
+          caseData={caseData}
+          actorName={actorName}
+          userId={userId}
+          userRole={userRole}
+          showToast={showToast}
+        />
       )}
 
       {/* ── Staff reschedule modal ── */}
