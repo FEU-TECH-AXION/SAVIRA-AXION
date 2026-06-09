@@ -2,6 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 import styles from "./InterviewTab.module.css";
+import {
+  FiArrowLeft,
+  FiChevronDown,
+  FiChevronUp,
+  FiClock,
+  FiAlertCircle,
+  FiAlertTriangle,
+  FiCheck,
+  FiX,
+  FiInfo,
+} from "react-icons/fi";
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
 //
@@ -346,6 +357,54 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
   );
 }
 
+// Modal shell (same as CaseManagement)
+function Modal({ open, onClose, title, children, wide }) {
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div
+        className={styles.modalBox}
+        style={wide ? { maxWidth: 700 } : {}}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true"
+      >
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>{title}</h2>
+          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
+        </div>
+        <div className={styles.modalBody}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function FormGroup({ label, required, hint, error, children }) {
+  return (
+    <div className={styles.formGroup}>
+      <label className={styles.formLabel}>{label}{required && <span style={{ color: "#ef4444" }}> *</span>}</label>
+      {children}
+      {hint && !error && <span className={styles.formHint}>{hint}</span>}
+      {error && <span className={styles.errorMsg}>{error}</span>}
+    </div>
+  );
+}
+
+function FSelect({ error, children, ...props }) {
+  return (
+    <select className={`${styles.formInput} ${error ? styles.inputError : ""}`} {...props}>
+      {children}
+    </select>
+  );
+}
+
+function FTextarea({ error, ...props }) {
+  return <textarea className={`${styles.formInput} ${error ? styles.inputError : ""}`} rows={3} style={{ resize: "vertical" }} {...props} />;
+}
+
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
@@ -356,6 +415,23 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
   const [error, setError]           = useState(null);
 
   useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); setError(null); } }, [open]);
+
+  async function handleSaveMeetingLink(interviewId, meetingLink) {
+  // API call later
+
+  setInterviews((prev) =>
+    prev.map((iv) =>
+      iv.id === interviewId
+        ? {
+            ...iv,
+            meetingLink,
+            interviewStatus: "Confirmed",
+            status: "Confirmed",
+          }
+        : iv
+    )
+  );
+}
 
   async function handleSend() {
     console.log("handleSend fired", { userId, caseDataId: caseData.id, reporterId: caseData.reporterId });
@@ -450,6 +526,86 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
         <button className={styles.btnPrimary} onClick={handleSend} disabled={submitting}>
           {submitting ? "Sending…" : "Send Invitation"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Add Meeting Link Modal ────────────────────────────────────────────────
+function AddMeetingLinkModal({
+  open,
+  onClose,
+  interview,
+  onSave,
+  showToast,
+}) {
+  const [meetingLink, setMeetingLink] = useState(
+    interview?.meetingLink || ""
+  );
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMeetingLink(interview?.meetingLink || "");
+    }
+  }, [open, interview]);
+
+  async function handleSave() {
+    if (!meetingLink.trim()) {
+      showToast?.("Meeting link is required.", "error");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      // API call goes here later
+      await onSave(meetingLink);
+
+      showToast?.("Meeting link added successfully.");
+      onClose();
+    } catch (err) {
+      showToast?.(err.message || "Failed to save meeting link.", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Add Meeting Link"
+    >
+      <FormGroup
+        label="Meeting Link"
+        required
+        hint="Google Meet, Zoom, Microsoft Teams, etc."
+      >
+        <input
+          type="url"
+          className={styles.formInput}
+          placeholder="https://meet.google.com/..."
+          value={meetingLink}
+          onChange={(e) => setMeetingLink(e.target.value)}
+        />
+      </FormGroup>
+
+      <div className={styles.modalFooter}>
+        <button
+          className={styles.btnSecondary}
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+
+        <button
+          className={styles.btnPrimary}
+          onClick={handleSave}
+          disabled={submitting}
+        >
+          {submitting ? "Saving..." : "Save Link"}
         </button>
       </div>
     </Modal>
@@ -896,6 +1052,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
   
   const [modal, setModal] = useState(null);
+  const [meetingLinkInterview, setMeetingLinkInterview] = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
@@ -1296,7 +1453,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               {(isStaff || isCaseOfficer) && iv.status !== "Cancelled" && iv.status !== "Completed" && (
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
                   <button
-                    onClick={() => setRescheduleId(iv.id)}
+                    onClick={() => setMeetingLinkInterview(iv)}
                     style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
                   >
                     Add Meeting Link
@@ -1330,6 +1487,30 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
           userId={userId}
           userRole={userRole}
           showToast={showToast}
+        />
+      )}
+
+      {/* Add Meeting Link */}
+      {meetingLinkInterview && (
+        <AddMeetingLinkModal
+          open
+          interview={meetingLinkInterview}
+          showToast={showToast}
+          onClose={() => setMeetingLinkInterview(null)}
+          onSave={async (meetingLink) => {
+            setInterviews((prev) =>
+              prev.map((iv) =>
+                iv.id === meetingLinkInterview.id
+                  ? {
+                      ...iv,
+                      meetingLink,
+                      interviewStatus: "Confirmed",
+                      status: "Confirmed",
+                    }
+                  : iv
+              )
+            );
+          }}
         />
       )}
 
