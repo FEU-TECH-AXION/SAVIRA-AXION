@@ -1304,7 +1304,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
             </div>
 
             {/* Manage Interviews — case officers */}
-            {(isCaseOfficer) && (
+            {(isCaseOfficer || isAdmin) && (
               <div className="col-12 col-sm-6 col-lg-3">
                 <Link href="/caseInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard
