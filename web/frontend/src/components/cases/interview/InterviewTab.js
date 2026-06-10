@@ -1198,20 +1198,73 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   }
 
   async function handleCancel(interviewId) {
-    // ── MOCK: update state directly ───────────────────────────────────────
-    setInterviews((prev) =>
-      prev.map((iv) =>
-        iv.id === interviewId ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled" } : iv
-      )
-    );
-    showToast && showToast("Interview cancelled.");
-    // ─────────────────────────────────────────────────────────────────────
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/interviews/${interviewId}/cancel`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancellation_reason: null }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to cancel interview.");
+      }
+
+      setInterviews((prev) =>
+        prev.map((iv) =>
+          iv.id === interviewId
+            ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled" }
+            : iv
+        )
+      );
+      showToast?.("Interview cancelled.");
+    } catch (err) {
+      showToast?.(err.message || "Failed to cancel interview.", "error");
+    }
   }
 
-  function handleStaffRescheduleConfirm(updated) {
-    setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv));
-    setRescheduleId(null);
-    showToast && showToast("Interview rescheduled successfully.");
+  async function handleStaffRescheduleConfirm(updated) {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+      // Step 1: Create new slot
+      const slotRes = await fetch(`${API_URL}/api/interview_slots`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot_type: "case_report",
+          created_by: userId,
+          slot_date: updated.scheduledDate,
+          slot_time: updated.scheduledTime,
+          duration_minutes: 60,
+        }),
+      });
+
+      const slotBody = await slotRes.json();
+      if (!slotRes.ok) throw new Error(slotBody.error || "Failed to create slot.");
+
+      const slot = slotBody.data;
+
+      // Step 2: Select new slot on interview
+      const selectRes = await fetch(`${API_URL}/api/interviews/${updated.id}/select-slot`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot_id: slot.slot_id }),
+      });
+
+      const selectBody = await selectRes.json();
+      if (!selectRes.ok) throw new Error(selectBody.error || "Failed to reschedule.");
+
+      setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv));
+      setRescheduleId(null);
+      showToast?.("Interview rescheduled successfully.");
+    } catch (err) {
+      showToast?.(err.message || "Failed to reschedule interview.", "error");
+    }
   }
 
   const inputStyle = (hasErr) => ({
