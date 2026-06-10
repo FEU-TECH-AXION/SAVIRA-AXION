@@ -2,7 +2,6 @@ const InterviewSlotsModel = require('../models/interview_slots.model')
 
 const getItems = async (req, res) => {
     try {
-        // Accepts query params: slot_type, created_by, is_available
         const filters = {
             slot_type:    req.query.slot_type,
             created_by:   req.query.created_by,
@@ -19,13 +18,7 @@ const getItems = async (req, res) => {
 
 const createItem = async (req, res) => {
     try {
-        const {
-            slot_type,
-            created_by,
-            slot_date,
-            slot_time,
-            duration_minutes,
-        } = req.body
+        const { slot_type, created_by, slot_date, slot_time, duration_minutes } = req.body
 
         if (!slot_type || !created_by || !slot_date || !slot_time) {
             return res.status(400).json({
@@ -49,7 +42,28 @@ const createItem = async (req, res) => {
     }
 }
 
-// POST /api/interview_slots/bulk — generates recurring slots for N weeks ahead
+const updateItem = async (req, res) => {
+    try {
+        const allowed = ['slot_date', 'slot_time', 'duration_minutes', 'is_available']
+        const payload = Object.fromEntries(
+            Object.entries(req.body).filter(([k]) => allowed.includes(k))
+        )
+        if (Object.keys(payload).length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update.' })
+        }
+        const { data, error } = await require('../config/supabase')
+            .from('interview_slots')
+            .update(payload)
+            .eq('slot_id', req.params.id)
+            .select()
+            .single()
+        if (error) throw error
+        res.json({ data })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
 const createBulk = async (req, res) => {
     try {
         const { slot_type, created_by, day_of_week, slot_time, duration_minutes, weeks_ahead } = req.body
@@ -65,11 +79,9 @@ const createBulk = async (req, res) => {
         const today = new Date()
 
         for (let w = 0; w < weeksToGenerate; w++) {
-            // Find the next occurrence of day_of_week from today
             const date = new Date(today)
             const daysUntilTarget = (day_of_week - today.getDay() + 7) % 7 || 7
             date.setDate(today.getDate() + daysUntilTarget + w * 7)
-
             slots.push({
                 slot_type,
                 created_by,
@@ -97,4 +109,4 @@ const deleteItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem, createBulk, deleteItem }
+module.exports = { getItems, createItem, updateItem, createBulk, deleteItem }

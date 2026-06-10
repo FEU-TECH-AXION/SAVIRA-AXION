@@ -146,35 +146,46 @@ useEffect(() => {
     return <div className={styles.empty}>No interviews found</div>;
   }
 
+  const selectedInterviews = interviews.filter((i) => selectedIds.includes(i.id));
+  const canAddMeetingLink = selectedInterviews.every((i) => i.interviewStatus === "Scheduled");
+  const canMarkComplete = selectedInterviews.every((i) => i.interviewStatus === "Confirmed"); 
+
   return (
     <div className={styles.tableWrapper}>
-      {selectedIds.length > 0 && (
-        <div className={styles.bulkActionsBar}>
-          <span className={styles.bulkActionsCount}>
-            {selectedIds.length} selected
-          </span>
-          <div className={styles.bulkActionsButtons}>
-            <button
-              className={styles.bulkActionBtn}
-              onClick={() => onAddMeetingLink(selectedIds)}
-            >
-              + Add Meeting Link
-            </button>
-            <button
-              className={styles.bulkActionBtn}
-              onClick={() => onMarkComplete(selectedIds)}
-            >
-              ✓ Mark Complete
-            </button>
-            <button
-              className={styles.bulkActionBtn}
-              onClick={() => onViewDetails(selectedIds)}
-            >
-              👁 View Details
-            </button>
-          </div>
+      
+    {selectedIds.length > 0 && (
+      <div className={styles.bulkActionsBar}>
+        <span className={styles.bulkActionsCount}>
+          {selectedIds.length} selected
+        </span>
+        <div className={styles.bulkActionsButtons}>
+          <button
+            className={styles.bulkActionBtn}
+            onClick={() => onAddMeetingLink(selectedIds)}
+            disabled={!canAddMeetingLink}
+            title={!canAddMeetingLink ? "Only Scheduled interviews can have a meeting link added" : ""}
+            style={{ opacity: !canAddMeetingLink ? 0.4 : 1, cursor: !canAddMeetingLink ? "not-allowed" : "pointer" }}
+          >
+            + Add Meeting Link
+          </button>
+          <button
+            className={styles.bulkActionBtn}
+            onClick={() => onMarkComplete(selectedIds)}
+            disabled={!canMarkComplete}
+            title={!canMarkComplete ? "Only Confirmed interviews can be marked complete" : ""}
+            style={{ opacity: !canMarkComplete ? 0.4 : 1, cursor: !canMarkComplete ? "not-allowed" : "pointer" }}
+          >
+            ✓ Mark Complete
+          </button>
+          <button
+            className={styles.bulkActionBtn}
+            onClick={() => onViewDetails(selectedIds)}
+          >
+            👁 View Details
+          </button>
         </div>
-      )}
+      </div>
+    )}
 
       <table className={styles.interviewTable}>
         <thead>

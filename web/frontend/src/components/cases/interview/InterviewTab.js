@@ -761,10 +761,23 @@ function ScheduledView({ interview, onReschedule }) {
               {interview.scheduledTime ? formatTime(interview.scheduledTime) : interview.interview_time || "—"}
             </p>
           </div>
-          {interview.location && (
+          {interview.notes && (
             <div>
-              <p className={styles.slotLabel}>Location / Platform</p>
-              <p className={styles.slotValue}>{interview.location}</p>
+              <p className={styles.slotLabel}>Notes</p>
+              <p className={styles.slotValue}>{interview.notes}</p>
+            </div>
+          )}
+          {interview.meetingLink && (
+            <div>
+              <p className={styles.slotLabel}>Meeting Link</p>
+              <a
+                href={interview.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.meetingLink}
+              >
+                🔗 Join Meeting
+              </a>
             </div>
           )}
         </div>
@@ -1038,6 +1051,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             interview_date: iv.slot?.slot_date || null,        
             interview_time: iv.slot?.slot_time?.slice(0, 5) || null, 
             location: iv.notes || null,
+            meetingLink: iv.meeting_link || iv.meetingLink || null,
           }))
         );
       } catch (err) {
@@ -1498,18 +1512,31 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
           showToast={showToast}
           onClose={() => setMeetingLinkInterview(null)}
           onSave={async (meetingLink) => {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+            const res = await fetch(
+              `${API_URL}/api/interviews/${meetingLinkInterview.id}/confirm`,
+              {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ meeting_link: meetingLink }),
+              }
+            );
+
+            if (!res.ok) {
+              const body = await res.json();
+              throw new Error(body.error || "Failed to save meeting link.");
+            }
+
+            // Only update local state after API confirms
             setInterviews((prev) =>
               prev.map((iv) =>
                 iv.id === meetingLinkInterview.id
-                  ? {
-                      ...iv,
-                      meetingLink,
-                      interviewStatus: "Confirmed",
-                      status: "Confirmed",
-                    }
+                  ? { ...iv, meetingLink, interviewStatus: "Confirmed", status: "Confirmed" }
                   : iv
               )
             );
+            setMeetingLinkInterview(null);
           }}
         />
       )}

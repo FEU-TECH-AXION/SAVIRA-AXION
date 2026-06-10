@@ -8,58 +8,8 @@ import InterviewsTable from "./InterviewsTable";
 import FilterMenu from "./FilterMenu";
 import AddMeetingLinkModal from "./AddMeetingLinkModal";
 
-// Mock data generator
-function makeInterview(id) {
-  const statuses = ["Invited", "Scheduled", "Confirmed", "Completed", "Cancelled", "Expired", "Rejected"];
-  const caseId = `2026-${String(id).padStart(3, "0")}`;
-  const intervieweeName = [
-    "Maria Garcia",
-    "Juan Santos",
-    "Anna Cruz",
-    "Roberto Luna",
-    "Sophia Reyes",
-    "Carlos Diaz",
-  ][id % 6];
-
-  const date = new Date(2026, (id % 12), (id % 28) + 1);
-
-  return {
-    id: `interview_${id}`,
-    caseId,
-    intervieweeName,
-    interviewType: ["Initial", "Follow-up", "Confirmation"][id % 3],
-    interviewStatus: statuses[id % statuses.length],
-    scheduledDate: date.toISOString().split("T")[0],
-    scheduledTime: `${String(9 + (id % 8)).padStart(2, "0")}:${String((id * 7) % 60).padStart(2, "0")}`,
-    duration: "60 minutes",
-    meetingLink: id % 3 === 0 ? "https://meet.google.com/xyz" : null,
-    notes: "Initial interview for case evaluation",
-  };
-}
-
-const PLACEHOLDER_INTERVIEWS = Array.from({ length: 35 }, (_, i) => makeInterview(i + 1));
-
-// Mock interview slots for the calendar
-function makeSlot(id) {
-  const today = new Date();
-  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (id % 28) - 5);
-  const statuses = ["free", "confirmed", "free", "confirmed", "disabled"];
-  const interviewees = [null, "Maria Garcia", null, "Juan Santos", null];
-  return {
-    id: `slot_${id}`,
-    date: date.toISOString().split("T")[0],
-    time: `${String(9 + (id % 8)).padStart(2, "0")}:00`,
-    duration: 60,
-    status: statuses[id % statuses.length],
-    interviewee: interviewees[id % interviewees.length],
-  };
-}
-
-const PLACEHOLDER_SLOTS = Array.from({ length: 20 }, (_, i) => makeSlot(i + 1));
-
 const PAGE_SIZE = 10;
 
-// ── Slot status legend config ──
 const SLOT_STATUS = {
   confirmed:  { label: "Confirmed",        bg: "#dcfce7", color: "#166534", border: "#86efac" },
   free:       { label: "Free / Available", bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
@@ -69,9 +19,7 @@ const SLOT_STATUS = {
 function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   if (!open) return null;
@@ -87,9 +35,7 @@ function Modal({ open, onClose, title, children, wide }) {
       >
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{title}</h2>
-          <button className={styles.modalClose} onClick={onClose}>
-            <FiX />
-          </button>
+          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
         </div>
         <div className={styles.modalBody}>{children}</div>
       </div>
@@ -113,10 +59,7 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
   };
 
   const handleSubmit = () => {
-    if (!formData.date) {
-      alert("Please select a date");
-      return;
-    }
+    if (!formData.date) { alert("Please select a date"); return; }
     onCreate(formData);
     setFormData({ date: "", time: "09:00", duration: "60" });
     onClose();
@@ -156,12 +99,8 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
         </div>
       </div>
       <div className={styles.modalFooter}>
-        <button className={styles.cancelBtn} onClick={onClose}>
-          Cancel
-        </button>
-        <button className={styles.saveBtn} onClick={handleSubmit}>
-          Create Slot
-        </button>
+        <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
+        <button className={styles.saveBtn} onClick={handleSubmit}>Create Slot</button>
       </div>
     </Modal>
   );
@@ -223,7 +162,7 @@ function DisableSlotModal({ open, onClose, slot, onConfirm }) {
         <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
         <button
           className={styles.btnDanger}
-          onClick={() => { onConfirm(slot); onClose(); }}
+          onClick={() => { onConfirm(slot); }}
         >
           Disable Slot
         </button>
@@ -232,26 +171,23 @@ function DisableSlotModal({ open, onClose, slot, onConfirm }) {
   );
 }
 
-// ── Calendar helpers ──
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 function getFirstDayOfMonth(year, month) {
-  return new Date(year, month, 1).getDay(); // 0 = Sunday
+  return new Date(year, month, 1).getDay();
 }
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-// ── Interview Slot Calendar ──
 function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot }) {
   const today = new Date();
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
-  const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
+  const daysInMonth     = getDaysInMonth(viewYear, viewMonth);
   const firstDayOfMonth = getFirstDayOfMonth(viewYear, viewMonth);
 
-  // Group slots by date string
   const slotsByDate = useMemo(() => {
     const map = {};
     slots.forEach((s) => {
@@ -278,14 +214,12 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
-  // Build calendar grid
   const cells = [];
   for (let i = 0; i < firstDayOfMonth; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
     <div className={styles.calendarWrapper}>
-      {/* Calendar header */}
       <div className={styles.calendarHeader}>
         <div className={styles.calendarNav}>
           <button className={styles.calNavBtn} onClick={prevMonth}><FiChevronLeft /></button>
@@ -296,14 +230,16 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
           <button className={styles.calTodayBtn} onClick={goToToday}>
             <FiCalendar size={14} /> Today
           </button>
-          <button className={styles.primaryBtn} style={{ padding: "0.45rem 1rem", fontSize: "0.82rem" }}
-            onClick={() => onCreateSlot(todayStr)}>
+          <button
+            className={styles.primaryBtn}
+            style={{ padding: "0.45rem 1rem", fontSize: "0.82rem" }}
+            onClick={() => onCreateSlot(todayStr)}
+          >
             <FiPlus size={15} /> Create Slot
           </button>
         </div>
       </div>
 
-      {/* Color legend */}
       <div className={styles.calLegend}>
         {Object.entries(SLOT_STATUS).map(([key, cfg]) => (
           <span key={key} className={styles.calLegendItem}>
@@ -313,13 +249,11 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
         ))}
       </div>
 
-      {/* Day-of-week headers */}
       <div className={styles.calGrid}>
         {DAY_NAMES.map((d) => (
           <div key={d} className={styles.calDayName}>{d}</div>
         ))}
 
-        {/* Calendar cells */}
         {cells.map((day, idx) => {
           if (!day) return <div key={`empty-${idx}`} className={styles.calCell} style={{ background: "transparent" }} />;
 
@@ -330,8 +264,6 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
           return (
             <div key={dateStr} className={`${styles.calCell} ${isToday ? styles.calCellToday : ""}`}>
               <span className={styles.calDayNum}>{day}</span>
-
-              {/* Slots for this day */}
               <div className={styles.calSlotList}>
                 {daySlots.map((slot) => {
                   const cfg = SLOT_STATUS[slot.status] || SLOT_STATUS.free;
@@ -345,7 +277,6 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
                       {slot.interviewee && (
                         <span className={styles.calSlotName}>{slot.interviewee.split(" ")[0]}</span>
                       )}
-                      {/* Quick actions */}
                       <div className={styles.calSlotActions}>
                         {slot.status !== "disabled" && (
                           <button
@@ -358,7 +289,7 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
                           <button
                             className={styles.calSlotActionBtn}
                             title="Disable slot"
-                            onClick={(e) => { e.stopPropagation(); onDisableSlot(slot); }}
+                            onClick={(e) => onDisableSlot(slot) }
                           >🚫</button>
                         )}
                       </div>
@@ -366,8 +297,6 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
                   );
                 })}
               </div>
-
-              {/* Add slot quick button */}
               <button
                 className={styles.calAddSlotBtn}
                 title="Create slot on this day"
@@ -383,8 +312,8 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
 
 export default function CaseInterviewManagement() {
   const router = useRouter();
-  const [interviews, setInterviews] = useState(PLACEHOLDER_INTERVIEWS);
-  const [slots, setSlots] = useState(PLACEHOLDER_SLOTS);
+  const [interviews, setInterviews] = useState([]);
+  const [slots, setSlots] = useState([]);
   const [selectedInterviews, setSelectedInterviews] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
@@ -395,15 +324,80 @@ export default function CaseInterviewManagement() {
   const [meetingLinkModal, setMeetingLinkModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loadingData, setLoadingData] = useState(true);
+  const [user, setUser] = useState(null);
 
-  // Slot modal state
   const [createSlotDate, setCreateSlotDate] = useState("");
-  const [editingSlot, setEditingSlot]   = useState(null);
-  const [disablingSlot, setDisablingSlot] = useState(null);
+  const [editingSlot, setEditingSlot]       = useState(null);
+  const [disablingSlot, setDisablingSlot]   = useState(null);
+
+  // ── Read user from cookie ──
+  useEffect(() => {
+    const userCookie = getCookie("user");
+    if (userCookie) {
+      try {
+        const stored = JSON.parse(userCookie);
+        setUser(stored);
+      } catch (_) {}
+    }
+  }, []);
+
+  // ── Fetch slots and interviews ──
+  useEffect(() => {
+    if (!user) return;
+    const fetchAll = async () => {
+      setLoadingData(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+        const slotsRes = await fetch(
+          `${API_URL}/api/interview_slots?created_by=${user.user_id}&slot_type=case_report`,
+          { credentials: "include" }
+        );
+        const slotsJson = await slotsRes.json();
+        setSlots(
+          (slotsJson.data || []).map((s) => ({
+            ...s,
+            id: s.slot_id,
+            date: s.slot_date,
+            time: s.slot_time.slice(0, 5),
+            duration: s.duration_minutes,
+            status: s.is_available ? "free" : "disabled",
+            interviewee: null,
+          }))
+        );
+
+        const interviewsRes = await fetch(
+          `${API_URL}/api/interviews?type=case_report&interviewer_user_id=${user.user_id}`,
+          { credentials: "include" }
+        );
+        const interviewsJson = await interviewsRes.json();
+        setInterviews(
+          (interviewsJson.data || []).map((iv) => ({
+            ...iv,
+            id: iv.interview_id,
+            caseId: `${new Date(iv.created_at).getFullYear()}-${String(iv.case_report_id).padStart(3, "0")}`,
+            intervieweeName: iv.interviewee
+              ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
+              : "—",
+            interviewStatus: iv.status.charAt(0).toUpperCase() + iv.status.slice(1),
+            scheduledDate: iv.slot?.slot_date || null,
+            scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
+            duration: `${iv.slot?.duration_minutes || 60} minutes`,
+            meetingLink: iv.meeting_link || null,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    fetchAll();
+  }, [user]);
 
   const filteredInterviews = useMemo(() => {
     let result = interviews;
-
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -412,15 +406,12 @@ export default function CaseInterviewManagement() {
           i.intervieweeName.toLowerCase().includes(term)
       );
     }
-
     if (filters.interviewStatus && filters.interviewStatus !== "All" && filters.interviewStatus !== "") {
       result = result.filter((i) => i.interviewStatus === filters.interviewStatus);
     }
-
     if (filters.interviewType && filters.interviewType !== "All" && filters.interviewType !== "") {
       result = result.filter((i) => i.interviewType === filters.interviewType);
     }
-
     return result;
   }, [interviews, searchTerm, filters]);
 
@@ -441,18 +432,36 @@ export default function CaseInterviewManagement() {
     setModalState("createSlot");
   };
 
-  const handleCreateSlot = (formData) => {
-    const newSlot = {
-      id: `slot_${Date.now()}`,
-      date: formData.date,
-      time: formData.time,
-      duration: Number(formData.duration),
-      status: "free",
-      interviewee: null,
-    };
-    setSlots((prev) => [...prev, newSlot]);
-    // TODO: Call API to create interview slot
-    console.log("Creating interview slot:", formData);
+  const handleCreateSlot = async (formData) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/interview_slots`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot_type: "case_report",
+          created_by: user.user_id,
+          slot_date: formData.date,
+          slot_time: formData.time,
+          duration_minutes: Number(formData.duration),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to create slot");
+      const s = json.data;
+      setSlots((prev) => [...prev, {
+        ...s,
+        id: s.slot_id,
+        date: s.slot_date,
+        time: s.slot_time.slice(0, 5),
+        duration: s.duration_minutes,
+        status: "free",
+        interviewee: null,
+      }]);
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleEditSlot = (slot) => {
@@ -460,10 +469,31 @@ export default function CaseInterviewManagement() {
     setModalState("editSlot");
   };
 
-  const handleSaveEditedSlot = (updatedSlot) => {
-    setSlots((prev) => prev.map((s) => s.id === updatedSlot.id ? updatedSlot : s));
-    setEditingSlot(null);
-    // TODO: Call API to update slot
+  const handleSaveEditedSlot = async (updatedSlot) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/interview_slots/${updatedSlot.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot_date: updatedSlot.date,
+          slot_time: updatedSlot.time,
+          duration_minutes: updatedSlot.duration,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update slot");
+      setSlots((prev) => prev.map((s) => s.id === updatedSlot.id ? {
+        ...s,
+        date: updatedSlot.date,
+        time: updatedSlot.time,
+        duration: updatedSlot.duration,
+      } : s));
+      setEditingSlot(null);
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleDisableSlot = (slot) => {
@@ -471,10 +501,24 @@ export default function CaseInterviewManagement() {
     setModalState("disableSlot");
   };
 
-  const handleConfirmDisableSlot = (slot) => {
-    setSlots((prev) => prev.map((s) => s.id === slot.id ? { ...s, status: "disabled" } : s));
-    setDisablingSlot(null);
-    // TODO: Call API to disable slot
+  const handleConfirmDisableSlot = async (slot) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/interview_slots/${slot.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_available: false }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to disable slot");
+
+      setSlots((prev) => prev.map((s) => s.id === slot.id ? { ...s, status: "disabled" } : s));
+      setDisablingSlot(null);
+      setModalState(null); // ← close modal after API succeeds
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   // ── Interview handlers ──
@@ -487,8 +531,16 @@ export default function CaseInterviewManagement() {
     setLoading(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      // await fetch(`${API_URL}/api/interviews/meeting-link`, { ... });
-
+      await Promise.all(
+        interviewIds.map((id) =>
+          fetch(`${API_URL}/api/interviews/${id}/confirm`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ meeting_link: meetingLink }),
+          })
+        )
+      );
       setInterviews((prev) =>
         prev.map((i) =>
           interviewIds.includes(i.id)
@@ -496,7 +548,6 @@ export default function CaseInterviewManagement() {
             : i
         )
       );
-
       setMeetingLinkModal(false);
       setSelectedInterviews([]);
       alert("Meeting link saved successfully!");
@@ -508,16 +559,29 @@ export default function CaseInterviewManagement() {
     }
   };
 
-  const handleMarkComplete = (selectedIds) => {
-    setInterviews((prev) =>
-      prev.map((i) =>
-        selectedIds.includes(i.id)
-          ? { ...i, interviewStatus: "Completed" }
-          : i
-      )
-    );
-    setSelectedInterviews([]);
-    alert("Interviews marked as complete!");
+  const handleMarkComplete = async (selectedIds) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      await Promise.all(
+        selectedIds.map((id) =>
+          fetch(`${API_URL}/api/interviews/${id}/complete`, {
+            method: "PATCH",
+            credentials: "include",
+          })
+        )
+      );
+      setInterviews((prev) =>
+        prev.map((i) =>
+          selectedIds.includes(i.id)
+            ? { ...i, interviewStatus: "Completed" }
+            : i
+        )
+      );
+      setSelectedInterviews([]);
+      alert("Interviews marked as complete!");
+    } catch (err) {
+      alert("Failed to mark complete");
+    }
   };
 
   const handleViewDetails = (interviews) => {
@@ -528,12 +592,9 @@ export default function CaseInterviewManagement() {
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.pageContainer}>
-        {/* Hero Banner */}
         <div className={styles.heroBanner}>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>Interview Management</h1>
-
-            {/* Stats Bar */}
             <div className={styles.statsBar}>
               <div className={styles.statCard}>
                 <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Invited").length}</span>
@@ -555,7 +616,6 @@ export default function CaseInterviewManagement() {
           </div>
         </div>
 
-        {/* ── Interview Slot Calendar ── */}
         <InterviewSlotCalendar
           slots={slots}
           onCreateSlot={handleOpenCreateSlot}
@@ -563,7 +623,6 @@ export default function CaseInterviewManagement() {
           onDisableSlot={handleDisableSlot}
         />
 
-        {/* Table Section */}
         <section className={styles.allList}>
           <div className="container-xl">
             <div className={styles.sectionHeading}>
@@ -572,7 +631,6 @@ export default function CaseInterviewManagement() {
             </div>
             <div className={styles.layout}>
               <div>
-                        {/* Search and Filter */}
                 <div className={styles.searchFilterBar}>
                   <div className={styles.searchBox}>
                     <FiSearch size={18} />
@@ -584,10 +642,7 @@ export default function CaseInterviewManagement() {
                       className={styles.searchInput}
                     />
                     {searchTerm && (
-                      <button
-                        className={styles.clearSearchBtn}
-                        onClick={() => setSearchTerm("")}
-                      >
+                      <button className={styles.clearSearchBtn} onClick={() => setSearchTerm("")}>
                         <FiX size={16} />
                       </button>
                     )}
@@ -599,7 +654,6 @@ export default function CaseInterviewManagement() {
                   />
                 </div>
 
-                {/* Interviews Table */}
                 <InterviewsTable
                   interviews={filteredInterviews}
                   selectedIds={selectedInterviews}
@@ -607,17 +661,15 @@ export default function CaseInterviewManagement() {
                   onViewDetails={handleViewDetails}
                   onMarkComplete={handleMarkComplete}
                   onAddMeetingLink={handleAddMeetingLink}
-                  loading={false}
+                  loading={loadingData}
                   pageSize={PAGE_SIZE}
                 />
               </div>
-              </div>
             </div>
+          </div>
         </section>
-
       </div>
 
-      {/* Modals */}
       <CreateInterviewSlotModal
         open={modalState === "createSlot"}
         onClose={() => setModalState(null)}
@@ -648,4 +700,12 @@ export default function CaseInterviewManagement() {
       />
     </div>
   );
+}
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2)
+    return decodeURIComponent(parts.pop().split(";").shift());
+  return null;
 }
