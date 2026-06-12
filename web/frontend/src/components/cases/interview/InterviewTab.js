@@ -1317,11 +1317,21 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             caseData={caseData}
             interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
             onSlotSelected={(updated) => {
-              setInterviews((json.data || []).map(iv => ({
-                ...iv,
-                id: iv.interview_id,  // normalize
-                interviewStatus: iv.status,
-              })));
+              setInterviews((prev) =>
+                prev.map((iv) =>
+                  iv.id === updated.id
+                    ? {
+                        ...iv,
+                        interviewStatus: "Scheduled",
+                        status: "Scheduled",
+                        scheduledDate: updated.slot?.date || iv.scheduledDate,
+                        scheduledTime: updated.slot?.time || iv.scheduledTime,
+                        interview_date: updated.slot?.date || iv.interview_date,
+                        interview_time: updated.slot?.time || iv.interview_time,
+                      }
+                    : iv
+                )
+              );
               setComplainantRescheduling(false);
               showToast && showToast(complainantRescheduling ? "Slot rescheduled! Your case officer will confirm shortly." : "Slot selected! Your case officer will confirm shortly.");
             }}

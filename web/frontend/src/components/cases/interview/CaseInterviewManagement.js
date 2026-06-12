@@ -59,11 +59,33 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
   };
 
   const handleSubmit = () => {
-    if (!formData.date) { alert("Please select a date"); return; }
-    onCreate(formData);
-    setFormData({ date: "", time: "09:00", duration: "60" });
-    onClose();
-  };
+  if (!formData.date) { alert("Please select a date"); return; }
+
+  // ── Validate future date ──
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDate = new Date(formData.date);
+  selectedDate.setHours(0, 0, 0, 0);
+
+  if (selectedDate < today) {
+    alert("Cannot create a slot for a past date.");
+    return;
+  }
+
+  if (selectedDate.getTime() === today.getTime()) {
+    const [h, m] = formData.time.split(":").map(Number);
+    const slotDateTime = new Date();
+    slotDateTime.setHours(h, m, 0, 0);
+    if (slotDateTime < new Date()) {
+      alert("Cannot create a slot for a past time today.");
+      return;
+    }
+  }
+
+  onCreate(formData);
+  setFormData({ date: "", time: "09:00", duration: "60" });
+  onClose();
+};
 
   return (
     <Modal open={open} onClose={onClose} title="Create Interview Slot" wide>
@@ -74,6 +96,7 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
           value={formData.date}
           onChange={(e) => handleChange("date", e.target.value)}
           className={styles.formInput}
+          min={new Date().toISOString().split("T")[0]}
         />
       </div>
       <div className={styles.formRow}>
@@ -119,6 +142,28 @@ function EditSlotModal({ open, onClose, slot, onSave }) {
 
   const handleSubmit = () => {
     if (!formData.date) { alert("Please select a date"); return; }
+
+    // ── Validate future date ──
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(formData.date);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      alert("Cannot reschedule to a past date.");
+      return;
+    }
+
+    if (selectedDate.getTime() === today.getTime()) {
+      const [h, m] = formData.time.split(":").map(Number);
+      const slotDateTime = new Date();
+      slotDateTime.setHours(h, m, 0, 0);
+      if (slotDateTime < new Date()) {
+        alert("Cannot reschedule to a past time today.");
+        return;
+      }
+    }
+
     onSave({ ...slot, ...formData, duration: Number(formData.duration) });
     onClose();
   };
@@ -127,7 +172,7 @@ function EditSlotModal({ open, onClose, slot, onSave }) {
     <Modal open={open} onClose={onClose} title="Edit Interview Slot" wide>
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>Date</label>
-        <input type="date" value={formData.date} onChange={(e) => handleChange("date", e.target.value)} className={styles.formInput} />
+        <input type="date" value={formData.date} onChange={(e) => handleChange("date", e.target.value)} className={styles.formInput} min={new Date().toISOString().split("T")[0]} />
       </div>
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
