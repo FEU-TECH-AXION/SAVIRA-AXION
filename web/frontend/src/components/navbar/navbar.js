@@ -81,7 +81,7 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            /* ── LOGGED-OUT layout: logo | public links | help | Log In (mirrors V1) ── */
+            /* ── LOGGED-OUT layout: logo | public links | Log In (mirrors V1) ── */
             <>
               {/* Logo */}
               <Link href="/" className={styles.navLogo}>
@@ -104,9 +104,6 @@ export default function Navbar() {
 
               {/* Right slot */}
               <div className={styles.navRight}>
-                <button className={styles.iconBtn} aria-label="Help">
-                  <FiHelpCircle size={20} />
-                </button>
                 <Link href="/login" className={styles.navLoginBtn}>
                   Log In
                 </Link>
