@@ -62,12 +62,13 @@ const LEGAL_LINKS = [
 const ADMIN_LINKS = [
   { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
   {
+    href: "/users",
     label: "Users",
     icon: <MdPeople />,
-    children: [
-      { href: "/users", label: "All Users" },
-      { href: "/users/roles", label: "Roles & Permissions" },
-    ],
+    // children: [
+    //   { href: "/users", label: "All Users" },
+    //   { href: "/users/roles", label: "Roles & Permissions" },
+    // ],
   },
   {
     label: "Cases",
@@ -81,7 +82,15 @@ const ADMIN_LINKS = [
     label: "Legal",
     icon: <MdGavel />,
     children: [
-      { href: "/legalReviews", label: "Legal Reviews" },
+      { href: "/legalReviews", label: "All Legal Cases" },
+    ],
+  },
+  {
+    label: "Volunteers",
+    icon: <MdVolunteerActivism />,
+    children: [
+      { href: "/volunteer", label: "All Volunteers" },
+      { href: "/volunteerInterviews", label: "Interviews" },
     ],
   },
   {
@@ -89,7 +98,6 @@ const ADMIN_LINKS = [
     icon: <MdFolder />,
     children: [
       { href: "/projects", label: "All Projects" },
-      { href: "/volunteer", label: "Volunteers" },
     ],
   },
   { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
