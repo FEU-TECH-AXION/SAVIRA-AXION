@@ -1,5 +1,3 @@
-// frontend/src/app/layout.js
-//
 // This is the root layout — wraps every page.
 // Navbar and Footer live here so you only maintain them in one place.
 //

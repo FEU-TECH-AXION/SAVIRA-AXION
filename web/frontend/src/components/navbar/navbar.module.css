@@ -10,23 +10,46 @@
 }
 
 .navInner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
+  max-width: 100%;
+  padding: 0 1.25rem;
   height: 64px;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.75rem;
+}
+
+/* ── Hamburger ── */
+.hamburgerBtn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.hamburgerBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* ── Logo ── */
 .navLogo img {
-  height: 36px;
+  height: 34px;
   width: auto;
   display: block;
 }
 
-/* ── Desktop links ── */
+/* ── Spacer (logged-in layout) ── */
+.navSpacer {
+  flex: 1;
+}
+
+/* ── Public nav links (logged-out layout) ── */
 .navLinks {
   list-style: none;
   display: flex;
@@ -50,7 +73,6 @@
 }
 
 .navLinkActive {
-  color: var(--sasha-teal-dark);
   background: rgba(255, 255, 255, 0.22);
 }
 
@@ -58,10 +80,70 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
+/* ── Search ── */
+.searchWrapper {
+  width: 240px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 0.25rem;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.65rem;
+  color: rgba(255, 255, 255, 0.65);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.875rem;
+  padding: 0.42rem 0.75rem 0.42rem 2.1rem;
+  outline: none;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: Poppins, sans-serif;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.searchInput:focus {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
 /* ── Right slot ── */
 .navRight {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* ── Icon buttons (bell, help) ── */
+.iconBtn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.iconBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* ── Login button ── */
@@ -70,115 +152,17 @@
   color: #fff;
   text-decoration: none;
   font-weight: 800;
-  font-size: 0.9rem;
-  padding: 0.5rem 1.4rem;
+  font-size: 0.875rem;
+  padding: 0.45rem 1.25rem;
   border-radius: 999px;
   transition: background 0.2s;
   white-space: nowrap;
   display: inline-block;
+  margin-left: 0.25rem;
 }
 
 .navLoginBtn:hover {
   background: var(--sasha-orange-dark);
-}
-
-/* ── Burger button (hidden on desktop) ── */
-.burgerBtn {
-  display: none;
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  padding: 0.25rem;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-/* ── Mobile menu dropdown ── */
-.mobileMenu {
-  background: var(--sasha-teal-dark);
-  padding: 1rem 1.5rem 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.mobileLinks {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.mobileLink,
-.mobileLinkActive {
-  display: block;
-  color: #fff;
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.65rem 0.85rem;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.mobileLinkActive {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.mobileLink:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.mobileDivider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.15);
-  margin: 0.75rem 0;
-}
-
-.mobileLoginBtn {
-  display: block;
-  background: var(--sasha-orange);
-  color: #fff;
-  text-decoration: none;
-  font-weight: 800;
-  font-size: 0.95rem;
-  padding: 0.7rem 1.5rem;
-  border-radius: 999px;
-  text-align: center;
-  transition: background 0.2s;
-}
-
-.mobileLoginBtn:hover {
-  background: var(--sasha-orange-dark);
-}
-
-.mobileUserSection {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.mobileUserName {
-  color: rgba(255, 255, 255, 0.85);
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.mobileLogoutBtn {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.9rem;
-  padding: 0.5rem 1.1rem;
-  border-radius: 999px;
-  transition: background 0.2s;
-}
-
-.mobileLogoutBtn:hover {
-  background: rgba(255, 255, 255, 0.22);
 }
 
 /* ══════════════════════════════
@@ -186,17 +170,18 @@
 ══════════════════════════════ */
 .userMenu {
   position: relative;
+  margin-left: 0.25rem;
 }
 
 .userAvatar {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.5);
   color: #fff;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -227,6 +212,7 @@
   color: #222;
   font-size: 0.95rem;
   padding: 0.25rem 1rem;
+  margin: 0;
 }
 
 .dropdownRole {
@@ -236,6 +222,7 @@
   padding: 0 1rem 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  margin: 0;
 }
 
 .dropdownDivider {
@@ -257,6 +244,7 @@
   cursor: pointer;
   text-align: left;
   font-family: inherit;
+  width: 100%;
 }
 
 .dropdownItem:hover {
@@ -276,31 +264,13 @@
 /* ══════════════════════════════
    RESPONSIVE
 ══════════════════════════════ */
-@media (max-width: 768px) {
-  /* Show burger on left */
-  .burgerBtn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    order: 1;
+@media (max-width: 600px) {
+  .searchWrapper {
+    max-width: none;
   }
 
-  /* Logo moves to center */
-  .navLogo {
-    order: 2;
-    flex: 1;
-    display: flex;
-    justify-content: center;
-  }
-
-  /* Right slot (login/avatar) stays right */
-  .navRight {
-    order: 3;
-    margin-left: 0;
-  }
-
-  /* Hide desktop links and login button */
-  .navLinks, .navLoginBtn {
-    display: none;
+  .navLoginBtn {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
   }
 }

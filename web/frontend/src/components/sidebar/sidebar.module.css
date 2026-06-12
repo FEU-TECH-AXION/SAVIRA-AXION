@@ -1,0 +1,278 @@
+/* ══════════════════════════════
+   BACKDROP
+══════════════════════════════ */
+.backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 149;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.backdropVisible {
+  display: block;
+  opacity: 1;
+}
+
+/* ══════════════════════════════
+   SIDEBAR PANEL
+══════════════════════════════ */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 272px;
+  background: #fff;
+  border-right: 1px solid #e1e4e8;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Header ── */
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1rem 0.75rem;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  border-bottom: 1px solid #e1e4e8;
+  z-index: 1;
+}
+
+.sidebarTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #24292f;
+  font-family: Poppins, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: #57606a;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.closeBtn:hover {
+  background: #f3f4f6;
+  color: #24292f;
+}
+
+/* ── User pill ── */
+.userPill {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.userAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sasha-teal, #0d7377);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+  font-family: Poppins, sans-serif;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.userName {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #24292f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-size: 0.74rem;
+  color: var(--sasha-teal, #0d7377);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid #e1e4e8;
+  margin: 0 0 0.5rem;
+}
+
+/* ── Nav list ── */
+.navList {
+  list-style: none;
+  padding: 0 0.5rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Sidebar item (shared by links and accordion toggle) ── */
+.sidebarItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #24292f;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  font-family: Poppins, sans-serif;
+}
+
+.sidebarItem:hover {
+  background: #f3f4f6;
+  color: var(--sasha-teal, #0d7377);
+}
+
+.sidebarItemActive {
+  background: rgba(13, 115, 119, 0.1);
+  color: var(--sasha-teal, #0d7377);
+  font-weight: 700;
+}
+
+.sidebarIcon {
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.sidebarLabel {
+  flex: 1;
+}
+
+/* ── Accordion ── */
+.accordionToggle {
+  background: none;
+  border: none;
+  text-align: left;
+}
+
+.accordionChevron {
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  color: #57606a;
+  margin-left: auto;
+}
+
+/* ── Sub-nav ── */
+.subNav {
+  list-style: none;
+  padding: 2px 0 2px 2.1rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subNavItem {
+  display: block;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #57606a;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.subNavItem:hover {
+  background: #f3f4f6;
+  color: var(--sasha-teal, #0d7377);
+}
+
+.subNavItemActive {
+  color: var(--sasha-teal, #0d7377);
+  font-weight: 700;
+  background: rgba(13, 115, 119, 0.08);
+}
+
+/* ══════════════════════════════
+   SIDEBAR FOOTER
+══════════════════════════════ */
+.sidebarFooter {
+  flex-shrink: 0;
+  padding: 0 0 0.5rem;
+}
+
+.footerDivider {
+  border: none;
+  border-top: 1px solid #e1e4e8;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.footerLogout {
+  color: #c0392b;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: Poppins, sans-serif;
+}
+
+.footerLogout:hover {
+  background: #fff5f5 !important;
+  color: #c0392b !important;
+}
+
+.footerPrivacy {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 1rem 0.1rem;
+  font-size: 0.73rem;
+  color: #aaa;
+}
+
+.footerPrivacy a {
+  color: #aaa;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footerPrivacy a:hover {
+  color: var(--sasha-teal, #0d7377);
+}

@@ -3,13 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiMenu, FiX } from "react-icons/fi";
 import { useAuth } from "@/lib/AuthContext";
+import {
+  FiMenu,
+  FiBell,
+  FiHelpCircle,
+  FiSearch,
+} from "react-icons/fi";
+import Sidebar from "@/components/sidebar/sidebar";
 import styles from "./navbar.module.css";
-
-/**
- * Navbar Component
- */
 
 const PUBLIC_LINKS = [
   { href: "/", label: "Home" },
@@ -20,46 +22,108 @@ const PUBLIC_LINKS = [
   { href: "/heatmap", label: "Heatmap" },
 ];
 
-const COMPLAINANT_LINKS = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/cases", label: "Report" },
-  { href: "/volunteer", label: "Volunteer" },
-  { href: "/contact", label: "Contact" },
-  { href: "/events", label: "Events" },
-  { href: "/heatmap", label: "Heatmap" },
-];
+// ── Component ──────────────────────────────────────────────
 
-const CASE_OFFICER_LINKS = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/cases", label: "Cases" },
-  { href: "/caseInterviews", label: "Interviews" },
-  { href: "/heatmap", label: "Heatmap" },
-];
+export default function Navbar() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const pathname = usePathname();
 
-const STAFF_LINKS = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/projects", label: "Projects" },
-  { href: "/volunteer", label: "Volunteers" },
-  { href: "/heatmap", label: "Heatmap" },
-];
+  const isActive = (href) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-const LEGAL_LINKS = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/legalReviews", label: "Legal Review" },
-  { href: "/heatmap", label: "Heatmap" },
-];
+  return (
+    <>
+      <nav className={styles.navbar}>
+        <div className={styles.navInner}>
 
-const ADMIN_LINKS = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/users", label: "Users" },
-  { href: "/cases", label: "Cases" },
-  { href: "/legalReviews", label: "Legal Review" },
-  { href: "/projects", label: "Projects" },
-  { href: "/volunteer", label: "Volunteers" },
-  { href: "/heatmap", label: "Heatmap" },
-  { href: "/reportGenerator", label: "Report Generator" },
-];
+          {user ? (
+            /* ── LOGGED-IN layout: hamburger | logo | (spacer) | search | bell | help | avatar ── */
+            <>
+              {/* Hamburger */}
+              <button
+                className={styles.hamburgerBtn}
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open sidebar menu"
+                aria-expanded={sidebarOpen}
+              >
+                <FiMenu size={22} />
+              </button>
+
+              {/* Logo */}
+              <Link href="/dashboard" className={styles.navLogo}>
+                <img src="/sasha-logo-white.png" alt="SASHA logo" />
+              </Link>
+
+              {/* Spacer pushes everything after it to the right */}
+              <div className={styles.navSpacer} />
+
+              {/* Search bar — right-aligned */}
+              <div className={styles.searchWrapper}>
+                <FiSearch className={styles.searchIcon} size={15} />
+                <input
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder="Search…"
+                  aria-label="Search"
+                />
+              </div>
+
+              {/* Right icons */}
+              <div className={styles.navRight}>
+                <button className={styles.iconBtn} aria-label="Notifications">
+                  <FiBell size={20} />
+                </button>
+                <button className={styles.iconBtn} aria-label="Help">
+                  <FiHelpCircle size={20} />
+                </button>
+                <UserMenu user={user} logout={logout} />
+              </div>
+            </>
+          ) : (
+            /* ── LOGGED-OUT layout: logo | public links | help | Log In (mirrors V1) ── */
+            <>
+              {/* Logo */}
+              <Link href="/" className={styles.navLogo}>
+                <img src="/sasha-logo-white.png" alt="SASHA logo" />
+              </Link>
+
+              {/* Desktop public links */}
+              <ul className={styles.navLinks}>
+                {PUBLIC_LINKS.map(({ href, label }) => (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      className={isActive(href) ? styles.navLinkActive : styles.navLink}
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Right slot */}
+              <div className={styles.navRight}>
+                <button className={styles.iconBtn} aria-label="Help">
+                  <FiHelpCircle size={20} />
+                </button>
+                <Link href="/login" className={styles.navLoginBtn}>
+                  Log In
+                </Link>
+              </div>
+            </>
+          )}
+
+        </div>
+      </nav>
+
+      {/* Sidebar — rendered outside nav so it overlays the full page */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    </>
+  );
+}
+
+// ── UserMenu ──────────────────────────────────────────────
 
 const ROLE_LABEL = {
   admin: "Admin",
@@ -69,142 +133,6 @@ const ROLE_LABEL = {
   complainant: "Complainant",
   user: "User",
 };
-
-function getLinks(user) {
-  if (!user) return PUBLIC_LINKS;
-
-  switch (user.role_name?.toLowerCase()) {   // ← use role_name
-    case "admin":          return ADMIN_LINKS;
-    case "staff":          return STAFF_LINKS;
-    case "case officer":   return CASE_OFFICER_LINKS;
-    case "legal personnel":return LEGAL_LINKS;
-    case "complainant":
-    case "user":           return COMPLAINANT_LINKS;
-    default:               return PUBLIC_LINKS;
-  }
-}
-
-// ── Component ─────────────────────────────────────────────
-
-export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const pathname = usePathname();
-
-  const { user, logout } = useAuth();
-
-  const links = getLinks(user);
-
-  const isActive = (href) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
-
-  const closeMenu = () => setMenuOpen(false);
-
-  return (
-    <nav className={styles.navbar}>
-      <div className={styles.navInner}>
-
-        {/* Burger (mobile) */}
-        <button
-          className={styles.burgerBtn}
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
-        </button>
-
-        {/* Logo */}
-        <Link href="/" className={styles.navLogo} onClick={closeMenu}>
-          <img src="/sasha-logo-white.png" alt="SASHA logo" />
-        </Link>
-
-        {/* Desktop links */}
-        <ul className={styles.navLinks}>
-          {links.map(({ href, label }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className={
-                  isActive(href)
-                    ? styles.navLinkActive
-                    : styles.navLink
-                }
-              >
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        {/* Right side */}
-        <div className={styles.navRight}>
-          {user ? (
-            <UserMenu user={user} logout={logout} />
-          ) : (
-            <Link href="/login" className={styles.navLoginBtn}>
-              Log In
-            </Link>
-          )}
-        </div>
-
-      </div>
-
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className={styles.mobileMenu}>
-          <ul className={styles.mobileLinks}>
-            {links.map(({ href, label }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className={
-                    isActive(href)
-                      ? styles.mobileLinkActive
-                      : styles.mobileLink
-                  }
-                  onClick={closeMenu}
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-
-          <div className={styles.mobileDivider} />
-
-          {user ? (
-            <div className={styles.mobileUserSection}>
-              <span className={styles.mobileUserName}>
-                {user.first_name ?? "Account"}
-              </span>
-
-              <button
-                className={styles.mobileLogoutBtn}
-                onClick={() => {
-                  closeMenu();
-                  logout();
-                }}
-              >
-                Log Out
-              </button>
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className={styles.mobileLoginBtn}
-              onClick={closeMenu}
-            >
-              Log In
-            </Link>
-          )}
-        </div>
-      )}
-    </nav>
-  );
-}
-
-// ── UserMenu ─────────────────────────────────────────────
 
 function UserMenu({ user, logout }) {
   const [open, setOpen] = useState(false);
@@ -217,10 +145,8 @@ function UserMenu({ user, logout }) {
         aria-label="Account menu"
         aria-expanded={open}
       >
-        <span>
-          {user.first_name?.[0] ?? "U"}
-          {user.last_name?.[0] ?? ""}
-        </span>
+        {user.first_name?.[0] ?? "U"}
+        {user.last_name?.[0] ?? ""}
       </button>
 
       {open && (
@@ -228,9 +154,8 @@ function UserMenu({ user, logout }) {
           <p className={styles.dropdownName}>
             {user.first_name} {user.last_name}
           </p>
-
           <p className={styles.dropdownRole}>
-            {ROLE_LABEL[user.role_name?.toLowerCase()]}
+            {ROLE_LABEL[user.role_name?.toLowerCase()] ?? user.role_name}
           </p>
 
           <hr className={styles.dropdownDivider} />
@@ -242,7 +167,6 @@ function UserMenu({ user, logout }) {
           >
             My Profile
           </Link>
-
           <Link
             href="/profile?tab=security"
             className={styles.dropdownItem}
@@ -255,10 +179,7 @@ function UserMenu({ user, logout }) {
 
           <button
             className={`${styles.dropdownItem} ${styles.dropdownLogout}`}
-            onClick={() => {
-              setOpen(false);
-              logout();
-            }}
+            onClick={() => { setOpen(false); logout(); }}
           >
             Log Out
           </button>
