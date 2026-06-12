@@ -797,83 +797,271 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSave, showToast }) {
-  const [selectedPersonnelId, setSelectedPersonnelId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [search,      setSearch]      = useState("");
+  const [assigned,    setAssigned]    = useState([]); // { legal_personnel_id, first_name, last_name, legal_personnel_type }
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState("");
 
   useEffect(() => {
-    if (open) { setSelectedPersonnelId(""); setError(""); }
+    if (open) { setSearch(""); setAssigned([]); setError(""); }
   }, [open]);
 
   if (!caseData) return null;
 
+  // Filter out already-assigned people from the search results
+  const assignedIds = assigned.map(p => String(p.legal_personnel_id));
+
+  const searchResults = legalPersonnels.filter(p => {
+  const fullName = `${p.first_name || ""} ${p.last_name || ""}`.toLowerCase();
+  const type     = (p.legal_personnel_type || "").toLowerCase();
+  const query    = search.toLowerCase();
+  const notYetAdded = !assignedIds.includes(String(p.legal_personnel_id));
+  // If no search query, show everyone not yet added
+  if (!search.trim()) return notYetAdded;
+  return notYetAdded && (fullName.includes(query) || type.includes(query));
+});
+
+  function addPerson(person) {
+    setAssigned(prev => [...prev, person]);
+    setSearch("");
+    setError("");
+  }
+
+  function removePerson(id) {
+    setAssigned(prev => prev.filter(p => String(p.legal_personnel_id) !== String(id)));
+  }
+
   async function handleAssign() {
-    if (!selectedPersonnelId) { setError("Please select a legal team member."); return; }
+    if (assigned.length === 0) {
+      setError("Please select at least one legal team member.");
+      return;
+    }
     setSaving(true);
     setError("");
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      // Assign the case to the legal personnel
-      const res = await fetch(`${API_URL}/api/legal_personnels/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          case_report_id: caseData.id,
-          legal_personnel_id: selectedPersonnelId,
-        }),
-      });
-      if (!res.ok) {
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const results = { assigned: [], failed: [] };
+
+    for (const person of assigned) {
+      try {
+        const res = await fetch(`${API_URL}/api/legal_case_assignments/assign`, {
+          method:      "POST",
+          headers:     { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            case_report_id:     caseData.id,
+            legal_personnel_id: person.legal_personnel_id,
+          }),
+        });
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to assign case.");
+        if (!res.ok) {
+          results.failed.push({
+            name:   `${person.first_name} ${person.last_name}`.trim(),
+            reason: body.error || "Failed",
+          });
+        } else {
+          results.assigned.push(`${person.first_name} ${person.last_name}`.trim());
+        }
+      } catch (err) {
+        results.failed.push({
+          name:   `${person.first_name} ${person.last_name}`.trim(),
+          reason: err.message,
+        });
       }
-      const selected = legalPersonnels.find((p) => String(p.legal_personnel_id) === String(selectedPersonnelId));
-      const personnelName = selected
-        ? `${selected.first_name || ""} ${selected.last_name || ""}`.trim() || selected.name || selectedPersonnelId
-        : selectedPersonnelId;
-      onSave({ ...caseData, assignedLegalOfficer: personnelName });
-      showToast(`Case ${caseData.id || caseData.caseId} assigned to ${personnelName}. Email notification sent.`);
-      onClose();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
     }
+
+    setSaving(false);
+
+    if (results.assigned.length > 0) {
+      onSave({ ...caseData, assignedLegalOfficer: results.assigned.join(", ") });
+      showToast(`Assigned: ${results.assigned.join(", ")}.`);
+    }
+
+    if (results.failed.length > 0) {
+      const failMsgs = results.failed.map(f => `${f.name}: ${f.reason}`).join(" · ");
+      setError(`Some assignments failed — ${failMsgs}`);
+      return;
+    }
+
+    onClose();
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Assign to Legal Team Member" wide>
+    <Modal open={open} onClose={onClose} title="Assign Legal Team" wide>
       <div className={styles.formGrid}>
-        <FormGroup label="Case ID"><FInput value={caseData.caseId || caseData.id} disabled /></FormGroup>
-        <FormGroup label="Legal Team Member" required error={error}>
-          <FSelect
-            value={selectedPersonnelId}
-            onChange={(e) => { setSelectedPersonnelId(e.target.value); setError(""); }}
-            error={error}
-          >
-            <option value="">— Select Legal Team Member —</option>
-            {legalPersonnels.length > 0 ? (
-              legalPersonnels.map((p) => {
-                const name = `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.name || `Personnel #${p.legal_personnel_id}`;
-                return (
-                  <option key={p.legal_personnel_id} value={p.legal_personnel_id}>
-                    {name}{p.role ? ` — ${p.role}` : ""}
-                  </option>
-                );
-              })
-            ) : (
-              <option disabled>No legal personnel found</option>
-            )}
-          </FSelect>
+
+        {/* Case ID */}
+        <FormGroup label="Case ID">
+          <FInput value={caseData.caseId || caseData.id} disabled />
         </FormGroup>
+
+        {/* Chip display — who will be assigned */}
+        <FormGroup label="Selected Personnel">
+          <div style={{
+            display:      "flex",
+            flexWrap:     "wrap",
+            gap:          "0.4rem",
+            minHeight:    "2.25rem",
+            padding:      "0.5rem",
+            borderRadius: 8,
+            border:       "1px solid #e5e7eb",
+            background:   "#f9fafb",
+          }}>
+            {assigned.length === 0 ? (
+              <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                No one selected yet — search below to add.
+              </span>
+            ) : (
+              assigned.map(p => (
+                <span
+                  key={p.legal_personnel_id}
+                  style={{
+                    display:      "inline-flex",
+                    alignItems:   "center",
+                    gap:          "0.35rem",
+                    padding:      "0.25rem 0.6rem",
+                    borderRadius: 999,
+                    background:   "#ede9fe",
+                    color:        "#5b21b6",
+                    fontSize:     "0.8rem",
+                    fontWeight:   600,
+                  }}
+                >
+                  {`${p.first_name} ${p.last_name}`.trim()}
+                  <span style={{ fontSize: "0.7rem", color: "#7c3aed", opacity: 0.7 }}>
+                    {p.legal_personnel_type}
+                  </span>
+                  <button
+                    onClick={() => removePerson(p.legal_personnel_id)}
+                    style={{
+                      background: "none",
+                      border:     "none",
+                      cursor:     "pointer",
+                      color:      "#7c3aed",
+                      padding:    0,
+                      lineHeight: 1,
+                      fontSize:   "0.85rem",
+                      marginLeft: "0.1rem",
+                    }}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+        </FormGroup>
+
+        {/* Search input */}
+        <FormGroup
+          label="Search Personnel"
+          hint="Browse the list or type to filter by name or role."
+        >
+          <div style={{ position: "relative" }}>
+            <FInput
+              placeholder="e.g. Ryan, paralegal…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoComplete="off"
+            />
+
+            {/* Dropdown results */}
+            {searchResults.length > 0 && (
+              <div style={{
+                position:     "absolute",
+                top:          "calc(100% + 4px)",
+                left:         0,
+                right:        0,
+                background:   "#fff",
+                border:       "1px solid #e5e7eb",
+                borderRadius: 8,
+                boxShadow:    "0 4px 12px rgba(0,0,0,0.08)",
+                zIndex:       100,
+                maxHeight:    "200px",
+                overflowY:    "auto",
+              }}>
+                {searchResults.map(p => (
+                  <button
+                    key={p.legal_personnel_id}
+                    onClick={() => addPerson(p)}
+                    style={{
+                      display:        "flex",
+                      alignItems:     "center",
+                      justifyContent: "space-between",
+                      width:          "100%",
+                      padding:        "0.6rem 0.85rem",
+                      background:     "none",
+                      border:         "none",
+                      borderBottom:   "1px solid #f3f4f6",
+                      color:          "#292929",
+                      cursor:         "pointer",
+                      textAlign:      "left",
+                      fontSize:       "0.875rem",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f5f3ff"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    <span style={{ fontWeight: 500 }}>
+                      {`${p.first_name} ${p.last_name}`.trim()}
+                    </span>
+                    <span style={{
+                      fontSize:     "0.75rem",
+                      color:        "#6b7280",
+                      background:   "#f3f4f6",
+                      padding:      "2px 8px",
+                      borderRadius: 999,
+                    }}>
+                      {p.legal_personnel_type}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* No results state */}
+            {search.trim().length > 0 && searchResults.length === 0 && (
+              <div style={{
+                position:     "absolute",
+                top:          "calc(100% + 4px)",
+                left:         0,
+                right:        0,
+                background:   "#fff",
+                border:       "1px solid #e5e7eb",
+                borderRadius: 8,
+                padding:      "0.75rem",
+                fontSize:     "0.8rem",
+                color:        "#9ca3af",
+                zIndex:       100,
+              }}>
+                No personnel found matching "{search}".
+              </div>
+            )}
+          </div>
+        </FormGroup>
+
+        {error && (
+          <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: 0 }}>{error}</p>
+        )}
       </div>
+
       <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem" }}>
-        The assigned legal team member will receive an email notification about this case.
+        The same person cannot be assigned to the same case twice simultaneously.
       </p>
+
       <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleAssign} disabled={saving || legalPersonnels.length === 0}>
-          {saving ? "Assigning…" : "Assign & Notify"}
+        <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>
+          Cancel
+        </button>
+        <button
+          className={styles.btnPrimary}
+          onClick={handleAssign}
+          disabled={saving || assigned.length === 0}
+        >
+          {saving
+            ? `Assigning ${assigned.length}…`
+            : `Assign${assigned.length > 0 ? ` (${assigned.length})` : ""}`
+          }
         </button>
       </div>
     </Modal>
@@ -1284,7 +1472,7 @@ export default function LegalReviewManagement() {
       <SelectCaseModal open={modal === "selectEndorse"}   onClose={closeModal} cases={cases} title="Select Case to Endorse / Track Referral" actionLabel="Endorse" onAction={(c) => open(c, "endorse")} />
       <SelectCaseModal open={modal === "selectMonitor"}   onClose={closeModal} cases={cases.filter((c) => c.endorsedTo)} title="Select Case for Monitoring Update" actionLabel="Monitor" onAction={(c) => open(c, "monitor")} />
       <SelectCaseModal open={modal === "selectStatus"}    onClose={closeModal} cases={cases.filter((c) => !c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin))} title="Select Case to Update Status" actionLabel="Update" onAction={(c) => open(c, "statusChange")} />
-      <SelectCaseModal open={modal === "selectAssign"}    onClose={closeModal} cases={cases} title="Select Case to Assign Legal Personnel" actionLabel="Assign" onAction={(c) => open(c, "assign")} />
+      <SelectCaseModal open={modal === "selectAssign"} onClose={closeModal} cases={cases} title="Select Case to Assign Legal Personnel" actionLabel="Assign" onAction={(c) => open(c, "assignLegal")} />
 
       {/* Admin: pending approvals */}
       {modal === "viewPending" && (

@@ -1,13 +1,30 @@
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('legal_personnels').select('*')
-
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
+    const { data, error } = await supabase
+        .from('legal_personnels')
+        .select(`
+            legal_personnel_id,
+            legal_personnel_type,
+            is_available,
+            users (
+                first_name,
+                last_name,
+                email
+            )
+        `)
     if (error) throw error
 
-    return data
+    // Flatten users fields to top-level so the frontend
+    // can read p.first_name directly instead of p.users.first_name
+    return data.map(p => ({
+        legal_personnel_id:   p.legal_personnel_id,
+        legal_personnel_type: p.legal_personnel_type,
+        is_available:         p.is_available,
+        first_name:           p.users?.first_name || "",
+        last_name:            p.users?.last_name  || "",
+        email:                p.users?.email      || "",
+    }))
 }
 
 const create = async (payload) => {

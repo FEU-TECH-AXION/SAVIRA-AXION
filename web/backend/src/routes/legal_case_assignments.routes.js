@@ -1,9 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem } = require('../controllers/legal_case_assignments.controller')
+const { getItems, createItem, assignCase,getAssignmentsByCase, } = require('../controllers/legal_case_assignments.controller')
 
-// Routes are kept thin or short since all the logic is in the controller
 router.get('/', getItems)
 router.post('/', createItem)
+router.post('/assign', assignCase)
+router.get('/:caseReportId', getAssignmentsByCase)
 
 module.exports = router
