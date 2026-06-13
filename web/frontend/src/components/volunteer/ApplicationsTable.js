@@ -135,6 +135,9 @@ export default function ApplicationsTable({
   sortField,
   sortDir,
   onSort,
+  onAssign,
+  isAdmin,
+  isStaff,
   extraColumns,
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -204,6 +207,14 @@ export default function ApplicationsTable({
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>{selectionCount} selected</span>
           <div className={styles.bulkActions}>
+            {isAdmin && (
+              <button
+                className={styles.bulkBtn}
+                onClick={() => onAssign && onAssign(selectedApplicants)}
+              >
+                Assign
+              </button>
+            )}
             <button
               className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`}
               onClick={() => onUpdateStatus && onUpdateStatus(selectedApplicants)}

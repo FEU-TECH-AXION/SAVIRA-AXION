@@ -134,7 +134,7 @@ function ActionCard({ icon, title, description, onView }) {
 // MODAL SHELL
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Modal({ open, onClose, title, children }) {
+function Modal({ open, onClose, title, children, isAdmin, isStaff,}) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -158,6 +158,105 @@ function Modal({ open, onClose, title, children }) {
         <div className={styles.modalBody}>{children}</div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ASSIGN CASE MODAL (admin only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AssignCaseModal({ open, onClose, applicantsData: applicantsDataProp, onSave, staff: staffProp = [] }) {
+  const [staffId, setStaffId] = useState("");
+  const [error, setError] = useState("");
+
+  // Support both single applicant and array of applicants
+  const applicants = Array.isArray(applicantsDataProp) ? applicantsDataProp : (applicantsDataProp ? [applicantsDataProp] : []);
+
+  useEffect(() => {
+    if (applicants.length > 0) {
+      // Reset staff selection when applicants change
+      setStaffId("");
+      setError("");
+    }
+  }, [applicantsDataProp]);
+
+  if (applicants.length === 0) return null;
+
+  function handleSave() {
+    if (!staffId) { setError("Please select a staff member."); return; }
+
+    // Find the selected staff object to get the name
+    const selectedStaff = staffProp.find(s => String(s.staff_id) === String(staffId));
+    const staffName = selectedStaff?.name || `${selectedStaff?.first_name || ''} ${selectedStaff?.last_name || ''}`.trim() || staffId;
+
+    // Call onSave for each applicant
+    applicants.forEach(applicant => {
+      onSave({ ...applicant, assignedStaff: staffName, assignedStaffId: staffId });
+    });
+    onClose();
+  }
+
+  const isBulk = applicants.length > 1;
+  const availableStaff = Array.isArray(staffProp) && staffProp.length > 0 ? staffProp : [];
+
+  return (
+    <Modal open={open} onClose={onClose} title={isBulk ? `Assign Staff (${applicants.length} Applications)` : "Assign Staff"}>
+      <div className={styles.formGrid}>
+        {isBulk ? (
+          <>
+            <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+              <label className={styles.formLabel}>Applications to assign:</label>
+              <div style={{ background: "#f3f4f6", borderRadius: 6, padding: 10, fontSize: "0.875rem", maxHeight: 150, overflowY: "auto" }}>
+                {applicants.map((a, i) => (
+                  <div key={i} style={{ padding: "4px 0", borderBottom: i < applicants.length - 1 ? "1px solid #e5e7eb" : "none" }}>
+                    <strong>{a.id}</strong> — {a.name} ({a.status})
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Application ID</label>
+              <input className={styles.formInput} value={applicants[0].id} disabled />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Applicant Name</label>
+              <input className={styles.formInput} value={applicants[0].name} disabled />
+            </div>
+          </>
+        )}
+        <div className={styles.formGroup} style={isBulk ? { gridColumn: "1 / -1" } : {}}>
+          <label className={styles.formLabel}>
+            Assign to Staff Member <span style={{ color: "#dc2626" }}>*</span>
+          </label>
+          <select
+            className={styles.formInput}
+            value={staffId}
+            onChange={(e) => { setStaffId(e.target.value); setError(""); }}
+            style={error ? { borderColor: "#dc2626" } : {}}
+          >
+            <option value="">— Select Staff —</option>
+            {availableStaff.length > 0 ? (
+              availableStaff.map((s) => {
+                const name = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim();
+                return <option key={s.staff_id} value={s.staff_id}>{name}</option>;
+              })
+            ) : (
+              <option disabled>No staff available</option>
+            )}
+          </select>
+          {error && <span style={{ color: "#dc2626", fontSize: "0.8rem" }}>{error}</span>}
+        </div>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={availableStaff.length === 0}>
+          {isBulk ? `Assign ${applicants.length} Application${applicants.length === 1 ? '' : 's'}` : "Assign Staff"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -254,6 +353,9 @@ function UpdateStatusModal({ open, onClose, applicant, onSave }) {
 export default function VolunteerManagement() {
   const router = useRouter();
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+
+  const isAdmin   = user.role?.toLowerCase() === "admin";
+  const isStaff = user.role?.toLowerCase() === "staff";
 
   useEffect(() => {
     const userCookie = getCookie("user");
@@ -610,9 +712,16 @@ export default function VolunteerManagement() {
                 pageSize={PAGE_SIZE}
                 onPageChange={setPage}
                 onRowClick={(a) => router.push(`/volunteer/view?id=${a.id}`)}
+                onAssign={(selected) => {
+                    // bulk assign: pass all selected applications
+                    setSelectedApplicant(selected);
+                    setModal("assign");
+                  }}
                 onUpdateStatus={(selected) => {
                   if (selected.length >= 1) openUpdate(selected[0]);
                 }}
+                isAdmin={isAdmin}
+                isStaff={isStaff}
                 sortField={sortField}
                 sortDir={sortDir}
                 onSort={handleSort}
@@ -624,6 +733,20 @@ export default function VolunteerManagement() {
       </main>
 
       {/* ── Modals ── */}
+      <AssignCaseModal
+        open={modal === "assign"}
+        onClose={() => { setModal(null); setSelectedApplicant(null); }}
+        applicantsData={selectedApplicant}
+        staff={[]}
+        onSave={(updated) => {
+          if (Array.isArray(updated)) {
+            updated.forEach(u => setApplicants(prev => prev.map(a => a.id === u.id ? { ...a, ...u } : a)));
+          } else {
+            setApplicants(prev => prev.map(a => a.id === updated.id ? { ...a, ...updated } : a));
+          }
+          showToast("Staff assigned successfully.");
+        }}
+      />
       <UpdateStatusModal
         open={modal === "update"}
         onClose={() => setModal(null)}
