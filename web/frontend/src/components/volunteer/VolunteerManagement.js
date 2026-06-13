@@ -162,10 +162,10 @@ function Modal({ open, onClose, title, children, isAdmin, isStaff,}) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ASSIGN CASE MODAL (admin only)
+// ASSIGN APPLICATION MODAL (admin only)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AssignCaseModal({ open, onClose, applicantsData: applicantsDataProp, onSave, staff: staffProp = [] }) {
+function AssignApplicationModal({ open, onClose, applicantsData: applicantsDataProp, onSave, staff: staffProp = [] }) {
   const [staffId, setStaffId] = useState("");
   const [error, setError] = useState("");
 
@@ -237,7 +237,7 @@ function AssignCaseModal({ open, onClose, applicantsData: applicantsDataProp, on
             onChange={(e) => { setStaffId(e.target.value); setError(""); }}
             style={error ? { borderColor: "#dc2626" } : {}}
           >
-            <option value="">— Select Staff —</option>
+            <option value="">Select Staff</option>
             {availableStaff.length > 0 ? (
               availableStaff.map((s) => {
                 const name = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim();
@@ -733,7 +733,7 @@ export default function VolunteerManagement() {
       </main>
 
       {/* ── Modals ── */}
-      <AssignCaseModal
+      <AssignApplicationModal
         open={modal === "assign"}
         onClose={() => { setModal(null); setSelectedApplicant(null); }}
         applicantsData={selectedApplicant}
