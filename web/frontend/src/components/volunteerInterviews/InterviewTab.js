@@ -16,10 +16,10 @@ import {
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
 //
-// Displayed when caseData.isWillingForInterview === true.
+// Displayed when appData.isWillingForInterview === true.
 //
 // Staff view: schedule/manage interviews (unchanged).
-// Complainant view: status-driven —
+// Applicant view: status-driven —
 //   • No interview record         → hide section (nothing shown)
 //   • interviewStatus = Invited   → "Select a Slot" calendar + expiry countdown
 //   • interviewStatus = Scheduled → "Waiting for Link" view
@@ -81,7 +81,7 @@ function ExpiryCountdown({ expiresAt }) {
         padding: "10px 14px", fontSize: "0.875rem", color: "#991b1b",
         display: "flex", alignItems: "center", gap: 8,
       }}>
-        ⏰ <strong>This invitation has expired.</strong> Please contact your case officer.
+        ⏰ <strong>This invitation has expired.</strong> Please contact your application officer.
       </div>
     );
   }
@@ -220,7 +220,7 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
           )}
         </div>
         <p className={styles.rpConfirmNote}>
-          Once confirmed, your case officer will be notified and will send the meeting details shortly.
+          Once confirmed, your application officer will be notified and will send the meeting details shortly.
         </p>
         <div className={styles.rpConfirmActions}>
           <button className={styles.rpBackBtn} onClick={() => setPendingSlot(null)}>
@@ -281,7 +281,7 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
           <>
             <p className={styles.rpPromptTitle}>No slots available</p>
             <p className={styles.rpPromptSub}>
-              Please contact your case officer to arrange an interview time.
+              Please contact your application officer to arrange an interview time.
             </p>
           </>
         )}
@@ -357,7 +357,7 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
   );
 }
 
-// Modal shell (same as CaseManagement)
+// Modal shell (same as ApplicationManagement)
 function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -407,7 +407,7 @@ function FTextarea({ error, ...props }) {
 
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
-function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
+function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, userId, userRole, applicantUserId }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const [expiryDays, setExpiryDays] = useState("7");
   const [notes, setNotes]           = useState("");
@@ -434,15 +434,34 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
 }
 
   async function handleSend() {
-    console.log("handleSend fired", { userId, caseDataId: caseData.id, reporterId: caseData.reporterId });
+    let intervieweeUserId = applicantUserId || appData.applicantUserId;
     setSubmitting(true);
     setError(null);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      
-      // Validate reporterId exists
-      if (!caseData.reporterId) {
-        throw new Error("Complainant user ID is missing. Cannot create interview. Check that the case has a valid complainant assigned.");
+
+      // Fallback: fetch the applicant's user ID directly if it wasn't
+      // already resolved (e.g. effect hadn't finished, or appData was stale).
+      if (!intervieweeUserId) {
+        const appRes = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
+          credentials: "include",
+        });
+        const appJson = await appRes.json().catch(() => ({}));
+        console.log("fallback applicant lookup:", appJson);
+        intervieweeUserId =
+          appJson.data?.applicant_user_id ||
+          appJson.applicant_user_id ||
+          appJson.data?.user_id ||
+          appJson.user_id ||
+          null;
+        if (intervieweeUserId) setApplicantUserId(intervieweeUserId);
+      }
+
+      console.log("handleSend fired", { userId, appDataId: appData.id, applicantUserId: intervieweeUserId });
+
+      // Validate applicantUserId exists
+      if (!intervieweeUserId) {
+        throw new Error("Applicant user ID is missing. Cannot create interview. Check that the application has a valid applicant assigned.");
       }
       
       if (!userId) {
@@ -450,9 +469,9 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
       }
 
       console.log("Creating interview with:", {
-        type: "case_report",
-        case_report_id: caseData.id,
-        interviewee_user_id: caseData.reporterId,
+        type: "volunteer_application",
+        application_id: appData.id,
+        interviewee_user_id: intervieweeUserId,
         interviewer_user_id: userId,
       });
       
@@ -461,9 +480,9 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "case_report",
-          case_report_id: caseData.id,
-          interviewee_user_id: caseData.reporterId,
+          type: "volunteer_application",
+          application_id: appData.id,
+          interviewee_user_id: intervieweeUserId,
           interviewer_user_id: userId,
           notes: notes || null,
           slot_expires_at: new Date(Date.now() + parseInt(expiryDays) * 86400000).toISOString(),
@@ -480,7 +499,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
       }
 
       console.log("✓ Interview created successfully");
-      showToast && showToast(`Interview invitation sent for ${caseData.caseId}.`);
+      showToast && showToast(`Interview invitation sent for ${appData.appRefId}.`);
       onClose();
 
     } catch (err) {
@@ -493,9 +512,9 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Invite Complainant to Interview">
+    <Modal open={open} onClose={onClose} title="Invite Applicant to Interview">
       <p className={styles.formDesc}>
-        Send an interview invitation to the complainant for <strong>{caseData?.caseId}</strong>.
+        Send an interview invitation to the applicant for <strong>{appData?.appRefId}</strong>.
         They will be able to select a slot from your available calendar.
       </p>
       
@@ -506,7 +525,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
       )}
 
       <div className={styles.formGrid}>
-        <FormGroup label="Invitation expiry (days)" hint="How many days the complainant has to select a slot.">
+        <FormGroup label="Invitation expiry (days)" hint="How many days the applicant has to select a slot.">
           <FSelect value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)}>
             <option value="3">3 days</option>
             <option value="5">5 days</option>
@@ -514,7 +533,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
             <option value="14">14 days</option>
           </FSelect>
         </FormGroup>
-        <FormGroup label="Notes for complainant" hint="Optional message shown alongside the invitation.">
+        <FormGroup label="Notes for applicant" hint="Optional message shown alongside the invitation.">
           <FTextarea
             placeholder="e.g. Please select a slot at your earliest convenience."
             value={notes}
@@ -612,16 +631,16 @@ function AddMeetingLinkModal({
   );
 }
 
-// ─── Complainant: Invited view (Select a Slot) ────────────────────────────────
+// ─── Applicant: Invited view (Select a Slot) ────────────────────────────────
 
-function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
+function InvitedView({ appData, interview, onSlotSelected, showToast }) {
 
   useEffect(() => {
     const fetchSlots = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         const res = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true`,
+          `${API_URL}/api/interview_slots?slot_type=volunteer_application&is_available=true`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Failed to load slots");
@@ -664,7 +683,7 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
         throw new Error(body.error || "Failed to confirm slot.");
       }
 
-      showToast?.("Slot selected! Your case officer will confirm shortly.");
+      showToast?.("Slot selected! Your application officer will confirm shortly.");
       onSlotSelected?.({ ...interview, interviewStatus: "Scheduled", slot });
     } catch (err) {
       showToast?.(err.message || "Failed to confirm slot.", "error");
@@ -689,7 +708,7 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
       <div>
         <h2 className={styles.statusTitle}>📅 Select an Interview Slot</h2>
         <p className={styles.statusDesc}>
-          You have been invited to an interview with your SASHA case officer.
+          You have been invited to an interview with your SASHA application officer.
           Please select a time slot that works for you.
         </p>
       </div>
@@ -705,7 +724,7 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
           background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
           padding: "12px 16px", fontSize: "0.875rem", color: "#92400e",
         }}>
-          ⚠️ No available slots at the moment. Please contact your case officer directly.
+          ⚠️ No available slots at the moment. Please contact your application officer directly.
         </div>
       ) : (
         <SlotPickerCalendar
@@ -723,7 +742,7 @@ function InvitedView({ caseData, interview, onSlotSelected, showToast }) {
   );
 }
 
-// ─── Complainant: Scheduled view (Waiting for Link) ───────────────────────────
+// ─── Applicant: Scheduled view (Waiting for Link) ───────────────────────────
 
 function ScheduledView({ interview, onReschedule }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
@@ -741,7 +760,7 @@ function ScheduledView({ interview, onReschedule }) {
         <div>
           <h2 className={styles.statusTitle}>🕐 Waiting for Meeting Link</h2>
           <p className={styles.statusDesc}>
-            Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly.
+            Your slot has been reserved. Your application officer will confirm and send you the meeting link shortly.
           </p>
         </div>
         {onReschedule && (
@@ -790,7 +809,7 @@ function ScheduledView({ interview, onReschedule }) {
   );
 }
 
-// ─── Complainant: Confirmed view (Interview is Confirmed) ─────────────────────
+// ─── Applicant: Confirmed view (Interview is Confirmed) ─────────────────────
 
 function ConfirmedView({ interview, onReschedule }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
@@ -870,7 +889,7 @@ function ConfirmedView({ interview, onReschedule }) {
 
 // ─── Staff: Reschedule Modal ──────────────────────────────────────────────────
 //
-// Opens when staff/case officer clicks "Reschedule" on an interview card.
+// Opens when staff/application officer clicks "Reschedule" on an interview card.
 // Pre-fills current date/time/location and lets them pick a new one.
 //
 
@@ -936,7 +955,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
         </div>
         <div className={styles.modalBody}>
           <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
-            Update the date, time, or location below. The complainant will be notified of the change.
+            Update the date, time, or location below. The applicant will be notified of the change.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
             <div>
@@ -995,10 +1014,10 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
 
 // ─── Main InterviewTab component ──────────────────────────────────────────────
 
-export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToast, userId, actorName,
+export default function InterviewTab({ appData, isStaff, isApplicationOfficer, showToast, userId, actorName,
   userRole, }) {
   // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
-  // Switch MOCK_VIEW to see each complainant state:
+  // Switch MOCK_VIEW to see each applicant state:
   //   "Invited" | "Scheduled" | "Confirmed" | "Completed" | "Cancelled" | "Expired"
   // const MOCK_VIEW = "Invited";
 
@@ -1028,12 +1047,38 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   // ];
   // // ─────────────────────────────────────────────────────────────────────────
 
+  const [applicantUserId, setApplicantUserId] = useState(appData.applicantUserId || null);
+
+  // Ensure we have the applicant's user ID for creating interviews,
+  // since appData from ViewApplication may not always include it.
+  useEffect(() => {
+    if (appData.applicantUserId) {
+      setApplicantUserId(appData.applicantUserId);
+      return;
+    }
+    const fetchApplicantUserId = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const id = json.data?.applicant_user_id || json.applicant_user_id || null;
+        if (id) setApplicantUserId(id);
+      } catch (err) {
+        console.error("Failed to fetch applicant user ID:", err);
+      }
+    };
+    fetchApplicantUserId();
+  }, [appData.id, appData.applicantUserId]);
+
   useEffect(() => {
     const fetchInterviews = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         const res = await fetch(
-          `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
+          `${API_URL}/api/interviews?type=volunteer_application&application_id=${appData.id}`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Failed to load interviews");
@@ -1062,7 +1107,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
       }
     };
     fetchInterviews();
-  }, [caseData.id]);
+  }, [appData.id]);
 
   
   const [modal, setModal] = useState(null);
@@ -1073,8 +1118,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   const [submitting, setSubmitting]   = useState(false);
   // Reschedule state: null = closed; string = interview id being rescheduled (staff)
   const [rescheduleId, setRescheduleId]         = useState(null);
-  // Complainant reschedule: flip back to Invited so they can pick a new slot
-  const [complainantRescheduling, setComplainantRescheduling] = useState(false);
+  // Applicant reschedule: flip back to Invited so they can pick a new slot
+  const [applicantRescheduling, setApplicantRescheduling] = useState(false);
 
   const [form, setForm] = useState({
     interviewDate: "",
@@ -1103,15 +1148,15 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      // Get complainant UUID from case report
-      const caseRes = await fetch(`${API_URL}/api/case_reports/${caseData.id}`, {
+      // Get applicant UUID from volunteer application
+      const appRes = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
         credentials: "include",
       });
-      const caseJson = await caseRes.json();
-      const intervieweeId = caseJson.data?.complainant_user_id;
+      const appJson = await appRes.json();
+      const intervieweeId = appJson.data?.applicant_user_id;
 
       if (!intervieweeId) {
-        throw new Error("Complainant not found for this case.");
+        throw new Error("Applicant not found for this application.");
       }
 
       // Step 1: Create the slot
@@ -1120,7 +1165,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_type: "case_report",
+          slot_type: "volunteer_application",
           created_by: userId,
           slot_date: form.interviewDate,
           slot_time: form.interviewTime,
@@ -1142,8 +1187,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "case_report",
-          case_report_id: caseData.id,
+          type: "volunteer_application",
+          application_id: appData.id,
           interviewee_user_id: intervieweeId,
           interviewer_user_id: userId,
           notes: form.notes || null,
@@ -1235,7 +1280,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_type: "case_report",
+          slot_type: "volunteer_application",
           created_by: userId,
           slot_date: updated.scheduledDate,
           slot_time: updated.scheduledTime,
@@ -1278,8 +1323,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     boxSizing: "border-box",
   });
 
-  // ── Complainant view: status-driven ──────────────────────────────────────────
-  if (!isStaff && !isCaseOfficer) {
+  // ── Applicant view: status-driven ──────────────────────────────────────────
+  if (!isStaff && !isApplicationOfficer) {
     if (loading) {
       return <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Loading interview details…</p>;
     }
@@ -1294,11 +1339,11 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
     const status = activeInterview.interviewStatus || activeInterview.status;
 
-    // Complainant requested a reschedule → show slot picker again with a banner
-    if (complainantRescheduling || status === "Invited") {
+    // Applicant requested a reschedule → show slot picker again with a banner
+    if (applicantRescheduling || status === "Invited") {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {complainantRescheduling && (
+          {applicantRescheduling && (
             <div style={{
               background: "#fef9c3", border: "1px solid #fde68a", borderRadius: 8,
               padding: "10px 14px", fontSize: "0.875rem", color: "#92400e",
@@ -1306,7 +1351,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             }}>
               <span><strong>Rescheduling:</strong> Please select a new slot below.</span>
               <button
-                onClick={() => setComplainantRescheduling(false)}
+                onClick={() => setApplicantRescheduling(false)}
                 style={{ background: "none", border: "none", fontSize: "0.8rem", color: "#92400e", cursor: "pointer", fontWeight: 600 }}
               >
                 ✕ Keep original
@@ -1314,7 +1359,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             </div>
           )}
           <InvitedView
-            caseData={caseData}
+            appData={appData}
             interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
             onSlotSelected={(updated) => {
               setInterviews((prev) =>
@@ -1332,8 +1377,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                     : iv
                 )
               );
-              setComplainantRescheduling(false);
-              showToast && showToast(complainantRescheduling ? "Slot rescheduled! Your case officer will confirm shortly." : "Slot selected! Your case officer will confirm shortly.");
+              setApplicantRescheduling(false);
+              showToast && showToast(applicantRescheduling ? "Slot rescheduled! Your application officer will confirm shortly." : "Slot selected! Your application officer will confirm shortly.");
             }}
             showToast={showToast}
           />
@@ -1345,7 +1390,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
       return (
         <ScheduledView
           interview={activeInterview}
-          onReschedule={() => setComplainantRescheduling(true)}
+          onReschedule={() => setApplicantRescheduling(true)}
         />
       );
     }
@@ -1354,7 +1399,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
       return (
         <ConfirmedView
           interview={activeInterview}
-          onReschedule={() => setComplainantRescheduling(true)}
+          onReschedule={() => setApplicantRescheduling(true)}
         />
       );
     }
@@ -1362,13 +1407,12 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     // Completed / Cancelled / Expired — show a simple note
     return (
       <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
-        <p style={{ fontSize: "1.5rem" }}>📋</p>
         <p style={{ fontSize: "0.9rem", color: "#6b7280" }}>
           {status === "Completed"
             ? "Your interview has been completed. Thank you."
             : status === "Expired"
-            ? "Your interview invitation has expired. Please contact your case officer."
-            : "Your interview has been cancelled. Please contact your case officer if you have questions."}
+            ? "Your interview invitation has expired. Please contact your application officer."
+            : "Your interview has been cancelled. Please contact your application officer if you have questions."}
         </p>
       </div>
     );
@@ -1385,14 +1429,14 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             Interview Scheduling
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: "0.875rem", color: "#6b7280" }}>
-            Manage interview sessions for this complainant.
+            Manage interview sessions for this applicant.
           </p>
         </div>
-        {(isStaff || isCaseOfficer) && !showForm && 
+        {(isStaff || isApplicationOfficer) && !showForm && 
         (
           <button
             onClick={() => {
-              console.log("invite clicked", { isCaseOfficer, isWillingForInterview: caseData.isWillingForInterview });
+              console.log("invite clicked", { isApplicationOfficer, isWillingForInterview: appData.isWillingForInterview });
               setModal("inviteInterview");
             }}
             style={{
@@ -1413,7 +1457,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
       </div>
 
       {/* Schedule form */}
-      {showForm && (isStaff || isCaseOfficer) && (
+      {showForm && (isStaff || isApplicationOfficer) && (
         <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: "1.25rem 1.5rem" }}>
           <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 700, color: "#374151" }}>
             Schedule New Interview
@@ -1455,7 +1499,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                 Notes / Instructions
               </label>
               <textarea
-                placeholder="Any preparation notes or instructions for the complainant…"
+                placeholder="Any preparation notes or instructions for the applicant…"
                 value={form.notes}
                 onChange={set("notes")}
                 rows={3}
@@ -1487,9 +1531,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Loading interviews…</p>
       ) : interviews.length === 0 ? (
         <div style={{ textAlign: "center", padding: "2.5rem 1rem", background: "#f9fafb", borderRadius: 12, border: "1px dashed #d1d5db" }}>
-          <p style={{ margin: 0, fontSize: "1.5rem" }}>📋</p>
           <p style={{ margin: "8px 0 0", fontSize: "0.9rem", color: "#6b7280" }}>No interviews scheduled yet.</p>
-          {(isStaff || isCaseOfficer) && (
+          {(isStaff || isApplicationOfficer) && (
             <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#9ca3af" }}>Use the button above to schedule an interview session.</p>
           )}
         </div>
@@ -1527,7 +1570,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                 </p>
               )}
 
-              {(isStaff || isCaseOfficer) && iv.status !== "Cancelled" && iv.status !== "Completed" && (
+              {(isStaff || isApplicationOfficer) && iv.status !== "Cancelled" && iv.status !== "Completed" && (
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
                   <button
                     onClick={() => setMeetingLinkInterview(iv)}
@@ -1559,11 +1602,12 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         <InviteToInterviewModal
           open
           onClose={() => setModal(null)}
-          caseData={caseData}
+          appData={appData}
           actorName={actorName}
           userId={userId}
           userRole={userRole}
           showToast={showToast}
+          applicantUserId={applicantUserId}
         />
       )}
 

@@ -355,7 +355,7 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
   );
 }
 
-export default function CaseInterviewManagement() {
+export default function VolunteerApplicationInterviewManagement() {
   const router = useRouter();
   const [interviews, setInterviews] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -396,7 +396,7 @@ export default function CaseInterviewManagement() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
         const slotsRes = await fetch(
-          `${API_URL}/api/interview_slots?created_by=${user.user_id}&slot_type=case_report`,
+          `${API_URL}/api/interview_slots?created_by=${user.user_id}&slot_type=volunteer_application`,
           { credentials: "include" }
         );
         const slotsJson = await slotsRes.json();
@@ -413,7 +413,7 @@ export default function CaseInterviewManagement() {
         );
 
         const interviewsRes = await fetch(
-          `${API_URL}/api/interviews?type=case_report&interviewer_user_id=${user.user_id}`,
+          `${API_URL}/api/interviews?type=volunteer_application&interviewer_user_id=${user.user_id}`,
           { credentials: "include" }
         );
         const interviewsJson = await interviewsRes.json();
@@ -421,7 +421,7 @@ export default function CaseInterviewManagement() {
           (interviewsJson.data || []).map((iv) => ({
             ...iv,
             id: iv.interview_id,
-            caseId: `${new Date(iv.created_at).getFullYear()}-${String(iv.case_report_id).padStart(3, "0")}`,
+            appRefId: `${new Date(iv.created_at).getFullYear()}-${String(iv.application_id).padStart(3, "0")}`,
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "—",
@@ -447,7 +447,7 @@ export default function CaseInterviewManagement() {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (i) =>
-          i.caseId.toLowerCase().includes(term) ||
+          i.appRefId.toLowerCase().includes(term) ||
           i.intervieweeName.toLowerCase().includes(term)
       );
     }
@@ -485,7 +485,7 @@ export default function CaseInterviewManagement() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_type: "case_report",
+          slot_type: "volunteer_application",
           created_by: user.user_id,
           slot_date: formData.date,
           slot_time: formData.time,
@@ -631,7 +631,7 @@ export default function CaseInterviewManagement() {
 
   const handleViewDetails = (interviews) => {
     const interview = Array.isArray(interviews) ? interviews[0] : interviews;
-    router.push(`/cases/view?caseId=${interview.caseId.split("-")[1]}&tab=interview`);
+    router.push(`/volunteer/view-application?id=${interview.appRefId.split("-")[1]}&tab=interview`);
   };
 
   return (
@@ -681,7 +681,7 @@ export default function CaseInterviewManagement() {
                     <FiSearch size={18} />
                     <input
                       type="text"
-                      placeholder="Search by case ID or interviewee name..."
+                      placeholder="Search by application ID or interviewee name..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className={styles.searchInput}

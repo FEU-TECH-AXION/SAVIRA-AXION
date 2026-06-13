@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock, FiX } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
+import InterviewTab from "../volunteerInterviews/InterviewTab";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -165,7 +166,6 @@ function UpdateStatusModal({ open, onClose, appData, onSave }) {
             placeholder="Optional reviewer notes…"
             value={notes}
             onChange={e => setNotes(e.target.value)}
-className={styles.notesFieldTextarea}
           />
         </div>
       </div>
@@ -1337,6 +1337,7 @@ export default function ViewApplication() {
 
         setAppData({
           id:                    data.volunteer_application_id,
+          applicantUserId:       data.applicant_user_id || data.user_id || null,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.notes || "",
           assignedEvaluator:     data.assigned_evaluator || data.assigned_staff || null,
@@ -1376,6 +1377,7 @@ export default function ViewApplication() {
           contactNumber:         data.contact_number || "Not Provided",
           email:                 data.email || "Not Provided",
           interview:             data.interview_required ? "Yes" : "No",
+          isWillingForInterview: !!data.interview_required,
 
           // ── Screening Questions ──
           // These come from screening_answers table — need a separate fetch
@@ -1426,8 +1428,8 @@ export default function ViewApplication() {
   }
 
   const isAdmin       = user.role?.toLowerCase() === "admin";
-  const isCaseOfficer = user.role?.toLowerCase()?.includes("officer");
-  const isStaff       = isAdmin || isCaseOfficer;
+  const isApplicationOfficer = user.role?.toLowerCase()?.includes("officer");
+  const isStaff       = isAdmin || isApplicationOfficer;
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -1462,6 +1464,9 @@ export default function ViewApplication() {
 
   const tabs = [
     { id: "details",    label: " Application Details" },
+    ...(appData.isWillingForInterview ? [
+      { id: "interview", label: "Interview" },
+    ] : []),
     ...(isStaff ? [
       { id: "evaluation", label: "Application Evaluation" },
       { id: "nlp",        label: "NLP Analysis" },
@@ -1525,6 +1530,18 @@ export default function ViewApplication() {
           {/* Tab content */}
           {activeTab === "details" && userLoaded && (
             <ApplicationDetailsTab appData={appData} isStaff={isStaff} />
+          )}
+
+          {activeTab === "interview" && appData.isWillingForInterview && userLoaded && (
+            <InterviewTab
+              appData={appData}
+              isStaff={isStaff}
+              isApplicationOfficer={isApplicationOfficer}
+              showToast={showToast}
+              userId={user.id}
+              actorName={`${user.firstName || ""} ${user.lastName || ""}`.trim()}
+              userRole={user.role}
+            />
           )}
 
           {activeTab === "evaluation" && isStaff && userLoaded && (
