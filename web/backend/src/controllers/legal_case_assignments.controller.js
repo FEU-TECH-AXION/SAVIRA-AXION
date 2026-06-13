@@ -108,4 +108,111 @@ const getAssignmentsByCase = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem, assignCase, getAssignmentsByCase }
+const bulkAssignCase = async (req, res) => {
+    const { case_report_id, legal_personnel_ids, notes } = req.body
+    const performed_by = req.user?.user_id ?? null
+
+    if (!case_report_id || !Array.isArray(legal_personnel_ids) || legal_personnel_ids.length === 0) {
+        return res.status(400).json({
+            error: 'case_report_id and legal_personnel_ids (array) are required.'
+        })
+    }
+
+    try {
+        const results = { assigned: [], failed: [] }
+
+        // Check each person and build valid rows
+        const validRows = []
+        for (const legal_personnel_id of legal_personnel_ids) {
+
+            // 1. Check for duplicate active assignment
+            const alreadyAssigned = await LegalCaseAssignmentsModel.isAlreadyAssigned(
+                case_report_id,
+                legal_personnel_id
+            )
+            if (alreadyAssigned) {
+                results.failed.push({
+                    legal_personnel_id,
+                    reason: 'Already actively assigned to this case.'
+                })
+                continue
+            }
+
+            // 2. Resolve assignment_role from legal_personnel_type
+            const { data: personnelData, error: personnelError } = await supabase
+                .from('legal_personnels')
+                .select('legal_personnel_type, users(first_name, last_name)')
+                .eq('legal_personnel_id', legal_personnel_id)
+                .single()
+
+            if (personnelError || !personnelData) {
+                results.failed.push({
+                    legal_personnel_id,
+                    reason: 'Personnel not found.'
+                })
+                continue
+            }
+
+            const typeMap = {
+                'legal officer': 'legal_officer',
+                'paralegal':     'paralegal',
+            }
+            const assignment_role = typeMap[personnelData.legal_personnel_type?.toLowerCase()]
+            if (!assignment_role) {
+                results.failed.push({
+                    legal_personnel_id,
+                    reason: `Unknown type: ${personnelData.legal_personnel_type}`
+                })
+                continue
+            }
+
+            validRows.push({
+                case_report_id,
+                legal_personnel_id,
+                assignment_role,
+                assigned_by:  performed_by,
+                notes:        notes ?? null,
+                is_active:    true,
+                _name: personnelData.users
+                    ? `${personnelData.users.first_name} ${personnelData.users.last_name}`.trim()
+                    : `Personnel #${legal_personnel_id}`,
+            })
+        }
+
+        // 3. Bulk insert all valid rows with shared batch_id
+        if (validRows.length > 0) {
+            const rowsToInsert = validRows.map(({ _name, ...row }) => row)
+            await LegalCaseAssignmentsModel.bulkCreate(rowsToInsert)
+
+            // 4. Log each assignment to case_report_logs
+            const logRows = validRows.map(r => ({
+                case_report_id,
+                action_type:          `${r.assignment_role}_assigned`,
+                remarks:              `${r.assignment_role === 'legal_officer' ? 'Legal officer' : 'Paralegal'} assigned: ${r._name}.${notes ? ' Notes: ' + notes : ''}`,
+                performed_by_user_id: performed_by,
+                performed_at:         new Date().toISOString(),
+            }))
+            await supabase.from('case_report_logs').insert(logRows)
+
+            results.assigned = validRows.map(r => ({
+                legal_personnel_id: r.legal_personnel_id,
+                name:               r._name,
+                assignment_role:    r.assignment_role,
+            }))
+        }
+
+        // Return both successes and failures so frontend can show partial results
+        res.status(201).json({
+            data:    results.assigned,
+            failed:  results.failed,
+            message: results.failed.length > 0
+                ? 'Some assignments failed.'
+                : 'All assignments saved successfully.',
+        })
+    } catch (err) {
+        console.error('[bulkAssignCase]', err)
+        res.status(500).json({ error: err.message })
+    }
+}
+
+module.exports = { getItems, createItem, assignCase, bulkAssignCase, getAssignmentsByCase }

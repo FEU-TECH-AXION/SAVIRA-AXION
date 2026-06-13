@@ -832,58 +832,64 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
   }
 
   async function handleAssign() {
-    if (assigned.length === 0) {
-      setError("Please select at least one legal team member.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-    const results = { assigned: [], failed: [] };
-
-    for (const person of assigned) {
-      try {
-        const res = await fetch(`${API_URL}/api/legal_case_assignments/assign`, {
-          method:      "POST",
-          headers:     { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            case_report_id:     caseData.id,
-            legal_personnel_id: person.legal_personnel_id,
-          }),
-        });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          results.failed.push({
-            name:   `${person.first_name} ${person.last_name}`.trim(),
-            reason: body.error || "Failed",
-          });
-        } else {
-          results.assigned.push(`${person.first_name} ${person.last_name}`.trim());
-        }
-      } catch (err) {
-        results.failed.push({
-          name:   `${person.first_name} ${person.last_name}`.trim(),
-          reason: err.message,
-        });
+      if (assigned.length === 0) {
+          setError("Please select at least one legal team member.");
+          return;
       }
-    }
+      setSaving(true);
+      setError("");
 
-    setSaving(false);
+      try {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const res = await fetch(`${API_URL}/api/legal_case_assignments/assign-bulk`, {
+              method:      "POST",
+              headers:     { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                  case_report_id:      caseData.id,
+                  legal_personnel_ids: assigned.map(p => p.legal_personnel_id),
+              }),
+          });
 
-    if (results.assigned.length > 0) {
-      onSave({ ...caseData, assignedLegalOfficer: results.assigned.join(", ") });
-      showToast(`Assigned: ${results.assigned.join(", ")}.`);
-    }
+          const body = await res.json().catch(() => ({}));
 
-    if (results.failed.length > 0) {
-      const failMsgs = results.failed.map(f => `${f.name}: ${f.reason}`).join(" · ");
-      setError(`Some assignments failed — ${failMsgs}`);
-      return;
-    }
+          if (!res.ok) {
+              throw new Error(body.error || "Failed to assign.");
+          }
 
-    onClose();
+          // Show partial failure message if some failed
+          if (body.failed?.length > 0) {
+              const failMsgs = body.failed
+                  .map(f => `Personnel #${f.legal_personnel_id}: ${f.reason}`)
+                  .join(" · ");
+              setError(`Some assignments failed — ${failMsgs}`);
+          }
+
+          // Update local state with whoever was successfully assigned
+          if (body.data?.length > 0) {
+              const newlyAssigned = body.data.map(p => ({
+                  legal_personnel_id:   p.legal_personnel_id,
+                  first_name:           p.name.split(" ")[0],
+                  last_name:            p.name.split(" ").slice(1).join(" "),
+                  legal_personnel_type: p.assignment_role,
+              }));
+              onSave({
+                  ...caseData,
+                  assignedLegal: [
+                      ...(caseData.assignedLegal || []),
+                      ...newlyAssigned,
+                  ],
+              });
+              showToast(`Assigned: ${body.data.map(p => p.name).join(", ")}.`);
+          }
+
+          if (!body.failed?.length) onClose();
+
+      } catch (err) {
+          setError(err.message);
+      } finally {
+          setSaving(false);
+      }
   }
 
   return (
@@ -1437,7 +1443,7 @@ export default function LegalReviewManagement() {
               totalRecords={filtered.length}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}
-              onRowDoubleClick={(c) => router.push(`/legal-review/view?caseId=${c.id}&from=legal-review`)}
+              onRowDoubleClick={(c) => router.push(`/legalReviews/view?caseId=${c.id}&from=legalReviews`)}
               onParalegal={(cases) => { setSelectedCase(cases[0]); setModal("paralegal"); }}
               onEndorse={(cases) => { setSelectedCase(cases[0]); setModal("endorse"); }}
               onMonitor={(cases) => { setSelectedCase(cases[0]); setModal("monitor"); }}
