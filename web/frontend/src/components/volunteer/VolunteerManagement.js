@@ -6,6 +6,7 @@ import styles from "./VolunteerManagement.module.css";
 import { FiX } from "react-icons/fi";
 import ApplicationsTable from "./ApplicationsTable";
 import FilterMenu from "./FilterMenu";
+import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -542,6 +543,17 @@ export default function VolunteerManagement() {
                 onView={() => router.push("/volunteer/screening-questions")}
               />
             </div>
+            {/* Manage Interviews — case officers */}
+              <div className="col-12 col-sm-6">
+                <Link href="/volunteerInterviews" style={{ textDecoration: 'none' }}>
+                  <ActionCard
+                    icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
+                    title="Manage Interviews"
+                    description="Create interview schedules, manage invitations, and track interview progress."
+                    onView={() => router.push("/volunteerInterviews")}
+                  />
+                </Link>
+              </div>
           </div>
         </div>
 
