@@ -123,7 +123,7 @@ function getLinks(user) {
 
 function AccordionItem({ item, pathname, onNavigate }) {
   const isAnyChildActive = item.children?.some((c) =>
-    pathname.startsWith(c.href)
+    pathname === c.href
   );
   const [open, setOpen] = useState(isAnyChildActive);
 
@@ -150,7 +150,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
               <Link
                 href={child.href}
                 className={`${styles.subNavItem} ${
-                  pathname.startsWith(child.href) ? styles.subNavItemActive : ""
+                  pathname === child.href ? styles.subNavItemActive : ""
                 }`}
                 onClick={onNavigate}
               >
@@ -270,7 +270,18 @@ export default function Sidebar({ isOpen, onClose }) {
       >
         {/* Header */}
         <div className={styles.sidebarHeader}>
-          <span className={styles.sidebarTitle}>Menu</span>
+          <div className={styles.userPill}>
+            <div className={styles.userAvatar}>
+              {user.first_name?.[0] ?? "U"}
+              {user.last_name?.[0] ?? ""}
+            </div>
+            <div className={styles.userInfo}>
+              <span className={styles.userName}>
+                {user.first_name} {user.last_name}
+              </span>
+              <span className={styles.userRole}>{user.role_name}</span>
+            </div>
+          </div>
           <button
             className={styles.closeBtn}
             onClick={onClose}
@@ -280,57 +291,46 @@ export default function Sidebar({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* User info pill */}
-        <div className={styles.userPill}>
-          <div className={styles.userAvatar}>
-            {user.first_name?.[0] ?? "U"}
-            {user.last_name?.[0] ?? ""}
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.userName}>
-              {user.first_name} {user.last_name}
-            </span>
-            <span className={styles.userRole}>{user.role_name}</span>
-          </div>
+        {/* Scrollable body */}
+        <div className={styles.sidebarBody}>
+          <hr className={styles.divider} />
+
+          {/* Nav links */}
+          <nav>
+            <ul className={styles.navList}>
+              {links.map((item, i) =>
+                item.children ? (
+                  <AccordionItem
+                    key={i}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={onClose}
+                  />
+                ) : (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`${styles.sidebarItem} ${
+                        (item.href === "/"
+                          ? pathname === "/"
+                          : pathname.startsWith(item.href))
+                          ? styles.sidebarItemActive
+                          : ""
+                      }`}
+                      onClick={onClose}
+                    >
+                      <span className={styles.sidebarIcon}>{item.icon}</span>
+                      <span className={styles.sidebarLabel}>{item.label}</span>
+                    </Link>
+                  </li>
+                )
+              )}
+            </ul>
+          </nav>
+
+          {/* Footer — pinned to bottom, inside scroll body */}
+          <SidebarFooter logout={logout} />
         </div>
-
-        <hr className={styles.divider} />
-
-        {/* Nav links */}
-        <nav>
-          <ul className={styles.navList}>
-            {links.map((item, i) =>
-              item.children ? (
-                <AccordionItem
-                  key={i}
-                  item={item}
-                  pathname={pathname}
-                  onNavigate={onClose}
-                />
-              ) : (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`${styles.sidebarItem} ${
-                      (item.href === "/"
-                        ? pathname === "/"
-                        : pathname.startsWith(item.href))
-                        ? styles.sidebarItemActive
-                        : ""
-                    }`}
-                    onClick={onClose}
-                  >
-                    <span className={styles.sidebarIcon}>{item.icon}</span>
-                    <span className={styles.sidebarLabel}>{item.label}</span>
-                  </Link>
-                </li>
-              )
-            )}
-          </ul>
-        </nav>
-
-        {/* Footer — pinned to bottom, outside scroll */}
-        <SidebarFooter logout={logout} />
       </aside>
     </>
   );

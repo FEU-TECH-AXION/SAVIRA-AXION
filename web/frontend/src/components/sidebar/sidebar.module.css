@@ -32,8 +32,7 @@
   flex-direction: column;
   transform: translateX(-100%);
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .sidebarOpen {
@@ -46,20 +45,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1rem 0.75rem;
-  position: sticky;
-  top: 0;
+  padding: 0.75rem 1rem;
+  flex-shrink: 0;
   background: #fff;
   border-bottom: 1px solid #e1e4e8;
-  z-index: 1;
 }
 
-.sidebarTitle {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #24292f;
-  font-family: Poppins, sans-serif;
-  letter-spacing: 0.02em;
+/* ── Scrollable body ── */
+.sidebarBody {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .closeBtn {
@@ -84,7 +82,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.85rem 1rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .userAvatar {
@@ -240,7 +239,7 @@
 
 .footerDivider {
   border: none;
-  border-top: 1px solid #e1e4e8;
+  border-top: 2px solid #e1e4e8;
   margin: 0.5rem 0 0.25rem;
 }
 
