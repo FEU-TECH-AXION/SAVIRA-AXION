@@ -109,6 +109,7 @@ const ADMIN_LINKS = [
       { href: "/volunteer", label: "All Volunteers" },
       { href: "/volunteerInterviews", label: "Interviews" },
       { href: "/volunteerRanking", label: "Applicant Ranking" },
+      { href: "/volunteer/chapters", label: "Chapters" },
     ],
   },
   {
