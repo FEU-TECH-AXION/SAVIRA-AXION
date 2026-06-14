@@ -120,3 +120,35 @@ export async function deleteProjects(ids) {
   }
   return data;
 }
+
+export async function fetchChapters() {
+  const res = await fetch(`${API_URL}/api/chapters`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch chapters');
+  return data;
+}
+
+export async function fetchChapter(id) {
+  const res = await fetch(`${API_URL}/api/chapters/${id}`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch chapter');
+  return data;
+}
+
+export async function createChapter(payload) {
+  const res = await fetch(`${API_URL}/api/chapters`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to create chapter');
+  return data;
+}
