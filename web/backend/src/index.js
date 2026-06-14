@@ -78,6 +78,7 @@ app.use('/api/organizations', organizationsRouter)
 // Route for projects tbl
 const projectsRouter = require('./routes/projects.routes')
 app.use('/api/projects', projectsRouter)
+
 // ── ROUTES FOR CASE REPORTING RELATED TABLES ────────────────────────────────────────────────
 
 // Route for case_reports tbl
@@ -145,6 +146,10 @@ app.use('/api/volunteer_application_analysis', volunteerApplicationAnalysisRoute
 // Route for volunteer_application_evaluation tbl
 const volunteerApplicationEvaluationsRouter = require('./routes/volunteer_application_evaluations.routes')
 app.use('/api/volunteer_application_evaluations', volunteerApplicationEvaluationsRouter)
+
+// Route for volunteer_application_assignments tbl
+const volunteerApplicationAssignmentsRouter = require('./routes/volunteer_application_assignments.routes')
+app.use('/api/volunteer_application_assignments', volunteerApplicationAssignmentsRouter)
 
 // ── ROUTES FOR INTERVIEWS RELATED TABLES ───────────────────────────────
 
