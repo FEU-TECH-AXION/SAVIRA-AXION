@@ -171,14 +171,14 @@ const deleteById = async (projectId) => {
 }
 
 const deleteMany = async (ids = []) => {
-  if (!Array.isArray(ids) || ids.length === 0) return { count: 0 }
+  if (!Array.isArray(ids) || ids.length === 0) return []
   const { data, error } = await supabase
     .from('projects')
     .delete()
     .in('project_id', ids)
 
   if (error) throw error
-  return data
+  return data || []
 }
 
 module.exports = {

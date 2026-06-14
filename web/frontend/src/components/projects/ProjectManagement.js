@@ -238,9 +238,9 @@ export default function ProjectManagement() {
   // ── Delete ─────────────────────────────────────────────────────
   async function handleDelete(id) {
     try {
-      const title = projects.find((p) => p.id === id)?.title;
+      const title = (projects || []).find((p) => p.id === id)?.title || "";
       await deleteProject(id);
-      setProjects((prev) => prev.filter((p) => p.id !== id));
+      setProjects((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id !== id) : []));
       showToast(`Project "${title}" deleted.`, "danger");
     } catch (err) {
       showToast(err.message || 'Unable to delete project.', 'danger');
@@ -250,21 +250,25 @@ export default function ProjectManagement() {
   // ── Bulk delete ────────────────────────────────────────────────────────
   async function handleBulkDelete(selected) {
     try {
-      const ids = selected.map(p => p.id);
+      const list = Array.isArray(selected) ? selected : [];
+      const ids = list.map(p => p.id);
       await deleteProjects(ids);
-      setProjects(prev => prev.filter(p => !ids.includes(p.id)));
-      showToast(`${selected.length} project${selected.length !== 1 ? "s" : ""} deleted.`, "danger");
+      setProjects(prev => (Array.isArray(prev) ? prev.filter(p => !ids.includes(p.id)) : []));
+      showToast(`${list.length} project${list.length !== 1 ? "s" : ""} deleted.`, "danger");
     } catch (err) {
       showToast(err.message || 'Unable to delete selected projects.', 'danger');
     }
   }
 
   // ── Stats ──────────────────────────────────────────────────────
-  const stats = useMemo(() => [
-    { num: projects.filter((p) => p.status === "Active").length, label: "Active Projects" },
-    { num: projects.filter((p) => p.visibility === "public" && p.approvalStatus === "approved").length, label: "Public Events" },
-    { num: projects.filter((p) => p.visibility === "public" && p.approvalStatus === "pending").length, label: "Pending Approval" },
-  ], [projects]);
+  const stats = useMemo(() => {
+    const list = projects || [];
+    return [
+      { num: list.filter((p) => p?.status === "Active").length, label: "Active Projects" },
+      { num: list.filter((p) => p?.visibility === "public" && p?.approvalStatus === "approved").length, label: "Public Events" },
+      { num: list.filter((p) => p?.visibility === "public" && p?.approvalStatus === "pending").length, label: "Pending Approval" },
+    ];
+  }, [projects]);
 
   // ── Filtered & sorted list ──────────────────────────────────────
   const filtered = useMemo(() => {
@@ -365,8 +369,8 @@ export default function ProjectManagement() {
 
   useEffect(() => { setPage(1); }, [search, activeFilters, sortField]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil((filtered?.length || 0) / PAGE_SIZE));
+  const paginated  = (filtered || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const hasActiveFilters = Object.values(activeFilters).some(v => v && v !== "All" && v !== "");
 

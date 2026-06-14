@@ -89,6 +89,32 @@ const EMPTY_FORM = {
   approvalStatus: "pending",  // "pending" | "approved" | "rejected"
 };
 
+function normalizeInitial(init) {
+  if (!init) return {};
+  const out = { ...init };
+  for (const key of Object.keys(EMPTY_FORM)) {
+    const def = EMPTY_FORM[key];
+    let val = out[key];
+    if (val === null || val === undefined) {
+      out[key] = def;
+      continue;
+    }
+    if (Array.isArray(def)) {
+      if (!Array.isArray(val)) {
+        out[key] = def.slice();
+      } else {
+        out[key] = val.map((x) => (x === null || x === undefined ? "" : x));
+        if (out[key].length === 0) out[key] = def.slice();
+      }
+    } else if (typeof def === "string") {
+      out[key] = val === null || val === undefined ? def : String(val);
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper sub-components
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +164,7 @@ function PeopleList({ label, hint, values, onChange, placeholder }) {
             className={styles.formInput}
             type="text"
             placeholder={placeholder || "Full name"}
-            value={v}
+            value={v ?? ""}
             onChange={(e) => update(i, e.target.value)}
           />
           {values.length > 1 && (
@@ -160,12 +186,14 @@ function PeopleList({ label, hint, values, onChange, placeholder }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CreateEditProject({ mode = "create", initial = null, onSave, onCancel }) {
-  const [form, setForm] = useState(mode === "edit" && initial ? { ...EMPTY_FORM, ...initial } : EMPTY_FORM);
+  const [form, setForm] = useState(() => {
+    return mode === "edit" && initial ? { ...EMPTY_FORM, ...normalizeInitial(initial) } : EMPTY_FORM;
+  });
   const [errors, setErrors] = useState({});
 
   // Sync if initial prop changes (e.g. navigating between projects)
   useEffect(() => {
-    if (mode === "edit" && initial) setForm({ ...EMPTY_FORM, ...initial });
+    if (mode === "edit" && initial) setForm({ ...EMPTY_FORM, ...normalizeInitial(initial) });
   }, [initial, mode]);
 
   function set(field, value) {

@@ -95,7 +95,10 @@ const deleteMany = async (req, res) => {
       return res.status(400).json({ error: 'ids must be an array.' })
     }
     const data = await ProjectsModel.deleteMany(ids)
-    res.json({ deleted: data.length })
+    const deletedCount = Array.isArray(data)
+      ? data.length
+      : (data && typeof data.count === 'number' ? data.count : 0)
+    res.json({ deleted: deletedCount })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
