@@ -6,8 +6,7 @@ import CreateEditProject from "@/components/projects/CreateEditProject";
 import ProjectsTable from "@/components/projects/ProjectsTable";
 import ProjectFilterMenu from "@/components/projects/ProjectFilterMenu";
 import styles from "./ProjectManagement.module.css";
-import { FiAlertTriangle } from "react-icons/fi";
-import { FiX } from "react-icons/fi";
+import { FiAlertTriangle, FiX, FiSearch } from "react-icons/fi";
 import {
   fetchProjects,
   createProject,
@@ -121,6 +120,77 @@ function DeleteProjectModal({ open, onClose, project, onConfirm }) {
   );
 }
 
+// ── View All Projects Modal ───────────────────────────────────────────────────
+function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defaultAction }) {
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!q.trim()) return projects;
+    const lq = q.toLowerCase();
+    return projects.filter(
+      (p) =>
+        (p.title ?? "").toLowerCase().includes(lq) ||
+        (p.category ?? "").toLowerCase().includes(lq) ||
+        String(p.id ?? "").includes(lq)
+    );
+  }, [projects, q]);
+
+  const modalTitle =
+    defaultAction === "delete" ? "Select a Project to Delete"
+    : defaultAction === "edit"   ? "Select a Project to Edit"
+    : "All Projects";
+
+  return (
+    <Modal open={open} onClose={onClose} title={modalTitle}>
+      <div className={styles.searchWrap} style={{ marginBottom: "1rem" }}>
+        <input
+          className={styles.searchInput}
+          type="text"
+          placeholder="Search by title, category or ID…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <span className={styles.searchIcon}><FiSearch /></span>
+      </div>
+      <div className={styles.tableWrap} style={{ maxHeight: "55vh", overflowY: "auto" }}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>ID</th><th>Title</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={4} className={styles.emptyState}>No projects found.</td></tr>
+            ) : (
+              filtered.map((p) => (
+                <tr key={p.id}>
+                  <td>#{p.id}</td>
+                  <td>{p.title}</td>
+                  <td>{p.status}</td>
+                  <td>
+                    <div className={styles.actionBtns}>
+                      {(!defaultAction || defaultAction === "edit") && (
+                        <button className={styles.tblBtnEdit} onClick={() => { onEdit(p); onClose(); }}>Edit</button>
+                      )}
+                      {(!defaultAction || defaultAction === "delete") && (
+                        <button className={styles.tblBtnDelete} onClick={() => { onDelete(p); onClose(); }}>Delete</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnPrimary} onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
@@ -172,14 +242,16 @@ export default function ProjectManagement() {
   // Full-page form mode: null | "create" | "edit"
   const [formMode, setFormMode] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
+  const [viewAllAction, setViewAllAction] = useState(null);
 
   // ── Helpers ────────────────────────────────────────────────────
   function showToast(msg, type = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
-  function closeModal() { setModal(null); }
+  function closeModal() { setModal(null); setViewAllAction(null); }
   function openDelete(p) { setSelectedProject(p); setModal("delete"); }
+  function openViewAll(action = null) { setViewAllAction(action); setModal("viewAll"); }
 
   // ── Sort handler ───────────────────────────────────────────────
   function handleSort(field) {
@@ -434,9 +506,7 @@ export default function ProjectManagement() {
                 icon={<img src="ProjectIconDelete.png" alt="" className={styles.actionIconImg} />}
                 title="Delete a Project"
                 description="Permanently remove an existing project."
-                onView={() => {
-                  document.getElementById("projects-table-section")?.scrollIntoView({ behavior: "smooth" });
-                }}
+                onView={() => openViewAll("delete")}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -444,9 +514,7 @@ export default function ProjectManagement() {
                 icon={<img src="ProjectIconEdit.png" alt="" className={styles.actionIconImg} />}
                 title="Update Project Information"
                 description="Edit all details of an existing project or event."
-                onView={() => {
-                  document.getElementById("projects-table-section")?.scrollIntoView({ behavior: "smooth" });
-                }}
+                onView={() => openViewAll("edit")}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -511,6 +579,14 @@ export default function ProjectManagement() {
       <DeleteProjectModal
         open={modal === "delete"} onClose={closeModal}
         project={selectedProject} onConfirm={handleDelete} />
+      <ViewAllProjectsModal
+        open={modal === "viewAll"}
+        onClose={closeModal}
+        projects={projects}
+        onEdit={openEdit}
+        onDelete={openDelete}
+        defaultAction={viewAllAction}
+      />
     </>
   );
 }

@@ -927,6 +927,40 @@
   to   { opacity: 1; transform: translateY(0);    }
 }
 
+/* ── Inline table action buttons (ViewAll modal) ── */
+.actionBtns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tblBtnEdit,
+.tblBtnDelete {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.12s, transform 0.1s;
+}
+
+.tblBtnEdit {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tblBtnDelete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tblBtnEdit:hover,
+.tblBtnDelete:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
 /* ── Responsive modals ── */
 @media (max-width: 575.98px) {
   .modalBox {
