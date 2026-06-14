@@ -140,11 +140,20 @@ router.get("/aggregate", async (req, res) => {
     // ── 3. PROJECTS ───────────────────────────────────────────────────────────
     let projectsQuery = supabase
       .from("projects")
-      .select("id, status, start_date, end_date, actual_end_date");
+      .select("project_id, project_status, start_date, end_date");
     projectsQuery = applyDateFilter(projectsQuery, rangeStart, "start_date");
 
-    const { data: projects, error: projectsErr } = await projectsQuery;
+    const { data: projectsRaw, error: projectsErr } = await projectsQuery;
     if (projectsErr) console.error("Projects query error:", projectsErr.message);
+
+    const projects = (projectsRaw || []).map((p) => ({
+      id: p.project_id,
+      project_id: p.project_id,
+      status: p.project_status,
+      project_status: p.project_status,
+      start_date: p.start_date,
+      end_date: p.end_date,
+    }));
 
     // ── 4. USERS ──────────────────────────────────────────────────────────────
     let usersQuery = supabase
@@ -269,12 +278,22 @@ router.get("/projects", async (req, res) => {
     const rangeStart = getRangeStart(req.query.dateRange || "all");
     let query = supabase
       .from("projects")
-      .select("id, status, start_date, end_date, actual_end_date");
+      .select("project_id, project_status, start_date, end_date");
     query = applyDateFilter(query, rangeStart, "start_date");
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json({ data: data || [] });
+
+    const normalized = (data || []).map((p) => ({
+      id: p.project_id,
+      project_id: p.project_id,
+      status: p.project_status,
+      project_status: p.project_status,
+      start_date: p.start_date,
+      end_date: p.end_date,
+    }));
+
+    res.json({ data: normalized || [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

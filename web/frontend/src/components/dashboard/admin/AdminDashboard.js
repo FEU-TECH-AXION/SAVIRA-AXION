@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
 import Calendar from "react-calendar";
@@ -59,6 +59,7 @@ function DeadlineItem({ emoji, title, date }) {
 export default function AdminDashboard() {
   const [calDate, setCalDate] = useState(new Date());
   const { user: authUser } = useAuth();
+  const [statsData, setStatsData] = useState(null);
 
   const user = authUser ? {
     role: authUser.role_name,
@@ -66,19 +67,81 @@ export default function AdminDashboard() {
     lastName: authUser.last_name,
   } : { role: "admin", firstName: "Admin", lastName: "User" };
 
-  // hasNew drives the orange dot — set to false to hide it
-  const stats = [
-    { num: 13, label: "Total Projects", hasNew: false },
-    { num: 67, label: "Total Users",    hasNew: true  },
-    { num: 12, label: "Total Cases",    hasNew: true  },
-  ];
+  useEffect(() => {
+    async function fetchDashboardStats() {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const [projRes, userRes, caseRes, volRes] = await Promise.all([
+          fetch(`${API_URL}/api/projects`, { credentials: 'include', cache: 'no-store' }),
+          fetch(`${API_URL}/api/users`, { credentials: 'include', cache: 'no-store' }),
+          fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' }),
+          fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' }),
+        ]);
 
-  const overviewCards = [
-    { category: "Case",      label: "Unassigned Cases",       count: 2,  showView: true  },
-    { category: "Case",      label: "Under Verification",     count: 11, showView: true  },
-    { category: "New Applicants", label: "New Applications Today", count: 5,  showView: false },
-    { category: "Volunteer", label: "Review Applications",    count: 13, showView: true  },
-  ];
+        const projects = projRes.ok ? await projRes.json() : [];
+        const users = userRes.ok ? await userRes.json() : [];
+        
+        const caseJson = caseRes.ok ? await caseRes.json() : null;
+        const cases = Array.isArray(caseJson) ? caseJson : caseJson?.data || [];
+        
+        const volJson = volRes.ok ? await volRes.json() : null;
+        const volunteers = Array.isArray(volJson) ? volJson : volJson?.data || [];
+
+        setStatsData({ projects, users, cases, volunteers });
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats:", err);
+      }
+    }
+    fetchDashboardStats();
+  }, []);
+
+  // hasNew drives the orange dot — set to false to hide it
+  const stats = useMemo(() => {
+    if (!statsData) {
+      return [
+        { num: 0, label: "Total Projects", hasNew: false },
+        { num: 0, label: "Total Users",    hasNew: false },
+        { num: 0, label: "Total Cases",    hasNew: false },
+      ];
+    }
+    return [
+      { num: statsData.projects?.length || 0, label: "Total Projects", hasNew: false },
+      { num: statsData.users?.length || 0, label: "Total Users",    hasNew: false },
+      { num: statsData.cases?.length || 0, label: "Total Cases",    hasNew: false },
+    ];
+  }, [statsData]);
+
+  const overviewCards = useMemo(() => {
+    if (!statsData) {
+      return [
+        { category: "Case",      label: "Unassigned Cases",       count: 0,  showView: true  },
+        { category: "Case",      label: "Under Verification",     count: 0, showView: true  },
+        { category: "New Applicants", label: "New Applications Today", count: 0,  showView: false },
+        { category: "Volunteer", label: "Review Applications",    count: 0, showView: true  },
+      ];
+    }
+
+    const cases = statsData.cases || [];
+    const volunteers = statsData.volunteers || [];
+
+    const unassigned = cases.filter(c => !c.assigned_officer).length;
+    const underVerification = cases.filter(c => c.status === "For Verification" || c.status === "Undergoing Review").length;
+    
+    const todayStr = new Date().toDateString();
+    const newAppsToday = volunteers.filter(v => v.created_at && new Date(v.created_at).toDateString() === todayStr).length;
+    
+    const reviewApps = volunteers.filter(v => {
+      const status = (v.application_status || "").toLowerCase();
+      return status === "pending" || status === "under_review";
+    }).length;
+
+    return [
+      { category: "Case",      label: "Unassigned Cases",       count: unassigned,        showView: true  },
+      { category: "Case",      label: "Under Verification",     count: underVerification, showView: true  },
+      { category: "New Applicants", label: "New Applications Today", count: newAppsToday,      showView: false },
+      { category: "Volunteer", label: "Review Applications",    count: reviewApps,        showView: true  },
+    ];
+  }, [statsData]);
 
   const deadlines = [
     { emoji: "🌞", title: "SASHA believes that...",  date: "March 1, 2026"   },

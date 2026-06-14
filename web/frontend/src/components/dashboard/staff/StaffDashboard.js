@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
 import Calendar from "react-calendar";
@@ -49,6 +49,7 @@ function DeadlineItem({ emoji, title, date }) {
 export default function StaffDashboard() {
   const [calDate, setCalDate] = useState(new Date());
   const { user: authUser } = useAuth();
+  const [volunteers, setVolunteers] = useState([]);
 
   const user = authUser ? {
     role: authUser.role_name,
@@ -56,15 +57,50 @@ export default function StaffDashboard() {
     lastName: authUser.last_name,
   } : { role: "staff", firstName: "Staff", lastName: "User" };
 
-  const stats = [
-    { num: 5,  label: "New Applications Today", hasNew: true  },
-    { num: 13, label: "Review Applications",     hasNew: true  },
-  ];
+  useEffect(() => {
+    async function fetchVolunteers() {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          const list = Array.isArray(json) ? json : json?.data || [];
+          setVolunteers(list);
+        }
+      } catch (err) {
+        console.error("Failed to fetch volunteer applications:", err);
+      }
+    }
+    fetchVolunteers();
+  }, []);
 
-  const overviewCards = [
-    { category: "New Applicants", label: "New Applications Today", count: 5,  showView: false },
-    { category: "Volunteer",      label: "Review Applications",    count: 13, showView: true  },
-  ];
+  const stats = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    const newToday = volunteers.filter(v => v.created_at && new Date(v.created_at).toDateString() === todayStr).length;
+    const review = volunteers.filter(v => {
+      const status = (v.application_status || "").toLowerCase();
+      return status === "pending" || status === "under_review";
+    }).length;
+
+    return [
+      { num: newToday, label: "New Applications Today", hasNew: newToday > 0 },
+      { num: review,   label: "Review Applications",     hasNew: review > 0 },
+    ];
+  }, [volunteers]);
+
+  const overviewCards = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    const newToday = volunteers.filter(v => v.created_at && new Date(v.created_at).toDateString() === todayStr).length;
+    const review = volunteers.filter(v => {
+      const status = (v.application_status || "").toLowerCase();
+      return status === "pending" || status === "under_review";
+    }).length;
+
+    return [
+      { category: "New Applicants", label: "New Applications Today", count: newToday, showView: false },
+      { category: "Volunteer",      label: "Review Applications",    count: review,   showView: true  },
+    ];
+  }, [volunteers]);
 
   const deadlines = [
     { emoji: "🌞", title: "SASHA believes that...",  date: "March 1, 2026"   },

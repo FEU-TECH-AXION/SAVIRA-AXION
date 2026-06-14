@@ -1,7 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export async function fetchUsers() {
-    const res = await fetch(`${API_URL}/api/users`);
+    const res = await fetch(`${API_URL}/api/users`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch users');
     return res.json();
 }
@@ -43,13 +43,14 @@ export async function fetchCommittees() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const response = await fetch(`${API_URL}/api/committees`, {
     credentials: 'include',
+    cache: 'no-store',
   });
   if (!response.ok) throw new Error('Failed to fetch committees');
   return response.json();
 }
 
 export async function fetchProjects() {
-  const res = await fetch(`${API_URL}/api/projects`);
+  const res = await fetch(`${API_URL}/api/projects`, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error('Failed to fetch projects');
   }
