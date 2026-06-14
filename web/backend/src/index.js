@@ -5,8 +5,18 @@ require('dotenv').config();
 
 const app = express();
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+];
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error(`CORS origin not allowed: ${origin}`))
+  },
   credentials: true, // required for cookies
 }));
 app.use(express.json());
@@ -65,7 +75,9 @@ app.use('/api/user_case_logs', userCaseLogsRouter)
 // Route for organization_details tbl
 const organizationsRouter = require('./routes/organizations.routes')
 app.use('/api/organizations', organizationsRouter)
-
+// Route for projects tbl
+const projectsRouter = require('./routes/projects.routes')
+app.use('/api/projects', projectsRouter)
 // ── ROUTES FOR CASE REPORTING RELATED TABLES ────────────────────────────────────────────────
 
 // Route for case_reports tbl

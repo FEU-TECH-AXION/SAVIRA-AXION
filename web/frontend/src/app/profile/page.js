@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   FiUser, FiMail, FiPhone, FiCamera,
   FiCheck, FiAlertCircle, FiShield,
@@ -111,10 +111,8 @@ const TABS = [
 export default function ProfilePage() {
   const { user, setUser } = useAuth();
   const router  = useRouter();
-  const searchParams = useSearchParams();
-  const fileRef = useRef(null);
-
   const [activeTab, setActiveTab] = useState("profile");
+  const fileRef = useRef(null);
   const [saving,    setSaving]    = useState(false);
   const [success,   setSuccess]   = useState("");
   const [error,     setError]     = useState("");
@@ -170,11 +168,11 @@ export default function ProfilePage() {
 
   // ── Set active tab from query parameter ───────────────────
   useEffect(() => {
-    const tab = searchParams.get("tab");
+    const tab = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
     if (tab && TABS.some(t => t.id === tab)) {
       setActiveTab(tab);
     }
-  }, [searchParams]);
+  }, []);
 
   // ── Derived ───────────────────────────────────────────────
   const completion   = calcCompletion(user);

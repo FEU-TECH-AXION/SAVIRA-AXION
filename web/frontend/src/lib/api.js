@@ -47,3 +47,61 @@ export async function fetchCommittees() {
   if (!response.ok) throw new Error('Failed to fetch committees');
   return response.json();
 }
+
+export async function fetchProjects() {
+  const res = await fetch(`${API_URL}/api/projects`);
+  if (!res.ok) {
+    throw new Error('Failed to fetch projects');
+  }
+  return res.json();
+}
+
+export async function createProject(payload) {
+  const res = await fetch(`${API_URL}/api/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to create project');
+  }
+  return data;
+}
+
+export async function updateProject(id, payload) {
+  const res = await fetch(`${API_URL}/api/projects/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to update project');
+  }
+  return data;
+}
+
+export async function deleteProject(id) {
+  const res = await fetch(`${API_URL}/api/projects/${id}`, {
+    method: 'DELETE',
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to delete project');
+  }
+  return data;
+}
+
+export async function deleteProjects(ids) {
+  const res = await fetch(`${API_URL}/api/projects/bulk-delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to delete selected projects');
+  }
+  return data;
+}
