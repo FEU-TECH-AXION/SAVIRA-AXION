@@ -1294,14 +1294,14 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
           <div className="row g-3 mb-4">
             {/* View Cases — everyone */}
-            <div className="col-12 col-sm-6 col-lg-3">
+            {/* <div className="col-12 col-sm-6 col-lg-3">
               <ActionCard
                 icon={<img src="CaseIconView.png" alt="" className={styles.actionIconImg} />}
                 title="View All Cases"
                 description="Browse all submitted cases, their current statuses, and status history."
                 onView={() => setModal("viewAll")}
               />
-            </div>
+            </div> */}
 
             {/* Manage Interviews — case officers */}
             {(isCaseOfficer || isAdmin) && (
@@ -1318,7 +1318,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
             )}
 
             {/* Assign Officer — admin only */}
-            {(isAdmin) && (
+            {/* {(isAdmin) && (
               <div className="col-12 col-sm-6 col-lg-3">
                 <ActionCard
                   icon={<img src="CaseIconAssign.png" alt="" className={styles.actionIconImg} />}
@@ -1327,7 +1327,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                   onView={() => setModal("viewAll_assign")}
                 />
               </div>
-            )}
+            )} */}
 
             {/* Admin: approve pending changes */}
             {isAdmin && (
