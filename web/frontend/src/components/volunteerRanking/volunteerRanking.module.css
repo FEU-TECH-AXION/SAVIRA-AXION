@@ -2,12 +2,19 @@
   min-height: 100vh;
   padding: 2rem;
   background: #f7f9fb;
+  margin-top: 64px;
 }
 
 .header {
   max-width: 1200px;
-  margin: 0 auto 1rem;
+  margin-inline: auto;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.headerTop {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
@@ -21,24 +28,35 @@
 }
 
 .subtitle {
-  margin: 0.35rem 0 0;
+  margin: 0 0 .5rem;
   color: #6b7280;
   font-size: 0.95rem;
 }
 
 .backBtn {
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #374151;
-  border-radius: 8px;
-  padding: 0.55rem 0.85rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--sasha-white);
+  border: 1px solid var(--sasha-border);
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  color: #374151;
+  transition: background 0.15s;
 }
 
 .toolbar {
   max-width: 1200px;
   margin: 0 auto 1rem;
+  align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem; padding: 1rem;
+  background: var(--sasha-white);
+  border-radius: 10px;
+  border: 1px solid var(--sasha-border);
 }
 
 .tableWrap {

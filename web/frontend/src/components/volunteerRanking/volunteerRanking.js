@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import FilterMenu from "../volunteer/FilterMenu";
+import { IoIosArrowBack } from "react-icons/io";
+import FilterMenu from "./FilterMenu";
 import styles from "./volunteerRanking.module.css";
 
 function getCookie(name) {
@@ -72,8 +73,8 @@ export default function VolunteerRanking() {
   return (
     <main className={styles.pageWrapper}>
       <section className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>Back to Volunteer Management</button>
-        <div>
+        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}><IoIosArrowBack /> Back to Volunteer Management</button>
+        <div className={styles.headerTop}>
           <h1 className={styles.title}>Volunteer Applicant Rankings</h1>
           <p className={styles.subtitle}>Screening, hybrid essay, interview, and priority scores in one comparison table.</p>
         </div>
