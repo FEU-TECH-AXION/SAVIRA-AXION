@@ -8,135 +8,15 @@ import ProjectFilterMenu from "@/components/projects/ProjectFilterMenu";
 import styles from "./ProjectManagement.module.css";
 import { FiAlertTriangle } from "react-icons/fi";
 import { FiX } from "react-icons/fi";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Placeholder data — replace with Supabase fetch
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PLACEHOLDER_PROJECTS = [
-  {
-    id: 1,
-    title: "Safe Spaces Summit",
-    tagline: "Creating sanctuaries for survivors.",
-    description: "A summit promoting safe spaces across communities.",
-    category: "Youth Leadership Programs",
-    dateStart: "2026-03-03",
-    dateEnd: "2026-03-04",
-    startTime: "08:00",
-    endTime: "17:00",
-    activityMode: "Face-to-face",
-    venue: "SASHA Community Hall, Quezon City",
-    onlinePlatform: "",
-    onlineLink: "",
-    targetParticipants: "Youth scouts aged 15–25",
-    partnerOrganizations: "BSP National Council",
-    status: "Active",
-    dueDate: "2026-03-01",
-    logisticalRequirements: "Venue setup, AV equipment, catering",
-    financialRequirements: "Estimated ₱120,000 from chapter funds",
-    operationalRequirements: "DSWD coordination, event permits",
-    projectOfficers: ["Maria Santos", "Jose Reyes"],
-    projectCommitteeMembers: ["Ana Cruz", "Pedro Lim", "Lea Bautista"],
-    visibility: "public",
-    approvalStatus: "approved",
-    image: "/project-1.jpg",
-    imagePreview: null,
-    createdAt: "2026-01-10T00:00:00.000Z",
-  },
-  {
-    id: 2,
-    title: "Youth Against Abuse Summit",
-    tagline: "Empowering voices, changing futures.",
-    description: "Empowering youth to stand against abuse and harassment.",
-    category: "Legal & Policy Education",
-    dateStart: "2026-03-03",
-    dateEnd: "2026-03-04",
-    startTime: "09:00",
-    endTime: "16:00",
-    activityMode: "Hybrid",
-    venue: "Manila City Hall Auditorium",
-    onlinePlatform: "Zoom",
-    onlineLink: "https://zoom.us/j/example",
-    targetParticipants: "Youth advocates, school administrators",
-    partnerOrganizations: "UN Women Philippines, DSWD",
-    status: "Active",
-    dueDate: "2026-03-01",
-    logisticalRequirements: "Zoom license, venue permits, signage",
-    financialRequirements: "₱85,000 from UN Women grant",
-    operationalRequirements: "Legal team briefing, media clearances",
-    projectOfficers: ["Carla Mendoza"],
-    projectCommitteeMembers: ["Ramon Torres", "Grace Villanueva"],
-    visibility: "public",
-    approvalStatus: "approved",
-    image: "/project-2.jpg",
-    imagePreview: null,
-    createdAt: "2026-01-15T00:00:00.000Z",
-  },
-  {
-    id: 3,
-    title: "SASHA Believes That…",
-    tagline: "Because your story matters.",
-    description: "A campaign building awareness of survivor experiences.",
-    category: "New Projects",
-    dateStart: "2025-03-01",
-    dateEnd: "2025-03-31",
-    startTime: "",
-    endTime: "",
-    activityMode: "Virtual",
-    venue: "",
-    onlinePlatform: "Facebook Live",
-    onlineLink: "https://facebook.com/sasha",
-    targetParticipants: "General public, social media audiences",
-    partnerOrganizations: "",
-    status: "Completed",
-    dueDate: "2025-02-25",
-    logisticalRequirements: "Social media assets, video production",
-    financialRequirements: "₱30,000 for digital ads",
-    operationalRequirements: "Content moderation plan",
-    projectOfficers: ["Riza Dizon"],
-    projectCommitteeMembers: ["Ben Santos"],
-    visibility: "public",
-    approvalStatus: "approved",
-    image: "/project-3.jpg",
-    imagePreview: null,
-    createdAt: "2025-01-05T00:00:00.000Z",
-  },
-  {
-    id: 4,
-    title: "SASHA Awareness Drive",
-    tagline: "Making noise for what matters.",
-    description: "City-wide awareness initiative targeting key demographics.",
-    category: "Awareness Campaign",
-    dateStart: "2026-08-18",
-    dateEnd: "2026-08-19",
-    startTime: "08:00",
-    endTime: "18:00",
-    activityMode: "Face-to-face",
-    venue: "Various barangays, Quezon City",
-    onlinePlatform: "",
-    onlineLink: "",
-    targetParticipants: "Community members, LGUs",
-    partnerOrganizations: "QC LGU, CHR Philippines",
-    status: "Upcoming",
-    dueDate: "2026-08-15",
-    logisticalRequirements: "Mobile tarpaulins, booths, flyers, volunteers",
-    financialRequirements: "₱200,000 from LGU partnership",
-    operationalRequirements: "Barangay clearances, crowd management plan",
-    projectOfficers: ["Lando Garcia", "Tina Cruz"],
-    projectCommitteeMembers: ["Mia Soriano", "Dave Reyes", "Kris Lim"],
-    visibility: "private",
-    approvalStatus: "pending",
-    image: "/project-4.jpg",
-    imagePreview: null,
-    createdAt: "2026-03-20T00:00:00.000Z",
-  },
-];
+import {
+  fetchProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+  deleteProjects,
+} from "@/lib/api";
 
 const PAGE_SIZE = 10;
-
-function nextId(list) {
-  return list.length ? Math.max(...list.map((p) => p.id)) + 1 : 1;
-}
 
 // ── Cookies ───────────────────────────────────────────────────────────────────
 function getCookie(name) {
@@ -246,6 +126,19 @@ function DeleteProjectModal({ open, onClose, project, onConfirm }) {
 export default function ProjectManagement() {
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
+  // ── State ──────────────────────────────────────────────────────
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [search, setSearch]     = useState("");
+  const [activeFilters, setActiveFilters] = useState({});
+  const [page, setPage]         = useState(1);
+  const [toast, setToast]       = useState(null);
+  const [modal, setModal]       = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [sortField, setSortField] = useState("id");
+  const [sortDir, setSortDir]     = useState("asc");
+
   useEffect(() => {
     const userCookie = getCookie("user");
     if (userCookie) {
@@ -258,16 +151,22 @@ export default function ProjectManagement() {
     }
   }, []);
 
-  // ── State ──────────────────────────────────────────────────────
-  const [projects, setProjects] = useState(PLACEHOLDER_PROJECTS);
-  const [search, setSearch]     = useState("");
-  const [activeFilters, setActiveFilters] = useState({});
-  const [page, setPage]         = useState(1);
-  const [toast, setToast]       = useState(null);
-  const [modal, setModal]       = useState(null);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [sortField, setSortField] = useState("id");
-  const [sortDir, setSortDir]     = useState("asc");
+  useEffect(() => {
+    async function loadProjects() {
+      setLoading(true);
+      setFetchError(null);
+      try {
+        const data = await fetchProjects();
+        setProjects(data);
+      } catch (err) {
+        setFetchError(err.message || 'Unable to load projects.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProjects();
+  }, []);
 
   // Full-page form mode: null | "create" | "edit"
   const [formMode, setFormMode] = useState(null);
@@ -301,17 +200,22 @@ export default function ProjectManagement() {
     setEditingProject(p);
     setFormMode("edit");
   }
-  function handleFormSave(data) {
-    if (formMode === "create") {
-      const newProject = { ...data, id: nextId(projects), createdAt: new Date().toISOString() };
-      setProjects((prev) => [newProject, ...prev]);
-      showToast(`Project "${data.title}" created. ${data.visibility === "public" ? "Submitted for admin approval." : ""}`);
-    } else {
-      setProjects((prev) => prev.map((p) => p.id === data.id ? data : p));
-      showToast(`Project "${data.title}" updated.`);
+  async function handleFormSave(data) {
+    try {
+      if (formMode === "create") {
+        const created = await createProject(data);
+        setProjects((prev) => [created, ...prev]);
+        showToast(`Project "${data.title}" created.`);
+      } else {
+        const updated = await updateProject(data.id, data);
+        setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+        showToast(`Project "${data.title}" updated.`);
+      }
+      setFormMode(null);
+      setEditingProject(null);
+    } catch (err) {
+      showToast(err.message || 'Unable to save project.', 'danger');
     }
-    setFormMode(null);
-    setEditingProject(null);
   }
   function handleFormCancel() {
     setFormMode(null);
@@ -319,17 +223,27 @@ export default function ProjectManagement() {
   }
 
   // ── Delete ─────────────────────────────────────────────────────
-  function handleDelete(id) {
-    const title = projects.find((p) => p.id === id)?.title;
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    showToast(`Project "${title}" deleted.`, "danger");
+  async function handleDelete(id) {
+    try {
+      const title = projects.find((p) => p.id === id)?.title;
+      await deleteProject(id);
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+      showToast(`Project "${title}" deleted.`, "danger");
+    } catch (err) {
+      showToast(err.message || 'Unable to delete project.', 'danger');
+    }
   }
 
-  // ── Bulk delete ────────────────────────────────────────────────
-  function handleBulkDelete(selected) {
-    const ids = new Set(selected.map(p => p.id));
-    setProjects(prev => prev.filter(p => !ids.has(p.id)));
-    showToast(`${selected.length} project${selected.length !== 1 ? "s" : ""} deleted.`, "danger");
+  // ── Bulk delete ────────────────────────────────────────────────────────
+  async function handleBulkDelete(selected) {
+    try {
+      const ids = selected.map(p => p.id);
+      await deleteProjects(ids);
+      setProjects(prev => prev.filter(p => !ids.includes(p.id)));
+      showToast(`${selected.length} project${selected.length !== 1 ? "s" : ""} deleted.`, "danger");
+    } catch (err) {
+      showToast(err.message || 'Unable to delete selected projects.', 'danger');
+    }
   }
 
   // ── Stats ──────────────────────────────────────────────────────
