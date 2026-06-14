@@ -46,15 +46,17 @@
 .backBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  background: none;
-  border: none;
-  color: #037F81;
-  font-size: 0.875rem;
-  font-weight: 600;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--sasha-white);
+  border: 1px solid var(--sasha-border);
+  border-radius: 6px;
   cursor: pointer;
-  padding: 0;
-  transition: color 0.12s, gap 0.12s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  color: #374151;
+  transition: background 0.15s;
 }
 
 .backBtn:hover {
@@ -64,20 +66,14 @@
 
 /* ── Header card ── */
 .headerCard {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 1.5rem 1.75rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: var(--sasha-card-radius);
+  margin-bottom: 2rem;
 }
 
 .headerTop {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 /* ── ViewCase-style title/subtitle in header ── */
