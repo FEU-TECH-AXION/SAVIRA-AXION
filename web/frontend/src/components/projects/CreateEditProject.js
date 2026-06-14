@@ -501,9 +501,9 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
                   value={form.approvalStatus}
                   onChange={(e) => set("approvalStatus", e.target.value)}
                 >
-                  <option value="pending">⏳ Pending</option>
-                  <option value="approved">✅ Approved</option>
-                  <option value="rejected">❌ Rejected</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
                 </select>
               </div>
             )}
