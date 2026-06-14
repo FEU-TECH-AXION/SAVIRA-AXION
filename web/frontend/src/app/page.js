@@ -9,16 +9,50 @@
  * Only shows up to 3 most recent public+approved events.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
 import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
-import { getPublicApprovedProjects } from "@/components/projects/projectsData";
 
-const publicEvents = getPublicApprovedProjects().slice(0, 3);
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [publicEvents, setPublicEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchPublicEvents = async () => {
+      try {
+        const res = await fetch(
+          `${API_URL}/api/projects?visibility=public&approval_status=approved`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) {
+          console.error("Public events request failed:", res.status, res.statusText);
+          return;
+        }
+        const data = await res.json();
+        if (!mounted) return;
+        setPublicEvents(
+          Array.isArray(data)
+            ? data.slice(0, 3)
+            : data?.data?.slice(0, 3) || []
+        );
+      } catch (error) {
+        console.error("Failed to load public events:", error);
+      } finally {
+        if (mounted) setEventsLoading(false);
+      }
+    };
+
+    fetchPublicEvents();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const steps = [
     { step: "Step 1", title: "Register",        desc: "Create a secure account to access reporting and support features",                             active: true  },
@@ -162,7 +196,11 @@ export default function Landing() {
         <div className={styles.sectionInner}>
           <h2 className={styles.eventsTitle}>Our Latest Events</h2>
           <div className={styles.eventsGrid}>
-            {publicEvents.length === 0 ? (
+            {eventsLoading ? (
+              <p style={{ color: "#6b7280", gridColumn: "1/-1" }}>
+                Loading events...
+              </p>
+            ) : publicEvents.length === 0 ? (
               <p style={{ color: "#6b7280", gridColumn: "1/-1" }}>
                 No public events available yet. Check back soon.
               </p>
@@ -170,7 +208,7 @@ export default function Landing() {
               publicEvents.map((ev) => (
                 <div key={ev.id} className={styles.eventCard}>
                   <div className={styles.eventImgWrap}>
-                    <img src={ev.image || "/event-placeholder.png"} alt={ev.title} />
+                    <img src={ev.image && ev.image.startsWith('http') ? ev.image : "/event-placeholder.png"} alt={ev.title} />
                   </div>
                   <div className={styles.eventBody}>
                     <h3 className={styles.eventTag}>{ev.title}</h3>

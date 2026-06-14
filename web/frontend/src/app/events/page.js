@@ -18,16 +18,7 @@
 import Link from "next/link";
 import styles from "./events.module.css";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// In a real app, this would come from a Supabase fetch or a shared store.
-// For now we import the same placeholder used in ProjectManagement.
-// ─────────────────────────────────────────────────────────────────────────────
-import { PLACEHOLDER_PROJECTS } from "@/components/projects/projectsData";
-
-// Filter to only public + approved
-const PUBLIC_EVENTS = PLACEHOLDER_PROJECTS.filter(
-  (p) => p.visibility === "public" && p.approvalStatus === "approved"
-);
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 const CATEGORIES = [
   "All",
@@ -38,19 +29,61 @@ const CATEGORIES = [
   "New Projects",
 ];
 
-const RECENT_POSTS = PUBLIC_EVENTS.slice(0, 3).map((p) => ({
-  title: p.title,
-  date: p.dateStart,
-  slug: p.slug || p.title.toLowerCase().replace(/\s+/g, "-"),
-  image: p.image || "/event-placeholder.png",
-}));
+const mapProjectToEvent = (project) => ({
+  id: project.id ?? project.project_id,
+  title: project.title || project.event_name || "Untitled event",
+  description: project.description || project.tagline || project.event_tagline || "",
+  category: project.category || project.project_category || "Community Outreach",
+  activityMode: project.activityMode || project.activity_mode || "",
+  dateStart: project.dateStart || project.start_date || "",
+  dateEnd: project.dateEnd || project.end_date || "",
+  venue: project.venue || "",
+  targetParticipants: project.targetParticipants || project.target_participants || "",
+  tagline: project.tagline || project.event_tagline || "",
+  status: project.status || project.project_status || "",
+  image: project.image || "/event-placeholder.png",
+  visibility: project.visibility,
+  approvalStatus: project.approvalStatus || project.approval_status,
+  slug: project.slug || (project.title || project.event_name || "").toLowerCase().replace(/\s+/g, "-"),
+});
+
+const normalizeProjects = (rawProjects) => {
+  const projects = Array.isArray(rawProjects) ? rawProjects : rawProjects?.data || [];
+  const mapped = projects.map(mapProjectToEvent);
+  const publicEvents = mapped.filter(
+    (p) => p.visibility === "public" && p.approvalStatus === "approved"
+  );
+  return publicEvents.length > 0 ? publicEvents : mapped;
+};
+
+async function fetchProjectEvents() {
+  try {
+    const res = await fetch(`${API_URL}/api/projects`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return normalizeProjects(data);
+  } catch (err) {
+    console.error("Failed to fetch project events:", err);
+    return [];
+  }
+}
+
+const RECENT_POSTS = [];
 
 export const metadata = {
   title: "Events | SASHA",
   description: "SASHA Initiatives — Advocacy events and activities across chapters nationwide.",
 };
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  const PUBLIC_EVENTS = await fetchProjectEvents();
+  const recentPosts = PUBLIC_EVENTS.slice(0, 3).map((p) => ({
+    title: p.title,
+    date: p.dateStart,
+    slug: p.slug,
+    image: p.image || "/event-placeholder.png",
+  }));
+
   return (
     <main className={styles.main}>
       {/* ── Hero ── */}
@@ -94,18 +127,22 @@ export default function EventsPage() {
               ) : (
                 PUBLIC_EVENTS.map((ev) => {
                   const slug = ev.slug || ev.title.toLowerCase().replace(/\s+/g, "-");
-                  const isUpcoming = ev.status === "Upcoming";
-                  const isActive   = ev.status === "Active";
+                  const isUpcoming = ev.status?.toLowerCase() === "upcoming";
+                  const isActive = ev.status?.toLowerCase() === "active";
                   return (
                     <article key={ev.id} className={styles.eventCard}>
                       <div className={styles.eventImageWrap}>
                         <img
-                          src={ev.image || "/event-placeholder.png"}
+                          src={ev.image && ev.image.startsWith('http') ? ev.image : "/event-placeholder.png"}
                           alt={ev.title}
                           className={styles.eventImage}
                         />
                         {isUpcoming && <span className={styles.eventBadge}>Happening Soon</span>}
-                        {isActive   && <span className={`${styles.eventBadge} ${styles.eventBadgeActive}`}>Ongoing</span>}
+                        {isActive && (
+                          <span className={`${styles.eventBadge} ${styles.eventBadgeActive}`}>
+                            Ongoing
+                          </span>
+                        )}
                       </div>
                       <div className={styles.eventBody}>
                         <div className={styles.eventMeta}>
@@ -116,7 +153,10 @@ export default function EventsPage() {
                         {ev.tagline && <p className={styles.eventTagline}>{ev.tagline}</p>}
                         <p className={styles.eventDesc}>{ev.description}</p>
                         <div className={styles.eventDetails}>
-                          <span>📅 {ev.dateStart}{ev.dateEnd ? ` – ${ev.dateEnd}` : ""}</span>
+                          <span>
+                            📅 {ev.dateStart}
+                            {ev.dateEnd ? ` – ${ev.dateEnd}` : ""}
+                          </span>
                           {ev.venue && <span>📍 {ev.venue}</span>}
                           {ev.targetParticipants && <span>👥 {ev.targetParticipants}</span>}
                         </div>

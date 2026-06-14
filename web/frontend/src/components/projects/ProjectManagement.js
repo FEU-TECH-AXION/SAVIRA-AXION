@@ -15,6 +15,7 @@ import {
   deleteProject,
   deleteProjects,
 } from "@/lib/api";
+import { uploadProjectImage } from "@/lib/api";
 
 const PAGE_SIZE = 10;
 
@@ -202,12 +203,24 @@ export default function ProjectManagement() {
   }
   async function handleFormSave(data) {
     try {
+      const payload = { ...data };
+      // If image is a File, upload it first and replace with URL
+      if (payload.image && typeof payload.image !== 'string') {
+        try {
+          const url = await uploadProjectImage(payload.image);
+          payload.image = url;
+        } catch (err) {
+          console.error('Image upload failed:', err);
+          delete payload.image;
+        }
+      }
+
       if (formMode === "create") {
-        const created = await createProject(data);
+        const created = await createProject(payload);
         setProjects((prev) => [created, ...prev]);
         showToast(`Project "${data.title}" created.`);
       } else {
-        const updated = await updateProject(data.id, data);
+        const updated = await updateProject(data.id, payload);
         setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
         showToast(`Project "${data.title}" updated.`);
       }

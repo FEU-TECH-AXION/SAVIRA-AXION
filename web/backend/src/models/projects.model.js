@@ -14,6 +14,9 @@ const ALLOWED_FIELDS = [
   'target_participants',
   'partner_organization',
   'project_status',
+  'visibility',
+  'approval_status',
+  'image',
 ]
 
 const toFrontend = (row) => {
@@ -33,6 +36,10 @@ const toFrontend = (row) => {
     targetParticipants: row.target_participants,
     partnerOrganizations: row.partner_organization,
     status: row.project_status,
+    visibility: row.visibility,
+    approvalStatus: row.approval_status,
+    image: row.image || null,
+    slug: row.slug || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -40,23 +47,33 @@ const toFrontend = (row) => {
 
 const toDbPayload = (payload) => {
   const isValidValue = (value) => value !== undefined && value !== null && value !== ''
-  return Object.fromEntries(
-    Object.entries({
-      event_name: payload.title,
-      event_tagline: payload.tagline,
-      activity_mode: payload.activityMode,
-      venue: payload.venue,
-      start_date: payload.dateStart,
-      end_date: payload.dateEnd,
-      due_date: payload.dueDate,
-      logistical_requirement: payload.logisticalRequirements,
-      financial_requirement: payload.financialRequirements,
-      operational_requirement: payload.operationalRequirements,
-      target_participants: payload.targetParticipants,
-      partner_organization: payload.partnerOrganizations,
-      project_status: payload.status,
-    }).filter(([_, value]) => isValidValue(value))
-  )
+  const entries = Object.entries({
+    event_name: payload.title,
+    event_tagline: payload.tagline,
+    activity_mode: payload.activityMode,
+    venue: payload.venue,
+    start_date: payload.dateStart,
+    end_date: payload.dateEnd,
+    due_date: payload.dueDate,
+    logistical_requirement: payload.logisticalRequirements,
+    financial_requirement: payload.financialRequirements,
+    operational_requirement: payload.operationalRequirements,
+    target_participants: payload.targetParticipants,
+    partner_organization: payload.partnerOrganizations,
+    project_status: payload.status,
+    visibility: payload.visibility,
+    approval_status: payload.approvalStatus,
+    image: payload.image,
+  })
+
+  // Ensure only serializable/simple values are passed to the DB.
+  // Skip `image` when it's a File/Object (frontend file uploads should be handled via storage).
+  const filtered = entries.filter(([key, value]) => {
+    if (key === 'image' && value && typeof value !== 'string') return false
+    return isValidValue(value)
+  })
+
+  return Object.fromEntries(filtered)
 }
 
 const sanitize = (payload) => {
@@ -77,6 +94,14 @@ const getAll = async (filters = {}) => {
   if (filters.search) {
     const q = `%${filters.search}%`
     query = query.or(`event_name.ilike.${q},event_tagline.ilike.${q}`)
+  }
+
+  if (filters.visibility) {
+    query = query.eq('visibility', filters.visibility)
+  }
+
+  if (filters.approval_status) {
+    query = query.eq('approval_status', filters.approval_status)
   }
 
   if (filters.start_date) {
@@ -105,12 +130,20 @@ const getById = async (projectId) => {
 
 const create = async (payload) => {
   const dataToInsert = toDbPayload(payload)
+  if (!dataToInsert || Object.keys(dataToInsert).length === 0) {
+    const err = new Error('No valid project fields provided to insert')
+    err.status = 400
+    throw err
+  }
   const { data, error } = await supabase
     .from('projects')
     .insert([dataToInsert])
     .select()
 
-  if (error) throw error
+  if (error) {
+    console.error('Supabase insert error:', error)
+    throw error
+  }
   return toFrontend(data?.[0])
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, Image,
   StyleSheet, TextInput, ImageBackground, Modal,
@@ -76,11 +76,17 @@ function Navbar({ onBurger }) {
 
 // ── Event Card ────────────────────────────────────────────────────────────────
 function EventCard({ image, tag, title, description, onPress }) {
+  const imageSource = image
+    ? typeof image === 'string'
+      ? { uri: image }
+      : image
+    : null;
+
   return (
     <View style={s.eventCard}>
       <View style={s.eventImageWrap}>
-        {image
-          ? <Image source={image} style={s.eventImage} resizeMode="cover" />
+        {imageSource
+          ? <Image source={imageSource} style={s.eventImage} resizeMode="cover" />
           : <View style={[s.eventImage, { backgroundColor: '#cde8e8' }]} />
         }
         {tag && (
@@ -103,18 +109,61 @@ function EventCard({ image, tag, title, description, onPress }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 const CATEGORIES = ['Awareness Campaigns', 'Workshops', 'Summits', 'Community'];
 
-const EVENTS = [
-  { id: 1, tag: 'Happening Soon', title: 'Safe Spaces Summit', description: 'A scout community discussion on preventing sexual harassment in schools and organizations. Participants will learn about reporting procedures and how to create safer environments.' },
-  { id: 2, tag: null, title: 'Youth Against Abuse Summit', description: 'A leadership summit empowering young advocates to stand against harassment and abuse. The event features talks, workshops, and collaborative planning sessions.' },
-  { id: 3, tag: null, title: 'Know Your Rights Workshop', description: 'An educational session focused on understanding legal protections against sexual harassment. Attendees will gain practical knowledge on reporting processes and survivor support.' },
-  { id: 4, tag: null, title: 'Campus Awareness Campaign', description: 'A movement-driven event promoting respect, consent, and accountability within academic institutions. Volunteers and members will help spread awareness through organized activities.' },
-];
-
 export default function EventsScreen() {
   const [navOpen, setNavOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
   const [page, setPage] = useState(2);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(
+          `${API_URL}/api/projects?visibility=public&approval_status=approved`
+        );
+        if (!res.ok) return;
+        const raw = await res.json();
+        const normalized = normalizeProjectEvents(raw);
+        if (mounted) {
+          setEvents(normalized);
+        }
+      } catch (error) {
+        console.error('Failed to fetch event projects:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchEvents();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const normalizeProjectEvents = (rawProjects) => {
+    const projects = Array.isArray(rawProjects) ? rawProjects : rawProjects?.data || [];
+    return projects
+      .map((project) => ({
+        id: project.id ?? project.project_id,
+        title: project.title || project.event_name || 'Untitled Event',
+        description: project.description || project.tagline || project.event_tagline || '',
+        tag: project.status?.toLowerCase() === 'upcoming' ? 'Happening Soon' : null,
+        category: project.category || project.project_category || 'Awareness Campaign',
+        image: project.image || null,
+        status: project.status || project.project_status || '',
+        visibility: project.visibility,
+        approvalStatus: project.approvalStatus || project.approval_status,
+      }))
+      .filter((project) => project.visibility === 'public' && project.approvalStatus === 'approved');
+  };
+
+  const displayedEvents = loading ? [] : events;
 
   return (
     <View style={s.container}>
@@ -175,15 +224,21 @@ export default function EventsScreen() {
 
           {/* Event Cards */}
           <View style={s.cardList}>
-            {EVENTS.map((e) => (
-              <EventCard
-                key={e.id}
-                tag={e.tag}
-                title={e.title}
-                description={e.description}
-                onPress={() => {}}
-              />
-            ))}
+            {loading ? (
+              <Text style={s.loadingText}>Loading events…</Text>
+            ) : displayedEvents.length === 0 ? (
+              <Text style={s.loadingText}>No public events available.</Text>
+            ) : (
+              displayedEvents.map((e) => (
+                <EventCard
+                  key={e.id}
+                  tag={e.tag}
+                  title={e.title}
+                  description={e.description}
+                  onPress={() => {}}
+                />
+              ))
+            )}
           </View>
 
           {/* Pagination */}
@@ -298,4 +353,5 @@ const s = StyleSheet.create({
   pageNumActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   pageNumText: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
   pageNumTextActive: { color: '#fff' },
+  loadingText: { color: '#6b7280', textAlign: 'center', marginTop: 14, fontSize: 14 },
 });

@@ -1,5 +1,7 @@
 const express = require('express')
 const router = express.Router()
+const multer = require('multer')
+const upload = multer()
 const {
   getItems,
   getItem,
@@ -12,6 +14,7 @@ const {
 router.get('/', getItems)
 router.get('/:id', getItem)
 router.post('/', createItem)
+router.post('/upload-image', upload.single('image'), require('../controllers/projects.controller').uploadImage)
 router.patch('/:id', updateItem)
 router.delete('/:id', deleteItem)
 router.post('/bulk-delete', deleteMany)

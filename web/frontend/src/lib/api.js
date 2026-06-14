@@ -69,6 +69,20 @@ export async function createProject(payload) {
   return data;
 }
 
+export async function uploadProjectImage(file) {
+  const form = new FormData();
+  form.append('image', file);
+  const res = await fetch(`${API_URL}/api/projects/upload-image`, {
+    method: 'POST',
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Image upload failed');
+  }
+  return data.url;
+}
+
 export async function updateProject(id, payload) {
   const res = await fetch(`${API_URL}/api/projects/${id}`, {
     method: 'PATCH',
