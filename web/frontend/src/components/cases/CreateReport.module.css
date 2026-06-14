@@ -921,6 +921,18 @@
   font-weight: 500;
 }
 
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
 .submitBtn:disabled,
 .nextBtn:disabled {
   opacity: 0.6;

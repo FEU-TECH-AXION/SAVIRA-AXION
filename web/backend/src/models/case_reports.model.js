@@ -101,7 +101,9 @@ async function getReportsByUserId(complainantId) {
       incident_description,
       incident_city,
       incident_date,
-      case_status_id
+      case_status_id,
+      created_at,
+      updated_at
     `)
     .eq('complainant_id', complainantId)
     .eq('is_current', true)

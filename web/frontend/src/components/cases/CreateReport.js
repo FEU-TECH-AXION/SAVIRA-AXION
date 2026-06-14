@@ -1245,8 +1245,38 @@ export default function CreateReport({
   });
 
   const [evidence, setEvidence] = useState({ files: [], anonymous: false });
+  const [draftNotice, setDraftNotice] = useState("");
 
   const totalSteps = STEPS.length;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("savira_case_report_draft");
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.complainant) setComplainant(draft.complainant);
+      if (draft.incident) setIncident(draft.incident);
+      if (draft.evidence) setEvidence(draft.evidence);
+      if (draft.consents) setConsents(draft.consents);
+      setDraftNotice("You have an unfinished report draft. It has been loaded so you can continue.");
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    if (submitted) return;
+    const hasDraft =
+      Object.values(complainant).some(Boolean) ||
+      Object.values(incident).some(Boolean) ||
+      evidence.files.length > 0 ||
+      evidence.anonymous ||
+      consents.dataPrivacy ||
+      consents.caseAnalysis;
+    if (!hasDraft) return;
+    localStorage.setItem(
+      "savira_case_report_draft",
+      JSON.stringify({ complainant, incident, evidence, consents, updatedAt: new Date().toISOString() })
+    );
+  }, [complainant, incident, evidence, consents, submitted]);
 
   const clearError = (key) => {
     setStepErrors((prev) => {
@@ -1318,6 +1348,7 @@ export default function CreateReport({
       }
 
       setSubmitted(true);
+      localStorage.removeItem("savira_case_report_draft");
     } catch (err) {
       console.error('[CreateReport Submit Exception]', err);
       setSubmissionError(err.message || 'Failed to submit report.');
@@ -1361,8 +1392,6 @@ export default function CreateReport({
     }
   };
 
-  useEffect(() => { fetchUserReports(); }, []);
-
   return (
     <main className={styles.pageWrapper}>
       <div className={styles.pageInner}>
@@ -1388,6 +1417,22 @@ export default function CreateReport({
           </section>
 
           {/* ── Paginated Form Card ── */}
+          {draftNotice && !submitted && (
+            <div className={styles.errorAlert}>
+              <strong>Draft found:</strong> {draftNotice}
+              <button
+                type="button"
+                className={styles.backBtn}
+                style={{ marginLeft: 12 }}
+                onClick={() => {
+                  localStorage.removeItem("savira_case_report_draft");
+                  setDraftNotice("");
+                }}
+              >
+                Discard Draft
+              </button>
+            </div>
+          )}
           {!submitted ? (
             <div className={styles.formCard}>
               <div className={styles.formCardHeader}>
@@ -1473,11 +1518,14 @@ export default function CreateReport({
           )}
 
           {/* ── Your Report Status ── */}
+          {false && (
           <div className={`${styles.sectionHeading} mt-5`}>
             <h2 className={styles.sectionTitle}>Your Report Status</h2>
             <div className={styles.headingLine} />
           </div>
+          )}
 
+          {false && (
           <div className="row g-3">
               {reportsLoading ? (
                 <p>Loading reports...</p>
@@ -1503,6 +1551,7 @@ export default function CreateReport({
                 ))
               )}
           </div>
+          )}
         </div>
       </div>
     </main>
