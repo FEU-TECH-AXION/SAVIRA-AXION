@@ -366,7 +366,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
                   <button key={m} type="button"
                     className={`${styles.modeTab} ${form.activityMode === m ? styles.modeTabActive : ""}`}
                     onClick={() => set("activityMode", m)}>
-                    {m === "Face-to-face" : m === "Virtual" : "Hybrid"} {m}
+                    {m}
                   </button>
                 ))}
               </div>
