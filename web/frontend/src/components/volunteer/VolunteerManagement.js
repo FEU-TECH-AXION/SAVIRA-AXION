@@ -719,7 +719,7 @@ export default function VolunteerManagement() {
             </div>
 
             {/* ── Record count label ── */}
-            <p className={styles.recordLabel}>
+            {/* <p className={styles.recordLabel}>
               {filtered.length === applicants.length
                 ? `Showing all ${applicants.length} applicant${applicants.length !== 1 ? "s" : ""}`
                 : `Showing ${filtered.length} of ${applicants.length} applicant${applicants.length !== 1 ? "s" : ""}`}
@@ -731,7 +731,7 @@ export default function VolunteerManagement() {
                   Clear filters
                 </button>
               )}
-            </p>
+            </p> */}
 
             {/* ── Error state ── */}
             {error && (
