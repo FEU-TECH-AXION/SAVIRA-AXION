@@ -28,8 +28,19 @@ import styles from "./sidebar.module.css";
 
 const COMPLAINANT_LINKS = [
   { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
-  { href: "/cases", label: "Report", icon: <MdFolder /> },
-  { href: "/volunteer", label: "Volunteer", icon: <MdVolunteerActivism /> },
+  { href: "/cases", label: "Report", icon: <MdFolder />,
+    children: [
+      { href: "/cases", label: "Report" },
+      { href: "/cases/history", label: "Report History" },
+    ],
+   },
+  { href: "/volunteer", label: "Volunteer", icon: <MdVolunteerActivism />,
+    children: [
+      { href: "/volunteer", label: "Volunteering"},
+      { href: "/volunteer/apply", label: "Apply to volunteer" },
+      { href: "/volunteer/history", label: "Application History" },
+    ],
+   },
   { href: "/events", label: "Events", icon: <MdInterpreterMode /> },
   { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
 ];
@@ -44,7 +55,13 @@ const CASE_OFFICER_LINKS = [
 const STAFF_LINKS = [
   { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
   { href: "/projects", label: "Projects", icon: <MdFolder /> },
-  { href: "/volunteer", label: "Volunteers", icon: <MdVolunteerActivism /> },
+  { href: "/volunteer", label: "Volunteers", icon: <MdVolunteerActivism />,
+    children: [
+      { href: "/volunteer", label: "All Volunteers" },
+      { href: "/volunteerInterviews", label: "Interviews" },
+      { href: "/volunteerRanking", label: "Applicant Ranking" },
+    ],
+   },
   { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
 ];
 
