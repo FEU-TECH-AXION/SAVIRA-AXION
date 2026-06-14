@@ -377,7 +377,7 @@ export default function LegalTable({
 
                     {/* Case Type */}
                     <td className={styles.td}>
-                      {c.caseType || <span className={styles.muted}>—</span>}
+                      {c.caseType || <span className={styles.muted}>Unassigned</span>}
                     </td>
 
                     {/* Reporter ID */}
@@ -402,14 +402,14 @@ export default function LegalTable({
                     {/* Extra: Endorsed To */}
                     {showEndorsedTo && (
                       <td className={styles.td}>
-                        {c.endorsedTo || <span className={styles.muted}>—</span>}
+                        {c.endorsedTo || <span className={styles.muted}>Unassigned</span>}
                       </td>
                     )}
 
                     {/* Extra: City */}
                     {showCity && (
                       <td className={styles.td}>
-                        {c.city || c.region || <span className={styles.muted}>—</span>}
+                        {c.city || c.region || <span className={styles.muted}>Not specified</span>}
                       </td>
                     )}
 
