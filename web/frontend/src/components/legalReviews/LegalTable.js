@@ -257,7 +257,7 @@ export default function LegalTable({
               className={styles.bulkBtn}
               onClick={() => onParalegal && onParalegal(selectedCases)}
             >
-              Paralegal
+              Paralegal Support
             </button>
             <button
               className={styles.bulkBtn}

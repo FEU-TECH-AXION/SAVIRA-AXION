@@ -121,6 +121,10 @@ app.use('/api/case_status_history', caseStatusHistoryRouter)
 const legalCaseAssignmentsRouter = require('./routes/legal_case_assignments.routes')
 app.use('/api/legal_case_assignments', legalCaseAssignmentsRouter)
 
+// Route for legal reviews tbl
+const legalReviewsRouter = require('./routes/legal_reviews.routes')
+app.use('/api/legal_reviews', legalReviewsRouter)
+
 // ── ROUTES FOR VOLUNTEER APPLICATION RELATED TABLES ───────────────────────────────
 
 // Route for volunteer_applications tbl

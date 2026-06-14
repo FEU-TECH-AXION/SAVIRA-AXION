@@ -317,9 +317,9 @@ function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
   const toggle = (d) => setForm((p) => ({ ...p, documents: p.documents.includes(d) ? p.documents.filter((x) => x !== d) : [...p.documents, d] }));
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  function handleSave() {
+  async function handleSave() {
     const record = { organizedBy: actorName, date: new Date().toLocaleDateString(), documents: form.documents.join(", "), timeline: form.timeline, swornStatement: form.swornStatement, screenshots: form.screenshots, idDocuments: form.idDocuments, incidentDetails: form.incidentDetails, otherNotes: form.otherNotes };
-    onSave({ ...caseData, paralegalRecord: record });
+    await onSave({ ...caseData, paralegalRecord: record });
     onClose();
   }
 
@@ -451,8 +451,8 @@ function EndorseModal({ open, onClose, caseData, onSave, actorName }) {
 
   const set = (k) => (e) => setDetails((p) => ({ ...p, [k]: e.target.value }));
 
-  function handleSave() {
-    onSave({ ...caseData, endorsedTo: body, endorsementDetails: details });
+  async function handleSave() {
+    await onSave({ ...caseData, endorsedTo: body, endorsementStatus: `Endorsed to ${body}`, endorsementDetails: details });
     onClose();
   }
 
@@ -640,10 +640,10 @@ function MonitoringModal({ open, onClose, caseData, onSave, actorName }) {
   useEffect(() => { if (open) { setUpdate(""); setDate(new Date().toISOString().split("T")[0]); } }, [open]);
   if (!caseData) return null;
 
-  function handleSave() {
+  async function handleSave() {
     if (!update.trim()) return;
     const entry = { date: new Date(date).toLocaleDateString(), by: actorName, update };
-    onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
+    await onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
     onClose();
   }
 
@@ -1133,6 +1133,29 @@ function getCookie(name) {
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
+function getUserDataFromCookie() {
+  try {
+    const userCookie = getCookie("user");
+    return userCookie ? JSON.parse(userCookie) : {};
+  } catch {
+    return {};
+  }
+}
+
+function mergeLegalReviewData(caseData, review) {
+  if (!review) return caseData;
+  return {
+    ...caseData,
+    legalReviewId: review.legal_review_id,
+    legalReviewLogs: review.logs || [],
+    paralegalRecord: review.paralegal_record || null,
+    endorsedTo: review.endorsed_to || caseData.endorsedTo || null,
+    endorsementStatus: review.endorsed_to ? `Endorsed to ${review.endorsed_to}` : caseData.endorsementStatus,
+    endorsementDetails: review.endorsement_details || null,
+    monitoringLog: review.monitoring_log || [],
+  };
+}
+
 export default function LegalReviewManagement() {
   const router = useRouter();
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
@@ -1200,7 +1223,17 @@ export default function LegalReviewManagement() {
               }],
             };
           });
-        setCases(mapped);
+        const synced = await Promise.all(mapped.map(async (caseItem) => {
+          try {
+            const reviewRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseItem.id}`, { credentials: "include" });
+            if (!reviewRes.ok) return caseItem;
+            const reviewPayload = await reviewRes.json().catch(() => ({}));
+            return mergeLegalReviewData(caseItem, reviewPayload.data);
+          } catch {
+            return caseItem;
+          }
+        }));
+        setCases(synced);
       } catch (err) {
         console.error("[LegalReview] fetch error:", err);
       } finally {
@@ -1247,9 +1280,72 @@ export default function LegalReviewManagement() {
   function closeModal() { setModal(null); }
   function open(c, m) { setSelectedCase(c); setModal(m); }
 
-  function saveCase(updated) {
-    setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
-    showToast(`Case ${updated.id} updated.`);
+  async function saveCase(updated) {
+    const reviewDetailsChanged =
+      updated.paralegalRecord !== selectedCase?.paralegalRecord ||
+      updated.endorsedTo !== selectedCase?.endorsedTo ||
+      updated.endorsementDetails !== selectedCase?.endorsementDetails ||
+      (updated.monitoringLog || []).length > (selectedCase?.monitoringLog || []).length;
+
+    if (!reviewDetailsChanged) {
+      setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+      setSelectedCase(updated);
+      showToast(`Case ${updated.id} updated.`);
+      return;
+    }
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const userData = getUserDataFromCookie();
+    const performedByUserId = userData.user_id || userData.id;
+
+    let body = {
+      performed_by_user_id: performedByUserId,
+      action_type: "legal_review_updated",
+      remarks: `Legal review updated for case ${updated.id}.`,
+    };
+
+    if (updated.paralegalRecord !== selectedCase?.paralegalRecord) {
+      body = {
+        ...body,
+        action_type: "paralegal_record_saved",
+        remarks: "Paralegal support record saved.",
+        paralegal_record: updated.paralegalRecord,
+      };
+    } else if (updated.endorsedTo !== selectedCase?.endorsedTo || updated.endorsementDetails !== selectedCase?.endorsementDetails) {
+      body = {
+        ...body,
+        action_type: "endorsement_saved",
+        remarks: `Endorsement saved${updated.endorsedTo ? ` to ${updated.endorsedTo}` : ""}.`,
+        endorsed_to: updated.endorsedTo || null,
+        endorsement_details: updated.endorsementDetails || null,
+      };
+    } else if ((updated.monitoringLog || []).length > (selectedCase?.monitoringLog || []).length) {
+      body = {
+        ...body,
+        action_type: "monitoring_update_added",
+        remarks: "Monitoring update added.",
+        monitoring_entry: updated.monitoringLog[updated.monitoringLog.length - 1],
+      };
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/legal_reviews/case/${updated.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to save legal review details.");
+
+      const merged = mergeLegalReviewData(updated, payload.data);
+      setCases((prev) => prev.map((c) => c.id === updated.id ? merged : c));
+      setSelectedCase(merged);
+      showToast(`Case ${updated.id} updated.`);
+    } catch (err) {
+      showToast(err.message, "danger");
+      throw err;
+    }
   }
 
   function submitForApproval(caseData, proposedStatus, changeDetails) {

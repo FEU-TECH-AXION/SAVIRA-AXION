@@ -289,9 +289,9 @@ function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
   const toggle = (d) => setForm((p) => ({ ...p, documents: p.documents.includes(d) ? p.documents.filter((x) => x !== d) : [...p.documents, d] }));
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  function handleSave() {
+  async function handleSave() {
     const record = { organizedBy: actorName, date: new Date().toLocaleDateString(), documents: form.documents.join(", "), timeline: form.timeline, swornStatement: form.swornStatement, screenshots: form.screenshots, idDocuments: form.idDocuments, incidentDetails: form.incidentDetails, otherNotes: form.otherNotes };
-    onSave({ ...caseData, paralegalRecord: record });
+    await onSave({ ...caseData, paralegalRecord: record });
     onClose();
   }
 
@@ -358,8 +358,8 @@ function EndorseModal({ open, onClose, caseData, onSave }) {
 
   const set = (k) => (e) => setDetails((p) => ({ ...p, [k]: e.target.value }));
 
-  function handleSave() {
-    onSave({
+  async function handleSave() {
+    await onSave({
       ...caseData,
       endorsedTo: body,
       referralBody: body,
@@ -557,10 +557,10 @@ function MonitoringModal({ open, onClose, caseData, onSave, actorName }) {
 
   if (!caseData) return null;
 
-  function handleSave() {
+  async function handleSave() {
     if (!update.trim()) return;
     const entry = { date: new Date(date).toLocaleDateString("en-PH"), by: actorName, update };
-    onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
+    await onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
     onClose();
   }
 
@@ -1178,6 +1178,106 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
 
 // ─── Legal Review Tab (staff only) ────────────────────────────────────────────
 
+function mergeLegalReviewData(caseData, review) {
+  if (!review) return caseData;
+  return {
+    ...caseData,
+    legalReviewId: review.legal_review_id,
+    legalReviewLogs: review.logs || [],
+    paralegalRecord: review.paralegal_record || null,
+    endorsedTo: review.endorsed_to || caseData.endorsedTo || null,
+    referralBody: review.endorsed_to || caseData.referralBody || null,
+    referralRequired: !!(review.endorsed_to || caseData.referralRequired),
+    endorsementStatus: review.endorsed_to ? `Endorsed to ${review.endorsed_to}` : caseData.endorsementStatus,
+    endorsementDetails: review.endorsement_details || null,
+    monitoringLog: review.monitoring_log || [],
+  };
+}
+
+function getUserDataFromCookie() {
+  try {
+    const userCookie = getCookie("user");
+    return userCookie ? JSON.parse(userCookie) : {};
+  } catch {
+    return {};
+  }
+}
+
+function LegalReviewDetailsSection({ caseData }) {
+  const hasParalegal = !!caseData.paralegalRecord;
+  const hasEndorsement = !!(caseData.endorsedTo || caseData.endorsementDetails);
+  const hasMonitoring = (caseData.monitoringLog || []).length > 0;
+
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionHeadingText}>Legal Review Details</h2>
+
+      {!hasParalegal && !hasEndorsement && !hasMonitoring && (
+        <p className={styles.emptyState}>No legal review details have been saved yet.</p>
+      )}
+
+      {hasParalegal && (
+        <div className={styles.reviewDetailBlock}>
+          <h3 className={styles.reviewDetailTitle}>Paralegal Support Record</h3>
+          <div className={styles.detailGrid}>
+            {[
+              ["Organized By", caseData.paralegalRecord.organizedBy],
+              ["Date", caseData.paralegalRecord.date],
+              ["Documents", caseData.paralegalRecord.documents],
+              ["Sworn Statement", caseData.paralegalRecord.swornStatement],
+              ["Identity Documents", caseData.paralegalRecord.idDocuments],
+              ["Digital Evidence", caseData.paralegalRecord.screenshots],
+              ["Incident Timeline", caseData.paralegalRecord.timeline],
+              ["Key Incident Details", caseData.paralegalRecord.incidentDetails],
+              ["Additional Notes", caseData.paralegalRecord.otherNotes],
+            ].map(([k, v]) => v ? (
+              <div key={k} className={styles.detailItem}>
+                <p className={styles.detailKey}>{k}</p>
+                <p className={styles.detailVal}>{v}</p>
+              </div>
+            ) : null)}
+          </div>
+        </div>
+      )}
+
+      {hasEndorsement && (
+        <div className={styles.reviewDetailBlock}>
+          <h3 className={styles.reviewDetailTitle}>Endorsement / Referral Details</h3>
+          <div className={styles.detailGrid}>
+            <div className={styles.detailItem}>
+              <p className={styles.detailKey}>Endorsed To</p>
+              <p className={styles.detailVal}>{caseData.endorsedTo || "Not endorsed"}</p>
+            </div>
+            {Object.entries(caseData.endorsementDetails || {}).map(([k, v]) => v ? (
+              <div key={k} className={styles.detailItem}>
+                <p className={styles.detailKey}>{k}</p>
+                <p className={styles.detailVal}>{v}</p>
+              </div>
+            ) : null)}
+          </div>
+        </div>
+      )}
+
+      {hasMonitoring && (
+        <div className={styles.reviewDetailBlock}>
+          <h3 className={styles.reviewDetailTitle}>Monitoring Updates</h3>
+          <div className={styles.reviewLogList}>
+            {caseData.monitoringLog.map((entry, index) => (
+              <div key={`${entry.date}-${index}`} className={styles.reviewLogItem}>
+                <div className={styles.reviewLogMeta}>
+                  <strong>{entry.date}</strong>
+                  <span>{entry.by}</span>
+                </div>
+                <p>{entry.update}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, showToast }) {
   const [modal, setModal] = useState(null);
 
@@ -1197,9 +1297,58 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     return [];
   }
 
-  function saveCase(updated) {
-    setCaseData(updated);
-    showToast(`Case ${updated.caseId || updated.id} updated.`);
+  async function saveCase(updated) {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const userData = getUserDataFromCookie();
+    const performedByUserId = userData.user_id || userData.id;
+
+    let body = {
+      performed_by_user_id: performedByUserId,
+      action_type: "legal_review_updated",
+      remarks: `Legal review updated for case ${caseData.caseId || caseData.id}.`,
+    };
+
+    if (updated.paralegalRecord !== caseData.paralegalRecord) {
+      body = {
+        ...body,
+        action_type: "paralegal_record_saved",
+        remarks: "Paralegal support record saved.",
+        paralegal_record: updated.paralegalRecord,
+      };
+    } else if (updated.endorsedTo !== caseData.endorsedTo || updated.endorsementDetails !== caseData.endorsementDetails) {
+      body = {
+        ...body,
+        action_type: "endorsement_saved",
+        remarks: `Endorsement saved${updated.endorsedTo ? ` to ${updated.endorsedTo}` : ""}.`,
+        endorsed_to: updated.endorsedTo || null,
+        endorsement_details: updated.endorsementDetails || null,
+      };
+    } else if ((updated.monitoringLog || []).length > (caseData.monitoringLog || []).length) {
+      const monitoringEntry = updated.monitoringLog[updated.monitoringLog.length - 1];
+      body = {
+        ...body,
+        action_type: "monitoring_update_added",
+        remarks: "Monitoring update added.",
+        monitoring_entry: monitoringEntry,
+      };
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/legal_reviews/case/${caseData.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to save legal review details.");
+
+      setCaseData((prev) => mergeLegalReviewData({ ...prev, ...updated }, payload.data));
+      showToast(`Case ${updated.caseId || updated.id} updated.`);
+    } catch (err) {
+      showToast(err.message, "danger");
+      throw err;
+    }
   }
 
   async function submitForApproval(proposedStatus, changeDetails) {
@@ -1291,28 +1440,30 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       </section>
 
       {/* ── Action Buttons ── */}
+      <LegalReviewDetailsSection caseData={caseData} />
+
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Actions</h2>
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
 
           {/* Paralegal */}
-          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#10b981")}>
+          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>
             Paralegal Support
           </button>
 
           {/* Endorse */}
-          <button onClick={() => setModal("endorseFull")} style={btnStyle("#0ea5e9")}>
+          <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>
             Endorse
           </button>
 
           {/* Monitor */}
-          <button onClick={() => setModal("monitorFull")} style={btnStyle("#f59e0b")}>
+          <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>
             Monitor
           </button>
 
           {/* Status */}
           {transitions.length > 0 && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusShared")} style={btnStyle("#3b82f6")}>
+            <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>
               Status
             </button>
           )}
@@ -1754,7 +1905,7 @@ export default function ViewCase() {
         }
         const { data } = await res.json();
         const caseYear = new Date(data.created_at).getFullYear();
-        setCaseData({
+        const mappedCase = {
           id:                   data.case_report_id,
           caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
           reporterId:           String(data.complainant_id),
@@ -1808,7 +1959,15 @@ export default function ViewCase() {
               notes:  "Report received and logged.",
             },
           ],
-        });
+        };
+
+        const legalReviewRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseId}`, { credentials: "include" });
+        if (legalReviewRes.ok) {
+          const legalReviewPayload = await legalReviewRes.json().catch(() => ({}));
+          setCaseData(mergeLegalReviewData(mappedCase, legalReviewPayload.data));
+        } else {
+          setCaseData(mappedCase);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
