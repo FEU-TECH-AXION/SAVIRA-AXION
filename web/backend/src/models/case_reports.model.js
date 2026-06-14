@@ -175,6 +175,12 @@ async function getAllReports() {
         assignment_id,
         case_officer_id,
         is_active
+      ),
+      legal_case_assignments (
+        legal_case_assignment_id,
+        legal_personnel_id,
+        assignment_role,
+        is_active
       )
     `)
     .eq('is_current', true)
@@ -209,7 +215,30 @@ async function getAllReports() {
     }
   }
 
-  // Step 3: Merge officer name into each report
+  // Step 2b: Fetch all legal personnels with their user info
+  const { data: legalPersonnels, error: legalError } = await supabase
+    .from('legal_personnels')
+    .select(`
+      legal_personnel_id,
+      users!inner (
+        first_name,
+        last_name
+      )
+    `)
+  if (legalError) {
+    console.error('[getAllReports] legal personnels query error:', JSON.stringify(legalError, null, 2))
+    throw legalError
+  }
+
+  // Build lookup: legal_personnel_id → full name
+  const legalMap = {}
+  for (const lp of legalPersonnels || []) {
+    if (lp.users) {
+      legalMap[lp.legal_personnel_id] = `${lp.users.first_name || ''} ${lp.users.last_name || ''}`.trim()
+    }
+  }
+
+  // Step 3: Merge officer name and legal names into each report
   return reports.map(report => {
     let assignedOfficer = null
     let assignedOfficerId = null
@@ -220,11 +249,34 @@ async function getAllReports() {
         assignedOfficer = officerMap[assignedOfficerId] || null
       }
     }
+
+    let assignedLegalOfficer = null
+    let assignedLegalOfficerId = null
+    let assignedParalegal = null
+    let assignedParalegalId = null
+
+    if (report.legal_case_assignments?.length > 0) {
+      const activeLegal = report.legal_case_assignments.filter(a => a.is_active)
+      const officerAss = activeLegal.find(a => a.assignment_role === 'legal_officer')
+      if (officerAss) {
+        assignedLegalOfficerId = officerAss.legal_personnel_id
+        assignedLegalOfficer = legalMap[assignedLegalOfficerId] || null
+      }
+      const paralegalAss = activeLegal.find(a => a.assignment_role === 'paralegal')
+      if (paralegalAss) {
+        assignedParalegalId = paralegalAss.legal_personnel_id
+        assignedParalegal = legalMap[assignedParalegalId] || null
+      }
+    }
+
     return {
       ...report,
-      assigned_officer:    assignedOfficer,
-      assigned_officer_id: assignedOfficerId,
-      case_assignments:    undefined,
+      assigned_officer:       assignedOfficer,
+      assigned_officer_id:    assignedOfficerId,
+      assigned_legal_officer: assignedLegalOfficer,
+      assigned_paralegal:     assignedParalegal,
+      case_assignments:       undefined,
+      legal_case_assignments: undefined,
     }
   })
 }

@@ -490,15 +490,20 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
               </div>
             )}
 
-            {/* Admin approval status (read-only display) */}
+            {/* Admin approval status (editable) */}
             {mode === "edit" && (
               <div className={styles.approvalRow}>
                 <span className={styles.viewKey}>Approval Status</span>
-                <span className={`${styles.approvalBadge} ${styles[`approval--${form.approvalStatus}`]}`}>
-                  {form.approvalStatus === "pending" ? "⏳ Pending" :
-                   form.approvalStatus === "approved" ? "✅ Approved" :
-                   "❌ Rejected"}
-                </span>
+                <select
+                  className={styles.formInput}
+                  style={{ width: "auto", minWidth: "140px", padding: "0.25rem 0.5rem" }}
+                  value={form.approvalStatus}
+                  onChange={(e) => set("approvalStatus", e.target.value)}
+                >
+                  <option value="pending">⏳ Pending</option>
+                  <option value="approved">✅ Approved</option>
+                  <option value="rejected">❌ Rejected</option>
+                </select>
               </div>
             )}
           </SectionCard>

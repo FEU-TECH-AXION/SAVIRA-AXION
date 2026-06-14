@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
 import Calendar from "react-calendar";
@@ -49,6 +49,7 @@ function DeadlineItem({ emoji, title, date }) {
 export default function CaseOfficerDashboard() {
   const [calDate, setCalDate] = useState(new Date());
   const { user: authUser } = useAuth();
+  const [cases, setCases] = useState([]);
 
   const user = authUser ? {
     role: authUser.role_name,
@@ -56,15 +57,48 @@ export default function CaseOfficerDashboard() {
     lastName: authUser.last_name,
   } : { role: "case officer", firstName: "Case Officer", lastName: "User" };
 
-  const stats = [
-    { num: 2,  label: "For Verification",          hasNew: true },
-    { num: 11, label: "Total Assigned Cases",       hasNew: true },
-  ];
+  useEffect(() => {
+    async function fetchCases() {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          const list = Array.isArray(json) ? json : json?.data || [];
+          setCases(list);
+        }
+      } catch (err) {
+        console.error("Failed to fetch cases for CaseOfficerDashboard:", err);
+      }
+    }
+    fetchCases();
+  }, []);
 
-  const overviewCards = [
-    { category: "Case",    label: "For Verification",             count: 2,  showView: true },
-    { category: "Case",    label: "Your total assigned cases are", count: 11, showView: true },
-  ];
+  const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+
+  const assignedCases = useMemo(() => {
+    return cases.filter(c => c.assigned_officer === actorName);
+  }, [cases, actorName]);
+
+  const stats = useMemo(() => {
+    const forVerification = assignedCases.filter(c => c.case_status_id === 2).length;
+    const totalAssigned = assignedCases.length;
+
+    return [
+      { num: forVerification, label: "For Verification",    hasNew: forVerification > 0 },
+      { num: totalAssigned,    label: "Total Assigned Cases", hasNew: totalAssigned > 0 },
+    ];
+  }, [assignedCases]);
+
+  const overviewCards = useMemo(() => {
+    const forVerification = assignedCases.filter(c => c.case_status_id === 2).length;
+    const totalAssigned = assignedCases.length;
+
+    return [
+      { category: "Case",    label: "For Verification",             count: forVerification, showView: true },
+      { category: "Case",    label: "Your total assigned cases are", count: totalAssigned,    showView: true },
+    ];
+  }, [assignedCases]);
 
   const deadlines = [
     { emoji: "🌞", title: "SASHA believes that...",  date: "March 1, 2026"   },
