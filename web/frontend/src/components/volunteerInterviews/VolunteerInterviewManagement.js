@@ -394,9 +394,10 @@ export default function VolunteerApplicationInterviewManagement() {
       setLoadingData(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
 
         const slotsRes = await fetch(
-          `${API_URL}/api/interview_slots?created_by=${user.user_id}&slot_type=volunteer_application`,
+          `${API_URL}/api/interview_slots?slot_type=volunteer${isAdmin ? "" : `&created_by=${user.user_id}`}`,
           { credentials: "include" }
         );
         const slotsJson = await slotsRes.json();
@@ -413,7 +414,7 @@ export default function VolunteerApplicationInterviewManagement() {
         );
 
         const interviewsRes = await fetch(
-          `${API_URL}/api/interviews?type=volunteer_application&interviewer_user_id=${user.user_id}`,
+          `${API_URL}/api/interviews?type=volunteer${isAdmin ? "" : `&interviewer_user_id=${user.user_id}`}`,
           { credentials: "include" }
         );
         const interviewsJson = await interviewsRes.json();
@@ -421,7 +422,7 @@ export default function VolunteerApplicationInterviewManagement() {
           (interviewsJson.data || []).map((iv) => ({
             ...iv,
             id: iv.interview_id,
-            appRefId: `${new Date(iv.created_at).getFullYear()}-${String(iv.application_id).padStart(3, "0")}`,
+            appRefId: `${new Date(iv.created_at).getFullYear()}-${String(iv.volunteer_application_id).padStart(3, "0")}`,
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "—",
@@ -485,7 +486,7 @@ export default function VolunteerApplicationInterviewManagement() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_type: "volunteer_application",
+          slot_type: "volunteer",
           created_by: user.user_id,
           slot_date: formData.date,
           slot_time: formData.time,
@@ -631,7 +632,7 @@ export default function VolunteerApplicationInterviewManagement() {
 
   const handleViewDetails = (interviews) => {
     const interview = Array.isArray(interviews) ? interviews[0] : interviews;
-    router.push(`/volunteer/view-application?id=${interview.appRefId.split("-")[1]}&tab=interview`);
+    router.push(`/volunteer/view?id=${Number(interview.appRefId.split("-")[1])}&tab=interview`);
   };
 
   return (

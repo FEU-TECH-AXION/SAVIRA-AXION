@@ -223,7 +223,7 @@ function ApplicantScoresTab({ appData }) {
           fetch(`${API}/api/volunteer_applications/${appData.id}/interview_evaluation`, { credentials: "include" }),
         ]);
         const essayJson     = essayRes.ok     ? await essayRes.json()     : {};
-        const interviewJson = interviewRes.ok ? await interviewJson.json() : {};
+        const interviewJson = interviewRes.ok ? await interviewRes.json() : {};
         setScores({
           essay:     essayJson.data     || essayJson     || {},
           interview: interviewJson.data || interviewJson || {},
@@ -521,7 +521,7 @@ function RatingStars({ value, onChange, disabled }) {
   );
 }
 
-function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
+function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -538,6 +538,8 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   const [essaySaving, setEssaySaving] = useState(false);
   const [essaySaved, setEssaySaved] = useState(false);
   const [essayLoaded, setEssayLoaded] = useState(false);
+  const [essayAggregate, setEssayAggregate] = useState(null);
+  const [nlpEssayScore, setNlpEssayScore] = useState(0);
 
   // Interview score
   const [interviewScore, setInterviewScore] = useState(0);
@@ -587,11 +589,26 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
             experience: d.experience ?? 0,
           });
           setEssayNotes(d.notes || "");
+          setEssayAggregate(d.aggregate || null);
         }
       } catch (_) {}
       finally { setEssayLoaded(true); }
     }
     fetchEssay();
+  }, [appData?.id]);
+
+  useEffect(() => {
+    if (!appData?.id) return;
+    async function fetchNlp() {
+      try {
+        const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}/nlp`, { credentials: "include" });
+        if (!res.ok) return;
+        const json = await res.json();
+        const d = json.data || json;
+        setNlpEssayScore(Number(d.essay_weighted_total) || 0);
+      } catch (_) {}
+    }
+    fetchNlp();
   }, [appData?.id]);
 
   // ── Fetch saved interview score ────────────────────────────────────────────
@@ -619,6 +636,10 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   // ── Save handlers ──────────────────────────────────────────────────────────
 
   async function saveEssayScores() {
+    if (!canEdit) {
+      alert("Only assigned Membership Committee staff can modify this evaluation.");
+      return;
+    }
     setEssaySaving(true);
     try {
       await fetch(
@@ -640,6 +661,10 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   }
 
   async function saveInterviewScore() {
+    if (!canEdit) {
+      alert("Only assigned Membership Committee staff can modify this evaluation.");
+      return;
+    }
     setInterviewSaving(true);
     try {
       await fetch(
@@ -663,6 +688,12 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   // ── Computed totals ────────────────────────────────────────────────────────
 
   const essayWeightedTotal = weightedEssayScore(essayScores); // 0–100
+  const aggregateHumanEssay = essayAggregate?.evaluator_count > 0
+    ? weightedEssayScore(essayAggregate)
+    : essayWeightedTotal;
+  const hybridEssayScore = aggregateHumanEssay > 0 && nlpEssayScore > 0
+    ? (aggregateHumanEssay * 0.70) + (nlpEssayScore * 0.30)
+    : aggregateHumanEssay || nlpEssayScore;
 
   // Derive non-negotiable / negotiable pass counts from screening answers
   const NON_NEG_FIELDS = [
@@ -684,7 +715,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
   // Aggregate score: non-neg (20%) + neg (10%) + essay (50%) + interview (20%)
   const nonNegScore   = nonNegTotal > 0 ? (nonNegPassed / nonNegTotal) * 20 : 0;
   const negScore      = negTotal > 0 ? (negPassed / negTotal) * 10 : 0;
-  const essayScore20  = (essayWeightedTotal / 100) * 50;
+  const essayScore20  = (hybridEssayScore / 100) * 50;
   const interviewScore20 = (interviewScore / 10) * 20;
   const aggregateTotal = nonNegScore + negScore + essayScore20 + interviewScore20;
 
@@ -704,10 +735,30 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
           <p className={styles.mgmtValue} style={{ color: appData.assignedEvaluator ? "#037F81" : "#9ca3af" }}>
             {appData.assignedEvaluator || "Unassigned"}
           </p>
+          {essayAggregate?.evaluator_count > 0 && (
+            <p className={styles.mgmtLabel}>{essayAggregate.evaluator_count} evaluator score{essayAggregate.evaluator_count === 1 ? "" : "s"} recorded</p>
+          )}
+        </div>
+
+        <div className={styles.weightedTotalRow}>
+          <div>
+            <p className={styles.weightedTotalLabel}>
+              Hybrid Essay Score
+            </p>
+            <p className={styles.weightedTotalSub}>
+              70% human average + 30% NLP score
+            </p>
+          </div>
+          <span className={styles.weightedTotalValue} style={{
+            color: hybridEssayScore >= 70 ? "#16a34a" : hybridEssayScore >= 40 ? "#d97706" : hybridEssayScore > 0 ? "#dc2626" : "#d1d5db",
+          }}>
+            {hybridEssayScore > 0 ? hybridEssayScore.toFixed(1) : "—"}<span className={styles.weightedTotalDenom}>/100</span>
+          </span>
         </div>
         <button
-          className={styles.btnPrimary}
-          onClick={onUpdateStatus}
+          className={canEdit ? styles.btnPrimary : styles.btnDisabled}
+          onClick={canEdit ? onUpdateStatus : undefined}
+          disabled={!canEdit}
         >
           Update Status
         </button>
@@ -717,8 +768,16 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
       <div className={styles.staffNotice}>
         <span className={styles.noticeIcon}><IoIosInformationCircle /></span>
         <span>
-          This tab is for <strong>Membership Committee staff only.</strong>{" "}
-          Scores entered here are saved and contribute to the automated aggregate evaluation of the applicant.
+          {canEdit ? (
+            <>
+              This tab is for <strong>assigned Membership Committee staff only.</strong>{" "}
+              Scores entered here are saved and contribute to the automated aggregate evaluation of the applicant.
+            </>
+          ) : (
+            <>
+              You can review this evaluation, but only the assigned Membership Committee staff can update statuses or save scores.
+            </>
+          )}
         </span>
       </div>
 
@@ -871,6 +930,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
               <RatingStars
                 value={essayScores[c.key]}
                 onChange={(v) => setEssayScores(prev => ({ ...prev, [c.key]: v }))}
+                disabled={!canEdit}
               />
               {essayScores[c.key] > 0 && (
                 <div className={styles.criterionBarWrap}>
@@ -907,6 +967,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
             rows={3}
             value={essayNotes}
             onChange={e => setEssayNotes(e.target.value)}
+            disabled={!canEdit}
             placeholder="Observations, justifications, or flagged concerns about the essay…"
             className={styles.notesFieldTextarea}
           />
@@ -921,8 +982,8 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
           )}
           <button
             onClick={saveEssayScores}
-            disabled={essaySaving || !allEssayFilled}
-            className={allEssayFilled ? styles.btnPrimary : styles.btnDisabled}
+            disabled={!canEdit || essaySaving || !allEssayFilled}
+            className={canEdit && allEssayFilled ? styles.btnPrimary : styles.btnDisabled}
           >
             {essaySaving ? "Saving…" : "Save Essay Scores"}
           </button>
@@ -952,7 +1013,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
               {interviewScore > 0 ? interviewScore : "—"}<span className={styles.weightedTotalDenom}>/10</span>
             </span>
           </div>
-          <RatingStars value={interviewScore} onChange={setInterviewScore} />
+          <RatingStars value={interviewScore} onChange={setInterviewScore} disabled={!canEdit} />
           {interviewScore > 0 && (
             <div className={styles.criterionBarWrap}>
               <ScoreBar score={interviewScore} max={10} />
@@ -968,6 +1029,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
             rows={3}
             value={interviewNotes}
             onChange={e => setInterviewNotes(e.target.value)}
+            disabled={!canEdit}
             placeholder="Key impressions, red flags, standout qualities from the interview…"
             className={styles.notesFieldTextarea}
           />
@@ -979,8 +1041,8 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
           )}
           <button
             onClick={saveInterviewScore}
-            disabled={interviewSaving}
-            className={styles.btnPrimary}
+            disabled={!canEdit || interviewSaving}
+            className={canEdit ? styles.btnPrimary : styles.btnDisabled}
           >
             {interviewSaving ? "Saving…" : "Save Interview Score"}
           </button>
@@ -999,7 +1061,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, onUpdateStatus }) {
           {[
             { label: "Non-Negotiables", value: nonNegScore.toFixed(1), max: "20", desc: `${nonNegPassed}/${nonNegTotal} passed`, color: nonNegPassed === nonNegTotal ? "#16a34a" : "#dc2626" },
             { label: "Negotiables",     value: negScore.toFixed(1),    max: "10", desc: `${negPassed}/${negTotal} passed`,    color: negPassed >= negTotal * 0.6 ? "#16a34a" : "#d97706" },
-            { label: "Essay",           value: essayScore20.toFixed(1), max: "50", desc: `${essayWeightedTotal.toFixed(1)}/100 weighted`, color: essayWeightedTotal >= 70 ? "#16a34a" : essayWeightedTotal >= 40 ? "#d97706" : "#9ca3af" },
+            { label: "Essay",           value: essayScore20.toFixed(1), max: "50", desc: `${hybridEssayScore.toFixed(1)}/100 hybrid`, color: hybridEssayScore >= 70 ? "#16a34a" : hybridEssayScore >= 40 ? "#d97706" : "#9ca3af" },
             { label: "Interview",       value: interviewScore20.toFixed(1), max: "20", desc: `${interviewScore}/10 raw score`, color: interviewScore >= 7 ? "#16a34a" : interviewScore >= 4 ? "#d97706" : "#9ca3af" },
           ].map(({ label, value, max, desc, color }) => (
             <div key={label} className={styles.aggregateCell}>
@@ -1271,6 +1333,7 @@ export default function ViewApplication() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const appId        = searchParams.get("id");
+  const requestedTab = searchParams.get("tab");
 
   const [appData,     setAppData]     = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -1279,7 +1342,7 @@ export default function ViewApplication() {
   const [modal,       setModal]       = useState(null);
   const [user,        setUser]        = useState({ role: null });
   const [userLoaded,  setUserLoaded]  = useState(false);
-  const [activeTab,   setActiveTab]   = useState("details");
+  const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
 
   // ── Read user from cookie ─────────────────────────────────────────────────
 
@@ -1288,7 +1351,7 @@ export default function ViewApplication() {
     if (c) {
       try {
         const u = JSON.parse(c);
-        setUser({ role: u.role_name, firstName: u.first_name, lastName: u.last_name });
+        setUser({ id: u.user_id, role: u.role_name, firstName: u.first_name, lastName: u.last_name });
       } catch (_) {}
     }
     setUserLoaded(true);
@@ -1337,10 +1400,19 @@ export default function ViewApplication() {
 
         setAppData({
           id:                    data.volunteer_application_id,
+          appRefId:              `APP-${String(data.volunteer_application_id).padStart(4, "0")}`,
           applicantUserId:       data.applicant_user_id || data.user_id || null,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.notes || "",
-          assignedEvaluator:     data.assigned_evaluator || data.assigned_staff || null,
+          assignedEvaluator:     (data.application_assessments || [])
+                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
+                                  .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
+                                  .filter(Boolean)
+                                  .join(", ") || data.assigned_evaluator || data.assigned_staff || null,
+          assignedEvaluatorIds:  (data.application_assessments || [])
+                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
+                                  .map((aa) => aa.assessor_id)
+                                  .filter(Boolean),
           dateApplied:           data.created_at
               ? new Date(data.created_at).toLocaleDateString("en-PH", {
             day: "numeric",
@@ -1429,7 +1501,10 @@ export default function ViewApplication() {
 
   const isAdmin       = user.role?.toLowerCase() === "admin";
   const isApplicationOfficer = user.role?.toLowerCase()?.includes("officer");
-  const isStaff       = isAdmin || isApplicationOfficer;
+  const isStaff       = isAdmin || isApplicationOfficer || user.role?.toLowerCase() === "staff";
+  const isAssignedEvaluator = (appData?.assignedEvaluatorIds || [])
+    .some((id) => String(id) === String(user.id));
+  const canManageVolunteerApplication = isAdmin || isAssignedEvaluator;
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -1541,6 +1616,7 @@ export default function ViewApplication() {
               userId={user.id}
               actorName={`${user.firstName || ""} ${user.lastName || ""}`.trim()}
               userRole={user.role}
+              canManageInterview={canManageVolunteerApplication}
             />
           )}
 
@@ -1548,7 +1624,14 @@ export default function ViewApplication() {
             <ApplicationEvaluationTab
               appData={appData}
               isAdmin={isAdmin}
-              onUpdateStatus={() => setModal("updateStatus")}
+              canEdit={canManageVolunteerApplication}
+              onUpdateStatus={() => {
+                if (!canManageVolunteerApplication) {
+                  showToast("Only assigned Membership Committee staff can update this application.", "error");
+                  return;
+                }
+                setModal("updateStatus");
+              }}
             />
           )}
 

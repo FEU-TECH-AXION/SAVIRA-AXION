@@ -6,34 +6,88 @@ const getItems = async (req, res) => {
         const data = await VolunteerApplicationEvaluationsModel.getAll()
         res.json(data)
     } catch (err) {
-        // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
     }
 }
 
 const createItem = async (req, res) => {
     try {
-        // req.body is passed directly — input validation should be added here
-        // before hitting the DB (e.g. check required fields, sanitize input)
         const item = await VolunteerApplicationEvaluationsModel.create(req.body)
-
-        // 201 instead of 200 to explicitly signal a resource was created
         res.status(201).json(item)
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
 }
 
+function average(values) {
+    const nums = values.map(Number).filter((n) => Number.isFinite(n))
+    if (nums.length === 0) return 0
+    return nums.reduce((sum, n) => sum + n, 0) / nums.length
+}
+
+function aggregateEssay(rows = []) {
+    return {
+        alignment: average(rows.map((row) => row.alignment).filter((n) => n !== null && n !== undefined)),
+        maturity: average(rows.map((row) => row.maturity).filter((n) => n !== null && n !== undefined)),
+        commitment: average(rows.map((row) => row.commitment).filter((n) => n !== null && n !== undefined)),
+        clarity: average(rows.map((row) => row.clarity).filter((n) => n !== null && n !== undefined)),
+        experience: average(rows.map((row) => row.experience).filter((n) => n !== null && n !== undefined)),
+        evaluator_count: rows.length,
+    }
+}
+
+const upsertEvaluationByEvaluator = async (id, evaluatorId, payload) => {
+    let query = supabase
+        .from('volunteer_application_evaluations')
+        .select('volunteer_application_evaluation_id')
+        .eq('volunteer_application_id', id)
+
+    if (evaluatorId) query = query.eq('evaluated_by', evaluatorId)
+    else query = query.is('evaluated_by', null)
+
+    const { data: existing, error: existingError } = await query.maybeSingle()
+    if (existingError) throw existingError
+
+    if (existing) {
+        const { data, error } = await supabase
+            .from('volunteer_application_evaluations')
+            .update(payload)
+            .eq('volunteer_application_evaluation_id', existing.volunteer_application_evaluation_id)
+            .select()
+            .single()
+        if (error) throw error
+        return data
+    }
+
+    const { data, error } = await supabase
+        .from('volunteer_application_evaluations')
+        .insert([{ volunteer_application_id: parseInt(id), evaluated_by: evaluatorId, ...payload }])
+        .select()
+        .single()
+    if (error) throw error
+    return data
+}
+
 const getEssayEvaluation = async (req, res) => {
     try {
         const { id } = req.params
+        const evaluatorId = req.user?.id || req.query.evaluated_by || null
         const { data, error } = await supabase
             .from('volunteer_application_evaluations')
             .select('*')
             .eq('volunteer_application_id', id)
-            .maybeSingle()
         if (error) throw error
-        res.status(200).json(data || {})
+
+        const current = evaluatorId
+            ? (data || []).find((row) => row.evaluated_by === evaluatorId)
+            : (data || [])[0]
+
+        res.status(200).json({
+            ...(current || {}),
+            notes: current?.essay_notes || '',
+            aggregate: aggregateEssay(data || []),
+            evaluations: data || [],
+        })
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -42,30 +96,18 @@ const getEssayEvaluation = async (req, res) => {
 const saveEssayEvaluation = async (req, res) => {
     try {
         const { id } = req.params
-        console.log('saveEssayEvaluation called, id:', id)
-        console.log('body:', req.body)
         const { alignment, maturity, commitment, clarity, experience, notes } = req.body
+        const evaluatorId = req.user?.id || req.body.evaluated_by || null
 
-        // Upsert — create if not exists, update if exists
-        const { data, error } = await supabase
-            .from('volunteer_application_evaluations')
-            .upsert({
-                volunteer_application_id: parseInt(id),
-                alignment,
-                maturity,
-                commitment,
-                clarity,
-                experience,
-                essay_notes: notes,
-                updated_at:  new Date(),
-            }, { onConflict: 'volunteer_application_id' })
-            .select()
-            .single()
-
-            console.log('upsert data:', data)   // ← add
-            console.log('upsert error:', error) // ← add
-
-        if (error) throw error
+        const data = await upsertEvaluationByEvaluator(id, evaluatorId, {
+            alignment,
+            maturity,
+            commitment,
+            clarity,
+            experience,
+            essay_notes: notes,
+            updated_at: new Date(),
+        })
         res.status(200).json(data)
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -75,13 +117,27 @@ const saveEssayEvaluation = async (req, res) => {
 const getInterviewEvaluation = async (req, res) => {
     try {
         const { id } = req.params
+        const evaluatorId = req.user?.id || req.query.evaluated_by || null
         const { data, error } = await supabase
             .from('volunteer_application_evaluations')
-            .select('interview_score, interview_notes')
+            .select('interview_score, interview_notes, evaluated_by')
             .eq('volunteer_application_id', id)
-            .maybeSingle()
         if (error) throw error
-        res.status(200).json(data ? { score: data.interview_score, notes: data.interview_notes } : {})
+
+        const current = evaluatorId
+            ? (data || []).find((row) => row.evaluated_by === evaluatorId)
+            : (data || [])[0]
+
+        const scoredRows = (data || []).filter((row) => row.interview_score !== null && row.interview_score !== undefined)
+        res.status(200).json({
+            score: current?.interview_score || 0,
+            notes: current?.interview_notes || '',
+            aggregate: {
+                score: average(scoredRows.map((row) => row.interview_score)),
+                evaluator_count: scoredRows.length,
+            },
+            evaluations: data || [],
+        })
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -91,25 +147,24 @@ const saveInterviewEvaluation = async (req, res) => {
     try {
         const { id } = req.params
         const { score, notes } = req.body
+        const evaluatorId = req.user?.id || req.body.evaluated_by || null
 
-        const { data, error } = await supabase
-            .from('volunteer_application_evaluations')
-            .upsert({
-                volunteer_application_id: parseInt(id),
-                interview_score: score,
-                interview_notes: notes,
-                updated_at:      new Date(),
-            }, { onConflict: 'volunteer_application_id' })
-            .select()
-            .single()
-
-        if (error) throw error
+        const data = await upsertEvaluationByEvaluator(id, evaluatorId, {
+            interview_score: score,
+            interview_notes: notes,
+            updated_at: new Date(),
+        })
         res.status(200).json(data)
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
 }
 
-module.exports = { getItems, createItem, 
-                    getEssayEvaluation, saveEssayEvaluation, 
-                    getInterviewEvaluation, saveInterviewEvaluation }
+module.exports = {
+    getItems,
+    createItem,
+    getEssayEvaluation,
+    saveEssayEvaluation,
+    getInterviewEvaluation,
+    saveInterviewEvaluation,
+}
