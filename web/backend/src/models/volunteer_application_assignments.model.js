@@ -1,25 +1,77 @@
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('volunteer_application_assignments').select('*')
-
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
+    const { data, error } = await supabase
+        .from('volunteer_application_assignments')
+        .select(`
+            assignment_id,
+            volunteer_application_id,
+            assessor_id,
+            is_active,
+            notes,
+            assigned_at,
+            committee_id,
+            users!volunteer_application_assignments_assessor_id_fkey (
+                user_id,
+                first_name,
+                last_name,
+                email
+            )
+        `)
     if (error) throw error
-
     return data
 }
 
-const create = async (payload) => {
+const getActiveByApplication = async (volunteer_application_id) => {
     const { data, error } = await supabase
         .from('volunteer_application_assignments')
-        .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
+        .select(`
+            assignment_id,
+            assessor_id,
+            is_active,
+            assigned_at,
+            users!volunteer_application_assignments_assessor_id_fkey (
+                user_id,
+                first_name,
+                last_name,
+                email
+            )
+        `)
+        .eq('volunteer_application_id', volunteer_application_id)
+        .eq('is_active', true)
     if (error) throw error
-
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
-    return data[0]
+    return data
 }
 
-module.exports = { getAll, create }
+const isAlreadyAssigned = async (volunteer_application_id, assessor_id) => {
+    const { data, error } = await supabase
+        .from('volunteer_application_assignments')
+        .select('assignment_id')
+        .eq('volunteer_application_id', volunteer_application_id)
+        .eq('assessor_id', assessor_id)
+        .eq('is_active', true)
+        .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return !!data
+}
+
+const bulkCreate = async (assignments) => {
+    const { data, error } = await supabase
+        .from('volunteer_application_assignments')
+        .insert(assignments)
+        .select()
+    if (error) throw error
+    return data
+}
+
+const deactivateOne = async (volunteer_application_id, assessor_id) => {
+    const { error } = await supabase
+        .from('volunteer_application_assignments')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('volunteer_application_id', volunteer_application_id)
+        .eq('assessor_id', assessor_id)
+        .eq('is_active', true)
+    if (error) throw error
+}
+
+module.exports = { getAll, getActiveByApplication, isAlreadyAssigned, bulkCreate, deactivateOne }

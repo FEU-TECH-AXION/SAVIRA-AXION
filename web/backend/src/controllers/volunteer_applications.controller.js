@@ -60,10 +60,12 @@ function priorityBonus(app = {}) {
 
 const getItems = async (req, res) => {
     try {
-        const data = await VolunteerApplicationsModel.getAll()
+        const userId = req.user?.id || req.user?.user_id
+        const role   = (req.user?.role || req.user?.role_name)?.toLowerCase()
+
+        const data = await VolunteerApplicationsModel.getAll({ userId, role })
         res.json(data)
     } catch (err) {
-        // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
     }
 }
@@ -111,44 +113,42 @@ const getItem = async (req, res) => {
         const { id } = req.params
 
         const { data, error } = await supabase
-            .from('volunteer_applications')
-            .select(`
-                *,
-                organizations (
-                    organization,
-                    organization_name,
-                    organization_type,
-                    organization_type_other,
-                    council,
-                    region,
-                    organization_city,
-                    user_city
-                ),
-                volunteer_applicants (
-                    user_id
-                ),
-                application_assessments (
-                    application_assessment_id,
-                    assessor_id,
-                    assessment_type,
-                    assessment_stage,
-                    assessment_status,
-                    users (
-                        user_id,
-                        first_name,
-                        last_name,
-                        email
-                    )
-                ),
-                screening_answers (
-                    answer_value,
-                    screening_questions (
-                        question_key
-                    )
+        .from('volunteer_applications')
+        .select(`
+            *,
+            organizations (
+                organization,
+                organization_name,
+                organization_type,
+                organization_type_other,
+                council,
+                region,
+                organization_city,
+                user_city
+            ),
+            volunteer_applicants (
+                user_id
+            ),
+            volunteer_application_assignments (
+                assignment_id,
+                assessor_id,
+                is_active,
+                users!volunteer_application_assignments_assessor_id_fkey (
+                    user_id,
+                    first_name,
+                    last_name,
+                    email
                 )
-            `)
-            .eq('volunteer_application_id', id)
-            .single()
+            ),
+            screening_answers (
+                answer_value,
+                screening_questions (
+                    question_key
+                )
+            )
+        `)
+        .eq('volunteer_application_id', id)
+        .single()
 
         if (error || !data) return res.status(404).json({ error: 'Application not found.' })
 

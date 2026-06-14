@@ -17,6 +17,6 @@ router.get('/:id/scores',               verifyToken, getScores)
 router.get('/:id/nlp',                  verifyToken, getAnalysis)
 router.get('/:id',                      verifyToken, getItem)
 router.put('/:id',                      verifyToken, updateItem)
-router.get('/',                         getItems)
+router.get('/',                         verifyToken, getItems)
 
 module.exports = router

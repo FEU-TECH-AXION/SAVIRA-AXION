@@ -1405,15 +1405,15 @@ export default function ViewApplication() {
           applicantUserId:       data.applicant_user_id || data.user_id || null,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.notes || "",
-          assignedEvaluator:     (data.application_assessments || [])
-                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
-                                  .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
-                                  .filter(Boolean)
-                                  .join(", ") || data.assigned_evaluator || data.assigned_staff || null,
-          assignedEvaluatorIds:  (data.application_assessments || [])
-                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
-                                  .map((aa) => aa.assessor_id)
-                                  .filter(Boolean),
+          assignedEvaluator: (data.volunteer_application_assignments || [])
+              .filter((aa) => aa.is_active === true)
+              .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
+              .filter(Boolean)
+              .join(", ") || null,
+          assignedEvaluatorIds: (data.volunteer_application_assignments || [])
+              .filter((aa) => aa.is_active === true)
+              .map((aa) => aa.assessor_id)
+              .filter(Boolean),
           dateApplied:           data.created_at
               ? new Date(data.created_at).toLocaleDateString("en-PH", {
             day: "numeric",

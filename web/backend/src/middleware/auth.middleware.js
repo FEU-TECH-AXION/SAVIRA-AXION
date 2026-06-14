@@ -37,7 +37,6 @@ const authorize = (...allowedRoles) => {
       return res
         .status(403)
         .json({ error: "Access denied. Insufficient permissions." });
-
     next();
   };
 };

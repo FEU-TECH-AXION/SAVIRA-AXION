@@ -166,96 +166,267 @@ function Modal({ open, onClose, title, children, isAdmin, isStaff,}) {
 // ASSIGN APPLICATION MODAL (admin only)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AssignApplicationModal({ open, onClose, applicantsData: applicantsDataProp, onSave, staff: staffProp = [] }) {
-  const [staffIds, setStaffIds] = useState([]);
-  const [error, setError] = useState("");
+function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff = [] }) {
+  const [assigned, setAssigned]               = useState([])
+  const [existingAssigned, setExistingAssigned] = useState([])
+  const [search, setSearch]                   = useState("")
+  const [error, setError]                     = useState("")
+  const [saving, setSaving]                   = useState(false)
+  const [loadingExisting, setLoadingExisting] = useState(false)
 
-  // Support both single applicant and array of applicants
-  const applicants = Array.isArray(applicantsDataProp) ? applicantsDataProp : (applicantsDataProp ? [applicantsDataProp] : []);
+  const applicants = Array.isArray(applicantsData)
+    ? applicantsData
+    : applicantsData ? [applicantsData] : []
 
   useEffect(() => {
-    if (applicants.length > 0) {
-      // Reset staff selection when applicants change
-      setStaffIds([]);
-      setError("");
+    if (open) {
+      setAssigned([])
+      setSearch("")
+      setError("")
+      setExistingAssigned([])
+
+      if (applicants.length === 1) {
+        setLoadingExisting(true)
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_application_assignments/${applicants[0].id}`,
+          { credentials: "include" }
+        )
+          .then(res => res.ok ? res.json() : { data: [] })
+          .then(json => setExistingAssigned(json.data || []))
+          .catch(() => setExistingAssigned([]))
+          .finally(() => setLoadingExisting(false))
+      }
     }
-  }, [applicantsDataProp]);
+  }, [open, applicantsData])
 
-  if (applicants.length === 0) return null;
+  if (applicants.length === 0) return null
 
-  function handleSave() {
-    if (staffIds.length === 0) { setError("Please select at least one staff member."); return; }
+  const assignedIds          = assigned.map(s => s.user_id)
+  const alreadyAssignedIds   = existingAssigned.map(a => a.assessor_id)
 
-    onSave({ applicants, staffIds });
+  // ← same pattern as legal modal: show all when no search, filter when typing
+  const searchResults = staff.filter(s => {
+    const name          = `${s.first_name || ""} ${s.last_name || ""}`.toLowerCase()
+    const notYetPicked  = !assignedIds.includes(s.user_id)
+    const notAssignedDB = !alreadyAssignedIds.includes(s.user_id)
+    if (!search.trim()) return notYetPicked && notAssignedDB
+    return notYetPicked && notAssignedDB && name.includes(search.toLowerCase())
+  })
+
+  function addPerson(s) {
+    setAssigned(prev => [...prev, s])
+    setSearch("")
+    setError("")
   }
 
-  const isBulk = applicants.length > 1;
-  const availableStaff = Array.isArray(staffProp) && staffProp.length > 0 ? staffProp : [];
+  function removePerson(userId) {
+    setAssigned(prev => prev.filter(a => a.user_id !== userId))
+  }
+
+  async function handleAssign() {
+    if (assigned.length === 0) { setError("Please select at least one staff member."); return; }
+    setSaving(true)
+    try {
+      await onSave({ applicants, assessor_ids: assigned.map(a => a.user_id) })
+      onClose()
+    } catch (err) {
+      setError(err.message || "Failed to assign staff.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <Modal open={open} onClose={onClose} title={isBulk ? `Assign Staff (${applicants.length} Applications)` : "Assign Staff"}>
+    <Modal open={open} onClose={onClose} title={`Assign Staff${applicants.length > 1 ? ` (${applicants.length} Applications)` : ""}`}>
       <div className={styles.formGrid}>
-        {isBulk ? (
-          <>
-            <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
-              <label className={styles.formLabel}>Applications to assign:</label>
-              <div style={{ background: "#f3f4f6", borderRadius: 6, padding: 10, fontSize: "0.875rem", maxHeight: 150, overflowY: "auto" }}>
-                {applicants.map((a, i) => (
-                  <div key={i} style={{ padding: "4px 0", borderBottom: i < applicants.length - 1 ? "1px solid #e5e7eb" : "none" }}>
-                    <strong>{a.id}</strong> — {a.name} ({a.status})
-                  </div>
+
+        {/* Application info */}
+        {applicants.length === 1 ? (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Application ID</label>
+            <input className={styles.formInput} value={`APP-${String(applicants[0].id).padStart(4, "0")}`} disabled />
+          </div>
+        ) : (
+          <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+            <label className={styles.formLabel}>Applications to assign ({applicants.length})</label>
+            <div style={{ background: "#f3f4f6", borderRadius: 6, padding: 10, fontSize: "0.875rem", maxHeight: 120, overflowY: "auto" }}>
+              {applicants.map((a, i) => (
+                <div key={i} style={{ padding: "3px 0" }}>
+                  <strong>APP-{String(a.id).padStart(4, "0")}</strong> — {a.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Existing assignments preview */}
+        {applicants.length === 1 && (
+          <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+            <label className={styles.formLabel}>Currently Assigned</label>
+            <div style={{
+              background: "#f9fafb", borderRadius: 8,
+              border: "1px solid #e5e7eb", padding: "0.5rem 0.75rem",
+              minHeight: "2.25rem",
+            }}>
+              {loadingExisting ? (
+                <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>Loading…</span>
+              ) : existingAssigned.length === 0 ? (
+                <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>No staff currently assigned.</span>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                  {existingAssigned.map(a => {
+                    const name = a.users
+                      ? `${a.users.first_name} ${a.users.last_name}`.trim()
+                      : `Staff #${a.assessor_id}`
+                    return (
+                      <span key={a.assignment_id} style={{
+                        display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                        padding: "0.25rem 0.6rem", borderRadius: 999,
+                        background: "#d1fae5", color: "#065f46",
+                        fontSize: "0.8rem", fontWeight: 600,
+                      }}>
+                        ✓ {name}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chip display — who will be newly assigned */}
+        <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+          <label className={styles.formLabel}>Selected Staff</label>
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: "0.4rem",
+            minHeight: "2.25rem", padding: "0.5rem",
+            borderRadius: 8, border: "1px solid #e5e7eb", background: "#f9fafb",
+          }}>
+            {assigned.length === 0 ? (
+              <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                No one selected yet — browse below to add.
+              </span>
+            ) : (
+              assigned.map(s => (
+                <span key={s.user_id} style={{
+                  display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                  padding: "0.25rem 0.6rem", borderRadius: 999,
+                  background: "#e1f5f5", color: "#037F81",
+                  fontSize: "0.8rem", fontWeight: 600,
+                }}>
+                  {`${s.first_name} ${s.last_name}`.trim()}
+                  <button
+                    onClick={() => removePerson(s.user_id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#037F81", padding: 0, fontSize: "0.85rem" }}
+                  >×</button>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Search + browseable dropdown — always visible like legal modal */}
+        <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+          <label className={styles.formLabel}>
+            Search Personnel
+            <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: "0.78rem", marginLeft: 6 }}>
+              Browse the list or type to filter by name.
+            </span>
+          </label>
+          <div style={{ position: "relative" }}>
+            <input
+              className={styles.formInput}
+              placeholder="e.g. Juan, Maria…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoComplete="off"
+            />
+
+            {/* Always visible dropdown — same as legal modal */}
+            {searchResults.length > 0 && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)", zIndex: 100,
+                maxHeight: 200, overflowY: "auto",
+              }}>
+                {searchResults.map(s => (
+                  <button
+                    key={s.user_id}
+                    onClick={() => addPerson(s)}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      width: "100%", padding: "0.6rem 0.85rem",
+                      background: "none", border: "none", borderBottom: "1px solid #f3f4f6",
+                      cursor: "pointer", textAlign: "left", fontSize: "0.875rem",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f0fdf4"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    <span style={{ fontWeight: 500 }}>
+                      {`${s.first_name} ${s.last_name}`.trim()}
+                    </span>
+                    <span style={{
+                      fontSize: "0.75rem", color: "#6b7280",
+                      background: "#f3f4f6", padding: "2px 8px", borderRadius: 999,
+                    }}>
+                      Membership Committee
+                    </span>
+                  </button>
                 ))}
               </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Application ID</label>
-              <input className={styles.formInput} value={applicants[0].id} disabled />
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Applicant Name</label>
-              <input className={styles.formInput} value={applicants[0].name} disabled />
-            </div>
-          </>
-        )}
-        <div className={styles.formGroup} style={isBulk ? { gridColumn: "1 / -1" } : {}}>
-          <label className={styles.formLabel}>
-            Assign to Staff Member <span style={{ color: "#dc2626" }}>*</span>
-          </label>
-          <select
-            className={styles.formInput}
-            multiple
-            size={Math.min(6, Math.max(3, availableStaff.length))}
-            value={staffIds}
-            onChange={(e) => {
-              setStaffIds(Array.from(e.target.selectedOptions).map(option => option.value));
-              setError("");
-            }}
-            style={error ? { borderColor: "#dc2626" } : {}}
-          >
-            {availableStaff.length > 0 ? (
-              availableStaff.map((s) => {
-                const name = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim();
-                return <option key={s.user_id || s.staff_id} value={s.user_id}>{name}</option>;
-              })
-            ) : (
-              <option disabled>No staff available</option>
             )}
-          </select>
-          <span style={{ color: "#6b7280", fontSize: "0.78rem" }}>Hold Ctrl or Cmd to select multiple evaluators.</span>
-          {error && <span style={{ color: "#dc2626", fontSize: "0.8rem" }}>{error}</span>}
+
+            {/* No results */}
+            {search.trim().length > 0 && searchResults.length === 0 && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
+                padding: "0.75rem", fontSize: "0.8rem", color: "#9ca3af", zIndex: 100,
+              }}>
+                No staff found matching "{search}".
+              </div>
+            )}
+
+            {/* Empty state — no membership staff at all */}
+            {staff.length === 0 && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
+                padding: "0.75rem", fontSize: "0.8rem", color: "#9ca3af", zIndex: 100,
+              }}>
+                No Membership Committee staff available.
+              </div>
+            )}
+          </div>
         </div>
+
+        {error && (
+          <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: 0, gridColumn: "1 / -1" }}>
+            {error}
+          </p>
+        )}
       </div>
+
+      <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem" }}>
+        Only Membership Committee staff are shown. The same person cannot be assigned to the same application twice.
+      </p>
+
       <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSave} disabled={availableStaff.length === 0}>
-          {isBulk ? `Assign ${applicants.length} Application${applicants.length === 1 ? '' : 's'}` : "Assign Staff"}
+        <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
+        <button
+          className={styles.btnPrimary}
+          onClick={handleAssign}
+          disabled={saving || assigned.length === 0}
+        >
+          {saving
+            ? `Assigning ${assigned.length}…`
+            : `Assign${assigned.length > 0 ? ` (${assigned.length})` : ""}`}
         </button>
       </div>
     </Modal>
-  );
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -361,7 +532,7 @@ export default function VolunteerManagement() {
       try {
         const parsedUser = JSON.parse(userCookie);
         setUser({
-          id: parsedUser.user_id,
+           id: parsedUser.user_id,
           role: parsedUser.role_name,
           firstName: parsedUser.first_name,
           lastName: parsedUser.last_name,
@@ -389,69 +560,74 @@ export default function VolunteerManagement() {
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    async function fetchApplicants() {
-      try {
-        const token = getCookie("token");
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+    useEffect(() => {
+      // Wait until user is loaded before fetching
+      if (!user.role) return;
+
+      async function fetchApplicants() {
+          try {
+              const token = getCookie("token");
+              const res = await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications`,
+                  {
+                      credentials: "include",
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  }
+              );
+
+              if (!res.ok) {
+                  const body = await res.json().catch(() => ({}));
+                  throw new Error(body.error || `Server returned ${res.status}`);
+              }
+
+              const data = await res.json();
+              if (!Array.isArray(data)) {
+                  throw new Error(data.error || "Unexpected response from server.");
+              }
+
+              let mapped = data.map((app) => ({
+                  assignedEvaluators: (app.volunteer_application_assignments || [])
+                      .filter((aa) => aa.is_active === true)
+                      .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
+                      .filter(Boolean),
+                  assignedEvaluatorIds: (app.volunteer_application_assignments || [])
+                      .filter((aa) => aa.is_active === true)
+                      .map((aa) => aa.assessor_id),
+                  id:                   app.volunteer_application_id,
+                  name:                 app.name || "—",
+                  email:                app.email || "—",
+                  contact:              app.contact_number || "—",
+                  birthday:             app.birthday || "—",
+                  dateApplied:          app.created_at || "",
+                  status:               capitalizeStatus(app.application_status),
+                  notes:                app.notes || "",
+                  gender:               app.gender_identity || "—",
+                  city:                 app.city || "—",
+                  fieldsWithBackground: Array.isArray(app.fields_with_background)
+                                          ? app.fields_with_background : [],
+                  fieldsOfInterest:     Array.isArray(app.fields_of_interest)
+                                          ? app.fields_of_interest : [],
+                  hoursPerWeek:         app.hours_per_week || "—",
+                  organizationId:       app.organization_id || null,
+              }));
+
+              // Staff only see applications assigned to them
+              if (isStaff && user.id) {
+                  mapped = mapped.filter(app =>
+                      (app.assignedEvaluatorIds || []).some(id => String(id) === String(user.id))
+                  );
+              }
+
+              setApplicants(mapped);
+          } catch (err) {
+              console.error("Failed to load volunteer applications:", err);
+          } finally {
+              setLoading(false);
           }
-        );
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Server returned ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        // Guard: if data is not an array, the endpoint returned an error object
-        if (!Array.isArray(data)) {
-          throw new Error(data.error || "Unexpected response from server.");
-        }
-
-        const mapped = data.map((app) => ({
-          assignedEvaluators:    (app.application_assessments || [])
-                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
-                                  .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
-                                  .filter(Boolean),
-          assignedEvaluatorIds:  (app.application_assessments || [])
-                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
-                                  .map((aa) => aa.assessor_id),
-          id:                   app.volunteer_application_id,
-          name:                 app.name || "—",
-          email:                app.email || "—",
-          contact:              app.contact_number || "—",
-          birthday:             app.birthday || "—",
-          dateApplied:          app.created_at || "",
-          status:               capitalizeStatus(app.application_status),
-          notes:                app.notes || "",
-          // ── Fix: gender_identity is the DB column name ──
-          gender:               app.gender_identity || "—",
-          // ── Fix: city lives on volunteer_applications, not a join ──
-          city:                 app.city || "—",
-          // ── Fix: fields_with_background and fields_of_interest are JSONB arrays ──
-          fieldsWithBackground: Array.isArray(app.fields_with_background)
-                                  ? app.fields_with_background
-                                  : [],
-          fieldsOfInterest:     Array.isArray(app.fields_of_interest)
-                                  ? app.fields_of_interest
-                                  : [],
-          hoursPerWeek:         app.hours_per_week || "—",
-          organizationId:       app.organization_id || null,
-        }));
-
-        setApplicants(mapped);
-      } catch (err) {
-        console.error("Failed to load volunteer applications:", err);
-      } finally {
-        setLoading(false);
       }
-    }
-    fetchApplicants();
-  }, []);
+
+      fetchApplicants();
+  }, [user.role, user.id, isStaff]); 
 
   useEffect(() => {
     async function fetchMembershipStaff() {
@@ -796,38 +972,26 @@ export default function VolunteerManagement() {
         onClose={() => { setModal(null); setSelectedApplicant(null); }}
         applicantsData={selectedApplicant}
         staff={membershipStaff}
-        onSave={async ({ applicants: selectedApps, staffIds }) => {
+        onSave={async ({ applicants: selectedApps, assessor_ids }) => {
           try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-            const res = await fetch(`${API_URL}/api/volunteer_applications/assignments`, {
-              method: "POST",
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+            const res = await fetch(`${API_URL}/api/volunteer_application_assignments/assign-bulk`, {
+              method:      "POST",
               credentials: "include",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${getCookie("token")}`,
-              },
+              headers:     { "Content-Type": "application/json" },
               body: JSON.stringify({
-                application_ids: selectedApps.map((app) => app.id),
-                assessor_ids: staffIds,
+                application_ids: selectedApps.map(a => a.id),
+                assessor_ids,
               }),
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(body.error || "Failed to assign staff.");
+            })
+            const body = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(body.error || "Failed to assign staff.")
 
-            const selectedNames = membershipStaff
-              .filter((s) => staffIds.includes(String(s.user_id)))
-              .map((s) => s.name)
-              .filter(Boolean);
-            const selectedAppIds = new Set(selectedApps.map((app) => app.id));
-            setApplicants(prev => prev.map(a => selectedAppIds.has(a.id)
-              ? { ...a, assignedEvaluators: selectedNames, assignedEvaluatorIds: staffIds, status: "Reviewing" }
-              : a
-            ));
-            showToast("Staff assigned successfully.");
-            setModal(null);
-            setSelectedApplicant(null);
+            showToast("Staff assigned successfully.")
+            setModal(null)
+            setSelectedApplicant(null)
           } catch (err) {
-            showToast(err.message || "Failed to assign staff.", "error");
+            showToast(err.message || "Failed to assign staff.", "error")
           }
         }}
       />
