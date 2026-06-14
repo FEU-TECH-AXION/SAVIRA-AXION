@@ -1475,7 +1475,7 @@ export default function LegalReviewManagement() {
         </section>
 
         {/* Action Cards */}
-        <div className="container-xl py-4">
+        {/* <div className="container-xl py-4">
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>What would you like to do?</h2>
             <div className={styles.headingLine} />
@@ -1484,9 +1484,9 @@ export default function LegalReviewManagement() {
             <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconParalegal.png" alt="" className={styles.actionIconImg} />} title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />
             </div>
-            {/* <div className="col-12 col-sm-6 col-lg-4">
+            <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconLawyer.png" alt="" className={styles.actionIconImg} />} title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />
-            </div> */}
+            </div>
             <div className="col-12 col-sm-6 col-lg-4">
               <ActionCard icon={<img src="LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
             </div>
@@ -1510,7 +1510,7 @@ export default function LegalReviewManagement() {
               </div>
             )}
           </div>
-        </div>
+        </div> */}
 
         {/* Table */}
         <section className={styles.allList}>

@@ -79,6 +79,10 @@ app.use('/api/organizations', organizationsRouter)
 const projectsRouter = require('./routes/projects.routes')
 app.use('/api/projects', projectsRouter)
 
+
+// Route for chapter building tbls
+const chaptersRouter = require('./routes/chapters.routes')
+app.use('/api/chapters', chaptersRouter)
 // ── ROUTES FOR CASE REPORTING RELATED TABLES ────────────────────────────────────────────────
 
 // Route for case_reports tbl
