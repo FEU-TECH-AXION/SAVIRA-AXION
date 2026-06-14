@@ -346,3 +346,51 @@
   font-size: 0.6rem;
   color: #9ca3af;
 }
+
+/* ── Row action buttons ── */
+.actionsTd {
+  width: 80px;
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.row:hover .rowActions {
+  opacity: 1;
+}
+
+.rowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #037F81;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.rowBtn:hover {
+  background: #e1f5f5;
+  border-color: #037F81;
+  transform: translateY(-1px);
+}
+
+.rowBtnDelete {
+  color: #dc2626;
+}
+
+.rowBtnDelete:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
