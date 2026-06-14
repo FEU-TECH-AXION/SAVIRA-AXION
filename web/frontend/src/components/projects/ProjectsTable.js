@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import styles from "./ProjectsTable.module.css";
 
 // ─── Badge colors ─────────────────────────────────────────────────────────────
@@ -143,6 +144,8 @@ export default function ProjectsTable({
   onPageChange,
   onRowDoubleClick,
   onDeleteSelected,
+  onEdit,
+  onDelete,
   sortField,
   sortDir,
   onSort,
@@ -325,7 +328,30 @@ export default function ProjectsTable({
                       <span className={styles.dateText}>{formatDate(p.dueDate)}</span>
                     </td>
 
-                    <td className={styles.td} />
+                    <td className={`${styles.td} ${styles.actionsTd}`} onClick={e => e.stopPropagation()}>
+                      <div className={styles.rowActions}>
+                        {onEdit && (
+                          <button
+                            className={styles.rowBtn}
+                            title="Edit project"
+                            onClick={() => onEdit(p)}
+                            aria-label={`Edit project ${p.id}`}
+                          >
+                            <FiEdit2 />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            className={`${styles.rowBtn} ${styles.rowBtnDelete}`}
+                            title="Delete project"
+                            onClick={() => onDelete(p)}
+                            aria-label={`Delete project ${p.id}`}
+                          >
+                            <FiTrash2 />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })

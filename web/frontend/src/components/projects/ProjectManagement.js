@@ -435,7 +435,7 @@ export default function ProjectManagement() {
                 title="Delete a Project"
                 description="Permanently remove an existing project."
                 onView={() => {
-                  if (projects.length > 0) openDelete(projects[0]);
+                  document.getElementById("projects-table-section")?.scrollIntoView({ behavior: "smooth" });
                 }}
               />
             </div>
@@ -445,7 +445,7 @@ export default function ProjectManagement() {
                 title="Update Project Information"
                 description="Edit all details of an existing project or event."
                 onView={() => {
-                  if (projects.length > 0) openEdit(projects[0]);
+                  document.getElementById("projects-table-section")?.scrollIntoView({ behavior: "smooth" });
                 }}
               />
             </div>
@@ -494,6 +494,8 @@ export default function ProjectManagement() {
                   pageSize={PAGE_SIZE}
                   onPageChange={setPage}
                   onRowDoubleClick={openEdit}
+                  onEdit={openEdit}
+                  onDelete={openDelete}
                   onDeleteSelected={handleBulkDelete}
                   sortField={sortField}
                   sortDir={sortDir}
