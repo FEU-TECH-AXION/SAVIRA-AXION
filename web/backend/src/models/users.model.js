@@ -2,9 +2,30 @@ const supabase = require('../config/supabase')
 const bcrypt = require('bcrypt')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('users').select('*, roles(role_name)')
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('*, roles(role_name)')
     if (error) throw error
-    return data
+
+    const { data: staffRows, error: staffError } = await supabase
+        .from('staff')
+        .select(`
+            staff_id,
+            user_id,
+            committee_id,
+            committees (
+                committee_id,
+                committee_name
+            )
+        `)
+    if (staffError) throw staffError
+
+    const staffByUserId = new Map((staffRows || []).map((row) => [row.user_id, row]))
+
+    return (users || []).map((user) => ({
+        ...user,
+        staff: staffByUserId.get(user.user_id) || null,
+    }))
 }
 
 const create = async (payload) => {
