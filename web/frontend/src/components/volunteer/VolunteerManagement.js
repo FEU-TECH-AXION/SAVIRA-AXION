@@ -637,7 +637,7 @@ export default function VolunteerManagement() {
             <div className={styles.headingLine} />
           </div>
           <div className="row g-3 mb-4">
-            <div className="col-12 col-sm-6">
+            {/* <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="VolunteerIconPending.png" alt="" className={styles.actionIconImg} />}
                 title="See Pending Applications"
@@ -668,16 +668,7 @@ export default function VolunteerManagement() {
                 description="Browse the complete list of all volunteer applicants."
                 onView={() => { setActiveFilters({}); setSearch(""); setPage(1); }}
               />
-            </div>
-            <div className="col-12 col-sm-6">
-              <ActionCard
-                icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
-                title="Edit Screening Questions"
-                description="Manage the screening questions shown to applicants on the volunteer application form."
-                onView={() => router.push("/volunteer/screening-questions")}
-              />
-            </div>
-            {/* Manage Interviews — case officers */}
+            </div> */}
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="VolunteerIconAll.png" alt="" className={styles.actionIconImg} />}
@@ -686,7 +677,7 @@ export default function VolunteerManagement() {
                 onView={() => router.push("/volunteerRanking")}
               />
             </div>
-              <div className="col-12 col-sm-6">
+            <div className="col-12 col-sm-6">
                 <Link href="/volunteerInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard
                     icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
@@ -696,6 +687,14 @@ export default function VolunteerManagement() {
                   />
                 </Link>
               </div>
+            <div className="col-12 col-sm-6">
+              <ActionCard
+                icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
+                title="Edit Screening Questions"
+                description="Manage the screening questions shown to applicants on the volunteer application form."
+                onView={() => router.push("/volunteer/screening-questions")}
+              />
+            </div>
           </div>
         </div>
 
