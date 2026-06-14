@@ -15,6 +15,7 @@
 import { useState, useEffect } from "react";
 import styles from "./CreateEditProject.module.css";
 import { FiArrowLeft, FiUpload, FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
+import { MdPublic, MdPublicOff } from "react-icons/md";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -38,13 +39,13 @@ const VISIBILITY_OPTIONS = [
     value: "private",
     label: "Private",
     desc: "Only visible to SASHA members and admins.",
-    icon: "🔒",
+    icon: <MdPublicOff />,
   },
   {
     value: "public",
     label: "Public",
     desc: "Visible on the public Events page after admin approval.",
-    icon: "🌐",
+    icon: <MdPublic />,
   },
 ];
 
@@ -365,7 +366,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
                   <button key={m} type="button"
                     className={`${styles.modeTab} ${form.activityMode === m ? styles.modeTabActive : ""}`}
                     onClick={() => set("activityMode", m)}>
-                    {m === "Face-to-face" ? "🏛️" : m === "Virtual" ? "💻" : "🔀"} {m}
+                    {m}
                   </button>
                 ))}
               </div>
@@ -406,7 +407,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
             title="Project Requirements"
             subtitle="Internal tracking. These details are visible to SASHA members only, regardless of visibility setting."
           >
-            <div className={styles.internalBadge}>🔒 Internal use only</div>
+            <div className={styles.internalBadge}>Internal use only</div>
 
             <FormGroup label="Logistical Requirements"
               hint="Equipment, transportation, materials, manpower, setup needs, etc.">
@@ -435,7 +436,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
 
           {/* ── People ── */}
           <SectionCard title="Project Team" subtitle="Internal use only.">
-            <div className={styles.internalBadge}>🔒 Internal use only</div>
+            <div className={styles.internalBadge}>Internal use only</div>
 
             <PeopleList
               label="Project Officers"
@@ -500,9 +501,9 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
                   value={form.approvalStatus}
                   onChange={(e) => set("approvalStatus", e.target.value)}
                 >
-                  <option value="pending">⏳ Pending</option>
-                  <option value="approved">✅ Approved</option>
-                  <option value="rejected">❌ Rejected</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
                 </select>
               </div>
             )}
@@ -533,7 +534,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
           {/* Save actions (repeated for convenience) */}
           <div className={styles.sidebarActions}>
             <button className={styles.btnPrimary} style={{ width: "100%" }} onClick={handleSubmit}>
-              {mode === "create" ? "✔ Create Project" : "✔ Save Changes"}
+              {mode === "create" ? "Create Project" : "Save Changes"}
             </button>
             <button className={styles.btnSecondary} style={{ width: "100%", marginTop: "0.5rem" }} onClick={onCancel}>
               Cancel

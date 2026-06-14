@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import styles from "./ProjectsTable.module.css";
+import { MdPublic, MdPublicOff } from "react-icons/md";
 
 // ─── Badge colors ─────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function ApprovalBadge({ approvalStatus }) {
 
 function VisibilityBadge({ visibility }) {
   const s = VISIBILITY_COLORS[visibility] || { bg: "#f3f4f6", color: "#374151" };
-  const icon = visibility === "public" ? "🌐" : "🔒";
+  const icon = visibility === "public" ? <MdPublic /> : <MdPublicOff />;
   const label = visibility
     ? visibility.charAt(0).toUpperCase() + visibility.slice(1)
     : "—";

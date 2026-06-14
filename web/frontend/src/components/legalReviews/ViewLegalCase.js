@@ -13,7 +13,7 @@ import {
   FiX,
   FiInfo,
 } from "react-icons/fi";
-import { IoIosArrowBack } from "react-icons/io";
+import { IoIosArrowBack, IoIosInformationCircle, } from "react-icons/io";
 import styles from "./ViewLegalCase.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -113,70 +113,70 @@ const STATUS_EXPLANATIONS = {
     title: "Your report has been received",
     description:
       "SASHA has received your report. An intake officer has logged your case and is checking the basic details — such as your identity, the nature of the incident, urgency, and available evidence. Your case is in the queue for initial screening. Your privacy and confidentiality are a priority at this stage.",
-    icon: "📥",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
   },
   "Undergoing Review": {
     title: "Your case is being reviewed",
     description:
       "A SASHA case officer is reviewing your report to determine whether it falls within SASHA's scope. They are checking for duplicate reports, identifying any immediate safety concerns, and noting any information that may still be needed. You may be contacted to clarify certain details.",
-    icon: "🔍",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
   },
   "Verified - True": {
     title: "Your report has been verified",
     description:
       "Your report has been found sufficiently credible and falls within SASHA's scope. This means SASHA can proceed with providing you support, referral, or further case development. This does not mean a legal finding has been made — it simply means SASHA has accepted your case for action.",
-    icon: "✅",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
   },
   "Verified - False": {
     title: "Your report could not be verified",
     description:
       "After careful review, SASHA was unable to proceed with your case. This may be because the report was outside SASHA's scope, could not be verified after reasonable efforts, was a duplicate, or was clearly submitted in error. This does not mean you are being disbelieved — your records remain confidential and controlled. If you have concerns, you may reach out to SASHA.",
-    icon: "ℹ️",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },
   },
   "Under Case Evaluation": {
     title: "Your case is being evaluated",
     description:
       "SASHA's team is assessing your full case file to determine the best course of action. They are identifying the most appropriate pathway — such as referral to DSWD, PNP, a school or workplace mechanism, or legal proceedings. You will be informed of the options available to you.",
-    icon: "📋",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#ede9fe", color: "#5b21b6", border: "#c4b5fd" },
   },
   "Case Filed": {
     title: "A formal complaint has been filed",
     description:
       "A formal complaint has been lodged with the appropriate body on your behalf. This could be with a school or workplace committee (CODI), the PNP Women and Children Protection Desk, DSWD, BSP/GSP mechanism, or a court. SASHA has recorded all filing details for monitoring.",
-    icon: "📄",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#e0f2fe", color: "#0c4a6e", border: "#7dd3fc" },
   },
   "Investigation Ongoing": {
     title: "An investigation is underway",
     description:
       "The institution where your complaint was filed is now taking action. Statements, documents, and evidence may be gathered. SASHA is monitoring the progress of the investigation and checking that the process is fair and that you remain safe.",
-    icon: "🔎",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#cffafe", color: "#155e75", border: "#67e8f9" },
   },
   "Hearing Ongoing": {
     title: "A formal hearing is in progress",
     description:
       "Your case has reached a formal hearing, conference, or adjudication stage — this could be in a school/workplace process, an administrative inquiry, or a court. SASHA is monitoring the schedule and your support needs throughout this process.",
-    icon: "⚖️",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#fce7f3", color: "#9d174d", border: "#f9a8d4" },
   },
   "Dismissed": {
     title: "Your case has been closed by the institution",
     description:
       "The institution handling your case has closed it without a finding of liability. This may have been due to lack of jurisdiction, insufficient evidence, a procedural issue, or withdrawal of the complaint. SASHA has documented the reason and is assessing whether any other remedy remains available to you. You may reach out to SASHA if you need further guidance.",
-    icon: "📁",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" },
   },
   "Perpetrator Convicted": {
     title: "A decision has been reached",
     description:
       "A final decision has been made establishing liability in the relevant forum. This may be a criminal conviction, an administrative finding of guilt, or a civil liability finding. SASHA has recorded the outcome and any sanctions, and will assess what continuing support you may need.",
-    icon: "🏛️",
+    icon: <IoIosInformationCircle style={{ flexShrink: 0 }} />,
     color: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
   },
 };
@@ -775,7 +775,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
     <div>
       {/* AI disclaimer */}
       <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 8, padding: "10px 14px", marginBottom: "1.25rem", fontSize: "0.82rem", color: "#5b21b6", display: "flex", gap: 8, alignItems: "flex-start" }}>
-        <span style={{ fontSize: "1rem", flexShrink: 0 }}>🤖</span>
+        <IoIosInformationCircle style={{ fontSize: "1rem", flexShrink: 0 }} />
         <span>This analysis is <strong>AI-generated</strong> and is intended as a guide only. All decisions remain with the case officer and are subject to admin approval.</span>
       </div>
 
@@ -799,13 +799,13 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {nlpData.summary && (
             <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>📄 Incident Summary</h4>
+              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Incident Summary</h4>
               <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.summary}</p>
             </div>
           )}
 
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>🏷️ Suggested Classification</h4>
+            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Classification</h4>
             <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Primary Categories</p>
             <div style={{ marginBottom: 12 }}>
               {nlpData.primary_categories?.length > 0 ? nlpData.primary_categories.map((c) => <CategoryBadge key={c} label={c} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
@@ -823,7 +823,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
           </div>
 
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>📋 Suggested Next Steps</h4>
+            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Next Steps</h4>
             {nlpData.recommended_steps?.length > 0 ? (
               <ol style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 6 }}>
                 {nlpData.recommended_steps.map((step, i) => <li key={i} style={{ fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{step}</li>)}
@@ -833,7 +833,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
 
           <div style={{ background: nlpData.referral_suggested ? "#fffbeb" : "#f0fdf4", border: `1px solid ${nlpData.referral_suggested ? "#fcd34d" : "#86efac"}`, borderRadius: 8, padding: "14px 16px" }}>
             <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: nlpData.referral_suggested ? "#92400e" : "#166534" }}>
-              {nlpData.referral_suggested ? "⚠️ Referral may be appropriate" : "✅ May be resolvable internally"}
+              {nlpData.referral_suggested ? "Referral may be appropriate" : "May be resolvable internally"}
             </h4>
             {nlpData.referral_notes && <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.referral_notes}</p>}
           </div>
@@ -949,7 +949,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       {/* ── Current Assignment ── */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>📋 Current Legal Assignment</h2>
+        <h2 className={styles.sectionHeadingText}>Current Legal Assignment</h2>
         <div className={styles.detailGrid}>
           {[
             ["Legal Officer",      caseData.assignedLegalOfficer || caseData.assignedOfficer || "—"],
@@ -967,28 +967,28 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       {/* ── Action Buttons ── */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>⚡ Actions</h2>
+        <h2 className={styles.sectionHeadingText}>Actions</h2>
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
 
           {/* Paralegal */}
           <button onClick={() => setModal("paralegal")} style={btnStyle("#10b981")}>
-            📋 Paralegal
+            Paralegal
           </button>
 
           {/* Endorse */}
           <button onClick={() => setModal("endorse")} style={btnStyle("#0ea5e9")}>
-            📤 Endorse
+            Endorse
           </button>
 
           {/* Monitor */}
           <button onClick={() => setModal("monitor")} style={btnStyle("#f59e0b")}>
-            📡 Monitor
+            Monitor
           </button>
 
           {/* Status */}
           {transitions.length > 0 && !caseData.pendingApproval && (
             <button onClick={() => setModal("statusRouter")} style={btnStyle("#3b82f6")}>
-              📊 Status
+              Status
             </button>
           )}
         </div>
@@ -1164,7 +1164,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Complainant Details */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>👤 Complainant Details</h2>
+        <h2 className={styles.sectionHeadingText}>Complainant Details</h2>
         <div className={styles.detailGrid}>
           {[
             ["Name",                    caseData.name],
@@ -1185,7 +1185,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Incident Details */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>📍 Incident Details</h2>
+        <h2 className={styles.sectionHeadingText}>Incident Details</h2>
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
             ["Location Type", caseData.incidentLocationType],
@@ -1208,7 +1208,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
       {/* Perpetrator Information */}
       {caseData.perpetratorKnown && (
         <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>⚠️ Perpetrator Information</h2>
+          <h2 className={styles.sectionHeadingText}>Perpetrator Information</h2>
           <div className={styles.detailGrid}>
             {[
               ["Name",                         caseData.perpetratorName],
@@ -1228,7 +1228,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
       {/* Witness Information */}
       {caseData.hasWitnesses && (
         <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>👥 Witness Information</h2>
+          <h2 className={styles.sectionHeadingText}>Witness Information</h2>
           <div className={styles.detailGrid}>
             {[
               ["Witness Name",                 caseData.witnessName],
@@ -1246,7 +1246,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Additional Context */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>ℹ️ Additional Context</h2>
+        <h2 className={styles.sectionHeadingText}>Additional Context</h2>
         <div className={styles.detailGrid}>
           {[
             ["Reported to Anyone Else?", caseData.reportedToOthers ? "Yes" : "No"],
@@ -1264,7 +1264,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       {/* Case Classification — visible to everyone, with explanations for complainants */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>🏷️ Case Classification</h2>
+        <h2 className={styles.sectionHeadingText}>Case Classification</h2>
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
             ["Current Status",    <StatusBadge status={caseData.status} />],
@@ -1319,7 +1319,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
       {/* Status History — for complainants, use friendly language */}
       {!isStaff ? (
         <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>📅 Your Case History</h2>
+          <h2 className={styles.sectionHeadingText}>Your Case History</h2>
           <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1rem", lineHeight: 1.6 }}>
             Below is a timeline of your case's progress. Each entry shows what status your case moved to, when it changed, and any notes from the SASHA team.
           </p>
@@ -1480,10 +1480,10 @@ export default function ViewCase() {
 
   // Tab definitions — staff gets 3 tabs, complainant gets 1
   const tabs = [
-    { id: "details", label: "📄 Case Details", staffOnly: false },
+    { id: "details", label: "Case Details", staffOnly: false },
     ...(isStaff ? [
-      { id: "management", label: "⚖️ Legal Review", staffOnly: true },
-      { id: "nlp",        label: "🤖 AI / NLP Analysis", staffOnly: true },
+      { id: "management", label: "Legal Legal Review", staffOnly: true },
+      { id: "nlp",        label: "AI / NLP Analysis", staffOnly: true },
     ] : []),
   ];
 

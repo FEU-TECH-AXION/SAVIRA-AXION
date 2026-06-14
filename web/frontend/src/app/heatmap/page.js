@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import styles from "./heatmap.module.css";
+import { IoIosWarning } from "react-icons/io";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -348,7 +349,7 @@ export default function HeatmapPage() {
       <div className={styles.container}>
         <div className={styles.errorStateContainer}>
           <div className={styles.errorState}>
-            <h2>⚠️ Error Loading Data</h2>
+            <h2><IoIosWarning /> Error Loading Data</h2>
             <p>{error}</p>
             {error.includes("401") && (
               <p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "1rem" }}>

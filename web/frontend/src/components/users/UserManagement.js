@@ -8,6 +8,7 @@ import { fetchUsers, fetchCommittees } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import UsersTable from "./UsersTable";
 import UserFilterMenu from "./UserFilterMenu";
+import { IoIosWarning } from "react-icons/io";
 
 const ROLES = [
   "All",
@@ -289,7 +290,7 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
         fontSize: "0.82rem",
         color: "#92400e",
       }}>
-        ⚠️ Temporary password <strong>{TEMP_PASSWORD}</strong> will be assigned.
+        <IoIosWarning /> Temporary password <strong>{TEMP_PASSWORD}</strong> will be assigned.
         User should change it on first login.
       </div>
 

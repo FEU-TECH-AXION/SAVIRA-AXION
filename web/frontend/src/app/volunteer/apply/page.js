@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "./ApplyApplicationForm.module.css";
 import { useRouter } from "next/navigation";
+import { FaCheckCircle } from "react-icons/fa";
+import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
@@ -62,7 +64,7 @@ function WizardStepper({ current }) {
                 ${active ? styles.wizardDotActive : ""}
                 ${done   ? styles.wizardDotDone  : ""}`}
             >
-              {done ? "✓" : i + 1}
+              {done ? <FaCheckCircle /> : i + 1}
             </div>
             <span className={`${styles.wizardLabel} ${active ? styles.wizardLabelActive : ""} ${done ? styles.wizardLabelDone : ""}`}>
               {step.label}
@@ -266,7 +268,7 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
 
       {/* ── Age / membership notice ── */}
       <div className={styles.infoNotice}>
-        <span className={styles.infoNoticeIcon}>ℹ</span>
+        <span className={styles.infoNoticeIcon}><IoIosInformationCircle /></span>
         <p className={styles.infoNoticeText}>
           Applicants below 13 years old cannot apply through the online form. Please contact SASHA directly for guidance regarding provisional membership.
         </p>
@@ -828,7 +830,7 @@ function StepEssay({ data, onChange }) {
 //           ) : (
 //             data.files.map((f, i) => (
 //               <div key={i} className={styles.fileItem}>
-//                 <span className={styles.fileIcon}>📄</span>
+//                 <span className={styles.fileIcon}><IoIosDocument /></span>
 //                 <span className={styles.fileName}>{f.name}</span>
 //                 <button
 //                   type="button"
@@ -1320,7 +1322,7 @@ export default function CreateApplication({
         {/* ── Paginated Form Card ── */}
         {draftNotice && !submitted && (
           <div className={styles.submitError}>
-            <span>⚠</span> {draftNotice}
+            <span><IoIosWarning /></span> {draftNotice}
             <button
               type="button"
               className={styles.backBtn}
@@ -1370,7 +1372,7 @@ export default function CreateApplication({
                   {/* ── Active application warning ── */}
                   {submitError && (
                       <div className={styles.submitError}>
-                          <span>⚠</span> {submitError}
+                          <span><IoIosWarning /></span> {submitError}
                       </div>
                   )}
 
@@ -1387,7 +1389,7 @@ export default function CreateApplication({
           </div>
         ) : (
           <div className={styles.successCard}>
-            <div className={styles.successIcon}>✓</div>
+            <div className={styles.successIcon}><FaCheckCircle /></div>
             <h2 className={styles.successTitle}>Application Submitted!</h2>
             <p className={styles.successDesc}>
               Your application has been received. We will review it and get back to you via your provided contact details.

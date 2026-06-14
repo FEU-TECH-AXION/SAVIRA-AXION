@@ -13,7 +13,7 @@ export default function Login() {
     email: "",
     password: "",
   });
-  const [errors, setErrors] = useState([]); // 👈 added
+  const [errors, setErrors] = useState([]);
 
   const { login } = useAuth();
 
@@ -21,11 +21,11 @@ export default function Login() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const getError = (field) => errors.find((e) => e.path === field)?.msg; // 👈 added
+  const getError = (field) => errors.find((e) => e.path === field)?.msg;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrors([]); // 👈 clear previous errors
+    setErrors([]);
 
     const fieldErrors = [];
     if (!form.email.trim()) fieldErrors.push({ path: 'email', msg: 'Email is required' });
@@ -86,7 +86,7 @@ export default function Login() {
                 value={form.email}
                 onChange={handleChange}
               />
-              {/* 👇 Error shown under email */}
+              {/* Error shown under email */}
               {getError('email') && (
                 <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
                   {getError('email')}
@@ -115,7 +115,7 @@ export default function Login() {
                   {showPassword ? <FiEye /> : <FiEyeOff />}
                 </button>
               </div>
-              {/* 👇 Error shown under password */}
+              {/* Error shown under password */}
               {getError('password') && (
                 <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
                   {getError('password')}

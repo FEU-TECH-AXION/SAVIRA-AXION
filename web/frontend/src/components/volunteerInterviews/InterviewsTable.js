@@ -175,13 +175,13 @@ useEffect(() => {
             title={!canMarkComplete ? "Only Confirmed interviews can be marked complete" : ""}
             style={{ opacity: !canMarkComplete ? 0.4 : 1, cursor: !canMarkComplete ? "not-allowed" : "pointer" }}
           >
-            ✓ Mark Complete
+            Mark Complete
           </button>
           <button
             className={styles.bulkActionBtn}
             onClick={() => onViewDetails(selectedIds)}
           >
-            👁 View Details
+            View Details
           </button>
         </div>
       </div>

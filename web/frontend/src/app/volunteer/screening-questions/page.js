@@ -7,6 +7,7 @@ import {
   FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiChevronUp, FiChevronDown,
   FiAlertCircle, FiEye, FiEyeOff,
 } from "react-icons/fi";
+import { IoIosWarning } from "react-icons/io";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -310,12 +311,12 @@ function QuestionRow({ q, onEdit, onDelete, onToggleActive, onMoveUp, onMoveDown
           <span style={{ fontSize: "0.72rem", color: "#9ca3af" }}>{options}</span>
           {q.preferred_answer && (
             <span style={{ fontSize: "0.72rem", fontWeight: 600, background: "#f0fdf4", color: "#16a34a", padding: "2px 8px", borderRadius: 999 }}>
-              ✓ Preferred: {q.preferred_answer}
+              Preferred: {q.preferred_answer}
             </span>
           )}
           {q.auto_fail && (
             <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#fee2e2", color: "#dc2626", padding: "2px 8px", borderRadius: 999 }}>
-              ⚠ Auto-fail
+              <IoIosWarning /> Auto-fail
             </span>
           )}
           {!q.is_active && (

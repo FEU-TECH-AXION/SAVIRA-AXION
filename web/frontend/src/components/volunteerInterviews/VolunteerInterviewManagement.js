@@ -7,6 +7,7 @@ import { FiSearch, FiX, FiPlus, FiAlertTriangle, FiChevronLeft, FiChevronRight, 
 import InterviewsTable from "./InterviewsTable";
 import FilterMenu from "./FilterMenu";
 import AddMeetingLinkModal from "./AddMeetingLinkModal";
+import { MdEdit, MdCancel } from "react-icons/md";
 
 const PAGE_SIZE = 10;
 
@@ -328,14 +329,14 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
                             className={styles.calSlotActionBtn}
                             title="Edit slot"
                             onClick={(e) => { e.stopPropagation(); onEditSlot(slot); }}
-                          >✏️</button>
+                          ><MdEdit /></button>
                         )}
                         {slot.status !== "disabled" && (
                           <button
                             className={styles.calSlotActionBtn}
                             title="Disable slot"
                             onClick={(e) => onDisableSlot(slot) }
-                          >🚫</button>
+                          ><MdCancel /></button>
                         )}
                       </div>
                     </div>
