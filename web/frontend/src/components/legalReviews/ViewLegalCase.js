@@ -1296,23 +1296,23 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
 
           {/* Paralegal */}
-          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#10b981")}>
+          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>
             Paralegal Support
           </button>
 
           {/* Endorse */}
-          <button onClick={() => setModal("endorseFull")} style={btnStyle("#0ea5e9")}>
+          <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>
             Endorse
           </button>
 
           {/* Monitor */}
-          <button onClick={() => setModal("monitorFull")} style={btnStyle("#f59e0b")}>
+          <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>
             Monitor
           </button>
 
           {/* Status */}
           {transitions.length > 0 && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusShared")} style={btnStyle("#3b82f6")}>
+            <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>
               Status
             </button>
           )}
