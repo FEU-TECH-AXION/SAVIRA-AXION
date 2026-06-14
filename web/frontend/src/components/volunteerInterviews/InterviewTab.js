@@ -675,7 +675,7 @@ function AddMeetingLinkModal({
 
 // ─── Applicant: Invited view (Select a Slot) ────────────────────────────────
 
-function InvitedView({ appData, interview, onSlotSelected, showToast }) {
+function InvitedView({ appData, interview, onSlotSelected, showToast, rescheduleReason }) {
 
   useEffect(() => {
     const fetchSlots = async () => {
@@ -717,7 +717,12 @@ function InvitedView({ appData, interview, onSlotSelected, showToast }) {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: slot.id }),
+        body: JSON.stringify({
+          slot_id: slot.id,
+          notes: rescheduleReason
+            ? composeInterviewNotes(interview.location || "", `Reschedule reason: ${rescheduleReason}`)
+            : undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -955,6 +960,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
     if (!form.interviewDate) e.interviewDate = "Required.";
     if (!form.interviewTime) e.interviewTime = "Required.";
     if (!form.location.trim()) e.location = "Required.";
+    if (!form.notes.trim()) e.notes = "Please explain why this interview is being rescheduled.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -1029,15 +1035,16 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: 4 }}>
-                Reason / Notes
+                Reason / Notes <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <textarea
                 placeholder="Briefly explain the reason for rescheduling (optional)…"
                 value={form.notes}
                 onChange={set("notes")}
                 rows={3}
-                style={{ ...inputStyle(false), resize: "vertical" }}
+                style={{ ...inputStyle(errors.notes), resize: "vertical" }}
               />
+              {errors.notes && <span style={{ fontSize: "0.78rem", color: "#ef4444" }}>{errors.notes}</span>}
             </div>
           </div>
         </div>
@@ -1047,6 +1054,56 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
           </button>
           <button className={styles.saveBtn} onClick={handleConfirm} disabled={submitting}>
             {submitting ? "Saving…" : "Confirm Reschedule"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CancelInterviewModal({ interview, onClose, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleConfirm() {
+    if (!reason.trim()) {
+      setError("Please explain why this interview is being cancelled.");
+      return;
+    }
+    setSubmitting(true);
+    await onConfirm(interview.id, reason.trim());
+    setSubmitting(false);
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={styles.modalBox}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Cancel Interview</h3>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
+            Add a clear note so everyone understands why this interview was cancelled.
+          </p>
+          <FormGroup label="Cancellation reason" required error={error}>
+            <textarea
+              className={styles.formInput}
+              value={reason}
+              onChange={(e) => { setReason(e.target.value); setError(""); }}
+              rows={4}
+              placeholder="Briefly explain the reason for cancellation…"
+              style={{ resize: "vertical" }}
+            />
+          </FormGroup>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
+            Keep Interview
+          </button>
+          <button className={styles.saveBtn} onClick={handleConfirm} disabled={submitting}>
+            {submitting ? "Cancelling…" : "Confirm Cancellation"}
           </button>
         </div>
       </div>
@@ -1159,6 +1216,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   
   const [modal, setModal] = useState(null);
   const [meetingLinkInterview, setMeetingLinkInterview] = useState(null);
+  const [cancelInterview, setCancelInterview] = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
@@ -1167,6 +1225,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   const [rescheduleId, setRescheduleId]         = useState(null);
   // Applicant reschedule: flip back to Invited so they can pick a new slot
   const [applicantRescheduling, setApplicantRescheduling] = useState(false);
+  const [applicantRescheduleReason, setApplicantRescheduleReason] = useState("");
 
   const [form, setForm] = useState({
     interviewDate: "",
@@ -1298,7 +1357,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
     }
   }
 
-  async function handleCancel(interviewId) {
+  async function handleCancel(interviewId, cancellationReason) {
     if (!canManageStaffInterview) {
       showToast?.("Only assigned Membership Committee staff can modify this interview.", "error");
       return;
@@ -1309,7 +1368,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cancellation_reason: null }),
+        body: JSON.stringify({ cancellation_reason: cancellationReason }),
       });
 
       if (!res.ok) {
@@ -1320,10 +1379,11 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       setInterviews((prev) =>
         prev.map((iv) =>
           iv.id === interviewId
-            ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled" }
+            ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled", cancellationReason }
             : iv
         )
       );
+      setCancelInterview(null);
       showToast?.("Interview cancelled.");
     } catch (err) {
       showToast?.(err.message || "Failed to cancel interview.", "error");
@@ -1363,7 +1423,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: slot.slot_id }),
+        body: JSON.stringify({ slot_id: slot.slot_id, notes: composedNotes }),
       });
 
       const selectBody = await selectRes.json();
@@ -1426,6 +1486,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
           <InvitedView
             appData={appData}
             interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
+            rescheduleReason={applicantRescheduleReason}
             onSlotSelected={(updated) => {
               setInterviews((prev) =>
                 prev.map((iv) =>
@@ -1443,6 +1504,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
                 )
               );
               setApplicantRescheduling(false);
+              setApplicantRescheduleReason("");
               showToast && showToast(applicantRescheduling ? "Slot rescheduled! Your application officer will confirm shortly." : "Slot selected! Your application officer will confirm shortly.");
             }}
             showToast={showToast}
@@ -1455,7 +1517,15 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       return (
         <ScheduledView
           interview={activeInterview}
-          onReschedule={() => setApplicantRescheduling(true)}
+          onReschedule={() => {
+            const reason = window.prompt("Please explain why you need to reschedule this interview.");
+            if (!reason?.trim()) {
+              showToast?.("A reschedule reason is required.", "error");
+              return;
+            }
+            setApplicantRescheduleReason(reason.trim());
+            setApplicantRescheduling(true);
+          }}
         />
       );
     }
@@ -1464,7 +1534,15 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       return (
         <ConfirmedView
           interview={activeInterview}
-          onReschedule={() => setApplicantRescheduling(true)}
+          onReschedule={() => {
+            const reason = window.prompt("Please explain why you need to reschedule this interview.");
+            if (!reason?.trim()) {
+              showToast?.("A reschedule reason is required.", "error");
+              return;
+            }
+            setApplicantRescheduleReason(reason.trim());
+            setApplicantRescheduling(true);
+          }}
         />
       );
     }
@@ -1686,7 +1764,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
                       </>
                     )}
                     <button
-                      onClick={() => handleCancel(iv.id)}
+                      onClick={() => setCancelInterview(iv)}
                       style={{ padding: "5px 14px", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
                     >
                       Cancel Interview
@@ -1752,6 +1830,14 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       )}
 
       {/* ── Staff reschedule modal ── */}
+      {cancelInterview && canManageStaffInterview && (
+        <CancelInterviewModal
+          interview={cancelInterview}
+          onClose={() => setCancelInterview(null)}
+          onConfirm={handleCancel}
+        />
+      )}
+
       {rescheduleId && canManageStaffInterview && (() => {
         const iv = interviews.find((x) => x.id === rescheduleId);
         return iv ? (

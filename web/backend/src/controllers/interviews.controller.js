@@ -86,7 +86,7 @@ const createItem = async (req, res) => {
 // PATCH /api/interviews/:id/select-slot
 const selectSlot = async (req, res) => {
     try {
-        const { slot_id } = req.body
+        const { slot_id, notes } = req.body
         if (!slot_id) return res.status(400).json({ error: 'slot_id is required.' })
 
         // Verify the slot exists and is still available
@@ -96,7 +96,7 @@ const selectSlot = async (req, res) => {
 
         // Claim the slot and update interview status
         const [interview] = await Promise.all([
-            InterviewModel.selectSlot(req.params.id, slot_id),
+            InterviewModel.selectSlot(req.params.id, slot_id, notes || null),
             InterviewSlotsModel.markUnavailable(slot_id),
         ])
 

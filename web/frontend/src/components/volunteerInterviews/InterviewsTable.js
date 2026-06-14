@@ -200,7 +200,7 @@ useEffect(() => {
                 aria-label="Select all"
               />
             </th>
-            <th className={styles.colCaseId}>Case ID</th>
+            <th className={styles.colAppId}>Application ID</th>
             <th className={styles.colInterviewee}>Interviewee Name</th>
             <th className={styles.colType}>Interview Type</th>
             <th className={styles.colDateTime}>Date & Time</th>
@@ -234,8 +234,8 @@ useEffect(() => {
                     aria-label={`Select interview ${interview.id}`}
                   />
                 </td>
-                <td className={styles.colCaseId}>
-                  <span className={styles.caseIdBadge}>{interview.caseId}</span>
+                <td className={styles.colAppId}>
+                  <span className={styles.appIdBadge}>{interview.appId}</span>
                 </td>
                 <td className={styles.colInterviewee}>{interview.intervieweeName}</td>
                 <td className={styles.colType}>{interview.interviewType || "Initial"}</td>

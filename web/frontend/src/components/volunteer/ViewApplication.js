@@ -95,7 +95,7 @@ function Modal({ open, onClose, title, children }) {
 
 // ─── Update Status Modal ──────────────────────────────────────────────────────
 
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn",];
+const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
 
 function UpdateStatusModal({ open, onClose, appData, onSave }) {
   const [status, setStatus] = useState("Pending");

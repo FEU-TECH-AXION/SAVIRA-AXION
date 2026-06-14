@@ -422,7 +422,13 @@ export default function VolunteerApplicationInterviewManagement() {
           (interviewsJson.data || []).map((iv) => ({
             ...iv,
             id: iv.interview_id,
-            appRefId: `${new Date(iv.created_at).getFullYear()}-${String(iv.volunteer_application_id).padStart(3, "0")}`,
+            volunteerApplicationId: iv.volunteer_application_id,
+            appRefId: iv.volunteer_application_id
+              ? `APP-${String(iv.volunteer_application_id).padStart(4, "0")}`
+              : "—",
+            appId: iv.volunteer_application_id
+              ? `APP-${String(iv.volunteer_application_id).padStart(4, "0")}`
+              : "—",
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "—",
@@ -632,7 +638,7 @@ export default function VolunteerApplicationInterviewManagement() {
 
   const handleViewDetails = (interviews) => {
     const interview = Array.isArray(interviews) ? interviews[0] : interviews;
-    router.push(`/volunteer/view?id=${Number(interview.appRefId.split("-")[1])}&tab=interview`);
+    router.push(`/volunteer/view?id=${interview.volunteerApplicationId}&tab=interview`);
   };
 
   return (

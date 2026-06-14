@@ -81,7 +81,7 @@ function isDateInRange(dateString, startDate, endDate) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn"];
+const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS BADGE
