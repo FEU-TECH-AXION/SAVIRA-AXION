@@ -6,6 +6,7 @@ import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock, FiX } 
 import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
 import InterviewTab from "../volunteerInterviews/InterviewTab";
+import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -189,7 +190,7 @@ function YesNoBadge({ value }) {
       background: isYes ? "#d1fae5" : isNo ? "#fee2e2" : "#f3f4f6",
       color:      isYes ? "#065f46" : isNo ? "#991b1b" : "#374151",
     }}>
-      {isYes ? "✓ Yes" : isNo ? "✗ No" : value}
+      {isYes ? "Yes" : isNo ? "No" : value}
     </span>
   );
 }
@@ -819,7 +820,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
                   <span className={styles.quantFieldIcon} style={{
                     background: yes ? "#d1fae5" : "#fee2e2",
                     color: yes ? "#065f46" : "#991b1b",
-                  }}>{yes ? "✓" : "✗"}</span>
+                  }}>{yes ? <FaCheckCircle /> : <FaTimesCircle />}</span>
                   <span className={styles.quantFieldLabel}>{label}</span>
                 </div>
               );
@@ -863,7 +864,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
                   <span className={styles.quantFieldIcon} style={{
                     background: yes ? "#d1fae5" : "#fee2e2",
                     color: yes ? "#065f46" : "#991b1b",
-                  }}>{yes ? "✓" : "✗"}</span>
+                  }}>{yes ? <FaCheckCircle /> : <FaTimesCircle />}</span>
                   <span className={styles.quantFieldLabel}>{label}</span>
                 </div>
               );
@@ -975,7 +976,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
 
         <div className={styles.saveRow}>
           {essaySaved && (
-            <span className={styles.savedConfirm}>✓ Saved!</span>
+            <span className={styles.savedConfirm}>Saved!</span>
           )}
           {!allEssayFilled && (
             <span className={styles.saveHint}>Score all criteria to save.</span>
@@ -1037,7 +1038,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
 
         <div className={styles.saveRow}>
           {interviewSaved && (
-            <span className={styles.savedConfirm}>✓ Saved!</span>
+            <span className={styles.savedConfirm}>Saved!</span>
           )}
           <button
             onClick={saveInterviewScore}

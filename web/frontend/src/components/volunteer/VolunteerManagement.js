@@ -7,6 +7,7 @@ import { FiX } from "react-icons/fi";
 import ApplicationsTable from "./ApplicationsTable";
 import FilterMenu from "./FilterMenu";
 import Link from "next/link";
+import { IoIosWarning } from "react-icons/io";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -735,7 +736,7 @@ export default function VolunteerManagement() {
             {/* ── Error state ── */}
             {error && (
               <div className={styles.errorState}>
-                ⚠️ Failed to load applications: {error}
+                <IoIosWarning /> Failed to load applications: {error}
               </div>
             )}
 

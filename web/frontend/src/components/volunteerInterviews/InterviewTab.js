@@ -13,6 +13,7 @@ import {
   FiX,
   FiInfo,
 } from "react-icons/fi";
+import { FaTimesCircle } from "react-icons/fa";
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
 //
@@ -81,7 +82,7 @@ function ExpiryCountdown({ expiresAt }) {
         padding: "10px 14px", fontSize: "0.875rem", color: "#991b1b",
         display: "flex", alignItems: "center", gap: 8,
       }}>
-        ⏰ <strong>This invitation has expired.</strong> Please contact your application officer.
+        <strong>This invitation has expired.</strong> Please contact your application officer.
       </div>
     );
   }
@@ -99,7 +100,7 @@ function ExpiryCountdown({ expiresAt }) {
       padding: "10px 14px", fontSize: "0.875rem", color,
       display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
     }}>
-      <span style={{ fontSize: "1.1rem" }}>⏳</span>
+      <span style={{ fontSize: "1.1rem" }}></span>
       <span style={{ fontWeight: 600 }}>Invitation expires in:</span>
       <span className={styles.countdown} style={{ color, fontVariantNumeric: "tabular-nums" }}>
         {remaining.days > 0 && `${remaining.days}d `}
@@ -201,7 +202,7 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
     // Step 3 — Confirmation card
     rightPanel = (
       <div className={styles.rpConfirm}>
-        <div className={styles.rpConfirmIcon}>✅</div>
+        <div className={styles.rpConfirmIcon}>Complete</div>
         <h3 className={styles.rpConfirmTitle}>Confirm your slot?</h3>
         <div className={styles.rpConfirmCard}>
           <div className={styles.rpConfirmRow}>
@@ -209,12 +210,12 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
             <span className={styles.rpConfirmValue}>{formatDateLong(pendingSlot.date)}</span>
           </div>
           <div className={styles.rpConfirmRow}>
-            <span className={styles.rpConfirmLabel}>🕐 Time</span>
+            <span className={styles.rpConfirmLabel}>Time</span>
             <span className={styles.rpConfirmValue}>{formatTime(pendingSlot.time)}</span>
           </div>
           {pendingSlot.duration && (
             <div className={styles.rpConfirmRow}>
-              <span className={styles.rpConfirmLabel}>⏱ Duration</span>
+              <span className={styles.rpConfirmLabel}> Duration</span>
               <span className={styles.rpConfirmValue}>{pendingSlot.duration} minutes</span>
             </div>
           )}
@@ -523,7 +524,7 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
         throw new Error(interviewBody.error || `Failed to create interview (${interviewRes.status})`);
       }
 
-      console.log("✓ Interview created successfully");
+      console.log("Interview created successfully");
       if (interviewBody.data) {
         onCreated?.({
           ...interviewBody.data,
@@ -562,7 +563,7 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
       
       {error && (
         <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: "0.875rem", color: "#991b1b" }}>
-          ⚠️ {error}
+          <IoIosWarning /> {error}
         </div>
       )}
 
@@ -753,7 +754,7 @@ function InvitedView({ appData, interview, onSlotSelected, showToast, reschedule
 
       {/* Header */}
       <div>
-        <h2 className={styles.statusTitle}>📅 Select an Interview Slot</h2>
+        <h2 className={styles.statusTitle}>Select an Interview Slot</h2>
         <p className={styles.statusDesc}>
           You have been invited to an interview with your SASHA application officer.
           Please select a time slot that works for you.
@@ -771,7 +772,7 @@ function InvitedView({ appData, interview, onSlotSelected, showToast, reschedule
           background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
           padding: "12px 16px", fontSize: "0.875rem", color: "#92400e",
         }}>
-          ⚠️ No available slots at the moment. Please contact your application officer directly.
+          <IoIosWarning /> No available slots at the moment. Please contact your application officer directly.
         </div>
       ) : (
         <SlotPickerCalendar
@@ -782,7 +783,7 @@ function InvitedView({ appData, interview, onSlotSelected, showToast, reschedule
 
       {confirming && (
         <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center" }}>
-          ⏳ Confirming your slot…
+           Confirming your slot…
         </p>
       )}
     </div>
@@ -805,7 +806,7 @@ function ScheduledView({ interview, onReschedule }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h2 className={styles.statusTitle}>🕐 Waiting for Meeting Link</h2>
+          <h2 className={styles.statusTitle}>Waiting for Meeting Link</h2>
           <p className={styles.statusDesc}>
             Your slot has been reserved. Your application officer will confirm and send you the meeting link shortly.
           </p>
@@ -842,7 +843,7 @@ function ScheduledView({ interview, onReschedule }) {
                 rel="noopener noreferrer"
                 className={styles.meetingLink}
               >
-                🔗 Join Meeting
+                Join Meeting
               </a>
             </div>
           )}
@@ -850,7 +851,7 @@ function ScheduledView({ interview, onReschedule }) {
       </div>
 
       <div className={styles.waitingMessage}>
-        🔔 You will be notified once the meeting link is ready. Please check back here or watch for a notification.
+        You will be notified once the meeting link is ready. Please check back here or watch for a notification.
       </div>
     </div>
   );
@@ -920,7 +921,7 @@ function ConfirmedView({ interview, onReschedule }) {
                 rel="noopener noreferrer"
                 className={styles.meetingLink}
               >
-                🔗 Join Meeting
+                Join Meeting
               </a>
             </div>
           </div>
@@ -928,7 +929,7 @@ function ConfirmedView({ interview, onReschedule }) {
       </div>
 
       <div className={styles.confirmMessage}>
-        🎉 Your interview has been confirmed. Please join using the link above at the scheduled time.
+        Your interview has been confirmed. Please join using the link above at the scheduled time.
       </div>
     </div>
   );
@@ -999,7 +1000,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
       <div className={styles.modalBox}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Reschedule Interview</h3>
-          <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close"><FaTimesCircle /></button>
         </div>
         <div className={styles.modalBody}>
           <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
@@ -1479,7 +1480,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
                 onClick={() => setApplicantRescheduling(false)}
                 style={{ background: "none", border: "none", fontSize: "0.8rem", color: "#92400e", cursor: "pointer", fontWeight: 600 }}
               >
-                ✕ Keep original
+                Keep original
               </button>
             </div>
           )}
