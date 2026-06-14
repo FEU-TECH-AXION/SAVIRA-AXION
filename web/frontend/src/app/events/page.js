@@ -17,6 +17,9 @@
 
 import Link from "next/link";
 import styles from "./events.module.css";
+import { FaSearch } from "react-icons/fa";
+import { FaLocationDot } from "react-icons/fa6";
+import { IoMdPeople } from "react-icons/io";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -154,11 +157,19 @@ export default async function EventsPage() {
                         <p className={styles.eventDesc}>{ev.description}</p>
                         <div className={styles.eventDetails}>
                           <span>
-                            📅 {ev.dateStart}
+                            {ev.dateStart}
                             {ev.dateEnd ? ` – ${ev.dateEnd}` : ""}
                           </span>
-                          {ev.venue && <span>📍 {ev.venue}</span>}
-                          {ev.targetParticipants && <span>👥 {ev.targetParticipants}</span>}
+                          {ev.venue && (
+                            <span>
+                              <FaLocationDot /> {ev.venue}
+                            </span>
+                          )}
+                          {ev.targetParticipants && (
+                            <span>
+                              <IoMdPeople /> {ev.targetParticipants}
+                            </span>
+                          )}
                         </div>
                         <Link href={`/events/${slug}`} className={styles.eventBtn}>
                           View Event
@@ -184,7 +195,9 @@ export default async function EventsPage() {
                 <h4 className={styles.sidebarTitle}>Search</h4>
                 <div className={styles.searchBox}>
                   <input type="text" placeholder="Search events…" className={styles.searchInput} />
-                  <button className={styles.searchBtn} aria-label="Search">🔍</button>
+                  <button className={styles.searchBtn} aria-label="Search">
+                    <FaSearch />
+                  </button>
                 </div>
               </div>
 

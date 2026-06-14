@@ -52,7 +52,7 @@ function StatusBadge({ status }) {
 function PendingBadge() {
   return (
     <span className={styles.pendingBadge}>
-      ⏱ Pending
+       Pending
     </span>
   );
 }

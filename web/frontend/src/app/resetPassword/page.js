@@ -47,7 +47,7 @@ const handleSubmit = async (e) => {
     return;
   }
 
-  // ✅ Supabase uses the recovery token from the URL automatically
+  // Supabase uses the recovery token from the URL automatically
   const { error } = await supabase.auth.updateUser({ password: form.password });
 
   if (error) {

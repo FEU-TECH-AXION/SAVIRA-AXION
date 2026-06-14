@@ -53,7 +53,7 @@ const validateInput = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
-  next(); // ✅ Passes to controller ONLY if valid
+  next(); // Passes to controller ONLY if valid
 };
 
 module.exports = { loginRules, signupRules, validateInput };

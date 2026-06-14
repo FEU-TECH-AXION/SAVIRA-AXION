@@ -315,8 +315,8 @@ export default function SignUp() {
                     : styles.matchFail
                 }>
                   {form.confirmPassword === form.password
-                    ? "✓ Passwords match"
-                    : "✗ Passwords do not match"}
+                    ? "Passwords match"
+                    : "Passwords do not match"}
                 </p>
               )} */}
             </FormField>

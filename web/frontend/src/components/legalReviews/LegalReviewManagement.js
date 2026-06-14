@@ -181,7 +181,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {/* Endorsement Details */}
       {caseData.endorsementDetails && (
         <div className={styles.detailBlock}>
-          <h4 className={styles.detailTitle}>📁 Endorsement / Filing Details</h4>
+          <h4 className={styles.detailTitle}>Endorsement / Filing Details</h4>
           {Object.entries(caseData.endorsementDetails).map(([k, v]) => v ? (
             <div key={k} className={styles.viewRow}>
               <span className={styles.viewKey}>{k}</span>
@@ -194,7 +194,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {/* Paralegal Record */}
       {caseData.paralegalRecord && (
         <div className={styles.detailBlock}>
-          <h4 className={styles.detailTitle}>📋 Paralegal Support Record</h4>
+          <h4 className={styles.detailTitle}>Paralegal Support Record</h4>
           <div className={styles.viewRow}><span className={styles.viewKey}>Organized by</span><span className={styles.viewVal}>{caseData.paralegalRecord.organizedBy}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.paralegalRecord.date}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Documents</span><span className={styles.viewVal}>{caseData.paralegalRecord.documents}</span></div>
@@ -204,7 +204,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {/* Lawyer Record
       {caseData.lawyerRecord && (
         <div className={styles.detailBlock}>
-          <h4 className={styles.detailTitle}>⚖️ Lawyer Consultation Record</h4>
+          <h4 className={styles.detailTitle}>Legal Lawyer Consultation Record</h4>
           <div className={styles.viewRow}><span className={styles.viewKey}>Assessed by</span><span className={styles.viewVal}>{caseData.lawyerRecord.assessedBy}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.lawyerRecord.date}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Recommendation</span><span className={styles.viewVal}>{caseData.lawyerRecord.recommendation}</span></div>
@@ -604,7 +604,7 @@ function EndorseModal({ open, onClose, caseData, onSave, actorName }) {
           <>
             <div className={styles.sectionDivider}><span>Court Monitoring Details</span></div>
             <div className={styles.formDesc} style={{ background: "#fef9c3", borderRadius: 8, padding: "0.75rem", border: "1px solid #fde047", color: "#713f12", marginBottom: 0 }}>
-              ⚖️ Court cases are handled in coordination with a lawyer. Record all details as provided by counsel.
+              Legal Court cases are handled in coordination with a lawyer. Record all details as provided by counsel.
             </div>
             <FormGroup label="Case Number and Court Branch"><FInput placeholder="e.g. Criminal Case 2026-1234, RTC Branch 42, QC" value={details["Case No."] || ""} onChange={set("Case No.")} /></FormGroup>
             <FormGroup label="Filing Date"><FInput type="date" value={details["Filing Date"] || ""} onChange={set("Filing Date")} /></FormGroup>

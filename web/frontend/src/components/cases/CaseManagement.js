@@ -435,7 +435,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
         </button>
         {(isAdmin || isCaseOfficer) && (
           <button style={tabStyle("nlp")} onClick={() => setActiveTab("nlp")}>
-            🤖 NLP Analysis
+            NLP Analysis
           </button>
         )}
       </div>
@@ -517,7 +517,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
             gap: 8,
             alignItems: "flex-start",
           }}>
-            <span style={{ fontSize: "1rem", flexShrink: 0 }}>🤖</span>
+            <span style={{ fontSize: "1rem", flexShrink: 0 }}><IoIosInformationCircle /></span>
             <span>
               This analysis is <strong>AI-generated</strong> and is intended as a guide only.
               All decisions remain with the case officer and are subject to admin approval.
@@ -562,7 +562,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
               {/* Section 1 — Summary */}
               <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
                 <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                  📄 Incident Summary
+                  Incident Summary
                 </h4>
                 <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>
                   {nlpData.summary || "No summary available."}
@@ -572,7 +572,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
               {/* Section 2 — Classification */}
               <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
                 <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                  🏷️ Suggested Classification
+                  Suggested Classification
                 </h4>
 
                 <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -610,7 +610,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
               {/* Section 3 — Recommended Steps */}
               <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
                 <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                  📋 Suggested Next Steps
+                  Suggested Next Steps
                 </h4>
                 {nlpData.recommended_steps?.length > 0 ? (
                   <ol style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -633,7 +633,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
                 padding: "14px 16px",
               }}>
                 <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: nlpData.referral_suggested ? "#92400e" : "#166534" }}>
-                  {nlpData.referral_suggested ? "⚠️ Referral may be appropriate" : "✅ May be resolvable internally"}
+                  {nlpData.referral_suggested ? "Warning: Referral may be appropriate" : "May be resolvable internally"}
                 </h4>
                 {nlpData.referral_notes && (
                   <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>

@@ -468,7 +468,7 @@ export default function ProfilePage() {
               <Field
                 label="Email"
                 required
-                hint={user.is_email_verified ? "✓ Verified" : "Not yet verified — check your inbox."}
+                hint={user.is_email_verified ? "Verified" : "Not yet verified — check your inbox."}
                 hintColor={user.is_email_verified ? "var(--sasha-teal)" : "#e53e3e"}
               >
                 <input name="email" type="email" value={form.email}
@@ -477,7 +477,7 @@ export default function ProfilePage() {
               <Field
                 label="Contact Number"
                 required
-                hint={user.is_contact_number_verified ? "✓ Verified" : "Add a number to improve account security."}
+                hint={user.is_contact_number_verified ? "Verified" : "Add a number to improve account security."}
                 hintColor={user.is_contact_number_verified ? "var(--sasha-teal)" : "#888"}
                 error={formErrors.contact_number}
               >

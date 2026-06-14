@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CreateReport.module.css";
+import { FaCheckCircle } from "react-icons/fa";
+import { IoIosDocument } from "react-icons/io";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -58,7 +60,7 @@ function WizardStepper({ current }) {
                 ${active ? styles.wizardDotActive : ""}
                 ${done   ? styles.wizardDotDone  : ""}`}
             >
-              {done ? "✓" : i + 1}
+              {done ? <FaCheckCircle /> : i + 1}
             </div>
             <span className={`${styles.wizardLabel} ${active ? styles.wizardLabelActive : ""} ${done ? styles.wizardLabelDone : ""}`}>
               {step.label}
@@ -914,7 +916,7 @@ function StepEvidence({ data, onChange }) {
           ) : (
             data.files.map((f, i) => (
               <div key={i} className={styles.fileItem}>
-                <span className={styles.fileIcon}>📄</span>
+                <span className={styles.fileIcon}><IoIosDocument /></span>
                 <span className={styles.fileName}>{f.name}</span>
                 <button
                   type="button"
@@ -1505,7 +1507,7 @@ export default function CreateReport({
             </div>
           ) : (
             <div className={styles.successCard}>
-              <div className={styles.successIcon}>✓</div>
+              <div className={styles.successIcon}><FaCheckCircle /></div>
               <h2 className={styles.successTitle}>Report Submitted!</h2>
               <p className={styles.successDesc}>
                 Your report has been received. We will review it and get back to you via your provided contact details.

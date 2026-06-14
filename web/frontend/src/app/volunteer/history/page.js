@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 // ── Uses its own dedicated stylesheet ─────────────────────────────────────────
 import styles from "./VolunteerHistory.module.css";
+import { IoIosInformationCircle, IoIosWarning } from "react-icons/io";
 
 // ── Status badge colors ───────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -161,7 +162,7 @@ export default function ApplicationHistoryPage() {
           {!loading && eligibility && !eligibility.allowed && (
             eligibility.reason === "active" ? (
               <div className={styles.infoBanner}>
-                <span>ℹ️</span>
+                <span><IoIosInformationCircle /></span>
                 <span>
                   You already have an active application under review. You must{" "}
                   <strong>withdraw your current application</strong> before submitting
@@ -170,7 +171,7 @@ export default function ApplicationHistoryPage() {
               </div>
             ) : (
               <div className={styles.warningBanner}>
-                <span>⏳</span>
+                <span><IoIosWarning /></span>
                 <span>
                   Your previous application was rejected. You may submit a new
                   application after{" "}

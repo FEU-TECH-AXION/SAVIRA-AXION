@@ -13,7 +13,8 @@ import {
   FiX,
   FiInfo,
 } from "react-icons/fi";
-import { IoIosArrowBack } from "react-icons/io";
+import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle } from "react-icons/io";
+import { FaCheckCircle } from "react-icons/fa";
 import styles from "./ViewCase.module.css";
 import InterviewTab from "./interview/InterviewTab";
 import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals";
@@ -115,70 +116,70 @@ const STATUS_EXPLANATIONS = {
     title: "Your report has been received",
     description:
       "SASHA has received your report. An intake officer has logged your case and is checking the basic details — such as your identity, the nature of the incident, urgency, and available evidence. Your case is in the queue for initial screening. Your privacy and confidentiality are a priority at this stage.",
-    icon: "📥",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
   },
   "Undergoing Review": {
     title: "Your case is being reviewed",
     description:
       "A SASHA case officer is reviewing your report to determine whether it falls within SASHA's scope. They are checking for duplicate reports, identifying any immediate safety concerns, and noting any information that may still be needed. You may be contacted to clarify certain details.",
-    icon: "🔍",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
   },
   "Verified - True": {
     title: "Your report has been verified",
     description:
       "Your report has been found sufficiently credible and falls within SASHA's scope. This means SASHA can proceed with providing you support, referral, or further case development. This does not mean a legal finding has been made — it simply means SASHA has accepted your case for action.",
-    icon: "✅",
+    icon: <FaCheckCircle />,
     color: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
   },
   "Verified - False": {
     title: "Your report could not be verified",
     description:
       "After careful review, SASHA was unable to proceed with your case. This may be because the report was outside SASHA's scope, could not be verified after reasonable efforts, was a duplicate, or was clearly submitted in error. This does not mean you are being disbelieved — your records remain confidential and controlled. If you have concerns, you may reach out to SASHA.",
-    icon: "ℹ️",
+    icon: <IoIosWarning />,
     color: { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },
   },
   "Under Case Evaluation": {
     title: "Your case is being evaluated",
     description:
       "SASHA's team is assessing your full case file to determine the best course of action. They are identifying the most appropriate pathway — such as referral to DSWD, PNP, a school or workplace mechanism, or legal proceedings. You will be informed of the options available to you.",
-    icon: "📋",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#ede9fe", color: "#5b21b6", border: "#c4b5fd" },
   },
   "Case Filed": {
     title: "A formal complaint has been filed",
     description:
       "A formal complaint has been lodged with the appropriate body on your behalf. This could be with a school or workplace committee (CODI), the PNP Women and Children Protection Desk, DSWD, BSP/GSP mechanism, or a court. SASHA has recorded all filing details for monitoring.",
-    icon: "📄",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#e0f2fe", color: "#0c4a6e", border: "#7dd3fc" },
   },
   "Investigation Ongoing": {
     title: "An investigation is underway",
     description:
       "The institution where your complaint was filed is now taking action. Statements, documents, and evidence may be gathered. SASHA is monitoring the progress of the investigation and checking that the process is fair and that you remain safe.",
-    icon: "🔎",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#cffafe", color: "#155e75", border: "#67e8f9" },
   },
   "Hearing Ongoing": {
     title: "A formal hearing is in progress",
     description:
       "Your case has reached a formal hearing, conference, or adjudication stage — this could be in a school/workplace process, an administrative inquiry, or a court. SASHA is monitoring the schedule and your support needs throughout this process.",
-    icon: "⚖️",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#fce7f3", color: "#9d174d", border: "#f9a8d4" },
   },
   "Dismissed": {
     title: "Your case has been closed by the institution",
     description:
       "The institution handling your case has closed it without a finding of liability. This may have been due to lack of jurisdiction, insufficient evidence, a procedural issue, or withdrawal of the complaint. SASHA has documented the reason and is assessing whether any other remedy remains available to you. You may reach out to SASHA if you need further guidance.",
-    icon: "📁",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" },
   },
   "Perpetrator Convicted": {
     title: "A decision has been reached",
     description:
       "A final decision has been made establishing liability in the relevant forum. This may be a criminal conviction, an administrative finding of guilt, or a civil liability finding. SASHA has recorded the outcome and any sanctions, and will assess what continuing support you may need.",
-    icon: "🏛️",
+    icon: <IoIosInformationCircle />,
     color: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
   },
 };
@@ -326,7 +327,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {nlpData.summary && (
             <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>📄 Incident Summary</h4>
+              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Incident Summary</h4>
               <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.summary}</p>
             </div>
           )}
@@ -440,7 +441,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
         throw new Error(interviewBody.error || `Failed to create interview (${interviewRes.status})`);
       }
 
-      console.log("✓ Interview created successfully");
+      console.log("Interview created successfully");
       showToast && showToast(`Interview invitation sent for ${caseData.caseId}.`);
       onClose();
 
@@ -462,7 +463,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
       
       {error && (
         <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: "0.875rem", color: "#991b1b" }}>
-          ⚠️ {error}
+          <IoIosWarning /> {error}
         </div>
       )}
 
@@ -1282,7 +1283,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
       {/* Perpetrator Information */}
       {caseData.perpetratorKnown && (
         <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>⚠️ Perpetrator Information</h2>
+          <h2 className={styles.sectionHeadingText}>Perpetrator Information</h2>
           <div className={styles.detailGrid}>
             {[
               ["Name",                         caseData.perpetratorName],
@@ -1302,7 +1303,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
       {/* Witness Information */}
       {caseData.hasWitnesses && (
         <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>👥 Witness Information</h2>
+          <h2 className={styles.sectionHeadingText}>Witness Information</h2>
           <div className={styles.detailGrid}>
             {[
               ["Witness Name",                 caseData.witnessName],
