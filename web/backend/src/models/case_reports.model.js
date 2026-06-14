@@ -238,6 +238,55 @@ async function getAllReports() {
     }
   }
 
+  // Step 2c: Fetch assessments once and merge latest non-empty classification
+  // values into every list row, matching getCaseById behavior.
+  const assessmentMap = {}
+  const reportIds = reports.map(report => report.case_report_id)
+  if (reportIds.length > 0) {
+    const { data: assessments, error: assessmentsError } = await supabase
+      .from('case_assessments')
+      .select(`
+        case_report_id,
+        case_type,
+        primary_category,
+        additional_categories,
+        referral_required,
+        referral_body,
+        endorsement,
+        created_at
+      `)
+      .in('case_report_id', reportIds)
+      .order('created_at', { ascending: false })
+    if (assessmentsError) {
+      console.error('[getAllReports] assessments query error:', JSON.stringify(assessmentsError, null, 2))
+      throw assessmentsError
+    }
+
+    for (const row of assessments || []) {
+      const merged = assessmentMap[row.case_report_id] || {
+        case_type:             null,
+        primary_category:      null,
+        additional_categories: null,
+        referral_required:     false,
+        referral_body:         null,
+        endorsement:           null,
+      }
+      if (!merged.case_type && row.case_type?.length > 0)
+        merged.case_type = row.case_type
+      if (!merged.primary_category && row.primary_category)
+        merged.primary_category = row.primary_category
+      if (!merged.additional_categories && row.additional_categories?.length > 0)
+        merged.additional_categories = row.additional_categories
+      if (!merged.referral_required && row.referral_required)
+        merged.referral_required = row.referral_required
+      if (!merged.referral_body && row.referral_body)
+        merged.referral_body = row.referral_body
+      if (!merged.endorsement && row.endorsement)
+        merged.endorsement = row.endorsement
+      assessmentMap[row.case_report_id] = merged
+    }
+  }
+
   // Step 3: Merge officer name and legal names into each report
   return reports.map(report => {
     let assignedOfficer = null
@@ -275,6 +324,7 @@ async function getAllReports() {
       assigned_officer_id:    assignedOfficerId,
       assigned_legal_officer: assignedLegalOfficer,
       assigned_paralegal:     assignedParalegal,
+      ...(assessmentMap[report.case_report_id] || {}),
       case_assignments:       undefined,
       legal_case_assignments: undefined,
     }

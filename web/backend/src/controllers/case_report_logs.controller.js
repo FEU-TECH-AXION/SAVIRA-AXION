@@ -10,6 +10,15 @@ const getItems = async (req, res) => {
     }
 }
 
+const getItemsByCase = async (req, res) => {
+    try {
+        const data = await CaseReportLogs.getByCaseReport(req.params.caseReportId)
+        res.json({ data })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
 const createItem = async (req, res) => {
     try {
         // req.body is passed directly — input validation should be added here
@@ -23,4 +32,29 @@ const createItem = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem }
+const updateItem = async (req, res) => {
+    try {
+        const updates = {}
+        if (req.body.remarks !== undefined) updates.remarks = req.body.remarks
+        if (req.body.action_type !== undefined) updates.action_type = req.body.action_type
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update.' })
+        }
+
+        const item = await CaseReportLogs.update(req.params.id, updates)
+        res.json({ data: item })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+const deleteItem = async (req, res) => {
+    try {
+        await CaseReportLogs.remove(req.params.id)
+        res.json({ ok: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+module.exports = { getItems, getItemsByCase, createItem, updateItem, deleteItem }

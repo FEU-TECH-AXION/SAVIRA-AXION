@@ -182,6 +182,146 @@
   line-height: 1.5;
 }
 
+.noteLogList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.noteSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.noteSectionHeader h2 {
+  margin-bottom: 0;
+}
+
+.noteComposer {
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.noteComposerTextarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  background: #ffffff;
+}
+
+.noteComposerTextarea:focus {
+  border-color: var(--sasha-teal);
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.12);
+}
+
+.noteLogItem {
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.85rem 1rem;
+}
+
+.noteLogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.noteLogAuthor {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.noteLogMeta,
+.noteLogEmpty {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--sasha-muted);
+}
+
+.noteLogText {
+  margin: 0.65rem 0 0;
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.noteLogActions,
+.noteEditActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.noteIconBtn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.noteIconBtn:hover {
+  background: var(--sasha-offwhite);
+  color: var(--sasha-teal);
+  border-color: var(--sasha-teal);
+}
+
+.noteIconDanger:hover {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.noteEditWrap {
+  margin-top: 0.75rem;
+}
+
+.noteEditTextarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.noteEditTextarea:focus {
+  border-color: var(--sasha-teal);
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.12);
+}
+
+.noteEditActions {
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
 /* ── Hero (kept for compatibility) ── */
 .heroBanner {
   position: relative;

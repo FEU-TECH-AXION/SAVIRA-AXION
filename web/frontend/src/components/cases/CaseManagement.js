@@ -965,6 +965,14 @@ useEffect(() => {
         status:          STATUS_STEP[r.case_status_id] || "For Verification",
         assignedOfficer: r.assigned_officer || null,
         dateSubmitted:   new Date(r.created_at).toLocaleDateString('en-PH'),
+        caseType:        r.case_type || null,
+        caseCategory:    r.primary_category || null,
+        alsoInvolves:    r.additional_categories || [],
+        referralRequired: r.referral_required || false,
+        referralBody:    r.referral_body || null,
+        endorsementStatus: r.endorsement?.endorsed_to
+          ? `Endorsed to ${r.endorsement.endorsed_to}`
+          : null,
         violenceType:    "—",  // not in DB yet
         description:     r.incident_description || "—",
         endorsedTo:      null,

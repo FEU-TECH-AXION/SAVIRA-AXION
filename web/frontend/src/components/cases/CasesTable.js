@@ -230,6 +230,11 @@ export default function CasesTable({
     }).replace(",", "");
   }
 
+  function formatCaseType(caseType) {
+    if (Array.isArray(caseType)) return caseType.filter(Boolean).join(", ");
+    return caseType;
+  }
+
   // Sort indicator
   function SortIcon({ field }) {
     if (sortField !== field) return <span className={styles.sortNeutral}>↕</span>;
@@ -368,7 +373,7 @@ export default function CasesTable({
 
                     {/* Case Type */}
                     <td className={styles.td}>
-                      {c.caseType || <span className={styles.muted}>Unassigned</span>}
+                      {formatCaseType(c.caseType) || <span className={styles.muted}>Unassigned</span>}
                     </td>
 
                     {/* Reporter ID */}

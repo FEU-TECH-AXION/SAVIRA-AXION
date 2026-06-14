@@ -12,6 +12,9 @@ import {
   FiCheck,
   FiX,
   FiInfo,
+  FiEdit2,
+  FiTrash2,
+  FiPlus,
 } from "react-icons/fi";
 import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle } from "react-icons/io";
 import { FaCheckCircle } from "react-icons/fa";
@@ -499,680 +502,304 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
 function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
   const [modal, setModal] = useState(null);
 
-  const NON_TRANSITIONAL_STATUSES = [
-  "Submitted",
-];
+  const TRANSITION_RULES = {
+    "For Verification": { case_officer: ["Undergoing Review"], admin: ["Undergoing Review"] },
+    "Undergoing Review": { case_officer: ["Verified - True", "Verified - False"], admin: ["Verified - True", "Verified - False"] },
+    "Verified - True": { case_officer: ["Under Case Evaluation"], admin: ["Under Case Evaluation"] },
+    "Under Case Evaluation": { legal: ["Case Filed"], admin: ["Case Filed"] },
+    "Case Filed": { legal: ["Investigation Ongoing"], admin: ["Investigation Ongoing"] },
+    "Investigation Ongoing": { legal: ["Hearing Ongoing", "Dismissed"], admin: ["Hearing Ongoing", "Dismissed"] },
+    "Hearing Ongoing": { legal: ["Dismissed", "Perpetrator Convicted"], admin: ["Dismissed", "Perpetrator Convicted"] },
+  };
 
-const TRANSITION_RULES = {
-  "For Verification": {
-    case_officer: ["Undergoing Review"],
-    admin: ["Undergoing Review"],
-  },
-
-  "Undergoing Review": {
-    case_officer: ["Verified - True", "Verified - False"],
-    admin: ["Verified - True", "Verified - False"],
-  },
-
-  "Verified - True": {
-    case_officer: ["Under Case Evaluation"],
-    admin: ["Under Case Evaluation"],
-  },
-
-  "Under Case Evaluation": {
-    legal: ["Case Filed"],
-    admin: ["Case Filed"],
-  },
-
-  "Case Filed": {
-    legal: ["Investigation Ongoing"],
-    admin: ["Investigation Ongoing"],
-  },
-
-  "Investigation Ongoing": {
-    legal: ["Hearing Ongoing", "Dismissed"],
-    admin: ["Hearing Ongoing", "Dismissed"],
-  },
-
-  "Hearing Ongoing": {
-    legal: ["Dismissed", "Perpetrator Convicted"],
-    admin: ["Dismissed", "Perpetrator Convicted"],
-  },
-};
-
-  // Determine available status transitions
-  function getAvailableTransitions() {
-  const curr = caseData.status;
-  const role = isAdmin ? "admin" : isCaseOfficer ? "case_officer" : isLegal ? "legal" : null;
-
-  if (!role) return [];
-
-  return TRANSITION_RULES[curr]?.[role] || [];
-}
+  function getAvailableTransitionsLocal() {
+    const role = isAdmin ? "admin" : isCaseOfficer ? "case_officer" : isLegal ? "legal" : null;
+    return role ? TRANSITION_RULES[caseData.status]?.[role] || [] : [];
+  }
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const res = await fetch(`${API_URL}/api/case_status_history`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          case_report_id:  caseData.id,
+          case_report_id: caseData.id,
           proposed_status: proposedStatus,
-          changed_by_id:   userId,
+          changed_by_id: userId,
           changed_by_role: userRole,
-          notes:           changeDetails.notes,
-          form_data:       changeDetails.formData,
+          notes: changeDetails.notes,
+          form_data: changeDetails.formData,
         }),
-      })
-      if (!res.ok) {
-        const body = await res.json()
-        throw new Error(body.error || "Failed to submit.")
-      }
-
-      const responseData = await res.json()
-
-      // Update status immediately — no pending queue
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to submit.");
       setCaseData((prev) => ({
         ...prev,
-        status:          proposedStatus,  // ← reflect new status right away
+        status: proposedStatus,
         pendingApproval: null,
-        // Append to local history timeline
         statusHistory: [
           ...(prev.statusHistory || []),
-          {
-            status: proposedStatus,
-            date:   new Date().toLocaleDateString("en-PH"),
-            by:     actorName,
-            notes:  changeDetails.notes,
-          },
+          { status: proposedStatus, date: new Date().toLocaleDateString("en-PH"), by: actorName, notes: changeDetails.notes },
         ],
-      }))
-
-      showToast(`Status updated to "${proposedStatus}".`)
-      setModal(null)
+      }));
+      showToast(`Status updated to "${proposedStatus}".`);
+      setModal(null);
     } catch (err) {
-      showToast(err.message, "error")
+      showToast(err.message, "error");
     }
   }
 
-  const transitions = getAvailableTransitions();
-
-  const [caseTypeConfirmed, setCaseTypeConfirmed] = useState(false);
-  const [categoryConfirmed, setCategoryConfirmed] = useState(false);
-
-  // Inline state for assign paralegal / referral modals
-  const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
-  const [caseTypeVal, setCaseTypeVal] = useState(
-    Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []
-  );
+  const transitions = getAvailableTransitionsLocal();
+  const [caseTypeVal, setCaseTypeVal] = useState(Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []);
   const [caseCatVal, setCaseCatVal] = useState(caseData.caseCategory || "");
-  const [alsoCatVal, setAlsoCatVal] = useState(
-    Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []
-  );
-  const [referralVal, setReferralVal]   = useState(caseData.referralBody || "");
-  const [referralReq, setReferralReq]   = useState(caseData.referralRequired ? "yes" : "no");
-  const [endorseBody, setEndorseBody]   = useState("");
+  const [alsoCatVal, setAlsoCatVal] = useState(Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []);
+  const [referralVal, setReferralVal] = useState(caseData.referralBody || "");
+  const [referralReq, setReferralReq] = useState(caseData.referralRequired ? "yes" : "no");
   const [endorseNotes, setEndorseNotes] = useState("");
+  const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
   const [internalNotes, setInternalNotes] = useState(caseData.internalNotes || "");
+  const [showNoteComposer, setShowNoteComposer] = useState(false);
+  const [noteLogs, setNoteLogs] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
+
+  const getLogId = (log) => log.case_report_log_id || log.id || log.log_id;
+  const getLogDate = (log) => log.performed_at || log.created_at || log.updated_at;
+  const formatLogDate = (dateStr) => {
+    if (!dateStr) return "Date unavailable";
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    return d.toLocaleString("en-PH", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).replace(",", "");
+  };
+
+  useEffect(() => {
+    if (!caseData.id) return;
+    const fetchNoteLogs = async () => {
+      setNotesLoading(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/case_report_logs/case/${caseData.id}`, { credentials: "include" });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to load notes.");
+        setNoteLogs((body.data || []).filter((log) => log.action_type === "internal_note"));
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        setNotesLoading(false);
+      }
+    };
+    fetchNoteLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseData.id]);
+
+  async function saveInternalNote() {
+    const trimmed = internalNotes.trim();
+    if (!trimmed) return showToast("Please enter a note before saving.", "error");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_report_logs`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ case_report_id: caseData.id, action_type: "internal_note", remarks: trimmed, performed_by_user_id: userId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to save note.");
+      setNoteLogs((prev) => [body, ...prev]);
+      setInternalNotes("");
+      setShowNoteComposer(false);
+      setCaseData((p) => ({ ...p, internalNotes: trimmed }));
+      showToast("Note posted.");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function saveEditedNote(log) {
+    const trimmed = editingNoteText.trim();
+    if (!trimmed) return showToast("Note cannot be empty.", "error");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const id = getLogId(log);
+      const res = await fetch(`${API_URL}/api/case_report_logs/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remarks: trimmed }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to update note.");
+      setNoteLogs((prev) => prev.map((item) => getLogId(item) === id ? (body.data || { ...item, remarks: trimmed }) : item));
+      setEditingNoteId(null);
+      setEditingNoteText("");
+      showToast("Note updated.");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function deleteNote(log) {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const id = getLogId(log);
+      const res = await fetch(`${API_URL}/api/case_report_logs/${id}`, { method: "DELETE", credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to delete note.");
+      setNoteLogs((prev) => prev.filter((item) => getLogId(item) !== id));
+      setEditingNoteId(null);
+      setEditingNoteText("");
+      showToast("Note deleted.");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function saveAssessment(payload, onSuccess) {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, case_officer_id: userId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
+      onSuccess();
+      setModal(null);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-
-      {/* Pending approval banner */}
       {caseData.pendingApproval && (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#fffbeb", border: "1px solid #fde047", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#92400e" }}>
           <FiClock style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <strong>Pending Admin Approval:</strong> A status change to <strong>{caseData.pendingApproval.proposedStatus}</strong> has been submitted by {caseData.pendingApproval.submittedBy} and is awaiting admin review.
-          </div>
+          <div><strong>Pending Admin Approval:</strong> A status change to <strong>{caseData.pendingApproval.proposedStatus}</strong> has been submitted by {caseData.pendingApproval.submittedBy} and is awaiting admin review.</div>
         </div>
       )}
 
-      {/* ── Current Assignment / Classification ── */}
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Current Case Assignment</h2>
         <div className={styles.detailGrid}>
           {[
             ["Assigned Case Officer", caseData.assignedOfficer || "Unassigned"],
-            ["Assigned Paralegal",    caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "Unassigned")],
-            ["Case Type",        Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not yet classified"],
-            ["Case Categories", caseData.caseCategory
-              ? caseData.alsoInvolves?.length
-                ? `${caseData.caseCategory} (also: ${caseData.alsoInvolves.join(", ")})`
-                : caseData.caseCategory
-              : "Not yet classified"],
-            ["Referral Required",     caseData.referralRequired ? "Yes" : "No"],
-            ["Referral Body",         caseData.referralBody || "Unassigned"],
-            ["Endorsement Status",    caseData.endorsementStatus || "Not yet endorsed"],
+            ["Assigned Paralegal", caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "Unassigned")],
+            ["Case Type", Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not yet classified"],
+            ["Case Categories", caseData.caseCategory ? caseData.alsoInvolves?.length ? `${caseData.caseCategory} (also: ${caseData.alsoInvolves.join(", ")})` : caseData.caseCategory : "Not yet classified"],
+            ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
+            ["Referral Body", caseData.referralBody || "Unassigned"],
+            ["Endorsement Status", caseData.endorsementStatus || "Not yet endorsed"],
           ].map(([k, v]) => (
-            <div key={k} className={styles.detailItem}>
-              <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v}</p>
-            </div>
+            <div key={k} className={styles.detailItem}><p className={styles.detailKey}>{k}</p><p className={styles.detailVal}>{v}</p></div>
           ))}
         </div>
       </section>
 
-      {/* ── Action Buttons ── */}
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Actions</h2>
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
-
-          {/* Update Status */}
-          {transitions.length > 0 && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusRouter")} style={btnStyle("#037F81")}>
-              Update Status
-            </button>
-          )}
-
-          {/* Set Case Type */}
-          <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>
-            Set Case Type
-          </button>
-
-          {/* Set Case Category */}
-          <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>
-            Set Category
-          </button>
-
-          {/* Invite to Interview — only for the assigned case officer, only when status allows interviews */}
-          {isCaseOfficer && caseData.isWillingForInterview === true && (
-            <button onClick={() => {
-              console.log("invite clicked", { isCaseOfficer, isWillingForInterview: caseData.isWillingForInterview });
-              setModal("inviteInterview");
-            }} style={btnStyle("#037F81")}>
-              Invite to Interview (TEST)
-            </button>
-          )}
-
-          {/* Set Referral */}
-          <button onClick={() => setModal("setReferral")} style={btnStyle("#037F81")}>
-          Referral
-          </button>
-
-          {/* Assign Paralegal — only when Verified - True */}
-          {caseData.status === "Verified - True" && (
-            <button onClick={() => setModal("assignParalegal")} style={btnStyle("#037F81")}>
-              Assign Paralegal
-            </button>
-          )}
-
-          {/* Endorse Case */}
-          <button onClick={() => setModal("endorse")} style={btnStyle("#037F81")}>
-            Endorse
-          </button>
+          {transitions.length > 0 && !caseData.pendingApproval && <button onClick={() => setModal("statusRouter")} style={btnStyle("#037F81")}>Update Status</button>}
+          <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>Set Case Type</button>
+          <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
+          {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>}
+          <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
+          {caseData.status === "Verified - True" && <button onClick={() => setModal("assignParalegal")} style={btnStyle("#037F81")}>Assign Paralegal</button>}
         </div>
       </section>
 
-      {/* ── Internal Notes ── */}
       <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Internal Notes / Action Log</h2>
-        <textarea
-          placeholder="Add notes about case management actions, decisions, or observations..."
-          value={internalNotes}
-          onChange={(e) => setInternalNotes(e.target.value)}
-          style={{ width: "100%", padding: "0.75rem", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "0.875rem", fontFamily: "inherit", resize: "vertical", minHeight: "100px", outline: "none" }}
-        />
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
-          <button
-            onClick={async () => {
-            try {
-              const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-              const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
-                method: "PATCH",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ findings: internalNotes, case_officer_id: userId }),
-              });
-              if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-              setCaseData((p) => ({ ...p, internalNotes }));
-              showToast("Notes saved.");
-            } catch (err) { showToast(err.message, "error"); }
-          }}
-            className={styles.btnPrimary}
-          >
-            Save Notes
-          </button>
+        <div className={styles.noteSectionHeader}>
+          <h2 className={styles.sectionHeadingText}>Internal Notes / Action Log</h2>
+          <button type="button" className={styles.btnPrimary} onClick={() => setShowNoteComposer((open) => !open)}><FiPlus /> Add Notes</button>
+        </div>
+        {showNoteComposer && (
+          <div className={styles.noteComposer}>
+            <textarea placeholder="Add notes about case management actions, decisions, or observations..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} className={styles.noteComposerTextarea} />
+            <div className={styles.noteEditActions}>
+              <button type="button" className={styles.btnSecondary} onClick={() => { setInternalNotes(""); setShowNoteComposer(false); }}>Cancel</button>
+              <button type="button" onClick={saveInternalNote} className={styles.btnPrimary}>Post Note</button>
+            </div>
+          </div>
+        )}
+        <div className={styles.noteLogList}>
+          {notesLoading ? <p className={styles.noteLogEmpty}>Loading notes...</p> : noteLogs.length === 0 ? <p className={styles.noteLogEmpty}>No internal notes posted yet.</p> : noteLogs.map((log) => {
+            const id = getLogId(log);
+            const isEditing = editingNoteId === id;
+            return (
+              <div key={id || `${log.performed_at}-${log.remarks}`} className={styles.noteLogItem}>
+                <div className={styles.noteLogHeader}>
+                  <div><p className={styles.noteLogAuthor}>{log.performed_by_name || log.performed_by || actorName || "Unknown user"}</p><p className={styles.noteLogMeta}>{formatLogDate(getLogDate(log))}</p></div>
+                  <div className={styles.noteLogActions}>
+                    <button type="button" className={styles.noteIconBtn} title="Edit note" aria-label="Edit note" onClick={() => { setEditingNoteId(id); setEditingNoteText(log.remarks || ""); }}><FiEdit2 /></button>
+                    <button type="button" className={`${styles.noteIconBtn} ${styles.noteIconDanger}`} title="Delete note" aria-label="Delete note" onClick={() => deleteNote(log)}><FiTrash2 /></button>
+                  </div>
+                </div>
+                {isEditing ? (
+                  <div className={styles.noteEditWrap}>
+                    <textarea className={styles.noteEditTextarea} value={editingNoteText} onChange={(e) => setEditingNoteText(e.target.value)} />
+                    <div className={styles.noteEditActions}><button className={styles.btnSecondary} onClick={() => { setEditingNoteId(null); setEditingNoteText(""); }}>Cancel</button><button className={styles.btnPrimary} onClick={() => saveEditedNote(log)}>Save</button></div>
+                  </div>
+                ) : <p className={styles.noteLogText}>{log.remarks || "No note content."}</p>}
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* ── Status History ── */}
       <StatusHistorySection caseData={caseData} />
 
-      {/* ══ Modals ══ */}
+      <UpdateStatusModal open={modal === "statusRouter"} caseData={caseData} onClose={() => setModal(null)} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} isCaseOfficer={isCaseOfficer} isLegal={isLegal} styles={styles} viewCaseMode />
 
-      {/* Status Router */}
-      <UpdateStatusModal
-      open={modal === "statusRouter"}
-      caseData={caseData}
-      onClose={() => setModal(null)}
-      onSubmit={submitForApproval}   // (proposedStatus, changeDetails) => void  ← note: no caseData arg
-      actorName={actorName}
-      isAdmin={isAdmin}
-      isCaseOfficer={isCaseOfficer}
-      isLegal={isLegal}
-      styles={styles}                // pass your ViewCase.module.css styles object
-      viewCaseMode                   // flag: onSubmit signature is (status, details) instead of (case, status, details)
-      />
+      {modal === "inviteInterview" && <InviteToInterviewModal open onClose={() => setModal(null)} caseData={caseData} actorName={actorName} userId={userId} userRole={userRole} showToast={showToast} />}
 
-      {/* Invite to Interview */}
-      {modal === "inviteInterview" && (
-        <InviteToInterviewModal
-          open
-          onClose={() => setModal(null)}
-          caseData={caseData}
-          actorName={actorName}
-          userId={userId}
-          userRole={userRole}
-          showToast={showToast}
-        />
-      )}
-
-      {/* Set Case Type */}
       <Modal open={modal === "setCaseType"} onClose={() => setModal(null)} title="Set Case Type" wide>
-        <p className={styles.formDesc}>
-          Check all case types that apply. Hover or select a type to see its definition. More than one may be relevant.
-        </p>
-
-        {/* Confirmation notice at top */}
-        <div style={{
-          background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
-          padding: "10px 14px", marginBottom: "1.25rem",
-          fontSize: "0.82rem", color: "#92400e",
-          display: "flex", gap: 8, alignItems: "flex-start"
-        }}>
-          <FiAlertTriangle style={{ flexShrink: 0, marginTop: 2 }} />
-          <span>Case type classification affects how this report is processed and which referral pathways are considered. Review each definition carefully before checking.</span>
-        </div>
-
         <div className={styles.formGrid}>
           <FormGroup label="Case Type(s)" required>
             <div className={styles.checkGroup}>
-              {VIOLENCE_TYPES.map((v) => {
-                const isChecked = caseTypeVal.includes(v);
-                return (
-                  <div key={v} style={{ marginBottom: "0.5rem" }}>
-                    <label className={styles.checkLabel} style={{
-                      background: isChecked ? "#f5f3ff" : "transparent",
-                      border: isChecked ? "1px solid #ddd6fe" : "1px solid transparent",
-                      borderRadius: 8,
-                      padding: "8px 10px",
-                      transition: "all 0.15s",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 10,
-                    }}>
-                      <input
-                        type="checkbox"
-                        className={styles.checkInput}
-                        checked={isChecked}
-                        style={{ marginTop: 2, flexShrink: 0 }}
-                        onChange={() =>
-                          setCaseTypeVal((prev) =>
-                            prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-                          )
-                        }
-                      />
-                      <div>
-                        <span style={{
-                          fontWeight: isChecked ? 700 : 500,
-                          color: isChecked ? "#5b21b6" : "inherit",
-                          fontSize: "0.875rem",
-                          display: "block",
-                        }}>
-                          {v}
-                        </span>
-                        {isChecked && CASE_TYPE_DESCRIPTIONS[v] && (
-                          <span style={{
-                            display: "block",
-                            marginTop: 4,
-                            fontSize: "0.8rem",
-                            color: "#6b21a8",
-                            lineHeight: 1.55,
-                            fontStyle: "italic",
-                          }}>
-                            {CASE_TYPE_DESCRIPTIONS[v]}
-                          </span>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                );
-              })}
+              {VIOLENCE_TYPES.map((v) => <label key={v} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={caseTypeVal.includes(v)} onChange={() => setCaseTypeVal((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])} />{v}</label>)}
             </div>
-            {caseTypeVal.length === 0 && (
-              <span className={styles.errorMsg}>Select at least one case type.</span>
-            )}
           </FormGroup>
         </div>
-
-        {/* Summary of selected types */}
-        {caseTypeVal.length > 0 && (
-          <div style={{
-            background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
-            padding: "10px 14px", margin: "0.5rem 0 1rem",
-            fontSize: "0.82rem", color: "#166534",
-          }}>
-            <strong>Selected ({caseTypeVal.length}):</strong> {caseTypeVal.join(" · ")}
-          </div>
-        )}
-
-        {/* Confirmation checkbox */}
-        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem", marginTop: "0.5rem" }}>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: "0.875rem", color: "#374151" }}>
-            <input
-              type="checkbox"
-              checked={caseTypeConfirmed}
-              onChange={(e) => setCaseTypeConfirmed(e.target.checked)}
-              style={{ marginTop: 3, flexShrink: 0, accentColor: "#5b21b6" }}
-            />
-            <span>
-              I have reviewed the definitions of all selected case type(s) and confirm that this classification accurately reflects the nature of the incident as reported.
-            </span>
-          </label>
-        </div>
-
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button
-            className={styles.btnPrimary}
-            disabled={caseTypeVal.length === 0 || !caseTypeConfirmed}
-            onClick={async () => {
-              try {
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-                const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
-                  method: "PATCH",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ case_type: caseTypeVal, case_officer_id: userId }),
-                });
-                if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-                setCaseData((p) => ({ ...p, caseType: caseTypeVal }));
-                setCaseTypeConfirmed(false);
-                showToast("Case type updated.");
-                setModal(null);
-              } catch (err) { showToast(err.message, "error"); }
-            }}
-          >
-            Save
-          </button>                             
-        </div>
-      </Modal>  
-
-      {/* Set Category */}
-      <Modal open={modal === "setCategory"} onClose={() => { setModal(null); setCategoryConfirmed(false); }} title="Set Category" wide>
-        <p className={styles.formDesc}>
-          Select the dominant medium of the incident as the case category.
-          If the case spans more than one medium, check the others under "Also involves".
-        </p>
-
-        <div style={{
-          background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
-          padding: "10px 14px", marginBottom: "1.25rem",
-          fontSize: "0.82rem", color: "#92400e",
-          display: "flex", gap: 8, alignItems: "flex-start"
-        }}>
-          <FiAlertTriangle style={{ flexShrink: 0, marginTop: 2 }} />
-          <span>Case category determines how the incident medium is recorded and affects referral routing. Select carefully.</span>
-        </div>
-
-        <div className={styles.formGrid}>
-
-          <FormGroup label="Case Category" required hint="The dominant medium — pick one.">
-            <FSelect
-              value={caseCatVal}
-              onChange={(e) => {
-                const selected = e.target.value;
-                setCaseCatVal(selected);
-                setAlsoCatVal((prev) => prev.filter((c) => c !== selected));
-                setCategoryConfirmed(false);
-              }}
-            >
-              <option value="">— Select case category —</option>
-              <option value="Physical">Physical</option>
-              <option value="Virtual">Virtual</option>
-              <option value="Verbal">Verbal</option>
-            </FSelect>
-
-            {/* Inline description shown after selection */}
-            {caseCatVal && (
-              <div style={{
-                marginTop: 8, background: "#f5f3ff", border: "1px solid #ddd6fe",
-                borderRadius: 8, padding: "8px 12px", fontSize: "0.82rem",
-                color: "#5b21b6", lineHeight: 1.55, fontStyle: "italic",
-              }}>
-                {caseCatVal === "Physical" && "The incident involved direct in-person physical contact or conduct — such as touching, assault, or physical presence of the perpetrator."}
-                {caseCatVal === "Virtual" && "The incident took place through digital means — such as online platforms, messaging apps, social media, email, or any internet-based channel."}
-                {caseCatVal === "Verbal" && "The incident involved spoken or written words, remarks, threats, or verbal conduct — whether in person, over the phone, or through text."}
-              </div>
-            )}
-          </FormGroup>
-
-          <FormGroup
-            label="Also involves (optional)"
-            hint="Check any other mediums this case spans — separate from the case category."
-          >
-            <div className={styles.checkGroup}>
-              {["Physical", "Virtual", "Verbal"]
-                .filter((c) => c !== caseCatVal)
-                .map((c) => (
-                  <label key={c} className={styles.checkLabel} style={{
-                    background: alsoCatVal.includes(c) ? "#f5f3ff" : "transparent",
-                    border: alsoCatVal.includes(c) ? "1px solid #ddd6fe" : "1px solid transparent",
-                    borderRadius: 8, padding: "8px 10px", transition: "all 0.15s",
-                    display: "flex", alignItems: "flex-start", gap: 10,
-                  }}>
-                    <input
-                      type="checkbox"
-                      className={styles.checkInput}
-                      checked={alsoCatVal.includes(c)}
-                      style={{ marginTop: 2, flexShrink: 0 }}
-                      onChange={() =>
-                        setAlsoCatVal((prev) =>
-                          prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
-                        )
-                      }
-                    />
-                    <div>
-                      <span style={{
-                        fontWeight: alsoCatVal.includes(c) ? 700 : 500,
-                        color: alsoCatVal.includes(c) ? "#5b21b6" : "inherit",
-                        fontSize: "0.875rem", display: "block",
-                      }}>
-                        {c}
-                      </span>
-                      {alsoCatVal.includes(c) && (
-                        <span style={{
-                          display: "block", marginTop: 4, fontSize: "0.8rem",
-                          color: "#6b21a8", lineHeight: 1.55, fontStyle: "italic",
-                        }}>
-                          {c === "Physical" && "The incident also involved direct in-person physical contact or conduct."}
-                          {c === "Virtual" && "The incident also took place through digital means or online platforms."}
-                          {c === "Verbal" && "The incident also involved spoken or written words, remarks, or verbal conduct."}
-                        </span>
-                      )}
-                    </div>
-                  </label>
-                ))}
-            </div>
-            {!caseCatVal && (
-              <span className={styles.formHint}>Select a case category first to enable this.</span>
-            )}
-          </FormGroup>
-
-        </div>
-
-        {/* Summary */}
-        {caseCatVal && (
-          <div style={{
-            background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
-            padding: "10px 14px", margin: "0.5rem 0 1rem",
-            fontSize: "0.82rem", color: "#166534",
-          }}>
-            <strong>Case Category:</strong> {caseCatVal}
-            {alsoCatVal.length > 0 && <> &nbsp;·&nbsp; <strong>Also involves:</strong> {alsoCatVal.join(", ")}</>}
-          </div>
-        )}
-
-        {/* Confirmation checkbox */}
-        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem", marginTop: "0.5rem" }}>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: "0.875rem", color: "#374151" }}>
-            <input
-              type="checkbox"
-              checked={categoryConfirmed}
-              onChange={(e) => setCategoryConfirmed(e.target.checked)}
-              style={{ marginTop: 3, flexShrink: 0, accentColor: "#ec4899" }}
-            />
-            <span>
-              I have reviewed the category definitions and confirm that this classification accurately reflects the medium through which the incident occurred.
-            </span>
-          </label>
-        </div>
-
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button
-            className={styles.btnPrimary}
-            disabled={!caseCatVal || !categoryConfirmed}
-              onClick={async () => {
-                try {
-                  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-                  const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
-                    method: "PATCH",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ primary_category: caseCatVal, additional_categories: alsoCatVal, case_officer_id: userId }),
-                  });
-                  if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-                  setCaseData((p) => ({ ...p, primary_category: caseCatVal, alsoInvolves: alsoCatVal }));
-                  setCategoryConfirmed(false);
-                  showToast("Category updated.");
-                  setModal(null);
-                } catch (err) { showToast(err.message, "error"); }
-              }}
-          >
-            Save
-          </button>
-        </div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={caseTypeVal.length === 0} onClick={() => saveAssessment({ case_type: caseTypeVal }, () => { setCaseData((p) => ({ ...p, caseType: caseTypeVal })); showToast("Case type updated."); })}>Save</button></div>
       </Modal>
 
-      {/* Set Referral */}
-      <Modal open={modal === "setReferral"} onClose={() => setModal(null)} title="Set Referral Details">
+      <Modal open={modal === "setCategory"} onClose={() => setModal(null)} title="Set Category" wide>
         <div className={styles.formGrid}>
-          <FormGroup label="Referral required?">
-            <FSelect value={referralReq} onChange={(e) => setReferralReq(e.target.value)}>
-              <option value="no">No</option>
-              <option value="yes">Yes</option>
-            </FSelect>
+          <FormGroup label="Case Category" required>
+            <FSelect value={caseCatVal} onChange={(e) => { setCaseCatVal(e.target.value); setAlsoCatVal((prev) => prev.filter((c) => c !== e.target.value)); }}><option value="">Select case category</option><option value="Physical">Physical</option><option value="Virtual">Virtual</option><option value="Verbal">Verbal</option></FSelect>
           </FormGroup>
-          {referralReq === "yes" && (
-            <FormGroup label="Referral Body" required>
-              <FSelect value={referralVal} onChange={(e) => setReferralVal(e.target.value)}>
-                <option value="">— Select body —</option>
-                {ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}
-              </FSelect>
-            </FormGroup>
-          )}
+          <FormGroup label="Also involves (optional)">
+            <div className={styles.checkGroup}>{["Physical", "Virtual", "Verbal"].filter((c) => c !== caseCatVal).map((c) => <label key={c} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={alsoCatVal.includes(c)} onChange={() => setAlsoCatVal((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])} />{c}</label>)}</div>
+          </FormGroup>
         </div>
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={async () => {
-            try {
-              const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-              const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
-                method: "PATCH",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ referral_required: referralReq === "yes", referral_body: referralReq === "yes" ? referralVal : null, case_officer_id: userId }),
-              });
-              if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-              setCaseData((p) => ({ ...p, referralRequired: referralReq === "yes", referralBody: referralReq === "yes" ? referralVal : null }));
-              showToast("Referral details updated.");
-              setModal(null);
-            } catch (err) { showToast(err.message, "error"); }
-          }}>Save</button>
-        </div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, alsoInvolves: alsoCatVal })); showToast("Category updated."); })}>Save</button></div>
       </Modal>
 
-      {/* Assign Paralegal */}
+      <Modal open={modal === "referralEndorse"} onClose={() => setModal(null)} title="Referral / Endorse Case">
+        <div className={styles.formGrid}>
+          <FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup>
+          <FormGroup label="Referral required?"><FSelect value={referralReq} onChange={(e) => { setReferralReq(e.target.value); if (e.target.value === "no") setReferralVal(""); }}><option value="no">No</option><option value="yes">Yes</option></FSelect></FormGroup>
+          {referralReq === "yes" && <FormGroup label="Referral / Endorsement Body" required><FSelect value={referralVal} onChange={(e) => setReferralVal(e.target.value)}><option value="">Select body</option>{ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}</FSelect></FormGroup>}
+          {referralReq === "yes" && <FormGroup label="Referral / endorsement notes"><FTextarea placeholder="Explain basis for referral or endorsement and any supporting details..." value={endorseNotes} onChange={(e) => setEndorseNotes(e.target.value)} /></FormGroup>}
+        </div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={referralReq === "yes" && !referralVal} onClick={() => {
+          const referralRequired = referralReq === "yes";
+          const selectedBody = referralRequired ? referralVal : null;
+          saveAssessment({ referral_required: referralRequired, referral_body: selectedBody, endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null }, () => { setCaseData((p) => ({ ...p, referralRequired, referralBody: selectedBody, endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : p.endorsementStatus })); showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated."); });
+        }}>Save</button></div>
+      </Modal>
+
       <Modal open={modal === "assignParalegal"} onClose={() => setModal(null)} title="Assign Paralegal">
-        <div className={styles.formGrid}>
-          <FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup>
-          <FormGroup label="Assign Paralegal" required>
-            <FSelect value={paralegalVal} onChange={(e) => setParalegalVal(e.target.value)}>
-              <option value="">— Select paralegal —</option>
-              {PARALEGALS.map((p) => <option key={p} value={p}>{p}</option>)}
-            </FSelect>
-          </FormGroup>
-        </div>
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={async () => {
-              try {
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-                const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
-                  method: "PATCH",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ assigned_paralegal: paralegalVal, case_officer_id: userId }),
-                });
-                if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-                setCaseData((p) => ({ ...p, assignedParalegal: paralegalVal }));
-                showToast("Paralegal assigned.");
-                setModal(null);
-              } catch (err) { showToast(err.message, "error"); }
-            }}>Assign</button>
-        </div>
-      </Modal>
-
-      {/* Endorse */}
-      <Modal open={modal === "endorse"} onClose={() => setModal(null)} title="Endorse Case">
-        <div className={styles.formGrid}>
-          <FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup>
-          <FormGroup label="Endorse to" required>
-            <FSelect value={endorseBody} onChange={(e) => setEndorseBody(e.target.value)}>
-              <option value="">— Select body —</option>
-              {ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}
-            </FSelect>
-          </FormGroup>
-          <FormGroup label="Endorsement notes / reason">
-            <FTextarea placeholder="Explain basis for endorsement and any supporting details…" value={endorseNotes} onChange={(e) => setEndorseNotes(e.target.value)} />
-          </FormGroup>
-        </div>
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button>
-          <button className={styles.btnPrimary} onClick={async () => {
-          try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-            const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
-              method: "PATCH",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                endorsement: {
-                  endorsed_to: endorseBody,
-                  notes: endorseNotes,
-                  date: new Date().toISOString(),
-                },
-                referral_body: endorseBody,
-                referral_required: true,
-                case_officer_id: userId,
-              }),
-            });
-            if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-            setCaseData((p) => ({ ...p, endorsementStatus: `Endorsed to ${endorseBody}`, referralBody: endorseBody, referralRequired: true }));
-            showToast(`Case endorsed to ${endorseBody}.`);
-            setModal(null);
-          } catch (err) { showToast(err.message, "error"); }
-        }} disabled={!endorseBody}>Endorse</button>
-        </div>
+        <div className={styles.formGrid}><FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup><FormGroup label="Assign Paralegal" required><FSelect value={paralegalVal} onChange={(e) => setParalegalVal(e.target.value)}><option value="">Select paralegal</option>{PARALEGALS.map((p) => <option key={p} value={p}>{p}</option>)}</FSelect></FormGroup></div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!paralegalVal} onClick={() => saveAssessment({ assigned_paralegal: paralegalVal }, () => { setCaseData((p) => ({ ...p, assignedParalegal: paralegalVal })); showToast("Paralegal assigned."); })}>Assign</button></div>
       </Modal>
     </div>
   );
 }
-
 function btnStyle(bg) {
   return {
     background: bg, color: "white",
