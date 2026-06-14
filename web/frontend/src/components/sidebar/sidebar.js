@@ -184,7 +184,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
 // ── SidebarFooter ─────────────────────────────────────────────────────────────
 
 const FOOTER_LINKS = [
-  { href: "/settings", label: "Settings & privacy",      icon: <MdSettings /> },
+  { href: "/profile?tab=security", label: "Settings & privacy",      icon: <MdSettings /> },
   { href: "/help",     label: "Help & support",          icon: <MdHelp /> },
   { href: "/display",  label: "Display & accessibility", icon: <MdAccessibility /> },
   { href: "/report",   label: "Report a problem",        icon: <MdFlag /> },
