@@ -120,6 +120,7 @@ export default function ViewChapter() {
           <span className={styles.statusBadgeDynamic}>{chapter.status || "Formation in Progress"}</span>
         </section>
 
+        <div className={styles.contentCard}>
         <Section title="Formation Profile">
           <DetailGrid
             rows={[
@@ -202,6 +203,7 @@ export default function ViewChapter() {
         <Section title="Recognition Notes">
           <p className={styles.longText}>{chapter.notes || "No recognition notes recorded."}</p>
         </Section>
+        </div>
       </div>
     </main>
   );
