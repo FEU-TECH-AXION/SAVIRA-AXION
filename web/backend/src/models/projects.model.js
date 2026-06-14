@@ -3,6 +3,7 @@ const supabase = require('../config/supabase')
 const ALLOWED_FIELDS = [
   'event_name',
   'event_tagline',
+  'description',
   'activity_mode',
   'venue',
   'start_date',
@@ -19,17 +20,21 @@ const ALLOWED_FIELDS = [
   'image',
 ]
 
+// Strip ISO timestamp suffix so HTML <input type="date"> gets plain YYYY-MM-DD
+const toDateStr = (val) => (val ? String(val).split('T')[0] : null)
+
 const toFrontend = (row) => {
   if (!row) return null
   return {
     id: row.project_id,
     title: row.event_name,
     tagline: row.event_tagline,
+    description: row.description || '',
     activityMode: row.activity_mode,
     venue: row.venue,
-    dateStart: row.start_date,
-    dateEnd: row.end_date,
-    dueDate: row.due_date,
+    dateStart: toDateStr(row.start_date),
+    dateEnd: toDateStr(row.end_date),
+    dueDate: toDateStr(row.due_date),
     logisticalRequirements: row.logistical_requirement,
     financialRequirements: row.financial_requirement,
     operationalRequirements: row.operational_requirement,
@@ -50,6 +55,7 @@ const toDbPayload = (payload) => {
   const entries = Object.entries({
     event_name: payload.title,
     event_tagline: payload.tagline,
+    description: payload.description,
     activity_mode: payload.activityMode,
     venue: payload.venue,
     start_date: payload.dateStart,

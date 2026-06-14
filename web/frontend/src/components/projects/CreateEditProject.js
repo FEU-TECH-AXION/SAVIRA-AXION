@@ -113,6 +113,11 @@ function normalizeInitial(init) {
       out[key] = val;
     }
   }
+  // If there is an existing image URL from the backend, show it as the preview
+  // so the banner is visible when opening the edit form.
+  if (typeof out.image === "string" && out.image && !out.imagePreview) {
+    out.imagePreview = out.image;
+  }
   return out;
 }
 
