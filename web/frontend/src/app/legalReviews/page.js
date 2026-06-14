@@ -26,7 +26,7 @@ export default function LegalReviewPage() {
 
   if (!role) return <p>Loading...</p>;
   if (role === "admin") return <LegalReviewManagement />;
-  if (role === "legal personnel") return <LegalReviewManagement />;
+  if (role === "legal personnel" || role === "legal_personnel" || role === "paralegal" || role === "legal_officer" || role === "legal officer") return <LegalReviewManagement />;
 
   return <p>Unauthorized</p>;
 }

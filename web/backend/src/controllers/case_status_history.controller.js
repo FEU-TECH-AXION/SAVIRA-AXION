@@ -39,20 +39,12 @@ const submitStatusChange = async (req, res) => {
       recommendation,
     } = req.body
 
-    // Validate required fields
-    // if (!case_report_id || !proposed_status || !changed_by_id || !changed_by_role) {
-    //   return res.status(400).json({
-    //     error: 'case_report_id, proposed_status, changed_by_id, and changed_by_role are required.'
-    //   })
-    // }
-
-    // Look up numeric status ID
     const caseStatusId = CaseStatusHistory.STATUS_ID_MAP[proposed_status]
     if (!caseStatusId) {
       return res.status(400).json({ error: `Unknown status: ${proposed_status}` })
     }
 
-    // Step 1 — Insert history row as immediately approved
+    // Step 1 — Insert history row
     const historyRow = await CaseStatusHistory.create({
       caseReportId:   case_report_id,
       caseStatusId,
@@ -62,30 +54,69 @@ const submitStatusChange = async (req, res) => {
       formData:       form_data,
       approvalStatus: 'approved',
       approvedAt:     new Date().toISOString(),
-      approvedById:   changed_by_id,
+      approvedById:   null,  // No approver since it's auto-approved
     })
 
-    // Step 2 — Update case_reports.case_status_id immediately
+    // Step 2 — Update case_reports.case_status_id
     const { error: caseErr } = await supabase
       .from('case_reports')
       .update({ case_status_id: caseStatusId })
       .eq('case_report_id', case_report_id)
     if (caseErr) throw caseErr
 
-    // Step 3 — Insert assessment row as approved
+    // Step 3 — Resolve INT ids from UUID before inserting assessment
+    let caseOfficerId    = null
+    let legalPersonnelId = null
+    const role = (changed_by_role || '').toLowerCase()
+
+    if (role.includes('case officer') || role.includes('case_officer') || role === 'admin') {
+      const { data: officer } = await supabase
+        .from('case_officers')
+        .select('case_officer_id')
+        .eq('user_id', changed_by_id)
+        .maybeSingle()
+      caseOfficerId = officer?.case_officer_id || null
+    }
+
+    if (role.includes('legal')) {
+      const { data: lp } = await supabase
+        .from('legal_personnels')
+        .select('legal_personnel_id')
+        .eq('user_id', changed_by_id)
+        .maybeSingle()
+      legalPersonnelId = lp?.legal_personnel_id || null
+    }
+
+          console.log('[submitStatusChange] assessment payload:', JSON.stringify({
+        case_report_id,
+        case_officer_id:    caseOfficerId,
+        legal_personnel_id: legalPersonnelId,
+        status_history_id:  historyRow.history_id,
+        assessment_type:    assessment_type || proposed_status,
+        assessment_stage:   proposed_status,
+        assessment_status:  'approved',
+        findings:           findings || notes,
+        recommendation:     recommendation || null,
+        changed_by_id,
+        changed_by_role,
+      }, null, 2))
+
+    // Step 4 — Insert assessment with correct INT ids
     const assessment = await CaseAssessments.create({
       case_report_id,
-      case_officer_id:    changed_by_id,
-      legal_personnel_id: changed_by_role === 'legal_personnel' ? changed_by_id : null,
+      case_officer_id:    caseOfficerId,    // INT or null
+      legal_personnel_id: legalPersonnelId, // INT or null
       status_history_id:  historyRow.history_id,
       assessment_type:    assessment_type || proposed_status,
       assessment_stage:   proposed_status,
       assessment_status:  'approved',
       findings:           findings || notes,
       recommendation:     recommendation || null,
-      changed_by_id,
+      changed_by_id,    // varchar — UUID is fine here
       changed_by_role,
     })
+
+    
 
     res.status(201).json({
       message:          'Status updated successfully.',
@@ -94,6 +125,7 @@ const submitStatusChange = async (req, res) => {
       requiresApproval: false,
     })
   } catch (err) {
+    console.error('[submitStatusChange]', err.message)
     res.status(500).json({ error: err.message })
   }
 }

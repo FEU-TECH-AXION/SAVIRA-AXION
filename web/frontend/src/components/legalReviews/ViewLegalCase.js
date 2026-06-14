@@ -14,7 +14,7 @@ import {
   FiInfo,
 } from "react-icons/fi";
 import { IoIosArrowBack } from "react-icons/io";
-import styles from "./ViewCase.module.css";
+import styles from "./ViewLegalCase.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -877,13 +877,53 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     return [];
   }
 
-  function submitForApproval(proposedStatus, changeDetails) {
-    setCaseData((prev) => ({
-      ...prev,
-      pendingApproval: { proposedStatus, ...changeDetails },
-    }));
-    showToast(`Status change for ${caseData.caseId} submitted for admin approval.`);
-    setModal(null);
+  async function submitForApproval(proposedStatus, changeDetails) {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
+      // Get user info from cookie for changed_by fields
+      const userCookie = getCookie('user')
+      const userData = userCookie ? JSON.parse(userCookie) : {}
+
+      const res = await fetch(`${API_URL}/api/case_status_history`, {
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          case_report_id:   caseData.id,
+          proposed_status:  proposedStatus,
+          changed_by_id:    userData.user_id   || null,
+          changed_by_role:  userData.role_name  || 'legal personnel',
+          notes:            changeDetails.notes || null,
+          form_data:        changeDetails.formData ?? null,
+        }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Failed to update status.')
+      }
+
+      // Update local state immediately
+      setCaseData(prev => ({
+        ...prev,
+        status: proposedStatus,
+        statusHistory: [
+          ...(prev.statusHistory || []),
+          {
+            status: proposedStatus,
+            date:   new Date().toLocaleDateString('en-PH'),
+            by:     changeDetails.submittedBy,
+            notes:  changeDetails.notes,
+          }
+        ]
+      }))
+
+      showToast(`Status updated to "${proposedStatus}".`)
+      setModal(null)
+    } catch (err) {
+      showToast(err.message, 'danger')
+    }
   }
 
   const transitions = getAvailableTransitions();
@@ -1228,8 +1268,25 @@ function CaseDetailsTab({ caseData, isStaff }) {
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
             ["Current Status",    <StatusBadge status={caseData.status} />],
-            ["Case Type",         caseData.caseType || "Not yet classified"],
-            ["Primary Category",  caseData.primaryCategory || "Not yet classified"],
+            ["Case Type",
+              Array.isArray(caseData.caseType) && caseData.caseType.length > 0
+                ? caseData.caseType.join(", ")
+                : typeof caseData.caseType === "string" && caseData.caseType
+                  ? caseData.caseType
+                  : "Not yet classified"
+            ],
+            ["Case Categories",
+              (() => {
+                const primary = caseData.primaryCategory || "";
+                const additional = Array.isArray(caseData.additionalCategories)
+                  ? caseData.additionalCategories
+                  : [];
+                if (!primary && additional.length === 0) return "Not yet classified";
+                if (!primary) return additional.join(", ");
+                if (additional.length === 0) return primary;
+                return `${primary} (also: ${additional.join(", ")})`;
+              })()
+            ],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
             ["Referral Body",     caseData.referralBody || "—"],
             ["Assigned Officer",  caseData.assignedOfficer || "—"],
@@ -1375,7 +1432,8 @@ export default function ViewCase() {
           contactNumber:           data.contact_number,
           caseType:                data.case_type || null,
           primaryCategory:         data.primary_category || null,
-          referralRequired:        data.referral_required || false,
+          additionalCategories:    data.additional_categories || [],
+          referralRequired:        data.referral_required ?? false,
           referralBody:            data.referral_body || null,
           assignedParalegal:       data.assigned_paralegal || null,
           endorsementStatus:       data.endorsement_status || null,

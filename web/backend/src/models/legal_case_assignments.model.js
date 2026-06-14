@@ -86,4 +86,22 @@ const getActiveByCase = async (case_report_id) => {
     return data
 }
 
-module.exports = { getAll, create, deactivateOne, isAlreadyAssigned, getActiveByCase }
+const bulkCreate = async (assignments) => {
+    // Generate one batch ID for the entire session
+    const { data: uuidData } = await supabase.rpc('gen_random_uuid')
+    const batch_id = uuidData || crypto.randomUUID()
+
+    const rows = assignments.map(a => ({
+        ...a,
+        assignment_batch_id: batch_id,
+    }))
+
+    const { data, error } = await supabase
+        .from('legal_case_assignments')
+        .insert(rows)
+        .select()
+    if (error) throw error
+    return data
+}
+
+module.exports = { getAll, create, bulkCreate, deactivateOne, isAlreadyAssigned, getActiveByCase }

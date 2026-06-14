@@ -1,0 +1,283 @@
+/* ════════════════════════════════════════
+   SASHA Design tokens
+   ════════════════════════════════════════ */
+:root {
+  --sasha-teal:         #037F81;
+  --sasha-teal-dark:    #025f61;
+  --sasha-teal-light:   #e1f5f5;
+  --sasha-orange:       #E8663A;
+  --sasha-orange-dark:  #c44e24;
+  --sasha-white:        #ffffff;
+  --sasha-offwhite:     #f5f7f8;
+  --sasha-text:         #1a1a1a;
+  --sasha-muted:        #6b7280;
+  --sasha-border:       #e5e7eb;
+  --sasha-card-radius:  14px;
+}
+
+/* ════════════════════════════════════════
+   PAGE WRAPPER
+   ════════════════════════════════════════ */
+.pageWrapper {
+  background: var(--sasha-offwhite);
+  min-height: 100vh;
+  color: var(--sasha-text);
+  padding-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.pageInner {
+  max-width: 1200px;
+  width: 100%;
+}
+
+/* ════════════════════════════════════════
+   HERO BANNER
+   ════════════════════════════════════════ */
+.hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 2rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.heroContent {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.heroEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--sasha-muted);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.heroLine {
+  display: inline-block;
+  width: 28px;
+  height: 3px;
+  background: var(--sasha-orange);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.heroTitle {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 800;
+  color: var(--sasha-teal);
+  line-height: 1.15;
+  margin-bottom: 1.25rem;
+}
+
+.heroDesc {
+  font-size: clamp(0.88rem, 1.5vw, 1rem);
+  color: var(--sasha-muted);
+  line-height: 1.75;
+  margin-bottom: 2rem;
+  max-width: 1200px;
+}
+
+/* ════════════════════════════════════════
+   SHARED CARD HEADER  (teal bar + View btn)
+   ════════════════════════════════════════ */
+.statusCardHeader {
+  background: var(--sasha-teal);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+  border-radius: var(--sasha-card-radius) var(--sasha-card-radius) 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerViewBtn {
+  background: var(--sasha-white);
+  color: var(--sasha-teal);
+  border: none;
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.headerViewBtn:hover { opacity: 0.85; }
+
+/* ════════════════════════════════════════
+   STATUS CARDS
+   ════════════════════════════════════════ */
+.statusCard {
+  background: var(--sasha-white);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+}
+
+.statusCardBody {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+/* Card top row: Case ID (left) + "Updated X ago" (right) */
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.cardCaseId {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  letter-spacing: 0.01em;
+}
+
+.cardUpdated {
+  font-size: 0.75rem;
+  color: var(--sasha-muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* Two-column meta grid */
+.cardMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--sasha-border);
+}
+
+.cardMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cardMetaLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sasha-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cardMetaValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--sasha-text);
+}
+
+.cardMetaUnassigned {
+  color: var(--sasha-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* ── Stepper ── */
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  position: relative;
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+}
+
+.stepLine {
+  position: absolute;
+  top: 10px;
+  left: calc(-50%);
+  right: 50%;
+  height: 2px;
+  background: var(--sasha-border);
+  z-index: 0;
+  width: 100%;
+}
+
+.stepLineDone { background: var(--sasha-teal); }
+
+.stepDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--sasha-border);
+  border: 2px solid var(--sasha-border);
+  z-index: 1;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.stepDotDone {
+  background: var(--sasha-teal);
+  border-color: var(--sasha-teal);
+}
+
+.stepDotActive {
+  background: var(--sasha-orange) !important;
+  border-color: var(--sasha-orange) !important;
+  box-shadow: 0 0 0 3px rgba(232,102,58,0.2);
+}
+
+.stepLabel {
+  font-size: 0.72rem;
+  color: var(--sasha-muted);
+  margin-top: 0.4rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.stepLabelActive {
+  color: var(--sasha-text);
+  font-weight: 700;
+}
+
+/* ── Error / Alert ── */
+.errorAlert {
+  margin: 0 0 1.25rem;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  .heroTitle    { font-size: 1.5rem; margin-bottom: 1.25rem; }
+  .cardMetaGrid { grid-template-columns: 1fr; }
+}

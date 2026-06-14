@@ -13,73 +13,121 @@ const ALLOWED_FIELDS = [
 ]
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('case_reports').select('*')
-
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
-    if (error) throw error
-
-    return data
+  const { data, error } = await supabase.from('case_reports').select('*')
+  if (error) throw error
+  return data
 }
 
 const create = async (payload) => {
-    const { data, error } = await supabase
-        .from('case_reports')
-        .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
-    if (error) throw error
-
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
-    return data[0]
+  const { data, error } = await supabase
+    .from('case_reports')
+    .insert([payload])
+    .select()
+  if (error) throw error
+  return data[0]
 }
 
 async function getCaseById(caseReportId) {
-
   // Step 1: Get the case report
   const { data: report, error } = await supabase
     .from('case_reports')
     .select('*')
     .eq('case_report_id', caseReportId)
     .eq('is_current', true)
-    .maybeSingle();
-  if (error) throw error;
-  if (!report) return null;
+    .maybeSingle()
+  if (error) throw error
+  if (!report) return null
 
-  // Step 2: Get the complainant's user_id using complainant_id
+  // Step 2: Get the complainant's user_id
   const { data: complainant, error: complainantError } = await supabase
     .from('complainants')
     .select('user_id')
     .eq('complainant_id', report.complainant_id)
-    .maybeSingle();
-  if (complainantError) throw complainantError;
+    .maybeSingle()
+  if (complainantError) throw complainantError
+
+  // Step 3: Get all assessments and merge latest non-null values per field
+  const { data: assessments, error: assessmentError } = await supabase
+    .from('case_assessments')
+    .select(`
+      case_type,
+      primary_category,
+      additional_categories,
+      referral_required,
+      referral_body,
+      endorsement
+    `)
+    .eq('case_report_id', caseReportId)
+    .order('created_at', { ascending: false })
+  if (assessmentError) throw assessmentError
+
+  const merged = {
+    case_type:             null,
+    primary_category:      null,
+    additional_categories: null,
+    referral_required:     false,
+    referral_body:         null,
+    endorsement:           null,
+  }
+  for (const row of assessments || []) {
+    if (!merged.case_type && row.case_type?.length > 0)
+      merged.case_type = row.case_type
+    if (!merged.primary_category && row.primary_category)
+      merged.primary_category = row.primary_category
+    if (!merged.additional_categories && row.additional_categories?.length > 0)
+      merged.additional_categories = row.additional_categories
+    if (!merged.referral_required && row.referral_required)
+      merged.referral_required = row.referral_required
+    if (!merged.referral_body && row.referral_body)
+      merged.referral_body = row.referral_body
+    if (!merged.endorsement && row.endorsement)
+      merged.endorsement = row.endorsement
+  }
+
+  // Step 4: Get active case officer assignment
+  const { data: assignment, error: assignmentError } = await supabase
+    .from('case_assignments')
+    .select(`
+      case_officer_id,
+      case_officers (
+        users (
+          first_name,
+          last_name
+        )
+      )
+    `)
+    .eq('case_report_id', caseReportId)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (assignmentError) throw assignmentError
+
+  const officerName = assignment?.case_officers?.users
+    ? `${assignment.case_officers.users.first_name} ${assignment.case_officers.users.last_name}`.trim()
+    : null
 
   return {
     ...report,
     complainant_user_id: complainant?.user_id || null,
-  };
+    assigned_officer:    officerName,
+    ...merged,
+  }
 }
 
 async function getComplainantId(userId) {
-  // Try to find existing complainant row
   const { data, error } = await supabase
     .from("complainants")
     .select("complainant_id")
     .eq("user_id", userId)
-    .single();
+    .single()
+  if (data) return data.complainant_id
 
-  // If found, return it
-  if (data) return data.complainant_id;
-
-  // If not found, create it now
   const { data: newComplainant, error: insertError } = await supabase
     .from("complainants")
     .insert([{ user_id: userId }])
     .select("complainant_id")
-    .single();
-
-  if (insertError) throw insertError;
-  return newComplainant.complainant_id;
+    .single()
+  if (insertError) throw insertError
+  return newComplainant.complainant_id
 }
 
 async function createReport(payload) {
@@ -87,10 +135,9 @@ async function createReport(payload) {
     .from("case_reports")
     .insert([payload])
     .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+    .single()
+  if (error) throw error
+  return data
 }
 
 async function getReportsByUserId(complainantId) {
@@ -101,21 +148,17 @@ async function getReportsByUserId(complainantId) {
       incident_description,
       incident_city,
       incident_date,
-      case_status_id,
-      created_at,
-      updated_at
+      case_status_id
     `)
     .eq('complainant_id', complainantId)
     .eq('is_current', true)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
 }
 
 async function getAllReports() {
-  // Step 1: Fetch case reports with their assignments (just IDs — avoids the
-  // broken deep nested join: case_assignments → case_officers → users)
+  // Step 1: Fetch case reports with their assignments
   const { data: reports, error: reportsError } = await supabase
     .from('case_reports')
     .select(`
@@ -135,14 +178,13 @@ async function getAllReports() {
       )
     `)
     .eq('is_current', true)
-    .order('created_at', { ascending: false });
-
+    .order('created_at', { ascending: false })
   if (reportsError) {
-    console.error('[getAllReports] reports query error:', JSON.stringify(reportsError, null, 2));
-    throw reportsError;
+    console.error('[getAllReports] reports query error:', JSON.stringify(reportsError, null, 2))
+    throw reportsError
   }
 
-  // Step 2: Fetch all officers with their user info (this join works fine from case_officers directly)
+  // Step 2: Fetch all officers with their user info
   const { data: officers, error: officersError } = await supabase
     .from('case_officers')
     .select(`
@@ -153,63 +195,55 @@ async function getAllReports() {
         last_name,
         email
       )
-    `);
-
+    `)
   if (officersError) {
-    console.error('[getAllReports] officers query error:', JSON.stringify(officersError, null, 2));
-    throw officersError;
+    console.error('[getAllReports] officers query error:', JSON.stringify(officersError, null, 2))
+    throw officersError
   }
 
-  // Build a quick lookup: case_officer_id → full name
-  const officerMap = {};
+  // Build lookup: case_officer_id → full name
+  const officerMap = {}
   for (const o of officers || []) {
     if (o.users) {
-      officerMap[o.case_officer_id] = `${o.users.first_name || ''} ${o.users.last_name || ''}`.trim();
+      officerMap[o.case_officer_id] = `${o.users.first_name || ''} ${o.users.last_name || ''}`.trim()
     }
   }
 
-  // Step 3: Merge — find the active assignment for each report and resolve the officer name
+  // Step 3: Merge officer name into each report
   return reports.map(report => {
-    let assignedOfficer = null;
-    let assignedOfficerId = null;
-
-    if (report.case_assignments && report.case_assignments.length > 0) {
-      const activeAssignment = report.case_assignments.find(a => a.is_active);
-      if (activeAssignment) {
-        assignedOfficerId = activeAssignment.case_officer_id;
-        assignedOfficer = officerMap[assignedOfficerId] || null;
+    let assignedOfficer = null
+    let assignedOfficerId = null
+    if (report.case_assignments?.length > 0) {
+      const active = report.case_assignments.find(a => a.is_active)
+      if (active) {
+        assignedOfficerId = active.case_officer_id
+        assignedOfficer = officerMap[assignedOfficerId] || null
       }
     }
-
     return {
       ...report,
-      assigned_officer: assignedOfficer,
+      assigned_officer:    assignedOfficer,
       assigned_officer_id: assignedOfficerId,
-      case_assignments: undefined, // strip nested data from response
-    };
-  });
+      case_assignments:    undefined,
+    }
+  })
 }
 
 const update = async (caseReportId, payload) => {
-  // Filter out any keys not in the whitelist
   const filtered = Object.fromEntries(
     Object.entries(payload).filter(([key]) => ALLOWED_FIELDS.includes(key))
   )
-
   if (Object.keys(filtered).length === 0) {
     throw new Error('No valid fields to update')
   }
-
   const { data, error } = await supabase
     .from('case_reports')
     .update(filtered)
     .eq('case_report_id', caseReportId)
     .select()
     .single()
-
   if (error) throw error
   return data
 }
-  
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update }
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update,}
