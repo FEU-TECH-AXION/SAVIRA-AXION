@@ -13,6 +13,13 @@ const STATUS_COLORS = {
   "Withdrawn": { bg: "#f3f4f6", color: "#374151" },
 };
 
+function formatAssignees(applicant) {
+  const names = applicant.assignedEvaluators || applicant.assignedStaff || [];
+  if (Array.isArray(names) && names.length > 0) return names.join(", ");
+  if (typeof names === "string" && names.trim()) return names;
+  return "—";
+}
+
 const EXTRA_COLUMN_DEFS = {
   city:                { label: "City",                    render: a => a.city || "—" },
   fieldsWithBackground:{ label: "Fields with Background",    render: a => Array.isArray(a.fieldsWithBackground) ? a.fieldsWithBackground.join(", ") || "—" : "—" },
@@ -138,6 +145,7 @@ export default function ApplicationsTable({
   onAssign,
   isAdmin,
   isStaff,
+  currentUserId,
   extraColumns,
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -172,6 +180,13 @@ export default function ApplicationsTable({
 
   const selectedApplicants = paginated.filter(a => selectedIds.has(a.id));
   const selectionCount = selectedApplicants.length;
+  const canUpdateSelectedStatus =
+    isAdmin ||
+    (isStaff &&
+      selectedApplicants.length > 0 &&
+      selectedApplicants.every((a) =>
+        (a.assignedEvaluatorIds || []).some((id) => String(id) === String(currentUserId))
+      ));
 
   function formatDate(dateStr) {
     if (!dateStr) return "—";
@@ -215,12 +230,14 @@ export default function ApplicationsTable({
                 Assign
               </button>
             )}
-            <button
-              className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`}
-              onClick={() => onUpdateStatus && onUpdateStatus(selectedApplicants)}
-            >
-              Update Status
-            </button>
+            {canUpdateSelectedStatus && (
+              <button
+                className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`}
+                onClick={() => onUpdateStatus && onUpdateStatus(selectedApplicants)}
+              >
+                Update Status
+              </button>
+            )}
           </div>
           <button
             className={styles.bulkClear}
@@ -249,6 +266,7 @@ export default function ApplicationsTable({
               <SortableTh field="id">Application ID</SortableTh>
               <SortableTh field="name">Applicant Name</SortableTh>
               <SortableTh field="status">Status</SortableTh>
+              <th className={styles.th}>Assigned Evaluators</th>
               <th className={styles.th}>Gender</th>
               <SortableTh field="dateApplied">Date Applied</SortableTh>
               {(extraColumns || []).map(key => (
@@ -262,7 +280,7 @@ export default function ApplicationsTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8} className={styles.emptyState}>
+                <td colSpan={9} className={styles.emptyState}>
                   No applicants found.
                 </td>
               </tr>
@@ -311,6 +329,12 @@ export default function ApplicationsTable({
 
                     <td className={styles.td}>
                       <StatusBadge status={a.status} />
+                    </td>
+
+                    <td className={styles.td}>
+                      <span className={a.assignedEvaluators?.length ? styles.orgText : styles.muted}>
+                        {formatAssignees(a)}
+                      </span>
                     </td>
 
                     <td className={styles.td}>

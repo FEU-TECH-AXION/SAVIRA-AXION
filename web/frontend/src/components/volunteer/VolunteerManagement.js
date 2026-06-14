@@ -81,7 +81,7 @@ function isDateInRange(dateString, startDate, endDate) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected", "Withdrawn"];
+const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS BADGE
@@ -166,7 +166,7 @@ function Modal({ open, onClose, title, children, isAdmin, isStaff,}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AssignApplicationModal({ open, onClose, applicantsData: applicantsDataProp, onSave, staff: staffProp = [] }) {
-  const [staffId, setStaffId] = useState("");
+  const [staffIds, setStaffIds] = useState([]);
   const [error, setError] = useState("");
 
   // Support both single applicant and array of applicants
@@ -175,7 +175,7 @@ function AssignApplicationModal({ open, onClose, applicantsData: applicantsDataP
   useEffect(() => {
     if (applicants.length > 0) {
       // Reset staff selection when applicants change
-      setStaffId("");
+      setStaffIds([]);
       setError("");
     }
   }, [applicantsDataProp]);
@@ -183,17 +183,9 @@ function AssignApplicationModal({ open, onClose, applicantsData: applicantsDataP
   if (applicants.length === 0) return null;
 
   function handleSave() {
-    if (!staffId) { setError("Please select a staff member."); return; }
+    if (staffIds.length === 0) { setError("Please select at least one staff member."); return; }
 
-    // Find the selected staff object to get the name
-    const selectedStaff = staffProp.find(s => String(s.staff_id) === String(staffId));
-    const staffName = selectedStaff?.name || `${selectedStaff?.first_name || ''} ${selectedStaff?.last_name || ''}`.trim() || staffId;
-
-    // Call onSave for each applicant
-    applicants.forEach(applicant => {
-      onSave({ ...applicant, assignedStaff: staffName, assignedStaffId: staffId });
-    });
-    onClose();
+    onSave({ applicants, staffIds });
   }
 
   const isBulk = applicants.length > 1;
@@ -233,20 +225,25 @@ function AssignApplicationModal({ open, onClose, applicantsData: applicantsDataP
           </label>
           <select
             className={styles.formInput}
-            value={staffId}
-            onChange={(e) => { setStaffId(e.target.value); setError(""); }}
+            multiple
+            size={Math.min(6, Math.max(3, availableStaff.length))}
+            value={staffIds}
+            onChange={(e) => {
+              setStaffIds(Array.from(e.target.selectedOptions).map(option => option.value));
+              setError("");
+            }}
             style={error ? { borderColor: "#dc2626" } : {}}
           >
-            <option value="">Select Staff</option>
             {availableStaff.length > 0 ? (
               availableStaff.map((s) => {
                 const name = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim();
-                return <option key={s.staff_id} value={s.staff_id}>{name}</option>;
+                return <option key={s.user_id || s.staff_id} value={s.user_id}>{name}</option>;
               })
             ) : (
               <option disabled>No staff available</option>
             )}
           </select>
+          <span style={{ color: "#6b7280", fontSize: "0.78rem" }}>Hold Ctrl or Cmd to select multiple evaluators.</span>
           {error && <span style={{ color: "#dc2626", fontSize: "0.8rem" }}>{error}</span>}
         </div>
       </div>
@@ -363,6 +360,7 @@ export default function VolunteerManagement() {
       try {
         const parsedUser = JSON.parse(userCookie);
         setUser({
+          id: parsedUser.user_id,
           role: parsedUser.role_name,
           firstName: parsedUser.first_name,
           lastName: parsedUser.last_name,
@@ -372,6 +370,7 @@ export default function VolunteerManagement() {
   }, []);
 
   const [applicants, setApplicants] = useState([]);
+  const [membershipStaff, setMembershipStaff] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [toast, setToast]           = useState(null);
@@ -413,6 +412,13 @@ export default function VolunteerManagement() {
         }
 
         const mapped = data.map((app) => ({
+          assignedEvaluators:    (app.application_assessments || [])
+                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
+                                  .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
+                                  .filter(Boolean),
+          assignedEvaluatorIds:  (app.application_assessments || [])
+                                  .filter((aa) => aa.assessment_stage === "application_evaluation")
+                                  .map((aa) => aa.assessor_id),
           id:                   app.volunteer_application_id,
           name:                 app.name || "—",
           email:                app.email || "—",
@@ -444,6 +450,32 @@ export default function VolunteerManagement() {
       }
     }
     fetchApplicants();
+  }, []);
+
+  useEffect(() => {
+    async function fetchMembershipStaff() {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/staff`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to load staff.");
+        const data = await res.json();
+        setMembershipStaff(
+          (Array.isArray(data) ? data : [])
+            .filter((s) => Number(s.committee_id || s.committees?.committee_id) === 2)
+            .map((s) => ({
+              ...s,
+              user_id: s.user_id || s.users?.user_id,
+              first_name: s.first_name || s.users?.first_name,
+              last_name: s.last_name || s.users?.last_name,
+              email: s.email || s.users?.email,
+              name: `${s.first_name || s.users?.first_name || ""} ${s.last_name || s.users?.last_name || ""}`.trim(),
+            }))
+        );
+      } catch (err) {
+        console.error("Failed to load membership staff:", err);
+      }
+    }
+    fetchMembershipStaff();
   }, []);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -605,7 +637,7 @@ export default function VolunteerManagement() {
             <div className={styles.headingLine} />
           </div>
           <div className="row g-3 mb-4">
-            <div className="col-12 col-sm-6">
+            {/* <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="VolunteerIconPending.png" alt="" className={styles.actionIconImg} />}
                 title="See Pending Applications"
@@ -636,17 +668,16 @@ export default function VolunteerManagement() {
                 description="Browse the complete list of all volunteer applicants."
                 onView={() => { setActiveFilters({}); setSearch(""); setPage(1); }}
               />
-            </div>
+            </div> */}
             <div className="col-12 col-sm-6">
               <ActionCard
-                icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
-                title="Edit Screening Questions"
-                description="Manage the screening questions shown to applicants on the volunteer application form."
-                onView={() => router.push("/volunteer/screening-questions")}
+                icon={<img src="VolunteerIconAll.png" alt="" className={styles.actionIconImg} />}
+                title="Applicant Rankings"
+                description="Compare screening, hybrid essay, and interview results across all applicants."
+                onView={() => router.push("/volunteerRanking")}
               />
             </div>
-            {/* Manage Interviews — case officers */}
-              <div className="col-12 col-sm-6">
+            <div className="col-12 col-sm-6">
                 <Link href="/volunteerInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard
                     icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
@@ -656,6 +687,14 @@ export default function VolunteerManagement() {
                   />
                 </Link>
               </div>
+            <div className="col-12 col-sm-6">
+              <ActionCard
+                icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
+                title="Edit Screening Questions"
+                description="Manage the screening questions shown to applicants on the volunteer application form."
+                onView={() => router.push("/volunteer/screening-questions")}
+              />
+            </div>
           </div>
         </div>
 
@@ -718,10 +757,20 @@ export default function VolunteerManagement() {
                     setModal("assign");
                   }}
                 onUpdateStatus={(selected) => {
+                  const canUpdateSelected =
+                    isAdmin ||
+                    selected.every((a) =>
+                      (a.assignedEvaluatorIds || []).some((id) => String(id) === String(user.id))
+                    );
+                  if (!canUpdateSelected) {
+                    setError("Only assigned Membership Committee staff can update this application's status.");
+                    return;
+                  }
                   if (selected.length >= 1) openUpdate(selected[0]);
                 }}
                 isAdmin={isAdmin}
                 isStaff={isStaff}
+                currentUserId={user.id}
                 sortField={sortField}
                 sortDir={sortDir}
                 onSort={handleSort}
@@ -737,14 +786,40 @@ export default function VolunteerManagement() {
         open={modal === "assign"}
         onClose={() => { setModal(null); setSelectedApplicant(null); }}
         applicantsData={selectedApplicant}
-        staff={[]}
-        onSave={(updated) => {
-          if (Array.isArray(updated)) {
-            updated.forEach(u => setApplicants(prev => prev.map(a => a.id === u.id ? { ...a, ...u } : a)));
-          } else {
-            setApplicants(prev => prev.map(a => a.id === updated.id ? { ...a, ...updated } : a));
+        staff={membershipStaff}
+        onSave={async ({ applicants: selectedApps, staffIds }) => {
+          try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+            const res = await fetch(`${API_URL}/api/volunteer_applications/assignments`, {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${getCookie("token")}`,
+              },
+              body: JSON.stringify({
+                application_ids: selectedApps.map((app) => app.id),
+                assessor_ids: staffIds,
+              }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || "Failed to assign staff.");
+
+            const selectedNames = membershipStaff
+              .filter((s) => staffIds.includes(String(s.user_id)))
+              .map((s) => s.name)
+              .filter(Boolean);
+            const selectedAppIds = new Set(selectedApps.map((app) => app.id));
+            setApplicants(prev => prev.map(a => selectedAppIds.has(a.id)
+              ? { ...a, assignedEvaluators: selectedNames, assignedEvaluatorIds: staffIds, status: "Reviewing" }
+              : a
+            ));
+            showToast("Staff assigned successfully.");
+            setModal(null);
+            setSelectedApplicant(null);
+          } catch (err) {
+            showToast(err.message || "Failed to assign staff.", "error");
           }
-          showToast("Staff assigned successfully.");
         }}
       />
       <UpdateStatusModal

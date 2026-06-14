@@ -56,11 +56,13 @@ const updateById = async (id, payload) => {
     return data[0]
 }
 
-const selectSlot = async (id, slot_id) => {
-    return updateById(id, {
+const selectSlot = async (id, slot_id, notes = null) => {
+    const payload = {
         selected_slot_id: slot_id,
         status: 'scheduled',
-    })
+    }
+    if (notes !== null) payload.notes = notes
+    return updateById(id, payload)
 }
 
 const confirm = async (id, meeting_link) => {

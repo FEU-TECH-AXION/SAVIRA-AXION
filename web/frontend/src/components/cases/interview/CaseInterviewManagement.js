@@ -394,9 +394,10 @@ export default function CaseInterviewManagement() {
       setLoadingData(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
 
         const slotsRes = await fetch(
-          `${API_URL}/api/interview_slots?created_by=${user.user_id}&slot_type=case_report`,
+          `${API_URL}/api/interview_slots?slot_type=case_report${isAdmin ? "" : `&created_by=${user.user_id}`}`,
           { credentials: "include" }
         );
         const slotsJson = await slotsRes.json();
@@ -413,7 +414,7 @@ export default function CaseInterviewManagement() {
         );
 
         const interviewsRes = await fetch(
-          `${API_URL}/api/interviews?type=case_report&interviewer_user_id=${user.user_id}`,
+          `${API_URL}/api/interviews?type=case_report${isAdmin ? "" : `&interviewer_user_id=${user.user_id}`}`,
           { credentials: "include" }
         );
         const interviewsJson = await interviewsRes.json();

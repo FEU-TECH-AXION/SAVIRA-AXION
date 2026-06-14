@@ -1,11 +1,23 @@
 const InterviewModel = require('../models/interviews.model')
 const InterviewSlotsModel = require('../models/interview_slots.model')
 
+const normalizeInterviewType = (type) =>
+    type === 'volunteer_application' ? 'volunteer' : type
+
+const isVolunteerType = (type) =>
+    normalizeInterviewType(type) === 'volunteer'
+
 const getItems = async (req, res) => {
     try {
         // Accepts query params: type, status, interviewer_user_id,
         // case_report_id, volunteer_application_id
-        const data = await InterviewModel.getAll(req.query)
+        const filters = { ...req.query }
+        filters.type = normalizeInterviewType(filters.type)
+        if (isVolunteerType(filters.type) && filters.application_id && !filters.volunteer_application_id) {
+            filters.volunteer_application_id = filters.application_id
+        }
+        delete filters.application_id
+        const data = await InterviewModel.getAll(filters)
         res.json({ data })
     } catch (err) {
         res.status(500).json({ error: err.message })
@@ -28,33 +40,42 @@ const createItem = async (req, res) => {
             type,
             case_report_id,
             volunteer_application_id,
+            application_id,
             interviewee_user_id,
             interviewer_user_id,
             notes,
+            slot_expires_at,
         } = req.body
+        const normalizedType = normalizeInterviewType(type)
+        const normalizedVolunteerApplicationId = isVolunteerType(normalizedType)
+            ? volunteer_application_id || application_id
+            : null
 
         // Basic required field check
-        if (!type || !interviewee_user_id || !interviewer_user_id) {
+        if (!normalizedType || !interviewee_user_id || !interviewer_user_id) {
             return res.status(400).json({ error: 'type, interviewee_user_id, and interviewer_user_id are required.' })
         }
 
-        if (type === 'case_report' && !case_report_id) {
+        if (normalizedType === 'case_report' && !case_report_id) {
             return res.status(400).json({ error: 'case_report_id is required for type case_report.' })
         }
 
-        if (type === 'volunteer' && !volunteer_application_id) {
+        if (normalizedType === 'volunteer' && !normalizedVolunteerApplicationId) {
             return res.status(400).json({ error: 'volunteer_application_id is required for type volunteer.' })
         }
 
-        const item = await InterviewModel.create({
-            type,
+        const payload = {
+            type: normalizedType,
             case_report_id: case_report_id || null,
-            volunteer_application_id: volunteer_application_id || null,
+            volunteer_application_id: normalizedVolunteerApplicationId || null,
             interviewee_user_id,
             interviewer_user_id,
             notes: notes || null,
             status: 'invited',
-        })
+        }
+        if (slot_expires_at) payload.slot_expires_at = slot_expires_at
+
+        const item = await InterviewModel.create(payload)
 
         res.status(201).json({ data: item })
     } catch (err) {
@@ -65,7 +86,7 @@ const createItem = async (req, res) => {
 // PATCH /api/interviews/:id/select-slot
 const selectSlot = async (req, res) => {
     try {
-        const { slot_id } = req.body
+        const { slot_id, notes } = req.body
         if (!slot_id) return res.status(400).json({ error: 'slot_id is required.' })
 
         // Verify the slot exists and is still available
@@ -75,7 +96,7 @@ const selectSlot = async (req, res) => {
 
         // Claim the slot and update interview status
         const [interview] = await Promise.all([
-            InterviewModel.selectSlot(req.params.id, slot_id),
+            InterviewModel.selectSlot(req.params.id, slot_id, notes || null),
             InterviewSlotsModel.markUnavailable(slot_id),
         ])
 

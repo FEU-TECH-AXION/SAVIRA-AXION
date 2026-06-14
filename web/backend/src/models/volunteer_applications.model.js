@@ -3,7 +3,24 @@ const supabase = require('../config/supabase')
 const getAll = async () => {
     const { data, error } = await supabase
         .from('volunteer_applications')
-        .select('*')
+        .select(`
+            *,
+            volunteer_applicants (
+                user_id
+            ),
+            application_assessments (
+                application_assessment_id,
+                assessor_id,
+                assessment_stage,
+                assessment_status,
+                users (
+                    user_id,
+                    first_name,
+                    last_name,
+                    email
+                )
+            )
+        `)
     if (error) throw error
     return data
 }

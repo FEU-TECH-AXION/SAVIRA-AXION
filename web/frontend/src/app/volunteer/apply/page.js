@@ -1137,6 +1137,7 @@ export default function CreateApplication({
   const [step, setStep]   = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [stepErrors, setStepErrors] = useState({});
+  const [draftNotice, setDraftNotice] = useState("");
 
   const [myApplications, setMyApplications] = useState([])
   const [appsLoading, setAppsLoading] = useState(true)
@@ -1185,6 +1186,31 @@ export default function CreateApplication({
   // const [credentials, setCredentials] = useState({ files: []});
 
   const totalSteps = STEPS.length;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("savira_volunteer_application_draft");
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.applicant) setApplicant(draft.applicant);
+      if (draft.screeningQuestions) setScreeningQuestions(draft.screeningQuestions);
+      if (draft.essay) setEssay(draft.essay);
+      setDraftNotice("You have an unfinished volunteer application draft. It has been loaded so you can continue.");
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    if (submitted) return;
+    const hasDraft =
+      Object.values(applicant).some(Boolean) ||
+      Object.values(screeningQuestions).some((v) => Array.isArray(v) ? v.length > 0 : Boolean(v)) ||
+      Boolean(essay.description);
+    if (!hasDraft) return;
+    localStorage.setItem(
+      "savira_volunteer_application_draft",
+      JSON.stringify({ applicant, screeningQuestions, essay, updatedAt: new Date().toISOString() })
+    );
+  }, [applicant, screeningQuestions, essay, submitted]);
 
   const clearError = (key) => {
     setStepErrors((prev) => {
@@ -1243,6 +1269,7 @@ export default function CreateApplication({
           if (!res.ok) throw new Error(result.error || 'Submission failed.')
 
           setSubmitted(true)
+          localStorage.removeItem("savira_volunteer_application_draft")
 
       } catch (error) {
           setSubmitError('Something went wrong: ' + error.message)
@@ -1291,6 +1318,22 @@ export default function CreateApplication({
         </section>
 
         {/* ── Paginated Form Card ── */}
+        {draftNotice && !submitted && (
+          <div className={styles.submitError}>
+            <span>⚠</span> {draftNotice}
+            <button
+              type="button"
+              className={styles.backBtn}
+              style={{ marginLeft: 12 }}
+              onClick={() => {
+                localStorage.removeItem("savira_volunteer_application_draft");
+                setDraftNotice("");
+              }}
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
         {!submitted ? (
           <div className={styles.formCard}>
             {/* Form card header */}
@@ -1357,10 +1400,13 @@ export default function CreateApplication({
         )}
 
         {/* ── Your Application Status ── */}
+        {false && (
         <div className={`${styles.sectionHeading} mt-5`}>
           <h2 className={styles.sectionTitle}>Your Application Status</h2>
           <div className={styles.headingLine} />
         </div>
+        )}
+        {false && (
         <div className="row g-3">
           {appsLoading ? (
             <p>Loading applications...</p>
@@ -1389,6 +1435,7 @@ export default function CreateApplication({
             ))
           )}
         </div>
+        )}
 
 
         </div>

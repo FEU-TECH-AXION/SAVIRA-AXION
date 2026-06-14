@@ -1,7 +1,21 @@
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('staff').select('*')
+    const { data, error } = await supabase
+        .from('staff')
+        .select(`
+            *,
+            users (
+                user_id,
+                first_name,
+                last_name,
+                email
+            ),
+            committees (
+                committee_id,
+                committee_name
+            )
+        `)
 
     // Supabase returns error as a value, not an exception — we throw it
     // manually so controllers can handle it in a uniform try/catch

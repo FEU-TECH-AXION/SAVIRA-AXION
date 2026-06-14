@@ -1,9 +1,23 @@
 const InterviewSlotsModel = require('../models/interview_slots.model')
 
+const SLOT_TYPES = new Set(['case_report', 'volunteer'])
+
+const normalizeSlotType = (slotType) => {
+    if (slotType === 'volunteer_application') return 'volunteer'
+    return slotType
+}
+
+const isValidSlotType = (slotType) => SLOT_TYPES.has(slotType)
+
 const getItems = async (req, res) => {
     try {
+        const slotType = normalizeSlotType(req.query.slot_type)
+        if (slotType && !isValidSlotType(slotType)) {
+            return res.status(400).json({ error: 'slot_type must be case_report or volunteer.' })
+        }
+
         const filters = {
-            slot_type:    req.query.slot_type,
+            slot_type:    slotType,
             created_by:   req.query.created_by,
             is_available: req.query.is_available !== undefined
                 ? req.query.is_available === 'true'
@@ -19,15 +33,19 @@ const getItems = async (req, res) => {
 const createItem = async (req, res) => {
     try {
         const { slot_type, created_by, slot_date, slot_time, duration_minutes } = req.body
+        const slotType = normalizeSlotType(slot_type)
 
-        if (!slot_type || !created_by || !slot_date || !slot_time) {
+        if (!slotType || !created_by || !slot_date || !slot_time) {
             return res.status(400).json({
                 error: 'slot_type, created_by, slot_date, and slot_time are required.'
             })
         }
+        if (!isValidSlotType(slotType)) {
+            return res.status(400).json({ error: 'slot_type must be case_report or volunteer.' })
+        }
 
         const item = await InterviewSlotsModel.create({
-            slot_type,
+            slot_type: slotType,
             created_by,
             slot_date,
             slot_time,
@@ -67,11 +85,15 @@ const updateItem = async (req, res) => {
 const createBulk = async (req, res) => {
     try {
         const { slot_type, created_by, day_of_week, slot_time, duration_minutes, weeks_ahead } = req.body
+        const slotType = normalizeSlotType(slot_type)
 
-        if (!slot_type || !created_by || day_of_week === undefined || !slot_time) {
+        if (!slotType || !created_by || day_of_week === undefined || !slot_time) {
             return res.status(400).json({
                 error: 'slot_type, created_by, day_of_week, and slot_time are required.'
             })
+        }
+        if (!isValidSlotType(slotType)) {
+            return res.status(400).json({ error: 'slot_type must be case_report or volunteer.' })
         }
 
         const weeksToGenerate = weeks_ahead || 4
@@ -83,7 +105,7 @@ const createBulk = async (req, res) => {
             const daysUntilTarget = (day_of_week - today.getDay() + 7) % 7 || 7
             date.setDate(today.getDate() + daysUntilTarget + w * 7)
             slots.push({
-                slot_type,
+                slot_type: slotType,
                 created_by,
                 slot_date: date.toISOString().split('T')[0],
                 slot_time,

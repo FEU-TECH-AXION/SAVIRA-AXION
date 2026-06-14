@@ -405,9 +405,35 @@ function FTextarea({ error, ...props }) {
   return <textarea className={`${styles.formInput} ${error ? styles.inputError : ""}`} rows={3} style={{ resize: "vertical" }} {...props} />;
 }
 
+function composeInterviewNotes(location, notes) {
+  const venue = location?.trim();
+  const extra = notes?.trim();
+  if (venue && extra) return `Venue: ${venue}\nNotes: ${extra}`;
+  if (venue) return `Venue: ${venue}`;
+  return extra || null;
+}
+
+function parseInterviewNotes(raw) {
+  const text = raw || "";
+  const venueMatch = text.match(/^Venue:\s*(.+)$/im);
+  const notesMatch = text.match(/^Notes:\s*([\s\S]+)$/im);
+  return {
+    venue: venueMatch?.[1]?.trim() || "",
+    notes: notesMatch?.[1]?.trim() || (!venueMatch ? text.trim() : ""),
+  };
+}
+
+function formatStaffDateTime(interview) {
+  const date = interview.interview_date || interview.scheduledDate;
+  const time = interview.interview_time || interview.scheduledTime;
+  if (!date && !time) return null;
+  if (date && time) return `${date} at ${time}`;
+  return date || time;
+}
+
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
-function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, userId, userRole, applicantUserId }) {
+function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, userId, userRole, applicantUserId, onCreated }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const [expiryDays, setExpiryDays] = useState("7");
   const [notes, setNotes]           = useState("");
@@ -454,7 +480,6 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
           appJson.data?.user_id ||
           appJson.user_id ||
           null;
-        if (intervieweeUserId) setApplicantUserId(intervieweeUserId);
       }
 
       console.log("handleSend fired", { userId, appDataId: appData.id, applicantUserId: intervieweeUserId });
@@ -469,8 +494,8 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
       }
 
       console.log("Creating interview with:", {
-        type: "volunteer_application",
-        application_id: appData.id,
+        type: "volunteer",
+        volunteer_application_id: appData.id,
         interviewee_user_id: intervieweeUserId,
         interviewer_user_id: userId,
       });
@@ -480,8 +505,8 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "volunteer_application",
-          application_id: appData.id,
+          type: "volunteer",
+          volunteer_application_id: appData.id,
           interviewee_user_id: intervieweeUserId,
           interviewer_user_id: userId,
           notes: notes || null,
@@ -499,6 +524,23 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
       }
 
       console.log("✓ Interview created successfully");
+      if (interviewBody.data) {
+        onCreated?.({
+          ...interviewBody.data,
+          id: interviewBody.data.interview_id,
+          interviewStatus: "Invited",
+          status: "Invited",
+          interview_date: null,
+          interview_time: null,
+          scheduledDate: null,
+          scheduledTime: null,
+          location: notes || null,
+          notes: notes || null,
+          meetingLink: null,
+          expiresAt: interviewBody.data.slot_expires_at,
+        });
+      }
+
       showToast && showToast(`Interview invitation sent for ${appData.appRefId}.`);
       onClose();
 
@@ -633,14 +675,14 @@ function AddMeetingLinkModal({
 
 // ─── Applicant: Invited view (Select a Slot) ────────────────────────────────
 
-function InvitedView({ appData, interview, onSlotSelected, showToast }) {
+function InvitedView({ appData, interview, onSlotSelected, showToast, rescheduleReason }) {
 
   useEffect(() => {
     const fetchSlots = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         const res = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=volunteer_application&is_available=true`,
+          `${API_URL}/api/interview_slots?slot_type=volunteer&is_available=true`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Failed to load slots");
@@ -675,7 +717,12 @@ function InvitedView({ appData, interview, onSlotSelected, showToast }) {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: slot.id }),
+        body: JSON.stringify({
+          slot_id: slot.id,
+          notes: rescheduleReason
+            ? composeInterviewNotes(interview.location || "", `Reschedule reason: ${rescheduleReason}`)
+            : undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -913,6 +960,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
     if (!form.interviewDate) e.interviewDate = "Required.";
     if (!form.interviewTime) e.interviewTime = "Required.";
     if (!form.location.trim()) e.location = "Required.";
+    if (!form.notes.trim()) e.notes = "Please explain why this interview is being rescheduled.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -987,15 +1035,16 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: 4 }}>
-                Reason / Notes
+                Reason / Notes <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <textarea
                 placeholder="Briefly explain the reason for rescheduling (optional)…"
                 value={form.notes}
                 onChange={set("notes")}
                 rows={3}
-                style={{ ...inputStyle(false), resize: "vertical" }}
+                style={{ ...inputStyle(errors.notes), resize: "vertical" }}
               />
+              {errors.notes && <span style={{ fontSize: "0.78rem", color: "#ef4444" }}>{errors.notes}</span>}
             </div>
           </div>
         </div>
@@ -1012,10 +1061,60 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
   );
 }
 
+function CancelInterviewModal({ interview, onClose, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleConfirm() {
+    if (!reason.trim()) {
+      setError("Please explain why this interview is being cancelled.");
+      return;
+    }
+    setSubmitting(true);
+    await onConfirm(interview.id, reason.trim());
+    setSubmitting(false);
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={styles.modalBox}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Cancel Interview</h3>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
+            Add a clear note so everyone understands why this interview was cancelled.
+          </p>
+          <FormGroup label="Cancellation reason" required error={error}>
+            <textarea
+              className={styles.formInput}
+              value={reason}
+              onChange={(e) => { setReason(e.target.value); setError(""); }}
+              rows={4}
+              placeholder="Briefly explain the reason for cancellation…"
+              style={{ resize: "vertical" }}
+            />
+          </FormGroup>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
+            Keep Interview
+          </button>
+          <button className={styles.saveBtn} onClick={handleConfirm} disabled={submitting}>
+            {submitting ? "Cancelling…" : "Confirm Cancellation"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main InterviewTab component ──────────────────────────────────────────────
 
 export default function InterviewTab({ appData, isStaff, isApplicationOfficer, showToast, userId, actorName,
-  userRole, }) {
+  userRole, canManageInterview, }) {
   // ── HARDCODED MOCK DATA (design preview) ──────────────────────────────────
   // Switch MOCK_VIEW to see each applicant state:
   //   "Invited" | "Scheduled" | "Confirmed" | "Completed" | "Cancelled" | "Expired"
@@ -1064,7 +1163,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         });
         if (!res.ok) return;
         const json = await res.json();
-        const id = json.data?.applicant_user_id || json.applicant_user_id || null;
+        const id = json.data?.applicant_user_id || json.applicant_user_id || json.data?.user_id || json.user_id || null;
         if (id) setApplicantUserId(id);
       } catch (err) {
         console.error("Failed to fetch applicant user ID:", err);
@@ -1078,7 +1177,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         const res = await fetch(
-          `${API_URL}/api/interviews?type=volunteer_application&application_id=${appData.id}`,
+          `${API_URL}/api/interviews?type=volunteer&volunteer_application_id=${appData.id}`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Failed to load interviews");
@@ -1087,17 +1186,22 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         console.log("interviews from API:", JSON.stringify(json.data?.[0], null, 2));
 
         setInterviews(
-          (json.data || []).map((iv) => ({
-            ...iv,
-            id: iv.interview_id,
-            interviewStatus: iv.status.charAt(0).toUpperCase() + iv.status.slice(1),
-            scheduledDate: iv.slot?.slot_date || null,
-            scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
-            interview_date: iv.slot?.slot_date || null,        
-            interview_time: iv.slot?.slot_time?.slice(0, 5) || null, 
-            location: iv.notes || null,
-            meetingLink: iv.meeting_link || iv.meetingLink || null,
-          }))
+          (json.data || []).map((iv) => {
+            const parsedNotes = parseInterviewNotes(iv.notes);
+            return {
+              ...iv,
+              id: iv.interview_id,
+              interviewStatus: iv.status.charAt(0).toUpperCase() + iv.status.slice(1),
+              scheduledDate: iv.slot?.slot_date || null,
+              scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
+              interview_date: iv.slot?.slot_date || null,
+              interview_time: iv.slot?.slot_time?.slice(0, 5) || null,
+              location: parsedNotes.venue || null,
+              notes: parsedNotes.notes || null,
+              rawNotes: iv.notes || null,
+              meetingLink: iv.meeting_link || iv.meetingLink || null,
+            };
+          })
         );
       } catch (err) {
         console.error("Failed to fetch interviews:", err);
@@ -1112,6 +1216,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   
   const [modal, setModal] = useState(null);
   const [meetingLinkInterview, setMeetingLinkInterview] = useState(null);
+  const [cancelInterview, setCancelInterview] = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
@@ -1120,6 +1225,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   const [rescheduleId, setRescheduleId]         = useState(null);
   // Applicant reschedule: flip back to Invited so they can pick a new slot
   const [applicantRescheduling, setApplicantRescheduling] = useState(false);
+  const [applicantRescheduleReason, setApplicantRescheduleReason] = useState("");
 
   const [form, setForm] = useState({
     interviewDate: "",
@@ -1128,6 +1234,10 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
     notes:         "",
   });
   const [errors, setErrors] = useState({});
+  const canManageStaffInterview =
+    typeof canManageInterview === "boolean"
+      ? canManageInterview
+      : (isStaff || isApplicationOfficer);
 
   // ── MOCK: no fetch needed — data is hardcoded above for design preview ──
 
@@ -1143,6 +1253,10 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   }
 
   async function handleSchedule() {
+    if (!canManageStaffInterview) {
+      showToast?.("Only assigned Membership Committee staff can invite this applicant to interview.", "error");
+      return;
+    }
     if (!validate()) return;
     setSubmitting(true);
     try {
@@ -1153,7 +1267,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         credentials: "include",
       });
       const appJson = await appRes.json();
-      const intervieweeId = appJson.data?.applicant_user_id;
+      const intervieweeId = appJson.data?.applicant_user_id || appJson.applicant_user_id;
 
       if (!intervieweeId) {
         throw new Error("Applicant not found for this application.");
@@ -1165,7 +1279,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_type: "volunteer_application",
+          slot_type: "volunteer",
           created_by: userId,
           slot_date: form.interviewDate,
           slot_time: form.interviewTime,
@@ -1187,11 +1301,11 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "volunteer_application",
-          application_id: appData.id,
+          type: "volunteer",
+          volunteer_application_id: appData.id,
           interviewee_user_id: intervieweeId,
           interviewer_user_id: userId,
-          notes: form.notes || null,
+          notes: composeInterviewNotes(form.location, form.notes),
           slot_expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
           status: "invited",
         }),
@@ -1212,6 +1326,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
 
       const selectBody = await selectRes.json();
       if (!selectRes.ok) throw new Error(selectBody.error || "Failed to select slot");
+      const composedNotes = composeInterviewNotes(form.location, form.notes);
 
       // Update local state
       setInterviews((prev) => [
@@ -1222,7 +1337,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
           scheduledDate: form.interviewDate,
           scheduledTime: form.interviewTime,
           location: form.location,
-          notes: form.notes,
+          notes: composedNotes,
           interviewStatus: "Scheduled",
           status: "Scheduled",
           meetingLink: null,
@@ -1242,14 +1357,18 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
     }
   }
 
-  async function handleCancel(interviewId) {
+  async function handleCancel(interviewId, cancellationReason) {
+    if (!canManageStaffInterview) {
+      showToast?.("Only assigned Membership Committee staff can modify this interview.", "error");
+      return;
+    }
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const res = await fetch(`${API_URL}/api/interviews/${interviewId}/cancel`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cancellation_reason: null }),
+        body: JSON.stringify({ cancellation_reason: cancellationReason }),
       });
 
       if (!res.ok) {
@@ -1260,10 +1379,11 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       setInterviews((prev) =>
         prev.map((iv) =>
           iv.id === interviewId
-            ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled" }
+            ? { ...iv, interviewStatus: "Cancelled", status: "Cancelled", cancellationReason }
             : iv
         )
       );
+      setCancelInterview(null);
       showToast?.("Interview cancelled.");
     } catch (err) {
       showToast?.(err.message || "Failed to cancel interview.", "error");
@@ -1271,6 +1391,10 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   }
 
   async function handleStaffRescheduleConfirm(updated) {
+    if (!canManageStaffInterview) {
+      showToast?.("Only assigned Membership Committee staff can modify this interview.", "error");
+      return;
+    }
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -1280,7 +1404,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_type: "volunteer_application",
+          slot_type: "volunteer",
           created_by: userId,
           slot_date: updated.scheduledDate,
           slot_time: updated.scheduledTime,
@@ -1292,19 +1416,20 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       if (!slotRes.ok) throw new Error(slotBody.error || "Failed to create slot.");
 
       const slot = slotBody.data;
+      const composedNotes = composeInterviewNotes(updated.location, updated.notes);
 
       // Step 2: Select new slot on interview
       const selectRes = await fetch(`${API_URL}/api/interviews/${updated.id}/select-slot`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: slot.slot_id }),
+        body: JSON.stringify({ slot_id: slot.slot_id, notes: composedNotes }),
       });
 
       const selectBody = await selectRes.json();
       if (!selectRes.ok) throw new Error(selectBody.error || "Failed to reschedule.");
 
-      setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? updated : iv));
+      setInterviews((prev) => prev.map((iv) => iv.id === updated.id ? { ...updated, notes: composedNotes } : iv));
       setRescheduleId(null);
       showToast?.("Interview rescheduled successfully.");
     } catch (err) {
@@ -1361,6 +1486,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
           <InvitedView
             appData={appData}
             interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
+            rescheduleReason={applicantRescheduleReason}
             onSlotSelected={(updated) => {
               setInterviews((prev) =>
                 prev.map((iv) =>
@@ -1378,6 +1504,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
                 )
               );
               setApplicantRescheduling(false);
+              setApplicantRescheduleReason("");
               showToast && showToast(applicantRescheduling ? "Slot rescheduled! Your application officer will confirm shortly." : "Slot selected! Your application officer will confirm shortly.");
             }}
             showToast={showToast}
@@ -1390,7 +1517,15 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       return (
         <ScheduledView
           interview={activeInterview}
-          onReschedule={() => setApplicantRescheduling(true)}
+          onReschedule={() => {
+            const reason = window.prompt("Please explain why you need to reschedule this interview.");
+            if (!reason?.trim()) {
+              showToast?.("A reschedule reason is required.", "error");
+              return;
+            }
+            setApplicantRescheduleReason(reason.trim());
+            setApplicantRescheduling(true);
+          }}
         />
       );
     }
@@ -1399,7 +1534,15 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       return (
         <ConfirmedView
           interview={activeInterview}
-          onReschedule={() => setApplicantRescheduling(true)}
+          onReschedule={() => {
+            const reason = window.prompt("Please explain why you need to reschedule this interview.");
+            if (!reason?.trim()) {
+              showToast?.("A reschedule reason is required.", "error");
+              return;
+            }
+            setApplicantRescheduleReason(reason.trim());
+            setApplicantRescheduling(true);
+          }}
         />
       );
     }
@@ -1432,7 +1575,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
             Manage interview sessions for this applicant.
           </p>
         </div>
-        {(isStaff || isApplicationOfficer) && !showForm && 
+        {canManageStaffInterview && !showForm && 
         (
           <button
             onClick={() => {
@@ -1457,7 +1600,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       </div>
 
       {/* Schedule form */}
-      {showForm && (isStaff || isApplicationOfficer) && (
+      {showForm && canManageStaffInterview && (
         <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: "1.25rem 1.5rem" }}>
           <h3 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 700, color: "#374151" }}>
             Schedule New Interview
@@ -1532,73 +1675,110 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       ) : interviews.length === 0 ? (
         <div style={{ textAlign: "center", padding: "2.5rem 1rem", background: "#f9fafb", borderRadius: 12, border: "1px dashed #d1d5db" }}>
           <p style={{ margin: "8px 0 0", fontSize: "0.9rem", color: "#6b7280" }}>No interviews scheduled yet.</p>
-          {(isStaff || isApplicationOfficer) && (
+          {canManageStaffInterview && (
             <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#9ca3af" }}>Use the button above to schedule an interview session.</p>
           )}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {interviews.map((iv) => (
-            <div
-              key={iv.id}
-              style={{
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                padding: "1rem 1.25rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <strong style={{ fontSize: "0.95rem", color: "#111827" }}>
-                    {iv.interview_date} at {iv.interview_time}
-                  </strong>
+          {interviews.map((iv) => {
+            const status = iv.interviewStatus || iv.status || "Scheduled";
+            const scheduledLabel = formatStaffDateTime(iv);
+            const isInvited = status === "Invited";
+            const isConfirmed = status === "Confirmed";
+            const canManage = canManageStaffInterview && !["Cancelled", "Completed", "Expired"].includes(status);
+
+            return (
+              <div
+                key={iv.id}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  padding: "1rem 1.25rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <strong style={{ display: "block", fontSize: "0.98rem", color: "#111827" }}>
+                      {isInvited
+                        ? "Interview invitation sent"
+                        : scheduledLabel || "Interview schedule pending"}
+                    </strong>
+                    <span style={{ display: "block", marginTop: 3, fontSize: "0.82rem", color: "#6b7280" }}>
+                      {isInvited
+                        ? "Waiting for the applicant to select an available slot."
+                        : isConfirmed
+                        ? "Interview details are confirmed."
+                        : "Applicant has a selected interview schedule."}
+                    </span>
+                  </div>
+                  <InterviewStatusBadge status={status} />
                 </div>
-                <InterviewStatusBadge status={iv.interviewStatus || iv.status || "Scheduled"} />
+
+                {!isInvited && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", padding: "0.75rem", background: "#f9fafb", borderRadius: 8, border: "1px solid #eef2f7" }}>
+                    {iv.meetingLink ? (
+                      <div>
+                        <p style={{ margin: "0 0 0.25rem", fontSize: "0.75rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Meeting link</p>
+                        <a href={iv.meetingLink} target="_blank" rel="noopener noreferrer" style={{ color: "#037F81", fontSize: "0.86rem", fontWeight: 700, wordBreak: "break-word" }}>
+                          {iv.meetingLink}
+                        </a>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ margin: "0 0 0.25rem", fontSize: "0.75rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Venue / location</p>
+                        <p style={{ margin: 0, fontSize: "0.86rem", color: "#374151", fontWeight: 600 }}>
+                          {iv.location || "To be provided"}
+                        </p>
+                      </div>
+                    )}
+                    {iv.notes && (
+                      <div>
+                        <p style={{ margin: "0 0 0.25rem", fontSize: "0.75rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Notes</p>
+                        <p style={{ margin: 0, fontSize: "0.86rem", color: "#374151" }}>{iv.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {canManage && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 2, flexWrap: "wrap" }}>
+                    {!isInvited && (
+                      <>
+                        <button
+                          onClick={() => setMeetingLinkInterview(iv)}
+                          style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          {iv.meetingLink ? "Update Meeting Link" : "Add Meeting Link"}
+                        </button>
+                        <button
+                          onClick={() => setRescheduleId(iv.id)}
+                          style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Reschedule
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setCancelInterview(iv)}
+                      style={{ padding: "5px 14px", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Cancel Interview
+                    </button>
+                  </div>
+                )}
               </div>
-
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#374151" }}>
-                <span style={{ fontWeight: 600 }}>Location:</span> {iv.location}
-              </p>
-
-              {iv.notes && (
-                <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>
-                  <span style={{ fontWeight: 600 }}>Notes:</span> {iv.notes}
-                </p>
-              )}
-
-              {(isStaff || isApplicationOfficer) && iv.status !== "Cancelled" && iv.status !== "Completed" && (
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-                  <button
-                    onClick={() => setMeetingLinkInterview(iv)}
-                    style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Add Meeting Link
-                  </button>
-                  <button
-                    onClick={() => setRescheduleId(iv.id)}
-                    style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Reschedule
-                  </button>
-                  <button
-                    onClick={() => handleCancel(iv.id)}
-                    style={{ padding: "5px 14px", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Cancel Interview
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Invite to Interview */}
-      {modal === "inviteInterview" && (
+      {modal === "inviteInterview" && canManageStaffInterview && (
         <InviteToInterviewModal
           open
           onClose={() => setModal(null)}
@@ -1608,11 +1788,12 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
           userRole={userRole}
           showToast={showToast}
           applicantUserId={applicantUserId}
+          onCreated={(created) => setInterviews((prev) => [created, ...prev])}
         />
       )}
 
       {/* Add Meeting Link */}
-      {meetingLinkInterview && (
+      {meetingLinkInterview && canManageStaffInterview && (
         <AddMeetingLinkModal
           open
           interview={meetingLinkInterview}
@@ -1649,7 +1830,15 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       )}
 
       {/* ── Staff reschedule modal ── */}
-      {rescheduleId && (() => {
+      {cancelInterview && canManageStaffInterview && (
+        <CancelInterviewModal
+          interview={cancelInterview}
+          onClose={() => setCancelInterview(null)}
+          onConfirm={handleCancel}
+        />
+      )}
+
+      {rescheduleId && canManageStaffInterview && (() => {
         const iv = interviews.find((x) => x.id === rescheduleId);
         return iv ? (
           <RescheduleModal

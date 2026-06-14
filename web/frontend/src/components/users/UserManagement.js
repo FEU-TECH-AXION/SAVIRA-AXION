@@ -63,6 +63,8 @@ function normalizeUser(raw) {
   const status = raw.is_active === false ? "Inactive" : "Active";
 
   const dateCreated = formatDate(raw.created_at || raw.date_created);
+  const staffRow = Array.isArray(raw.staff) ? raw.staff[0] : raw.staff;
+  const committeeRow = staffRow?.committees || raw.committee;
 
   return {
     ...raw,
@@ -82,8 +84,9 @@ function normalizeUser(raw) {
     profile_img:    raw.profile_img    ?? "",
     role_id: raw.role_id ?? raw.roles?.id ?? ROLE_NAME_TO_ID[role] ?? null,
     is_active:      raw.is_active      ?? true,
-    committee_id:   raw.committee_id   ?? raw.committee?.committee_id ?? "",
-    committee:      raw.committee?.committee_name ?? raw.committee_name ?? raw.committee ?? "",
+    staff_id:       staffRow?.staff_id ?? raw.staff_id ?? null,
+    committee_id:   staffRow?.committee_id ?? raw.committee_id ?? committeeRow?.committee_id ?? "",
+    committee:      committeeRow?.committee_name ?? raw.committee_name ?? raw.committee ?? "",
   };
 }
 
@@ -254,6 +257,7 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
           is_active:      form.is_active,
           user_name:      username,
           password:       TEMP_PASSWORD,
+          committee_id:   form.committee_id || null,
         }),
       });
 
@@ -263,19 +267,6 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
       }
 
       const newUser = await response.json();
-
-      // Step 2: If Staff, also insert into staff table
-      const selectedRole = ROLES.find((r) => String(r.id) === String(form.role_id));
-      if (selectedRole?.name === "Staff" && form.committee_id) {
-        const { error: staffError } = await supabase
-          .from("staff")
-          .insert({
-            user_id:      newUser.user_id,
-            committee_id: form.committee_id,
-          });
-
-        if (staffError) throw new Error(`User created but staff record failed: ${staffError.message}`);
-      }
 
       onSave(newUser);
       handleClose();
@@ -929,6 +920,9 @@ export default function AdminDashboard() {
 
   // ── Update ────────────────────────────────────────────────────
   async function handleUpdate(updated) {
+    const roleId = updated.role_id ? parseInt(updated.role_id) : null;
+    const roleName = ROLES_MAP[roleId] || updated.role;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
     const payload = {
       first_name:     updated.first_name,
       middle_name:    updated.middle_name,
@@ -936,9 +930,9 @@ export default function AdminDashboard() {
       extension_name: updated.extension_name,
       user_name:      updated.user_name,
       contact_number: updated.contact_number,
-      role_id:        updated.role_id ? parseInt(updated.role_id) : null,
+      role_id:        roleId,
       is_active:      updated.status === "Active",
-      committee_id:   updated.role === "Staff" && updated.committee_id ? updated.committee_id : null,
+      committee_id:   roleName === "Staff" ? updated.committee_id || null : null,
     };
 
     if (updated.password) payload.password = updated.password;
@@ -954,20 +948,33 @@ export default function AdminDashboard() {
       }
     }
 
-    const { data, error } = await supabase
-      .from("users")
-      .update(payload)
-      .eq("user_id", updated.user_id)
-      .select();
+    const response = await fetch(`${API_URL}/api/users/${updated.user_id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    if (error) { showToast(`Error: ${error.message}`, "danger"); return; }
-    if (!data || data.length === 0) {
-      showToast(`No rows updated. ID used: ${updated.user_id}`, "danger");
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast(`Error: ${body.error || `Server error (${response.status})`}`, "danger");
       return;
     }
 
+    const committee = roleName === "Staff"
+      ? committees.find((c) => String(c.committee_id) === String(updated.committee_id))
+      : null;
+
     setUsers((prev) =>
-      prev.map((u) => (u.user_id === updated.user_id ? { ...u, ...updated, ...payload } : u))
+      prev.map((u) => (u.user_id === updated.user_id ? {
+        ...u,
+        ...updated,
+        ...payload,
+        role: roleName,
+        staff: body.staff || null,
+        committee_id: roleName === "Staff" ? body.staff?.committee_id || updated.committee_id : "",
+        committee: roleName === "Staff" ? body.staff?.committees?.committee_name || committee?.committee_name || "" : "",
+      } : u))
     );
     showToast(`User "${updated.name}" updated successfully.`);
   }
