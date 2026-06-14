@@ -5,6 +5,7 @@ import styles from "./LegalReviewManagement.module.css";
 import { FiSearch, FiX, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiAlertTriangle } from "react-icons/fi";
 import LegalTable from "./LegalTable";
 import FilterMenu from "./FilterMenu";
+import UpdateStatusModal from "../cases/UpdateStatusModals";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -16,7 +17,6 @@ const LEGAL_CASE_STATUSES = [
   "Investigation Ongoing",
   "Hearing Ongoing",
   "Dismissed",
-  "Perpetrator Convicted",
 ];
 
 const ENDORSEMENT_BODIES = [
@@ -674,7 +674,7 @@ const STATUS_TRANSITIONS = {
   "Under Case Evaluation": ["Case Filed"],
   "Case Filed":            ["Investigation Ongoing"],
   "Investigation Ongoing": ["Hearing Ongoing", "Dismissed"],
-  "Hearing Ongoing":       ["Dismissed", "Perpetrator Convicted"],
+  "Hearing Ongoing":       ["Dismissed"],
 };
 
 const STATUS_COLORS2 = STATUS_COLORS;
@@ -1468,7 +1468,16 @@ export default function LegalReviewManagement() {
       {/* <LawyerConsultModal   open={modal === "lawyer"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} /> */}
       <EndorseModal         open={modal === "endorse"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <MonitoringModal      open={modal === "monitor"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
-      <StatusChangeModal    open={modal === "statusChange"} onClose={closeModal} caseData={selectedCase} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} />
+      <UpdateStatusModal
+        open={modal === "statusChange"}
+        onClose={closeModal}
+        caseData={selectedCase}
+        onSubmit={submitForApproval}
+        actorName={actorName}
+        isAdmin={isAdmin}
+        isLegal={isLegal}
+        allowedStatuses={LEGAL_CASE_STATUSES}
+      />
       <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
       <AssignLegalModal     open={modal === "assignLegal"}  onClose={closeModal} caseData={selectedCase} legalPersonnels={legalPersonnels} onSave={saveCase} showToast={showToast} />
 

@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, } from "react-icons/io";
 import styles from "./ViewLegalCase.module.css";
+import UpdateStatusModal from "../cases/UpdateStatusModals";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,14 @@ const ALL_STATUSES = [
   "Perpetrator Convicted",
   "Resolved",
   "Withdrawn"
+];
+
+const LEGAL_CASE_STATUSES = [
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
 ];
 
 const STATUS_MODAL_MAP = {
@@ -260,6 +269,317 @@ function FSelect({ error, children, ...props }) {
     <select className={`${styles.formInput} ${error ? styles.inputError : ""}`} {...props}>
       {children}
     </select>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARALEGAL SUPPORT MODAL — organize case facts and documents
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
+  const [form, setForm] = useState({ documents: [], timeline: "", swornStatement: "", screenshots: "", idDocuments: "", incidentDetails: "", otherNotes: "" });
+  useEffect(() => { if (open && caseData) {
+    const r = caseData.paralegalRecord;
+    setForm({ documents: r?.documents?.split(", ") || [], timeline: r?.timeline || "", swornStatement: r?.swornStatement || "", screenshots: r?.screenshots || "", idDocuments: r?.idDocuments || "", incidentDetails: r?.incidentDetails || "", otherNotes: r?.otherNotes || "" });
+  }}, [open, caseData]);
+  if (!caseData) return null;
+
+  const DOCS = ["Sworn statement", "Incident timeline", "Screenshots / digital evidence", "Complainant ID / identity documents", "Medical or medico-legal report", "Witness statements", "Correspondence / messages", "Photographs"];
+
+  const toggle = (d) => setForm((p) => ({ ...p, documents: p.documents.includes(d) ? p.documents.filter((x) => x !== d) : [...p.documents, d] }));
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  function handleSave() {
+    const record = { organizedBy: actorName, date: new Date().toLocaleDateString(), documents: form.documents.join(", "), timeline: form.timeline, swornStatement: form.swornStatement, screenshots: form.screenshots, idDocuments: form.idDocuments, incidentDetails: form.incidentDetails, otherNotes: form.otherNotes };
+    onSave({ ...caseData, paralegalRecord: record });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Paralegal Support — Case File Organization" wide>
+      <p className={styles.formDesc}>As a paralegal, organize and document the facts, evidence, and supporting materials for this case. This record will inform lawyer consultation and referral decisions.</p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
+        <FormGroup label="Documents / Evidence Organized" hint="Check all items that have been collected and organized.">
+          <div className={styles.checkGroup}>
+            {DOCS.map((d) => (
+              <label key={d} className={styles.checkLabel}>
+                <input type="checkbox" checked={form.documents.includes(d)} onChange={() => toggle(d)} className={styles.checkInput} />
+                {d}
+              </label>
+            ))}
+          </div>
+        </FormGroup>
+        <FormGroup label="Incident Timeline Summary" hint="Summarize the chronological sequence of events.">
+          <FTextarea placeholder="e.g. January 5: First incident. January 12: Repeated contact. January 20: Complainant reported to supervisor..." value={form.timeline} onChange={set("timeline")} />
+        </FormGroup>
+        <FormGroup label="Sworn Statement Status">
+          <FSelect value={form.swornStatement} onChange={set("swornStatement")}>
+            <option value="">— Select —</option>
+            <option>Obtained and filed</option>
+            <option>Drafted — awaiting signature</option>
+            <option>Not yet obtained</option>
+            <option>Survivor declined</option>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Digital Evidence Notes" hint="Screenshots, messages, social media posts, etc.">
+          <FTextarea placeholder="Describe digital evidence collected and its relevance…" value={form.screenshots} onChange={set("screenshots")} />
+        </FormGroup>
+        <FormGroup label="Identity Documents">
+          <FInput placeholder="e.g. Complainant ID obtained, respondent identified" value={form.idDocuments} onChange={set("idDocuments")} />
+        </FormGroup>
+        <FormGroup label="Key Incident Details" hint="Facts that are most legally relevant.">
+          <FTextarea placeholder="Document specific acts, dates, places, witnesses…" value={form.incidentDetails} onChange={set("incidentDetails")} />
+        </FormGroup>
+        <FormGroup label="Additional Notes">
+          <FTextarea placeholder="Other paralegal observations or referral document notes…" value={form.otherNotes} onChange={set("otherNotes")} />
+        </FormGroup>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave}>Save Paralegal Record</button>
+      </div>
+    </Modal>
+  );
+}
+
+function EndorseModal({ open, onClose, caseData, onSave }) {
+  const [body, setBody] = useState("");
+  const [details, setDetails] = useState({});
+
+  useEffect(() => {
+    if (open && caseData) {
+      setBody(caseData.endorsedTo || "");
+      setDetails(caseData.endorsementDetails || {});
+    }
+  }, [open, caseData]);
+
+  if (!caseData) return null;
+
+  const set = (k) => (e) => setDetails((p) => ({ ...p, [k]: e.target.value }));
+
+  function handleSave() {
+    onSave({
+      ...caseData,
+      endorsedTo: body,
+      referralBody: body,
+      referralRequired: true,
+      endorsementStatus: `Endorsed to ${body}`,
+      endorsementDetails: details,
+    });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Endorse / Track Referral" wide>
+      <p className={styles.formDesc}>Record all endorsement and referral details for this case. SASHA monitors whether services were actually provided and whether the receiving institution is acting properly.</p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Case ID"><FInput value={caseData.caseId || caseData.id} disabled /></FormGroup>
+        <FormGroup label="Endorse to institution" required>
+          <FSelect value={body} onChange={(e) => { setBody(e.target.value); setDetails({}); }}>
+            <option value="">Select institution</option>
+            {ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}
+          </FSelect>
+        </FormGroup>
+
+        {body === "DSWD" && (
+          <>
+            <div className={styles.sectionDivider}><span>DSWD Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Receiving Office / Person"><FInput placeholder="e.g. DSWD-NCR, Social Worker Dela Cruz" value={details["Receiving Office"] || ""} onChange={set("Receiving Office")} /></FormGroup>
+            <FormGroup label="Referral Reference Number"><FInput placeholder="If provided" value={details["Reference No."] || ""} onChange={set("Reference No.")} /></FormGroup>
+            <FormGroup label="Next Scheduled Follow-Up"><FInput type="date" value={details["Follow-up Date"] || ""} onChange={set("Follow-up Date")} /></FormGroup>
+            <FormGroup label="Survivor / Family Contacted?">
+              <FSelect value={details["Survivor Contacted"] || ""} onChange={set("Survivor Contacted")}>
+                <option value="">Select</option>
+                <option>Yes</option>
+                <option>No - pending</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Services Actually Provided" hint="What specific services has DSWD rendered so far?">
+              <FTextarea placeholder="e.g. Counseling started, temporary shelter provided, livelihood referral..." value={details["Services Provided"] || ""} onChange={set("Services Provided")} />
+            </FormGroup>
+          </>
+        )}
+
+        {body === "PNP Women and Children Protection Desk" && (
+          <>
+            <div className={styles.sectionDivider}><span>PNP-WCPD Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Station and Desk Details"><FInput placeholder="e.g. QCPD Women and Children Protection Desk" value={details["Station"] || ""} onChange={set("Station")} /></FormGroup>
+            <FormGroup label="Blotter / Reference Number"><FInput placeholder="e.g. BLO-2026-042" value={details["Blotter No."] || ""} onChange={set("Blotter No.")} /></FormGroup>
+            <FormGroup label="Assigned Investigator"><FInput placeholder="Name and rank" value={details["Investigator"] || ""} onChange={set("Investigator")} /></FormGroup>
+            <FormGroup label="Sworn Statements Taken?">
+              <FSelect value={details["Sworn Statements"] || ""} onChange={set("Sworn Statements")}>
+                <option value="">Select</option>
+                <option>Yes</option>
+                <option>No - pending</option>
+                <option>Not applicable</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Medico-Legal / Evidence Preservation Advised?">
+              <FSelect value={details["Medico-Legal Advised"] || ""} onChange={set("Medico-Legal Advised")}>
+                <option value="">Select</option>
+                <option>Yes - advised and acted on</option>
+                <option>Yes - advised, pending</option>
+                <option>Not applicable</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Case Forwarded to Prosecutor?">
+              <FSelect value={details["Forwarded to Prosecutor"] || ""} onChange={set("Forwarded to Prosecutor")}>
+                <option value="">Select</option>
+                <option>Yes - forwarded</option>
+                <option>Pending</option>
+                <option>Not yet - investigation ongoing</option>
+              </FSelect>
+            </FormGroup>
+          </>
+        )}
+
+        {body === "BSP/GSP Mechanism" && (
+          <>
+            <div className={styles.sectionDivider}><span>BSP/GSP Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Chapter / Council / Unit Involved"><FInput placeholder="e.g. Manila Council, Troop 42" value={details["Chapter/Unit"] || ""} onChange={set("Chapter/Unit")} /></FormGroup>
+            <FormGroup label="Receiving Official"><FInput placeholder="Name and position" value={details["Receiving Official"] || ""} onChange={set("Receiving Official")} /></FormGroup>
+            <FormGroup label="Fact-Finding Started?">
+              <FSelect value={details["Fact-Finding Started"] || ""} onChange={set("Fact-Finding Started")}>
+                <option value="">Select</option>
+                <option>Yes - ongoing</option>
+                <option>Yes - completed</option>
+                <option>No - pending</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Interim Safety Measures in Place?">
+              <FSelect value={details["Safety Measures"] || ""} onChange={set("Safety Measures")}>
+                <option value="">Select</option>
+                <option>Yes - measures in place</option>
+                <option>Pending implementation</option>
+                <option>None reported</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Sanctions / Inaction Noted" hint="What sanctions, if any, have been issued? Note any inaction.">
+              <FTextarea placeholder="e.g. Respondent suspended pending investigation, no action noted yet..." value={details["Sanctions/Inaction"] || ""} onChange={set("Sanctions/Inaction")} />
+            </FormGroup>
+            <FormGroup label="Closure Report Received?">
+              <FSelect value={details["Closure Report"] || ""} onChange={set("Closure Report")}>
+                <option value="">Select</option>
+                <option>Yes - received</option>
+                <option>No - awaiting</option>
+                <option>Not applicable</option>
+              </FSelect>
+            </FormGroup>
+          </>
+        )}
+
+        {body === "School/Workplace CODI" && (
+          <>
+            <div className={styles.sectionDivider}><span>CODI Monitoring Details</span></div>
+            <FormGroup label="Date of Endorsement"><FInput type="date" value={details["Date of Endorsement"] || ""} onChange={set("Date of Endorsement")} /></FormGroup>
+            <FormGroup label="Institution Name"><FInput placeholder="Name of school, workplace, or organization" value={details["Institution"] || ""} onChange={set("Institution")} /></FormGroup>
+            <FormGroup label="CODI Focal Person"><FInput placeholder="Name and designation" value={details["CODI Focal Person"] || ""} onChange={set("CODI Focal Person")} /></FormGroup>
+            <FormGroup label="Complaint Receipt Confirmed?">
+              <FSelect value={details["Receipt Confirmed"] || ""} onChange={set("Receipt Confirmed")}>
+                <option value="">Select</option>
+                <option>Yes - confirmed in writing</option>
+                <option>Yes - verbal confirmation</option>
+                <option>Pending confirmation</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Hearing / Investigation Schedule">
+              <FInput placeholder="e.g. Investigation: Jan 15-Feb 15, First hearing: Feb 20" value={details["Investigation Schedule"] || ""} onChange={set("Investigation Schedule")} />
+            </FormGroup>
+            <FormGroup label="Status Updates from CODI">
+              <FTextarea placeholder="Latest updates on investigation or hearing progress..." value={details["Status Updates"] || ""} onChange={set("Status Updates")} />
+            </FormGroup>
+            <FormGroup label="Anti-Retaliation Measures Confirmed?">
+              <FSelect value={details["Anti-Retaliation Confirmed"] || ""} onChange={set("Anti-Retaliation Confirmed")}>
+                <option value="">Select</option>
+                <option>Yes - confirmed in place</option>
+                <option>Pending verification</option>
+                <option>Not confirmed - flagged for follow-up</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Confidentiality Measures Confirmed?">
+              <FSelect value={details["Confidentiality Confirmed"] || ""} onChange={set("Confidentiality Confirmed")}>
+                <option value="">Select</option>
+                <option>Yes</option>
+                <option>Unclear</option>
+                <option>No - concern raised</option>
+              </FSelect>
+            </FormGroup>
+            <FormGroup label="Final Administrative Decision">
+              <FTextarea placeholder="e.g. Respondent dismissed, reprimanded, cleared, case pending..." value={details["Final Decision"] || ""} onChange={set("Final Decision")} />
+            </FormGroup>
+          </>
+        )}
+
+        {body === "Court (with lawyer)" && (
+          <>
+            <div className={styles.sectionDivider}><span>Court Monitoring Details</span></div>
+            <div className={styles.formDesc} style={{ background: "#fef9c3", borderRadius: 8, padding: "0.75rem", border: "1px solid #fde047", color: "#713f12", marginBottom: 0 }}>
+              Legal court cases are handled in coordination with a lawyer. Record all details as provided by counsel.
+            </div>
+            <FormGroup label="Case Number and Court Branch"><FInput placeholder="e.g. Criminal Case 2026-1234, RTC Branch 42, QC" value={details["Case No."] || ""} onChange={set("Case No.")} /></FormGroup>
+            <FormGroup label="Filing Date"><FInput type="date" value={details["Filing Date"] || ""} onChange={set("Filing Date")} /></FormGroup>
+            <FormGroup label="Prosecutor / Counsel Details"><FInput placeholder="Name and contact of handling counsel" value={details["Counsel"] || ""} onChange={set("Counsel")} /></FormGroup>
+            <FormGroup label="Upcoming Hearing Dates"><FTextarea placeholder="List all scheduled hearing dates..." value={details["Hearing Dates"] || ""} onChange={set("Hearing Dates")} /></FormGroup>
+            <FormGroup label="Postponements / Changes" hint="Note any postponements with reason.">
+              <FTextarea placeholder="e.g. April 10: postponed - respondent's counsel unavailable..." value={details["Postponements"] || ""} onChange={set("Postponements")} />
+            </FormGroup>
+            <FormGroup label="Witness Preparation Needs">
+              <FTextarea placeholder="Does any witness or the complainant need preparation support?" value={details["Witness Preparation"] || ""} onChange={set("Witness Preparation")} />
+            </FormGroup>
+            <FormGroup label="Final Judgment / Resolution" hint="Fill in once the court issues a decision.">
+              <FTextarea placeholder="e.g. Guilty, acquitted, case dismissed without prejudice..." value={details["Judgment"] || ""} onChange={set("Judgment")} />
+            </FormGroup>
+          </>
+        )}
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={!body}>Save Endorsement</button>
+      </div>
+    </Modal>
+  );
+}
+
+function MonitoringModal({ open, onClose, caseData, onSave, actorName }) {
+  const [update, setUpdate] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    if (open) {
+      setUpdate("");
+      setDate(new Date().toISOString().split("T")[0]);
+    }
+  }, [open]);
+
+  if (!caseData) return null;
+
+  function handleSave() {
+    if (!update.trim()) return;
+    const entry = { date: new Date(date).toLocaleDateString("en-PH"), by: actorName, update };
+    onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Add Monitoring Update" wide>
+      <p className={styles.formDesc}>SASHA monitors whether the referral was received, whether the complainant was contacted, and whether the case is progressing. Log each follow-up here.</p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Case ID"><FInput value={caseData.caseId || caseData.id} disabled /></FormGroup>
+        <FormGroup label="Current Institution"><FInput value={caseData.endorsedTo || "Not yet endorsed"} disabled /></FormGroup>
+        <FormGroup label="Date of Follow-up" required><FInput type="date" value={date} onChange={(e) => setDate(e.target.value)} /></FormGroup>
+        <FormGroup label="Update / Findings" required hint="What did SASHA find out from this follow-up? Was there progress?">
+          <FTextarea placeholder="e.g. Called PNP WCPD - investigation ongoing, next update in 2 weeks. Complainant contacted, reported feeling safe..." value={update} onChange={(e) => setUpdate(e.target.value)} rows={5} />
+        </FormGroup>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleSave} disabled={!update.trim()}>Add Entry</button>
+      </div>
+    </Modal>
   );
 }
 
@@ -864,17 +1184,22 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   // Determine available status transitions
   function getAvailableTransitions() {
     const curr = caseData.status;
-    if (isAdmin) return ALL_STATUSES.filter((s) => s !== curr);
+    if (isAdmin) return LEGAL_CASE_STATUSES.filter((s) => s !== curr);
     if (isLegal) {
       const map = {
         "Under Case Evaluation": ["Case Filed"],
         "Case Filed":            ["Investigation Ongoing"],
         "Investigation Ongoing": ["Hearing Ongoing", "Dismissed"],
-        "Hearing Ongoing":       ["Dismissed", "Perpetrator Convicted"],
+        "Hearing Ongoing":       ["Dismissed"],
       };
       return map[curr] || [];
     }
     return [];
+  }
+
+  function saveCase(updated) {
+    setCaseData(updated);
+    showToast(`Case ${updated.caseId || updated.id} updated.`);
   }
 
   async function submitForApproval(proposedStatus, changeDetails) {
@@ -928,7 +1253,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   const transitions = getAvailableTransitions();
 
-  // Inline state for assign paralegal / referral modals
+  // Kept for the legacy inline modals below, which are no longer opened.
   const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
   const [endorseBody, setEndorseBody]   = useState("");
   const [endorseNotes, setEndorseNotes] = useState("");
@@ -971,23 +1296,23 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
 
           {/* Paralegal */}
-          <button onClick={() => setModal("paralegal")} style={btnStyle("#10b981")}>
-            Paralegal
+          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#10b981")}>
+            Paralegal Support
           </button>
 
           {/* Endorse */}
-          <button onClick={() => setModal("endorse")} style={btnStyle("#0ea5e9")}>
+          <button onClick={() => setModal("endorseFull")} style={btnStyle("#0ea5e9")}>
             Endorse
           </button>
 
           {/* Monitor */}
-          <button onClick={() => setModal("monitor")} style={btnStyle("#f59e0b")}>
+          <button onClick={() => setModal("monitorFull")} style={btnStyle("#f59e0b")}>
             Monitor
           </button>
 
           {/* Status */}
           {transitions.length > 0 && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusRouter")} style={btnStyle("#3b82f6")}>
+            <button onClick={() => setModal("statusShared")} style={btnStyle("#3b82f6")}>
               Status
             </button>
           )}
@@ -996,6 +1321,42 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       {/* ── Status History ── */}
       <StatusHistorySection caseData={caseData} />
+
+      <UpdateStatusModal
+        open={modal === "statusShared"}
+        onClose={() => setModal(null)}
+        caseData={caseData}
+        onSubmit={submitForApproval}
+        actorName={actorName}
+        isAdmin={isAdmin}
+        isLegal={isLegal}
+        viewCaseMode
+        allowedStatuses={LEGAL_CASE_STATUSES}
+      />
+
+      <ParalegalSupportModal
+        open={modal === "paralegalSupport"}
+        onClose={() => setModal(null)}
+        caseData={caseData}
+        onSave={saveCase}
+        actorName={actorName}
+      />
+
+      <EndorseModal
+        open={modal === "endorseFull"}
+        onClose={() => setModal(null)}
+        caseData={caseData}
+        onSave={saveCase}
+        actorName={actorName}
+      />
+
+      <MonitoringModal
+        open={modal === "monitorFull"}
+        onClose={() => setModal(null)}
+        caseData={caseData}
+        onSave={saveCase}
+        actorName={actorName}
+      />
 
       {/* ══ Modals ══ */}
 
@@ -1359,10 +1720,10 @@ export default function ViewCase() {
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
 
   const backRoute = isStaff
-    ? "/cases"
+    ? "/legalReviews"
     : fromParam === "dashboard" ? "/dashboard" : "/cases";
   const backLabel = isStaff
-    ? "Back to Case Management"
+    ? "Back to Legal Review"
     : fromParam === "dashboard" ? "Back to Dashboard" : "Back to My Reports";
 
   function showToast(msg, type = "success") {
@@ -1482,7 +1843,7 @@ export default function ViewCase() {
   const tabs = [
     { id: "details", label: "Case Details", staffOnly: false },
     ...(isStaff ? [
-      { id: "management", label: "Legal Legal Review", staffOnly: true },
+      { id: "management", label: "Legal Review", staffOnly: true },
       { id: "nlp",        label: "AI / NLP Analysis", staffOnly: true },
     ] : []),
   ];

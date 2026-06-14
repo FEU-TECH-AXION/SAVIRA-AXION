@@ -981,6 +981,7 @@ export default function UpdateStatusModal({
   isCaseOfficer,
   isLegal,
   viewCaseMode = false,
+  allowedStatuses,
 }) {
   const [activeModal, setActiveModal] = useState(null);
   const [nextStatus, setNextStatus]   = useState("");
@@ -994,7 +995,10 @@ export default function UpdateStatusModal({
 
   if (!open || !caseData) return null;
 
-  const transitions = getAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal });
+  const transitions = allowedStatuses && isAdmin
+    ? allowedStatuses.filter((status) => status !== caseData.status)
+    : getAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal })
+      .filter((status) => !allowedStatuses || allowedStatuses.includes(status));
 
   function handleSubModalSubmit(proposedStatus, changeDetails) {
     if (viewCaseMode) {
