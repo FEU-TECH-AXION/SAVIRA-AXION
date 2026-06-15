@@ -82,6 +82,8 @@ function EventCard({ image, tag, title, description, onPress }) {
       : image
     : null;
 
+  const showDesc = description && description.trim().toLowerCase() !== title.trim().toLowerCase();
+
   return (
     <View style={s.eventCard}>
       <View style={s.eventImageWrap}>
@@ -97,7 +99,7 @@ function EventCard({ image, tag, title, description, onPress }) {
       </View>
       <View style={s.eventBody}>
         <Text style={s.eventTitle}>{title}</Text>
-        <Text style={s.eventDesc}>{description}</Text>
+        {showDesc ? <Text style={s.eventDesc}>{description}</Text> : null}
         <Pressable style={s.viewEventBtn} onPress={onPress}>
           <Text style={s.viewEventBtnText}>View Event</Text>
         </Pressable>

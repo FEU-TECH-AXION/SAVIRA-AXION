@@ -4,8 +4,11 @@ const ALLOWED_FIELDS = [
   'event_name',
   'event_tagline',
   'description',
+  'category',
   'activity_mode',
   'venue',
+  'online_platform',
+  'online_link',
   'start_date',
   'end_date',
   'due_date',
@@ -18,6 +21,8 @@ const ALLOWED_FIELDS = [
   'visibility',
   'approval_status',
   'image',
+  'project_officers',
+  'project_committee_members',
 ]
 
 // Strip ISO timestamp suffix so HTML <input type="date"> gets plain YYYY-MM-DD
@@ -30,8 +35,11 @@ const toFrontend = (row) => {
     title: row.event_name,
     tagline: row.event_tagline,
     description: row.description || '',
+    category: row.category || '',
     activityMode: row.activity_mode,
     venue: row.venue,
+    onlinePlatform: row.online_platform || '',
+    onlineLink: row.online_link || '',
     dateStart: toDateStr(row.start_date),
     dateEnd: toDateStr(row.end_date),
     dueDate: toDateStr(row.due_date),
@@ -47,6 +55,8 @@ const toFrontend = (row) => {
     slug: row.slug || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    projectOfficers: Array.isArray(row.project_officers) ? row.project_officers : (row.project_officers ? [row.project_officers] : ['']),
+    projectCommitteeMembers: Array.isArray(row.project_committee_members) ? row.project_committee_members : (row.project_committee_members ? [row.project_committee_members] : ['']),
   }
 }
 
@@ -56,8 +66,11 @@ const toDbPayload = (payload) => {
     event_name: payload.title,
     event_tagline: payload.tagline,
     description: payload.description,
+    category: payload.category,
     activity_mode: payload.activityMode,
     venue: payload.venue,
+    online_platform: payload.onlinePlatform,
+    online_link: payload.onlineLink,
     start_date: payload.dateStart,
     end_date: payload.dateEnd,
     due_date: payload.dueDate,
@@ -70,12 +83,20 @@ const toDbPayload = (payload) => {
     visibility: payload.visibility,
     approval_status: payload.approvalStatus,
     image: payload.image,
+    project_officers: Array.isArray(payload.projectOfficers)
+      ? payload.projectOfficers.filter(Boolean)
+      : undefined,
+    project_committee_members: Array.isArray(payload.projectCommitteeMembers)
+      ? payload.projectCommitteeMembers.filter(Boolean)
+      : undefined,
   })
 
   // Ensure only serializable/simple values are passed to the DB.
   // Skip `image` when it's a File/Object (frontend file uploads should be handled via storage).
   const filtered = entries.filter(([key, value]) => {
     if (key === 'image' && value && typeof value !== 'string') return false
+    // Arrays are valid even if empty
+    if (Array.isArray(value)) return true
     return isValidValue(value)
   })
 

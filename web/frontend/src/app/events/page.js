@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import styles from "./events.module.css";
-import { FaSearch } from "react-icons/fa";
+import { FaSearch, FaCalendarAlt } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
 
@@ -36,7 +36,7 @@ const mapProjectToEvent = (project) => ({
   id: project.id ?? project.project_id,
   title: project.title || project.event_name || "Untitled event",
   description: project.description || project.tagline || project.event_tagline || "",
-  category: project.category || project.project_category || "Community Outreach",
+  category: project.category || project.project_category || "",
   activityMode: project.activityMode || project.activity_mode || "",
   dateStart: project.dateStart || project.start_date || "",
   dateEnd: project.dateEnd || project.end_date || "",
@@ -132,6 +132,16 @@ export default async function EventsPage() {
                   const slug = ev.slug || ev.title.toLowerCase().replace(/\s+/g, "-");
                   const isUpcoming = ev.status?.toLowerCase() === "upcoming";
                   const isActive = ev.status?.toLowerCase() === "active";
+
+                  const trimmedTitle = ev.title?.trim().toLowerCase() || "";
+                  const trimmedTagline = ev.tagline?.trim().toLowerCase() || "";
+                  const trimmedDesc = ev.description?.trim().toLowerCase() || "";
+
+                  const showTagline = ev.tagline && trimmedTagline !== trimmedTitle;
+                  const showDesc = ev.description && 
+                    trimmedDesc !== trimmedTitle && 
+                    (!showTagline || trimmedDesc !== trimmedTagline);
+
                   return (
                     <article key={ev.id} className={styles.eventCard}>
                       <div className={styles.eventImageWrap}>
@@ -153,11 +163,11 @@ export default async function EventsPage() {
                           <span className={styles.eventMode}>{ev.activityMode}</span>
                         </div>
                         <h3 className={styles.eventTitle}>{ev.title}</h3>
-                        {ev.tagline && <p className={styles.eventTagline}>{ev.tagline}</p>}
-                        <p className={styles.eventDesc}>{ev.description}</p>
+                        {showTagline && <p className={styles.eventTagline}>{ev.tagline}</p>}
+                        {showDesc && <p className={styles.eventDesc}>{ev.description}</p>}
                         <div className={styles.eventDetails}>
                           <span>
-                            {ev.dateStart}
+                            <FaCalendarAlt /> {ev.dateStart}
                             {ev.dateEnd ? ` – ${ev.dateEnd}` : ""}
                           </span>
                           {ev.venue && (
