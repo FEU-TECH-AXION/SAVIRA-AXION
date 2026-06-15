@@ -348,4 +348,16 @@ const update = async (caseReportId, payload) => {
   return data
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update,}
+async function getHeatmapReports() {
+  const { data, error } = await supabase
+    .from('case_reports')
+    .select('incident_city, case_status_id')
+    .eq('is_current', true)
+  if (error) {
+    console.error('[getHeatmapReports] Supabase error:', error.message)
+    throw error
+  }
+  return data
+}
+
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports }

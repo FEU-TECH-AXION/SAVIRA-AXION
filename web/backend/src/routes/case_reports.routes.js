@@ -5,7 +5,7 @@ const { verifyToken } = require('../middleware/auth.middleware')
 
 // !! IMPORTANT: specific routes must come BEFORE /:id or Express will swallow them
 router.get('/heatmap/meta', getHeatmapMeta);   // no auth — static lookup data
-router.get('/heatmap/data', verifyToken, getHeatmapData);
+router.get('/heatmap/data', getHeatmapData);
 router.get('/all',        verifyToken, getAllCases);
 router.get('/my-reports', verifyToken, getUserReports);
 router.post('/submit',    verifyToken, submitReport);

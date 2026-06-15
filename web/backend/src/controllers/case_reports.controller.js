@@ -1,6 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById } = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 
@@ -178,8 +178,8 @@ async function getHeatmapData(req, res) {
   try {
     const { aggregation = 'city', city, region, council, status, verification } = req.query;
 
-    // Fetch all reports
-    const allReports = await getAllReports();
+    // Fetch only incident_city and case_status_id for the heatmap
+    const allReports = await getHeatmapReports();
 
     // Apply filters
     const filters = {};
