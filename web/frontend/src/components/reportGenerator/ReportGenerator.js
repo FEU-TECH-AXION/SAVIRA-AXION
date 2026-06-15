@@ -749,10 +749,13 @@ function HorizontalBarList({ entries, color = "#037F81", total }) {
 // VERTICAL BAR CHART (kept for other sections)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function BarChart({ data, colorVar = "--accent-primary", height = 200 }) {
+function BarChart({ data, color, colorVar = "--accent-primary", height = 200 }) {
   const entries = Object.entries(data || {});
   if (!entries.length) return <p className={styles.noData}>No data available.</p>;
   const max = Math.max(...entries.map(([, v]) => v), 1);
+  // Use an explicit hex color when provided so it reliably renders in @media print
+  // (CSS custom properties can fail to resolve in browser print contexts).
+  const fillColor = color || `var(${colorVar})`;
 
   return (
     <div className={styles.barChart} style={{ height }}>
@@ -765,7 +768,7 @@ function BarChart({ data, colorVar = "--accent-primary", height = 200 }) {
             className={styles.barFill}
             style={{
               height: `${(value / max) * 100}%`,
-              background: `var(${colorVar})`,
+              background: fillColor,
             }}
           />
         </div>
@@ -1246,7 +1249,7 @@ export default function ReportGenerator() {
     <div className={styles.page}>
 
       {/* ── Header ── */}
-      <div className={styles.pageHeader}>
+      <div className={styles.pageHeader} data-no-print>
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>
             <FiBarChart2 className={styles.titleIcon} />
@@ -1305,7 +1308,7 @@ export default function ReportGenerator() {
       /> */}
 
       {/* ── Module toggles ── */}
-      <div className={styles.moduleToggles}>
+      <div className={styles.moduleToggles} data-no-print>
         <span className={styles.togglesLabel}><FiFilter size={13} /> Modules:</span>
         {[
           { key: "cases",      label: "Case Management",  icon: <FiBriefcase size={12} /> },
@@ -1325,7 +1328,7 @@ export default function ReportGenerator() {
       </div>
 
       {lastGenerated && (
-        <p className={styles.lastGenerated}>
+        <p className={styles.lastGenerated} data-no-print>
           Last generated: {lastGenerated.toLocaleString()}
           &nbsp;·&nbsp; Date range: <strong>{DATE_RANGES.find((d) => d.value === dateRange)?.label}</strong>
         </p>
@@ -1486,7 +1489,7 @@ export default function ReportGenerator() {
               <div className={styles.chartsRow}>
                 <div className={`${styles.chartCard} ${styles.chartCardFull}`}>
                   <h3 className={styles.chartTitle}>Projects by Status</h3>
-                  <BarChart data={projectData.byStatus} colorVar="--accent-green"/>
+                  <BarChart data={projectData.byStatus} color="#16a34a" />
                 </div>
               </div>
             </ReportSection>
@@ -1505,7 +1508,7 @@ export default function ReportGenerator() {
               <div className={styles.chartsRow}>
                 <div className={`${styles.chartCard} ${styles.chartCardFull}`}>
                   <h3 className={styles.chartTitle}>Users by Role</h3>
-                  <BarChart data={userData.byRole} colorVar="--accent-secondary"/>
+                  <BarChart data={userData.byRole} color="#E8663A" />
                 </div>
               </div>
             </ReportSection>

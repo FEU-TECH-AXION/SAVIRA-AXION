@@ -57,3 +57,60 @@ a {
     color-scheme: dark;
   }
 }
+
+/* ══ PRINT / PDF EXPORT ══
+   Hides nav, footer, and any element marked [data-no-print]
+   so the exported PDF only contains the report content.
+   ══════════════════════════════════════════════════════════ */
+@media print {
+  /* Hide navigation and footer */
+  nav,
+  footer {
+    display: none !important;
+  }
+
+  /* Hide elements explicitly marked to be excluded from print */
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Remove the top margin the page adds to account for the fixed navbar */
+  main > * {
+    margin-top: 0 !important;
+  }
+
+  /* Give the page a clean white background with no extra padding */
+  body {
+    background: #fff !important;
+  }
+
+  /*
+    Force browsers to print background colors (bar fills, donut segments, etc.)
+    instead of stripping them for ink-saving. Without this, all chart colors
+    appear transparent/white in the printed PDF.
+  */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /*
+    Fix vertical BarChart: the chart container uses a fixed inline height (200px)
+    with flex children that have percentage heights. Some print engines collapse
+    flex items whose height is expressed as a percentage of a flex-sized parent.
+    Forcing the bar track to use an explicit height prevents this.
+  */
+  [class*="barChart"] {
+    display: flex !important;
+    align-items: stretch !important;
+  }
+
+  [class*="barTrack"] {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+
+  [class*="barFill"] {
+    display: block !important;
+  }
+}
