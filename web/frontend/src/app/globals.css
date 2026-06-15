@@ -12,12 +12,7 @@
   --sasha-muted: #555555;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Dark mode intentionally disabled — app uses a fixed light color scheme */
 
 html {
   height: 100%;
@@ -52,11 +47,7 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-}
+/* color-scheme: dark intentionally disabled to prevent auto icon color inversion */
 
 /* ══ PRINT / PDF EXPORT ══
    Hides nav, footer, and any element marked [data-no-print]
