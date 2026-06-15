@@ -1207,7 +1207,7 @@ export default function ReportGenerator() {
   }, [advancedFilters, dateRange, loading, buildSummaries]);
 
   const filterOptions = useMemo(() => {
-    const clean = (values) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const clean = (values) => [...new Set(values.filter(Boolean))].map(String).sort((a, b) => a.localeCompare(b));
     return {
       sites:     clean([...rawRef.current.cases.map((c) => c.site || c.region), ...rawRef.current.volunteers.map((v) => v.site)]),
       caseTypes: clean(rawRef.current.cases.map((c) => c.case_type)),
