@@ -1,0 +1,52 @@
+.pageWrapper {
+  background: #f5f7f8;
+  color: #1a1a1a;
+  min-height: 100vh;
+  padding: 3rem 1rem 4rem;
+}
+
+.pageInner {
+  margin: 0 auto;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.hero {
+  margin-bottom: 1.25rem;
+}
+
+.eyebrow {
+  align-items: center;
+  color: #6b7280;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 0.75rem;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.85rem;
+  text-transform: uppercase;
+}
+
+.heroLine {
+  background: #E8663A;
+  border-radius: 2px;
+  display: inline-block;
+  height: 3px;
+  width: 28px;
+}
+
+.title {
+  color: #037F81;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.12;
+  margin: 0 0 0.9rem;
+}
+
+.description {
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 720px;
+}
