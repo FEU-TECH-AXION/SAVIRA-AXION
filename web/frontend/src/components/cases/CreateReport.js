@@ -226,28 +226,53 @@ function validateStep0(data) {
 function validateStep1(data) {
   const errors = {};
 
-  if (!data.date)          errors.date         = "Date is required.";
-  if (!data.time)          errors.time         = "Time is required.";
-  if (!data.locationType)  errors.locationType = "Please indicate if the incident occurred physically or online.";
-  
+  if (!data.date)
+    errors.date = "Please let us know when this happened — the date helps us document your case accurately.";
+
+  if (!data.time)
+    errors.time = "An approximate time is completely fine — this helps us piece together the full picture.";
+
+  if (!data.locationType)
+    errors.locationType = "Please let us know whether this happened in person or online — this helps us understand the nature of the incident.";
+
   if (data.locationType === "Physical Location") {
-    if (!data.incidentCity)  errors.incidentCity = "Incident city/municipality is required.";
+    if (!data.incidentCity)
+      errors.incidentCity = "Please select the city or municipality where this took place — this helps us connect you with the right local support.";
   }
-  
-  if (!data.description)   errors.description  = "Description of incident is required.";
-  if (!data.perpetratorKnown) errors.perpetratorKnown = "Please indicate if the perpetrator is known.";
-  if (!data.witnesses)     errors.witnesses    = "Please indicate if there are witnesses.";
-  if (!data.toldAnyone)    errors.toldAnyone   = "Please indicate if you told anyone.";
-  if (!data.toldPolice)    errors.toldPolice   = "Please indicate if you told the police.";
+
+  if (!data.description) {
+    errors.description = "Please share what happened — even a few words can help us understand your situation.";
+  } else {
+    const wordCount = data.description.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) {
+      errors.description = `We want to make sure we fully understand what you went through. Could you share a little more? At least 50 words is recommended`;
+    }
+  }
+
+  if (!data.perpetratorKnown)
+    errors.perpetratorKnown = "Please let us know if you recognise who did this — even partial information can help us take the right steps to support you.";
+
+  if (!data.witnesses)
+    errors.witnesses = "Please indicate if anyone else was present — witnesses can play an important role in strengthening your case.";
+
+  if (!data.toldAnyone)
+    errors.toldAnyone = "Please let us know if you've spoken to anyone about this — it helps us understand what support you may already have around you.";
+
+  if (!data.toldPolice)
+    errors.toldPolice = "Please let us know if the police have been informed — this helps us coordinate the appropriate next steps for your case.";
 
   if (data.perpetratorKnown === "Yes") {
-    if (!data.perpetratorName)   errors.perpetratorName   = "Perpetrator name is required.";
-    if (!data.perpetratorGender) errors.perpetratorGender = "Perpetrator gender is required.";
+    if (!data.perpetratorName)
+      errors.perpetratorName = "If you know their name, please share it — this helps us properly document who was involved.";
+    if (!data.perpetratorGender)
+      errors.perpetratorGender = "Please share the perpetrator's gender as you perceive it — this helps us complete the incident record accurately.";
   }
 
   if (data.witnesses === "Yes") {
-    if (!data.witnessName) errors.witnessName = "Witness name is required.";
-    if (!data.witnessContact) errors.witnessContact = "Witness contact information is required.";
+    if (!data.witnessName)
+      errors.witnessName = "Please provide the witness's name — this helps us reach out if their account is needed to support your case.";
+    if (!data.witnessContact)
+      errors.witnessContact = "A contact number or email for the witness would be helpful — this allows us to follow up with them directly if needed.";
   }
 
   return errors;
@@ -703,6 +728,28 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
           onChange={set("description")}
           rows={5}
         />
+        {data.description.trim() && (() => {
+          const wordCount = data.description.trim().split(/\s+/).filter(Boolean).length;
+          const charCount = data.description.length;
+
+          const message =
+            wordCount < 20
+              ? { text: `You're not alone in this. Share only what feels right for you.`, style: styles.textareaFooterNeutral }
+              : wordCount < 50
+              ? { text: `You're doing great. If you're able to, a few more details can help us support you better. (${wordCount}/50 words)`, style: styles.textareaFooterWarn }
+              : { text: `Thank you for trusting us with this. Your account has been noted.`, style: styles.textareaFooterOk };
+
+          return (
+            <div className={styles.textareaFooter}>
+              <span className={message.style}>
+                {message.text}
+              </span>
+              <span className={styles.textareaFooterCounts}>
+                {wordCount} {wordCount === 1 ? "word (Min 50 recommended)" : "words (Min 50 recommended)"} . {charCount} characters
+              </span>
+            </div>
+          );
+        })()}
       </Field>
 
       <Field label="What action or outcome are you seeking?" hint="Optional — let us know what resolution or support you are looking for.">

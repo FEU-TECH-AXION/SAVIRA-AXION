@@ -371,6 +371,28 @@
   line-height: 1.6;
 }
 
+.textareaFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  gap: 8px;
+}
+
+.textareaFooterWarn {
+  color: #b45309; 
+}
+
+.textareaFooterOk {
+  color: #15803d;
+}
+
+.textareaFooterCounts {
+  color: var(--sasha-muted); 
+  white-space: nowrap;
+}
+
 /* ── Radio ── */
 .radioGroup {
   display: flex;
