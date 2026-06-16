@@ -102,6 +102,7 @@
   background: var(--sasha-white);
   border-radius: 10px;
   border: 1px solid var(--sasha-border);
+}
 
 /* ════════════════════════════════════════
    SHARED CARD HEADER  (teal bar + View btn)
