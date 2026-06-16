@@ -63,6 +63,19 @@ export const FOOTER_QUICK_LINKS = {
 };
 
 export const SIDEBAR_LINKS = {
+  public: PUBLIC_LINKS.map((link) => ({
+    ...link,
+    icon:
+      link.href === "/hospital"
+        ? "hospital"
+        : link.href === "/police-station"
+          ? "police"
+          : link.href === "/events"
+            ? "event"
+            : link.href === "/heatmap"
+              ? "map"
+              : "folder",
+  })),
   // USER
   complainant: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },

@@ -76,6 +76,15 @@ export default function Navbar() {
             /* ── LOGGED-OUT layout: logo | public links | Log In (mirrors V1) ── */
             <>
               {/* Logo */}
+              <button
+                className={styles.publicMenuBtn}
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open sidebar menu"
+                aria-expanded={sidebarOpen}
+              >
+                <FiMenu size={20} />
+              </button>
+
               <Link href="/" className={styles.navLogo}>
                 <img src="/sasha-logo-white.png" alt="SASHA logo" />
               </Link>

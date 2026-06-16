@@ -80,6 +80,23 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
+.publicMenuBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  height: 36px;
+  width: 36px;
+}
+
+.publicMenuBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* ── Search ── */
 .searchWrapper {
   width: 240px;
@@ -265,6 +282,10 @@
    RESPONSIVE
 ══════════════════════════════ */
 @media (max-width: 600px) {
+  .navInner {
+    padding: 0 0.75rem;
+  }
+
   .searchWrapper {
     max-width: none;
   }
@@ -272,5 +293,25 @@
   .navLoginBtn {
     padding: 0.4rem 0.9rem;
     font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 1180px) {
+  .navLinks {
+    display: none;
+  }
+
+  .publicMenuBtn {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 380px) {
+  .navLogo img {
+    height: 28px;
+  }
+
+  .navLoginBtn {
+    padding: 0.38rem 0.72rem;
   }
 }

@@ -134,6 +134,36 @@ function SidebarFooter({ logout }) {
   );
 }
 
+function SidebarHeader({ user, onClose }) {
+  return (
+    <div className={styles.sidebarHeader}>
+      {user ? (
+        <div className={styles.userPill}>
+          <div className={styles.userAvatar}>
+            <>
+              {user.first_name?.[0] ?? "U"}
+              {user.last_name?.[0] ?? ""}
+            </>
+          </div>
+          <div className={styles.userInfo}>
+            <span className={styles.userName}>
+              {user.first_name} {user.last_name}
+            </span>
+            <span className={styles.userRole}>{user.role_name}</span>
+          </div>
+        </div>
+      ) : (
+        <Link href="/" className={styles.sidebarLogo} onClick={onClose}>
+          <img src="/sasha-logo.png" alt="SASHA" />
+        </Link>
+      )}
+      <button className={styles.closeBtn} onClick={onClose} aria-label="Close sidebar">
+        <MdClose size={20} />
+      </button>
+    </div>
+  );
+}
+
 export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -167,8 +197,6 @@ export default function Sidebar({ isOpen, onClose }) {
     };
   }, [isOpen]);
 
-  if (!user) return null;
-
   return (
     <>
       <div
@@ -182,23 +210,7 @@ export default function Sidebar({ isOpen, onClose }) {
         className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
         aria-label="Sidebar navigation"
       >
-        <div className={styles.sidebarHeader}>
-          <div className={styles.userPill}>
-            <div className={styles.userAvatar}>
-              {user.first_name?.[0] ?? "U"}
-              {user.last_name?.[0] ?? ""}
-            </div>
-            <div className={styles.userInfo}>
-              <span className={styles.userName}>
-                {user.first_name} {user.last_name}
-              </span>
-              <span className={styles.userRole}>{user.role_name}</span>
-            </div>
-          </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close sidebar">
-            <MdClose size={20} />
-          </button>
-        </div>
+        <SidebarHeader user={user} onClose={onClose} />
 
         <div className={styles.sidebarBody}>
           <hr className={styles.divider} />
@@ -235,7 +247,7 @@ export default function Sidebar({ isOpen, onClose }) {
             </ul>
           </nav>
 
-          <SidebarFooter logout={logout} />
+          {user && <SidebarFooter logout={logout} />}
         </div>
       </aside>
     </>
