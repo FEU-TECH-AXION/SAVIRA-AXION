@@ -1,149 +1,63 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import {
+  MdAccessibility,
+  MdAssessment,
+  MdClose,
   MdDashboard,
-  MdPeople,
+  MdExpandLess,
+  MdExpandMore,
+  MdEvent,
+  MdFlag,
   MdFolder,
   MdGavel,
-  MdVolunteerActivism,
-  MdMap,
-  MdAssessment,
-  MdInterpreterMode,
-  MdExpandMore,
-  MdExpandLess,
-  MdClose,
-  MdSettings,
   MdHelp,
-  MdAccessibility,
-  MdFlag,
+  MdInterpreterMode,
   MdLogout,
+  MdMap,
+  MdPeople,
+  MdSettings,
+  MdVolunteerActivism,
+  MdLocalHospital,
 } from "react-icons/md";
+import { RiPoliceBadgeFill } from "react-icons/ri";
+import {
+  getSidebarLinks,
+  SIDEBAR_FOOTER_LINKS,
+} from "@/components/navigation/navigationLinks";
 import styles from "./sidebar.module.css";
 
-// ── Link definitions (mirrors navbar.js roles) ──────────────────────────────
+const ICONS = {
+  accessibility: <MdAccessibility />,
+  assessment: <MdAssessment />,
+  dashboard: <MdDashboard />,
+  flag: <MdFlag />,
+  folder: <MdFolder />,
+  gavel: <MdGavel />,
+  help: <MdHelp />,
+  interpreter: <MdInterpreterMode />,
+  map: <MdMap />,
+  people: <MdPeople />,
+  settings: <MdSettings />,
+  volunteer: <MdVolunteerActivism />,
+  hospital: <MdLocalHospital />,
+  police: <RiPoliceBadgeFill />,
+  event: <MdEvent />,
+};
 
-const COMPLAINANT_LINKS = [
-  { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
-  { href: "/cases", label: "Report", icon: <MdFolder />,
-    children: [
-      { href: "/cases", label: "Report" },
-      { href: "/cases/history", label: "Report History" },
-    ],
-   },
-  { href: "/volunteer", label: "Volunteer", icon: <MdVolunteerActivism />,
-    children: [
-      { href: "/volunteer", label: "Volunteering"},
-      { href: "/volunteer/apply", label: "Apply to volunteer" },
-      { href: "/volunteer/history", label: "Application History" },
-    ],
-   },
-  { href: "/events", label: "Events", icon: <MdInterpreterMode /> },
-  { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
-];
-
-const CASE_OFFICER_LINKS = [
-  { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
-  { href: "/cases", label: "Cases", icon: <MdFolder /> },
-  { href: "/caseInterviews", label: "Interviews", icon: <MdInterpreterMode /> },
-  { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
-];
-
-const STAFF_LINKS = [
-  { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
-  { href: "/projects", label: "Projects", icon: <MdFolder /> },
-  { href: "/volunteer", label: "Volunteers", icon: <MdVolunteerActivism />,
-    children: [
-      { href: "/volunteer", label: "All Volunteers" },
-      { href: "/volunteerInterviews", label: "Interviews" },
-      { href: "/volunteerRanking", label: "Applicant Ranking" },
-    ],
-   },
-  { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
-];
-
-const LEGAL_LINKS = [
-  { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
-  { href: "/legalReviews", label: "Legal Review", icon: <MdGavel /> },
-  { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
-];
-
-/**
- * ADMIN_LINKS with accordion sub-items.
- * Set `children` to add sub-nav links under a parent item.
- * Only ADMIN_LINKS uses accordion — add children to others manually later.
- */
-const ADMIN_LINKS = [
-  { href: "/dashboard", label: "Home", icon: <MdDashboard /> },
-  {
-    href: "/users",
-    label: "Users",
-    icon: <MdPeople />,
-    // children: [
-    //   { href: "/users", label: "All Users" },
-    //   { href: "/users/roles", label: "Roles & Permissions" },
-    // ],
-  },
-  {
-    label: "Cases",
-    icon: <MdFolder />,
-    children: [
-      { href: "/cases", label: "All Cases" },
-      { href: "/caseInterviews", label: "Interviews" },
-    ],
-  },
-  {
-    label: "Legal",
-    icon: <MdGavel />,
-    children: [
-      { href: "/legalReviews", label: "All Legal Cases" },
-    ],
-  },
-  {
-    label: "Volunteers",
-    icon: <MdVolunteerActivism />,
-    children: [
-      { href: "/volunteer", label: "All Volunteers" },
-      { href: "/volunteerInterviews", label: "Interviews" },
-      { href: "/volunteerRanking", label: "Applicant Ranking" },
-      { href: "/volunteer/chapters", label: "Chapters" },
-    ],
-  },
-  {
-    label: "Projects",
-    icon: <MdFolder />,
-    children: [
-      { href: "/projects", label: "All Projects" },
-    ],
-  },
-  { href: "/heatmap", label: "Heatmap", icon: <MdMap /> },
-  { href: "/reportGenerator", label: "Report Generator", icon: <MdAssessment /> },
-];
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getLinks(user) {
-  if (!user) return [];
-  switch (user.role_name?.toLowerCase()) {
-    case "admin":           return ADMIN_LINKS;
-    case "staff":           return STAFF_LINKS;
-    case "case officer":    return CASE_OFFICER_LINKS;
-    case "legal personnel": return LEGAL_LINKS;
-    case "complainant":
-    case "user":            return COMPLAINANT_LINKS;
-    default:                return [];
-  }
+function withIcons(items) {
+  return items.map((item) => ({
+    ...item,
+    icon: ICONS[item.icon],
+  }));
 }
 
-// ── AccordionItem ────────────────────────────────────────────────────────────
-
 function AccordionItem({ item, pathname, onNavigate }) {
-  const isAnyChildActive = item.children?.some((c) =>
-    pathname === c.href
-  );
+  const isAnyChildActive = item.children?.some((child) => pathname === child.href);
   const [open, setOpen] = useState(isAnyChildActive);
 
   return (
@@ -152,7 +66,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
         className={`${styles.sidebarItem} ${styles.accordionToggle} ${
           isAnyChildActive ? styles.sidebarItemActive : ""
         }`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
       >
         <span className={styles.sidebarIcon}>{item.icon}</span>
@@ -183,22 +97,13 @@ function AccordionItem({ item, pathname, onNavigate }) {
   );
 }
 
-// ── SidebarFooter ─────────────────────────────────────────────────────────────
-
-const FOOTER_LINKS = [
-  { href: "/profile?tab=security", label: "Settings & privacy",      icon: <MdSettings /> },
-  { href: "/help",     label: "Help & support",          icon: <MdHelp /> },
-  { href: "/display",  label: "Display & accessibility", icon: <MdAccessibility /> },
-  { href: "/report",   label: "Report a problem",        icon: <MdFlag /> },
-];
-
 function SidebarFooter({ logout }) {
   return (
     <div className={styles.sidebarFooter}>
       <hr className={styles.footerDivider} />
 
       <ul className={styles.navList}>
-        {FOOTER_LINKS.map(({ href, label, icon }) => (
+        {withIcons(SIDEBAR_FOOTER_LINKS).map(({ href, label, icon }) => (
           <li key={href}>
             <Link href={href} className={styles.sidebarItem}>
               <span className={styles.sidebarIcon}>{icon}</span>
@@ -212,7 +117,9 @@ function SidebarFooter({ logout }) {
             className={`${styles.sidebarItem} ${styles.footerLogout}`}
             onClick={logout}
           >
-            <span className={styles.sidebarIcon}><MdLogout /></span>
+            <span className={styles.sidebarIcon}>
+              <MdLogout />
+            </span>
             <span className={styles.sidebarLabel}>Log out</span>
           </button>
         </li>
@@ -220,74 +127,61 @@ function SidebarFooter({ logout }) {
 
       <div className={styles.footerPrivacy}>
         <Link href="/privacy">Privacy</Link>
-        <span>·</span>
+        <span>&middot;</span>
         <Link href="/terms">Terms</Link>
       </div>
     </div>
   );
 }
 
-// ── Sidebar ──────────────────────────────────────────────────────────────────
-
-/**
- * Sidebar component.
- *
- * Props:
- *  - isOpen   {boolean}  — controlled by Navbar's hamburger button
- *  - onClose  {function} — called when sidebar should close
- */
 export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const sidebarRef = useRef(null);
+  const links = withIcons(getSidebarLinks(user));
 
-  const links = getLinks(user);
-
-  // Close on outside click
   useEffect(() => {
-    function handleOutside(e) {
-      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+    function handleOutside(event) {
+      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
         onClose();
       }
     }
+
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [isOpen, onClose]);
 
-  // Close on Escape
   useEffect(() => {
-    function handleKey(e) {
-      if (e.key === "Escape") onClose();
+    function handleKey(event) {
+      if (event.key === "Escape") onClose();
     }
+
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // Prevent body scroll when open
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
-  // Only render for logged-in users
   if (!user) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`${styles.backdrop} ${isOpen ? styles.backdropVisible : ""}`}
         aria-hidden="true"
         onClick={onClose}
       />
 
-      {/* Sidebar panel */}
       <aside
         ref={sidebarRef}
         className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
         aria-label="Sidebar navigation"
       >
-        {/* Header */}
         <div className={styles.sidebarHeader}>
           <div className={styles.userPill}>
             <div className={styles.userAvatar}>
@@ -301,26 +195,20 @@ export default function Sidebar({ isOpen, onClose }) {
               <span className={styles.userRole}>{user.role_name}</span>
             </div>
           </div>
-          <button
-            className={styles.closeBtn}
-            onClick={onClose}
-            aria-label="Close sidebar"
-          >
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Close sidebar">
             <MdClose size={20} />
           </button>
         </div>
 
-        {/* Scrollable body */}
         <div className={styles.sidebarBody}>
           <hr className={styles.divider} />
 
-          {/* Nav links */}
           <nav>
             <ul className={styles.navList}>
-              {links.map((item, i) =>
+              {links.map((item) =>
                 item.children ? (
                   <AccordionItem
-                    key={i}
+                    key={item.label}
                     item={item}
                     pathname={pathname}
                     onNavigate={onClose}
@@ -347,7 +235,6 @@ export default function Sidebar({ isOpen, onClose }) {
             </ul>
           </nav>
 
-          {/* Footer — pinned to bottom, inside scroll body */}
           <SidebarFooter logout={logout} />
         </div>
       </aside>

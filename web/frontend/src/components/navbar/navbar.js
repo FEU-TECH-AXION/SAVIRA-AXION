@@ -11,16 +11,8 @@ import {
   FiSearch,
 } from "react-icons/fi";
 import Sidebar from "@/components/sidebar/sidebar";
+import { PUBLIC_LINKS, ROLE_LABELS } from "@/components/navigation/navigationLinks";
 import styles from "./navbar.module.css";
-
-const PUBLIC_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/events", label: "Events" },
-  { href: "/contact", label: "Contact" },
-  { href: "/volunteer", label: "Volunteer" },
-  { href: "/heatmap", label: "Heatmap" },
-];
 
 // ── Component ──────────────────────────────────────────────
 
@@ -122,15 +114,6 @@ export default function Navbar() {
 
 // ── UserMenu ──────────────────────────────────────────────
 
-const ROLE_LABEL = {
-  admin: "Admin",
-  staff: "Staff",
-  case_officer: "Case Officer",
-  legal_personnel: "Legal Personnel",
-  complainant: "Complainant",
-  user: "User",
-};
-
 function UserMenu({ user, logout }) {
   const [open, setOpen] = useState(false);
 
@@ -152,7 +135,7 @@ function UserMenu({ user, logout }) {
             {user.first_name} {user.last_name}
           </p>
           <p className={styles.dropdownRole}>
-            {ROLE_LABEL[user.role_name?.toLowerCase()] ?? user.role_name}
+            {ROLE_LABELS[user.role_name?.toLowerCase()] ?? user.role_name}
           </p>
 
           <hr className={styles.dropdownDivider} />
