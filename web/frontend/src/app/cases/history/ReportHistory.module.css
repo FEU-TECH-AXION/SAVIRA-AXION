@@ -96,6 +96,13 @@
   max-width: 1200px;
 }
 
+.tableTopBar {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem; padding: 1rem;
+  background: var(--sasha-white);
+  border-radius: 10px;
+  border: 1px solid var(--sasha-border);
+
 /* ════════════════════════════════════════
    SHARED CARD HEADER  (teal bar + View btn)
    ════════════════════════════════════════ */
