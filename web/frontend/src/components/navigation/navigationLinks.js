@@ -18,6 +18,7 @@ export const PUBLIC_LINKS = [
   { href: "/heatmap", label: "Heatmap" },
   { href: "/hospital", label: "Nearby Hospitals" },
   { href: "/police-station", label: "Nearby Police Stations" },
+  { href: "/helplines", label: "Helplines" },
 ];
 
 export const FOOTER_QUICK_LINKS = {
@@ -32,6 +33,7 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/heatmap", label: "Heatmap" },
     { href: "/hospital", label: "Nearby Hospitals" },
     { href: "/police-station", label: "Nearby Police Stations" },
+    { href: "/helplines", label: "Helplines" },
   ],
   case_officer: [
     { href: "/dashboard", label: "Home" },
@@ -102,6 +104,7 @@ export const SIDEBAR_LINKS = {
     { href: "/heatmap", label: "Heatmap", icon: "map" },
     { href: "/hospital", label: "Nearby Hospitals", icon: "hospital" },
     { href: "/police-station", label: "Nearby Police Stations", icon: "police" },
+    { href: "/helplines", label: "Helplines", icon: "phone" },
   ],
   // CASE OFFICER
   case_officer: [

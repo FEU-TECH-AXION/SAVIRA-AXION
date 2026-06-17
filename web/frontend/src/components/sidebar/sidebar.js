@@ -23,6 +23,7 @@ import {
   MdSettings,
   MdVolunteerActivism,
   MdLocalHospital,
+  MdPhone,
 } from "react-icons/md";
 import { RiPoliceBadgeFill } from "react-icons/ri";
 import {
@@ -47,6 +48,7 @@ const ICONS = {
   hospital: <MdLocalHospital />,
   police: <RiPoliceBadgeFill />,
   event: <MdEvent />,
+  phone: <MdPhone />,
 };
 
 function withIcons(items) {
