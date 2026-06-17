@@ -24,4 +24,24 @@ async function sendResetPasswordEmail(to, resetLink) {
   return data;
 }
 
-module.exports = { sendResetPasswordEmail };
+async function sendWelcomeEmail(to, firstName) {
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: 'Welcome to SAVIRA!',
+    html: `
+      <p>Hi ${firstName},</p>
+      <p>Welcome to SAVIRA! Your account has been created successfully.</p>
+      <p>You can now log in and start using the platform.</p>
+    `,
+  });
+
+  if (error) {
+    console.error('Resend error (welcome email):', error);
+    throw error;
+  }
+
+  return data;
+}
+
+module.exports = { sendResetPasswordEmail, sendWelcomeEmail };

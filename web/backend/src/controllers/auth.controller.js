@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const UserModel = require('../models/users.model');
 const supabase = require('../config/supabase');
+const { sendWelcomeEmail } = require('../config/mailer');
 
 // TODO: Fix Login and Logout to set httpOnly cookies and return user data in response
 // TODO: SET SECURE: true IN PRODUCTION AND USE HTTPS TO ENABLE SECURE COOKIES
@@ -66,6 +67,11 @@ const signup = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // Fire-and-forget — don't block signup on email delivery
+    sendWelcomeEmail(newUser.email, newUser.first_name).catch((err) => {
+      console.error('Failed to send welcome email:', err);
+    });
 
     // 5. Generate JWT
     const token = jwt.sign(
