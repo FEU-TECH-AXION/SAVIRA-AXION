@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import styles from "./forgotPassword.module.css";
 import { IoIosArrowBack } from "react-icons/io";
@@ -14,43 +13,55 @@ export default function ForgotPassword() {
     email: "",
     password: "",
   });
-
   const [message, setMessage] = useState("");
-
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/forgot-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: form.email }),
-  });
+    const email = form.email.trim();
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const data = await res.json();
+    if (!email || !emailValid) {
+      setError("Please enter a valid email address.");
+      return;
+    }
 
-  // Even on error, show generic message to prevent email enumeration
-  setMessage("If that email exists, a reset link has been sent.");
-};
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Something went wrong.");
+      } else {
+        setMessage(data.message || "Reset link sent! Check your email.");
+      }
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={styles.wrapper}>
-
-      {/* ── Left: hero image + overlay*/}
       <div className={styles.left}>
-        <img
-          src="sasha-bg-1.png"
-          alt="SASHA community"
-        />
+        <img src="sasha-bg-1.png" alt="SASHA community" />
         <div className={styles.leftOverlay} />
       </div>
-
-      {/* ── Right: sign-up form ── */}
       <div className={styles.right}>
         <div className={styles.formBox}>
           <h1 className={styles.title}>Forgot Password?</h1>
@@ -60,8 +71,6 @@ const handleSubmit = async (e) => {
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
-
-            {/* Email */}
             <div className={styles.fieldGroup}>
               <label className={styles.label}>E-mail</label>
               <input
@@ -71,13 +80,16 @@ const handleSubmit = async (e) => {
                 placeholder="Enter your email"
                 value={form.email}
                 onChange={handleChange}
-                required
               />
+              {error && (
+                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+                  {error}
+                </p>
+              )}
             </div>
 
-            {/* Submit */}
-            <button type="submit" className={styles.btn}>
-              Send Email
+            <button type="submit" className={styles.btn} disabled={loading}>
+              {loading ? "Sending..." : "Send Email"}
             </button>
 
             {message && (
@@ -86,13 +98,11 @@ const handleSubmit = async (e) => {
               </p>
             )}
 
-            {/* Terms checkbox */}
             <div className={styles.auxiliaryGroup}>
               <a href="/login" className={styles.backtoLogin}>
                 <IoIosArrowBack /> Back to Login
               </a>
             </div>
-
           </form>
         </div>
       </div>
