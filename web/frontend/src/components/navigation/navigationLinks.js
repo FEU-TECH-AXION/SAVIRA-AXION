@@ -16,8 +16,8 @@ export const PUBLIC_LINKS = [
   { href: "/contact", label: "Contact" },
   { href: "/volunteer", label: "Volunteer" },
   { href: "/heatmap", label: "Heatmap" },
-  { href: "/hospital", label: "Hospitals Near Me" },
-  { href: "/police-station", label: "Police Stations Near Me" },
+  { href: "/hospital", label: "Nearby Hospitals" },
+  { href: "/police-station", label: "Nearby Police Stations" },
 ];
 
 export const FOOTER_QUICK_LINKS = {
@@ -30,8 +30,8 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/contact", label: "Contact" },
     { href: "/events", label: "Events" },
     { href: "/heatmap", label: "Heatmap" },
-    { href: "/hospital", label: "Hospitals Near Me" },
-    { href: "/police-station", label: "Police Stations Near Me" },
+    { href: "/hospital", label: "Nearby Hospitals" },
+    { href: "/police-station", label: "Nearby Police Stations" },
   ],
   case_officer: [
     { href: "/dashboard", label: "Home" },
@@ -100,8 +100,8 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-    { href: "/hospital", label: "Hospitals Near Me", icon: "hospital" },
-    { href: "/police-station", label: "Police Stations Near Me", icon: "police" },
+    { href: "/hospital", label: "Nearby Hospitals", icon: "hospital" },
+    { href: "/police-station", label: "Nearby Police Stations", icon: "police" },
   ],
   // CASE OFFICER
   case_officer: [
