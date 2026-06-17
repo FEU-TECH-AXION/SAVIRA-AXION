@@ -15,7 +15,7 @@ const ALLOWED_FIELDS = [
 const getAll = async () => {
   const { data, error } = await supabase.from('case_reports').select('*')
   if (error) throw error
-  return data
+  return normalizeSubmittedReportStatuses(data)
 }
 
 const create = async (payload) => {
@@ -25,6 +25,36 @@ const create = async (payload) => {
     .select()
   if (error) throw error
   return data[0]
+}
+
+async function normalizeSubmittedReportStatus(report) {
+  if (!report || Number(report.case_status_id) !== 1) return report
+
+  const { error } = await supabase
+    .from('case_reports')
+    .update({ case_status_id: 2 })
+    .eq('case_report_id', report.case_report_id)
+  if (error) throw error
+
+  return { ...report, case_status_id: 2 }
+}
+
+async function normalizeSubmittedReportStatuses(reports = []) {
+  const submittedIds = reports
+    .filter((report) => Number(report.case_status_id) === 1)
+    .map((report) => report.case_report_id)
+
+  if (submittedIds.length > 0) {
+    const { error } = await supabase
+      .from('case_reports')
+      .update({ case_status_id: 2 })
+      .in('case_report_id', submittedIds)
+    if (error) throw error
+  }
+
+  return reports.map((report) =>
+    Number(report.case_status_id) === 1 ? { ...report, case_status_id: 2 } : report
+  )
 }
 
 async function getCaseById(caseReportId) {
@@ -37,12 +67,13 @@ async function getCaseById(caseReportId) {
     .maybeSingle()
   if (error) throw error
   if (!report) return null
+  const normalizedReport = await normalizeSubmittedReportStatus(report)
 
   // Step 2: Get the complainant's user_id
   const { data: complainant, error: complainantError } = await supabase
     .from('complainants')
     .select('user_id')
-    .eq('complainant_id', report.complainant_id)
+    .eq('complainant_id', normalizedReport.complainant_id)
     .maybeSingle()
   if (complainantError) throw complainantError
 
@@ -106,7 +137,7 @@ async function getCaseById(caseReportId) {
     : null
 
   return {
-    ...report,
+    ...normalizedReport,
     complainant_user_id: complainant?.user_id || null,
     assigned_officer:    officerName,
     ...merged,
@@ -137,7 +168,7 @@ async function createReport(payload) {
     .select()
     .single()
   if (error) throw error
-  return data
+  return normalizeSubmittedReportStatus(data)
 }
 
 async function getReportsByUserId(complainantId) {
@@ -154,7 +185,7 @@ async function getReportsByUserId(complainantId) {
     .eq('is_current', true)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data
+  return normalizeSubmittedReportStatuses(data)
 }
 
 async function getAllReports() {
@@ -189,6 +220,7 @@ async function getAllReports() {
     console.error('[getAllReports] reports query error:', JSON.stringify(reportsError, null, 2))
     throw reportsError
   }
+  const normalizedReports = await normalizeSubmittedReportStatuses(reports)
 
   // Step 2: Fetch all officers with their user info
   const { data: officers, error: officersError } = await supabase
@@ -241,7 +273,7 @@ async function getAllReports() {
   // Step 2c: Fetch assessments once and merge latest non-empty classification
   // values into every list row, matching getCaseById behavior.
   const assessmentMap = {}
-  const reportIds = reports.map(report => report.case_report_id)
+  const reportIds = normalizedReports.map(report => report.case_report_id)
   if (reportIds.length > 0) {
     const { data: assessments, error: assessmentsError } = await supabase
       .from('case_assessments')
@@ -288,7 +320,7 @@ async function getAllReports() {
   }
 
   // Step 3: Merge officer name and legal names into each report
-  return reports.map(report => {
+  return normalizedReports.map(report => {
     let assignedOfficer = null
     let assignedOfficerId = null
     if (report.case_assignments?.length > 0) {
@@ -351,13 +383,13 @@ const update = async (caseReportId, payload) => {
 async function getHeatmapReports() {
   const { data, error } = await supabase
     .from('case_reports')
-    .select('incident_city, case_status_id')
+    .select('case_report_id, incident_city, case_status_id')
     .eq('is_current', true)
   if (error) {
     console.error('[getHeatmapReports] Supabase error:', error.message)
     throw error
   }
-  return data
+  return normalizeSubmittedReportStatuses(data)
 }
 
 module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports }

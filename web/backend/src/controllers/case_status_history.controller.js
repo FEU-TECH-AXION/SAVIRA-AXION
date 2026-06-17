@@ -15,6 +15,7 @@ const getHistory = async (req, res) => {
       date:            new Date(h.approved_at || h.created_at).toLocaleDateString('en-PH'),
       by:              h.changed_by_role,
       notes:           h.notes,
+      formData:        h.form_data,
       approvalStatus:  h.approval_status,
       rejectionReason: h.rejection_reason,
     }))

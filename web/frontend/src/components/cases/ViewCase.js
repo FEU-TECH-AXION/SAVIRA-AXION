@@ -21,6 +21,7 @@ import { FaCheckCircle } from "react-icons/fa";
 import styles from "./ViewCase.module.css";
 import InterviewTab from "./interview/InterviewTab";
 import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals";
+import StatusDetailsSection from "./StatusDetailsSection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -697,19 +698,8 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
 function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
   const [modal, setModal] = useState(null);
 
-  const TRANSITION_RULES = {
-    "For Verification": { case_officer: ["Undergoing Review"], admin: ["Undergoing Review"] },
-    "Undergoing Review": { case_officer: ["Verified - True", "Verified - False"], admin: ["Verified - True", "Verified - False"] },
-    "Verified - True": { case_officer: ["Under Case Evaluation"], admin: ["Under Case Evaluation"] },
-    "Under Case Evaluation": { legal: ["Case Filed"], admin: ["Case Filed"] },
-    "Case Filed": { legal: ["Investigation Ongoing"], admin: ["Investigation Ongoing"] },
-    "Investigation Ongoing": { legal: ["Hearing Ongoing", "Dismissed"], admin: ["Hearing Ongoing", "Dismissed"] },
-    "Hearing Ongoing": { legal: ["Dismissed", "Perpetrator Convicted"], admin: ["Dismissed", "Perpetrator Convicted"] },
-  };
-
   function getAvailableTransitionsLocal() {
-    const role = isAdmin ? "admin" : isCaseOfficer ? "case_officer" : isLegal ? "legal" : null;
-    return role ? TRANSITION_RULES[caseData.status]?.[role] || [] : [];
+    return getAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal });
   }
 
   async function submitForApproval(proposedStatus, changeDetails) {
@@ -735,7 +725,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         pendingApproval: null,
         statusHistory: [
           ...(prev.statusHistory || []),
-          { status: proposedStatus, date: new Date().toLocaleDateString("en-PH"), by: actorName, notes: changeDetails.notes },
+          { status: proposedStatus, date: new Date().toLocaleDateString("en-PH"), by: actorName, notes: changeDetails.notes, formData: changeDetails.formData },
         ],
       }));
       showToast(`Status updated to "${proposedStatus}".`);
@@ -746,6 +736,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   }
 
   const transitions = getAvailableTransitionsLocal();
+  const canOpenStatusModal = transitions.length > 0 || !!STATUS_MODAL_MAP[caseData.status];
   const [caseTypeVal, setCaseTypeVal] = useState(Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []);
   const [caseCatVal, setCaseCatVal] = useState(caseData.caseCategory || "");
   const [alsoCatVal, setAlsoCatVal] = useState(Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []);
@@ -878,6 +869,18 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       )}
 
       <section className={styles.section}>
+        <h2 className={styles.sectionHeadingText}>Actions</h2>
+        <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
+          {canOpenStatusModal && !caseData.pendingApproval && <button onClick={() => setModal("statusRouter")} style={btnStyle("#037F81")}>Update Status</button>}
+          <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>Set Case Type</button>
+          <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
+          {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>}
+          <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
+          {caseData.status === "Verified - True" && <button onClick={() => setModal("assignParalegal")} style={btnStyle("#037F81")}>Assign Paralegal</button>}
+        </div>
+      </section>
+
+      <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Current Case Assignment</h2>
         <div className={styles.detailGrid}>
           {[
@@ -894,17 +897,12 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Actions</h2>
-        <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
-          {transitions.length > 0 && !caseData.pendingApproval && <button onClick={() => setModal("statusRouter")} style={btnStyle("#037F81")}>Update Status</button>}
-          <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>Set Case Type</button>
-          <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
-          {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>}
-          <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
-          {caseData.status === "Verified - True" && <button onClick={() => setModal("assignParalegal")} style={btnStyle("#037F81")}>Assign Paralegal</button>}
-        </div>
-      </section>
+      <StatusDetailsSection
+        caseData={caseData}
+        styles={styles}
+        title="Case Management Details"
+        emptyText="No case management status details have been saved yet."
+      />
 
       <section className={styles.section}>
         <div className={styles.noteSectionHeader}>
@@ -947,7 +945,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       <StatusHistorySection caseData={caseData} />
 
-      <UpdateStatusModal open={modal === "statusRouter"} caseData={caseData} onClose={() => setModal(null)} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} isCaseOfficer={isCaseOfficer} isLegal={isLegal} styles={styles} viewCaseMode />
+      <UpdateStatusModal open={modal === "statusRouter"} caseData={caseData} onClose={() => setModal(null)} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} isCaseOfficer={isCaseOfficer} isLegal={isLegal} viewCaseMode includeCurrentStatus />
 
       {modal === "inviteInterview" && <InviteToInterviewModal open onClose={() => setModal(null)} caseData={caseData} actorName={actorName} userId={userId} userRole={userRole} showToast={showToast} />}
 
@@ -1366,6 +1364,21 @@ export default function ViewCase() {
               endorsementStatus: latest.endorsement?.endorsed_to
                 ? `Endorsed to ${latest.endorsement.endorsed_to}`
                 : prev.endorsementStatus,
+            }));
+          }
+        }
+
+        const historyRes = await fetch(`${API_URL}/api/case_status_history/${data.case_report_id}?staffView=true`, { credentials: "include" });
+        if (historyRes.ok) {
+          const historyJson = await historyRes.json().catch(() => ({}));
+          const statusHistory = historyJson.data || [];
+          if (statusHistory.length > 0) {
+            setCaseData((prev) => ({
+              ...prev,
+              statusHistory: [
+                ...(prev.statusHistory || []).filter((h) => h.notes === "Report received and logged."),
+                ...statusHistory,
+              ],
             }));
           }
         }

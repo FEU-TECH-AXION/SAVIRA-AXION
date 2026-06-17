@@ -30,6 +30,7 @@ const getByCaseReport = async (caseReportId, { staffView = false } = {}) => {
       changed_by_id,
       changed_by_role,
       notes,
+      form_data,
       approval_status,
       approved_by_id,
       approved_at,

@@ -74,7 +74,7 @@ function buildPayload(complainantId, organizationId, complainant, incident, evid
     told_anyone_who:          incident.toldAnyone === "Yes" ? incident.toldAnyoneWho || null : null,
     police_station:           incident.toldPolice === "Yes" ? incident.policeStation  || null : null,
 
-    case_status_id:           1,  // Default "Submitted" status
+    case_status_id:           2,  // Reports immediately enter "For Verification"
     version_number:           1,
     is_current:               true,
   };

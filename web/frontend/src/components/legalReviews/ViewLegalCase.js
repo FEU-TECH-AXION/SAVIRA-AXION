@@ -15,7 +15,8 @@ import {
 } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, } from "react-icons/io";
 import styles from "./ViewLegalCase.module.css";
-import UpdateStatusModal from "../cases/UpdateStatusModals";
+import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "../cases/UpdateStatusModals";
+import StatusDetailsSection from "../cases/StatusDetailsSection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,8 @@ const LEGAL_CASE_STATUSES = [
   "Investigation Ongoing",
   "Hearing Ongoing",
   "Dismissed",
+  "Perpetrator Convicted",
+  "Resolved",
 ];
 
 const STATUS_MODAL_MAP = {
@@ -1207,13 +1210,24 @@ function LegalReviewDetailsSection({ caseData }) {
   const hasParalegal = !!caseData.paralegalRecord;
   const hasEndorsement = !!(caseData.endorsedTo || caseData.endorsementDetails);
   const hasMonitoring = (caseData.monitoringLog || []).length > 0;
+  const hasStatusDetails = (caseData.statusHistory || []).some((entry) => entry.formData || entry.form_data);
 
   return (
     <section className={styles.section}>
       <h2 className={styles.sectionHeadingText}>Legal Review Details</h2>
 
-      {!hasParalegal && !hasEndorsement && !hasMonitoring && (
+      {!hasParalegal && !hasEndorsement && !hasMonitoring && !hasStatusDetails && (
         <p className={styles.emptyState}>No legal review details have been saved yet.</p>
+      )}
+
+      {hasStatusDetails && (
+        <StatusDetailsSection
+          caseData={caseData}
+          styles={styles}
+          title="Status Details"
+          emptyText="No status details have been saved yet."
+          wrap={false}
+        />
       )}
 
       {hasParalegal && (
@@ -1283,18 +1297,9 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   // Determine available status transitions
   function getAvailableTransitions() {
-    const curr = caseData.status;
-    if (isAdmin) return LEGAL_CASE_STATUSES.filter((s) => s !== curr);
-    if (isLegal) {
-      const map = {
-        "Under Case Evaluation": ["Case Filed"],
-        "Case Filed":            ["Investigation Ongoing"],
-        "Investigation Ongoing": ["Hearing Ongoing", "Dismissed"],
-        "Hearing Ongoing":       ["Dismissed"],
-      };
-      return map[curr] || [];
-    }
-    return [];
+    if (isAdmin) return LEGAL_CASE_STATUSES.filter((s) => s !== caseData.status);
+    return getSharedAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal })
+      .filter((status) => LEGAL_CASE_STATUSES.includes(status));
   }
 
   async function saveCase(updated) {
@@ -1389,6 +1394,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             date:   new Date().toLocaleDateString('en-PH'),
             by:     changeDetails.submittedBy,
             notes:  changeDetails.notes,
+            formData: changeDetails.formData,
           }
         ]
       }))
@@ -1401,6 +1407,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   }
 
   const transitions = getAvailableTransitions();
+  const canOpenStatusModal = transitions.length > 0 || !!STATUS_MODAL_MAP[caseData.status];
 
   // Kept for the legacy inline modals below, which are no longer opened.
   const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
@@ -1423,6 +1430,29 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       {/* ── Current Assignment ── */}
       <section className={styles.section}>
+        <h2 className={styles.sectionHeadingText}>Actions</h2>
+        <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
+          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>
+            Paralegal Support
+          </button>
+
+          <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>
+            Endorse
+          </button>
+
+          <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>
+            Monitor
+          </button>
+
+          {canOpenStatusModal && !caseData.pendingApproval && (
+            <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>
+              Update Status
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Current Legal Assignment</h2>
         <div className={styles.detailGrid}>
           {[
@@ -1442,33 +1472,6 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       {/* ── Action Buttons ── */}
       <LegalReviewDetailsSection caseData={caseData} />
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Actions</h2>
-        <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
-
-          {/* Paralegal */}
-          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>
-            Paralegal Support
-          </button>
-
-          {/* Endorse */}
-          <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>
-            Endorse
-          </button>
-
-          {/* Monitor */}
-          <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>
-            Monitor
-          </button>
-
-          {/* Status */}
-          {transitions.length > 0 && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>
-              Status
-            </button>
-          )}
-        </div>
-      </section>
 
       {/* ── Status History ── */}
       <StatusHistorySection caseData={caseData} />
@@ -1483,6 +1486,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         isLegal={isLegal}
         viewCaseMode
         allowedStatuses={LEGAL_CASE_STATUSES}
+        includeCurrentStatus
       />
 
       <ParalegalSupportModal
@@ -1967,6 +1971,21 @@ export default function ViewCase() {
           setCaseData(mergeLegalReviewData(mappedCase, legalReviewPayload.data));
         } else {
           setCaseData(mappedCase);
+        }
+
+        const historyRes = await fetch(`${API_URL}/api/case_status_history/${caseId}?staffView=true`, { credentials: "include" });
+        if (historyRes.ok) {
+          const historyJson = await historyRes.json().catch(() => ({}));
+          const statusHistory = historyJson.data || [];
+          if (statusHistory.length > 0) {
+            setCaseData((prev) => ({
+              ...prev,
+              statusHistory: [
+                ...(prev.statusHistory || []).filter((h) => h.notes === "Report received and logged."),
+                ...statusHistory,
+              ],
+            }));
+          }
         }
       } catch (err) {
         setError(err.message);

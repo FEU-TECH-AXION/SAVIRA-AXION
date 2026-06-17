@@ -968,6 +968,7 @@ const STATUS_MODALS = {
  * isCaseOfficer boolean
  * isLegal       boolean
  * viewCaseMode  boolean (optional) If true, onSubmit is called WITHOUT caseData as first arg.
+ * includeCurrentStatus boolean (optional) Includes the current status as a selectable follow-up option.
  *
  * NOTE: Do NOT pass a `styles` prop — this component uses its own CSS module exclusively.
  */
@@ -982,6 +983,7 @@ export default function UpdateStatusModal({
   isLegal,
   viewCaseMode = false,
   allowedStatuses,
+  includeCurrentStatus = false,
 }) {
   const [activeModal, setActiveModal] = useState(null);
   const [nextStatus, setNextStatus]   = useState("");
@@ -999,6 +1001,10 @@ export default function UpdateStatusModal({
     ? allowedStatuses.filter((status) => status !== caseData.status)
     : getAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal })
       .filter((status) => !allowedStatuses || allowedStatuses.includes(status));
+  const statusOptions = [
+    ...(includeCurrentStatus && STATUS_MODAL_MAP[caseData.status] ? [caseData.status] : []),
+    ...transitions,
+  ].filter((status, index, list) => list.indexOf(status) === index);
 
   function handleSubModalSubmit(proposedStatus, changeDetails) {
     if (viewCaseMode) {
@@ -1041,23 +1047,25 @@ export default function UpdateStatusModal({
           <FInput value={caseData.status} disabled />
         </FormGroup>
 
-        {transitions.length === 0 ? (
+        {statusOptions.length === 0 ? (
           <p className={styles.emptyState}>
             No available transitions for this case at your role level.
           </p>
         ) : (
-          <FormGroup label="Next Status" className={styles.modalLabel}>
+          <FormGroup label={includeCurrentStatus ? "Status to Update" : "Next Status"} className={styles.modalLabel}>
             <p className={styles.modalDesc}>
-              Select the next status. You will be asked to fill in required details for admin approval.
+              {includeCurrentStatus
+                ? "Select the current status for a follow-up, or choose the next status. You will be asked to fill in required details for admin approval."
+                : "Select the next status. You will be asked to fill in required details for admin approval."}
             </p>
             <select
               className={styles.select}
               value={nextStatus}
               onChange={(e) => setNextStatus(e.target.value)}
             >
-              <option value="" disabled>Select next status</option>
-              {transitions.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              <option value="" disabled>{includeCurrentStatus ? "Select status to update" : "Select next status"}</option>
+              {statusOptions.map((t) => (
+                <option key={t} value={t}>{t === caseData.status ? `${t} (current)` : t}</option>
               ))}
             </select>
           </FormGroup>

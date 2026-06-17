@@ -6,7 +6,7 @@ import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
-import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals";
+import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
 import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1237,31 +1237,10 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pendingCases = useMemo(() => cases.filter((c) => c.pendingApproval), [cases]);
 
   // Next valid statuses given current status + role
-  function getAvailableTransitions(c) {
-    const curr = c.status;
-    if (isAdmin) return ALL_STATUSES.filter((s) => s !== curr);
-
-    if (isCaseOfficer) {
-      const map = {
-        "For Verification":      ["Undergoing Review"],
-        "Undergoing Review":     ["Verified - True", "Verified - False"],
-        "Verified - True":       ["Under Case Evaluation"],
-        "Verified - False":      [],
-      };
-      return map[curr] || [];
-    }
-
-    if (isLegal) {
-      const map = {
-        "Under Case Evaluation": ["Case Filed"],
-        "Case Filed":            ["Investigation Ongoing"],
-        "Investigation Ongoing": ["Hearing Ongoing", "Dismissed"],
-        "Hearing Ongoing":       ["Dismissed", "Perpetrator Convicted"],
-      };
-      return map[curr] || [];
-    }
-
-    return [];
+  function getCaseTransitions(c) {
+    if (!c) return [];
+    if (isAdmin) return ALL_STATUSES.filter((s) => s !== c.status);
+    return getSharedAvailableTransitions(c, { isAdmin, isCaseOfficer, isLegal });
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1390,7 +1369,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                     setModal("statusRouter");
                   }}
                   isAdmin={isAdmin}
-                  getAvailableTransitions={getAvailableTransitions}
+                  getAvailableTransitions={getCaseTransitions}
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={(field) => {
@@ -1422,21 +1401,15 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       {/* Status Router — inline transition picker */}
       <UpdateStatusModal
       open={modal === "statusRouter"}
-      activeModal={modal}
-      onModalChange={setModal}
       onClose={() => { setModal(null); setSelected(null); }}
       caseData={selected}
       isAdmin={isAdmin}
       isCaseOfficer={isCaseOfficer}
       isLegal={isLegal}
       actorName={actorName}
-      styles={styles}
-      onSubmit={(proposedStatus, changeDetails) =>
-        submitForApproval(selected, proposedStatus, changeDetails)
+      onSubmit={(caseItem, proposedStatus, changeDetails) =>
+        submitForApproval(caseItem, proposedStatus, changeDetails)
       }
-      getAvailableTransitions={
-      (c) => getAvailableTransitions(c.status, { isAdmin, isCaseOfficer, isLegal })
-    }
     />
 
       {/* Admin approval */}
