@@ -36,57 +36,140 @@ CASE_TYPES = [
 
 # ── Prompt builders ───────────────────────────────────────────────
 def build_classification_prompt(processed_text):
-    return f"""You are an assistant helping a gender-based violence support organization analyze incident reports.
+    return f"""You are a case officer of a Philippine-based youth-led advocacy and helpdesk network that takes reports of sexual harassment, abuse, and safeguarding concerns seriously.
+            You are trained to accept, handle, and manage cases in compliance with organizational policies, legal requirements (Data Privacy Act of 2012), and ethical standards.
 
-Your task is to suggest possible classifications for the following incident description.
-These are SUGGESTIONS ONLY to guide case officers — not definitive legal determinations.
+            Your task is to suggest possible classifications AND assess the quality of the following incident description.
+            These are SUGGESTIONS ONLY to guide case officers — not definitive legal determinations.
 
-PRIMARY CATEGORIES (can be multiple):
-- Physical: Involves incidents with physical contact
-- Verbal: Involves spoken or written language intended to harm, threaten, or intimidate
-- Virtual: Involves incidents through digital platforms, mobile apps, or internet-based communication
+            PRIMARY CATEGORIES (select ALL that clearly or partially apply):
+            - Physical: Involves incidents with physical contact
+            - Verbal: Involves spoken or written language intended to harm, threaten, or intimidate
+            - Virtual: Involves incidents through digital platforms, mobile apps, or internet-based communication
 
-CASE TYPES (can be multiple):
-- Sexual harassment
-- Online sexual harassment
-- Non-consensual sharing of intimate images/videos
-- Sexual assault / unwanted sexual touching
-- Rape / attempted rape
-- Child sexual abuse
-- Sexual exploitation / trafficking-related sexual abuse
-- Stalking with sexual nature or intent
-- Gender-based sexual harassment in institutions
+            CASE TYPES (select ALL that clearly or partially apply):
+            - Sexual harassment
+            - Online sexual harassment
+            - Non-consensual sharing of intimate images/videos
+            - Sexual assault / unwanted sexual touching
+            - Rape / attempted rape
+            - Child sexual abuse
+            - Sexual exploitation / trafficking-related sexual abuse
+            - Stalking with sexual nature or intent
+            - Gender-based sexual harassment in institutions
 
-INCIDENT DESCRIPTION:
-{processed_text}
+            CONFIDENCE TIERS:
+            - high: The report clearly and directly describes this category or type
+            - moderate: The report implies or partially describes this category or type with some supporting detail
+            - low: The report vaguely suggests this but lacks any clear indicators
 
-Respond ONLY with a valid JSON object, no explanation, no markdown, no extra text:
-{{
-  "primary_categories": ["category1", "category2"],
-  "case_types": ["case type 1", "case type 2"],
-  "classification_notes": "Brief explanation of why these categories were suggested"
+            CRITICAL RULES:
+            - Only include a category or case type if there is GENUINE evidence in the report text
+            - Do NOT suggest a category or type just because it cannot be ruled out
+            - Do NOT include "low" confidence items unless there is at least one specific word or phrase that points to it
+            - If the report is too vague to classify reliably, return EMPTY arrays for primary_categories and case_types
+            - It is better to return nothing than to return a hallucinated suggestion
+            - A report that simply lists names or repeats the same sentence is NOT classifiable
+
+            REPORT STRUCTURE ASSESSMENT:
+            Evaluate whether the report contains:
+            - Introduction: Does it establish who is involved and basic context?
+            - Body: Does it describe what happened, when, where, and how with specific details?
+            - Conclusion: Does it state what the complainant wants or the outcome/impact?
+
+            VAGUENESS ASSESSMENT:
+            Rate clarity from 1 (very vague) to 5 (very clear and detailed).
+            Only return empty arrays if the report GENUINELY lacks content
+            - Lacks specific details about what happened
+            - Does not identify the nature of the incident clearly
+            - Is missing key information (who, what, when, where)
+            - Is repetitive without adding new information
+            - Is a single sentence or repeated sentences
+            - Is one sentence, repetitive, or contains no describable incident.
+            - A report with names masked as [PERSON] but with clear narrative details 
+                about what happened SHOULD still be classified.
+
+            INCIDENT DESCRIPTION:
+            {processed_text}
+
+            Respond ONLY with a valid JSON object, no explanation, no markdown, no extra text.
+            If the report is too vague, primary_categories and case_types must be empty arrays:
+            {{
+            "primary_categories": [
+                {{
+                "category": "Physical",
+                "confidence": "high",
+                "basis": "Specific quote or detail from the report that supports this"
+                }}
+            ],
+            "case_types": [
+                {{
+                "type": "Sexual harassment",
+                "confidence": "high",
+                "basis": "Specific quote or detail from the report that supports this"
+                }}
+            ],
+            "classification_notes": "If arrays are empty, explain why the report could not be classified. Otherwise, briefly explain the suggested classifications.",
+            "report_structure": {{
+                "has_introduction": false,
+                "has_body": false,
+                "has_conclusion": false,
+                "introduction_notes": "What is present or missing",
+                "body_notes": "What is present or missing",
+                "conclusion_notes": "What is present or missing"
+            }},
+            "clarity_score": 1,
+            "needs_clarification": true,
+            "clarification_reason": "List the specific details missing: who was involved, what specifically happened, when, where, and what outcome the complainant is seeking"
 }}"""
-
 
 def build_summary_prompt(anonymized_text):
     return f"""You are an assistant helping a gender-based violence support organization.
 
-Summarize the following incident report in 2-3 sentences.
-- Write clearly and factually
-- Do not include any personally identifiable information
-- Use neutral, professional language
-- Focus on what happened, where, and the nature of the incident
+        Summarize the following incident report in 2-3 sentences.
+
+        STRICT RULES:
+        - Write ONLY what is explicitly stated in the report — do not infer, assume, or add details
+        - If the report is vague, say so directly instead of filling in gaps
+        - Do NOT mention locations, injury types, number of people, or outcomes unless explicitly stated
+        - Do NOT use phrases like "currently being investigated" or "exact nature is unknown" — these are filler
+        - Use neutral, professional language
+        - If the report is too vague to summarize meaningfully, state: "The report is too vague to summarize. Key details such as what happened, when, where, and who was involved are missing."
+
+    INCIDENT DESCRIPTION:
+    {anonymized_text}
+
+    Respond ONLY with a valid JSON object, no explanation, no markdown, no extra text:
+    {{
+    "summary": "Your 2-3 sentence summary here, or the vagueness statement if applicable"
+    }}"""
+
+
+def build_recommendation_prompt(anonymized_text, primary_categories, case_types):
+    # If no categories or types were suggested, the report is too vague to classify
+    is_vague = len(primary_categories) == 0 and len(case_types) == 0
+
+    if is_vague:
+        return f"""You are an assistant helping case officers at a gender-based violence support organization.
+
+The following incident report was submitted but could not be classified due to insufficient information.
+Provide guidance on how to handle an unclassifiable or vague report.
 
 INCIDENT DESCRIPTION:
 {anonymized_text}
 
 Respond ONLY with a valid JSON object, no explanation, no markdown, no extra text:
 {{
-  "summary": "Your 2-3 sentence summary here"
+  "recommended_steps": [
+    "Contact the complainant to request a more detailed account of what happened",
+    "Ask the complainant to provide specific details: what occurred, when, where, who was involved, and what outcome they are seeking",
+    "Do not proceed with case evaluation until sufficient information is provided",
+    "Document the follow-up attempt and the complainant's response in the case log"
+  ],
+  "referral_suggested": false,
+  "referral_notes": "Cannot assess referral appropriateness until the report is clarified. Follow up with the complainant first."
 }}"""
 
-
-def build_recommendation_prompt(anonymized_text, primary_categories, case_types):
     return f"""You are an assistant helping case officers at a gender-based violence support organization.
 
 Based on the incident description and suggested classifications below, provide guidance on possible next steps.
@@ -141,15 +224,7 @@ def call_groq(prompt):
 
 # ── Main analysis function ────────────────────────────────────────
 def analyze(processed_text, anonymized_text):
-    """
-    Run all three Groq tasks:
-    1. Classification
-    2. Summarization
-    3. Recommendations
-
-    Returns combined result dict.
-    """
-    # Task 1 — Classification
+    # Task 1 — Classification + quality assessment
     classification = call_groq(build_classification_prompt(processed_text))
 
     primary_categories = classification.get("primary_categories", [])
@@ -159,17 +234,25 @@ def analyze(processed_text, anonymized_text):
     summary_result = call_groq(build_summary_prompt(anonymized_text))
 
     # Task 3 — Recommendations
+    # Extract just the category/type names for the recommendation prompt
+    category_names = [c.get("category", c) if isinstance(c, dict) else c for c in primary_categories]
+    type_names     = [t.get("type", t)     if isinstance(t, dict) else t for t in case_types]
+
     recommendation_result = call_groq(
-        build_recommendation_prompt(anonymized_text, primary_categories, case_types)
+        build_recommendation_prompt(anonymized_text, category_names, type_names)
     )
 
     return {
         "model_used":           MODEL,
-        "primary_categories":   primary_categories,
-        "case_types":           case_types,
+        "primary_categories":   primary_categories,  
+        "case_types":           case_types,           
         "classification_notes": classification.get("classification_notes", ""),
         "summary":              summary_result.get("summary", ""),
         "recommended_steps":    recommendation_result.get("recommended_steps", []),
         "referral_suggested":   recommendation_result.get("referral_suggested", False),
         "referral_notes":       recommendation_result.get("referral_notes", ""),
+        "report_structure":     classification.get("report_structure", {}),
+        "clarity_score":        classification.get("clarity_score", 3),
+        "needs_clarification":  classification.get("needs_clarification", False),
+        "clarification_reason": classification.get("clarification_reason", ""),
     }

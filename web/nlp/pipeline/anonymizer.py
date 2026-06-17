@@ -200,8 +200,8 @@ FILIPINO_PATTERN_RECOGNIZER = PatternRecognizer(
 # Catches any two consecutive capitalized words as a potential name
 CAPITALIZED_NAME_PATTERN = Pattern(
     name="capitalized_name_pattern",
-    regex=r"\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b",
-    score=0.6
+    regex=r"\b(Professor|Prof|Dr|Mr|Ms|Mrs|Sir|Ma'am|Ate|Kuya|Aling|Mang)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b",
+    score=0.85
 )
 
 CAPITALIZED_NAME_RECOGNIZER = PatternRecognizer(

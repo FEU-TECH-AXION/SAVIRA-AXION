@@ -13,6 +13,15 @@ load_dotenv()
 
 app = FastAPI(title="SAVIRA NLP Service", version="1.0.0")
 
+# ── Helpers ───────────────────────────────────────────────────────
+def coerce_str(val):
+    """Coerce Groq output to string — handles list, None, or unexpected types."""
+    if isinstance(val, list):
+        return " ".join(str(v) for v in val)
+    if val is None:
+        return ""
+    return str(val)
+
 # ── Request schemas ───────────────────────────────────────────────
 class ReportRequest(BaseModel):
     case_report_id:       int
@@ -27,18 +36,22 @@ class EssayRequest(BaseModel):
 
 # ── Response schemas ──────────────────────────────────────────────
 class AnalysisResponse(BaseModel):
-    case_report_id:       int
-    model_used:           str
-    language_detected:    str
-    anonymized_text:      str
-    detected_pii:         list[str]
-    primary_categories:   list[str]
-    case_types:           list[str]
-    classification_notes: str
-    summary:              str
-    recommended_steps:    list[str]
-    referral_suggested:   bool
-    referral_notes:       str
+    case_report_id:        int
+    model_used:            str
+    language_detected:     str
+    anonymized_text:       str
+    detected_pii:          list[str]
+    primary_categories:    list[dict]  # ← was list[str]
+    case_types:            list[dict]  
+    classification_notes:  str
+    summary:               str
+    recommended_steps:     list[str]
+    referral_suggested:    bool
+    referral_notes:        str
+    clarity_score:         int
+    needs_clarification:   bool
+    clarification_reason:  str
+    report_structure:      dict
 
 class EssayAnalysisResponse(BaseModel):
     volunteer_application_id:  int
@@ -99,6 +112,13 @@ async def analyze_report(report: ReportRequest):
         # Step 2 — Anonymize FIRST on raw text
         # Names/PII are still capitalized and in context here
         anonymized = anonymize(combined_text)
+        # Safety check — if anonymization removed more than 40% of words, it over-masked
+        original_words   = len(combined_text.split())
+        anonymized_words = len(anonymized["anonymized_text"].replace("[PERSON]", "").replace("[PHONE_NUMBER]", "").replace("[EMAIL]", "").replace("[LOCATION]", "").split())
+        over_masked      = anonymized_words < (original_words * 0.6)
+
+        # Use anonymized text for storage but send to Groq only if it preserves enough context
+        groq_input = anonymized["anonymized_text"] if not over_masked else combined_text
 
         # Step 3 — Preprocess the ANONYMIZED text
         # Now [PERSON], [LOCATION] placeholders go through preprocessing
@@ -111,11 +131,14 @@ async def analyze_report(report: ReportRequest):
         result = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: analyze(
-                anonymized["anonymized_text"],
-                anonymized["anonymized_text"],
+                groq_input,
+                groq_input,
             )
         )
 
+        clarification_reason_raw = result.get("clarification_reason", "")
+        clarification_reason = ", ".join(clarification_reason_raw) if isinstance(clarification_reason_raw, list) else clarification_reason_raw
+            
         # Step 5 — Return combined result
         return AnalysisResponse(
             case_report_id       = report.case_report_id,
@@ -130,6 +153,11 @@ async def analyze_report(report: ReportRequest):
             recommended_steps    = result["recommended_steps"],
             referral_suggested   = result["referral_suggested"],
             referral_notes       = result["referral_notes"],
+            # ── New quality fields ──
+            clarity_score        = result.get("clarity_score", 3),
+            needs_clarification  = result.get("needs_clarification", False),
+            clarification_reason = clarification_reason,
+            report_structure     = result.get("report_structure", {}),
         )
 
     except HTTPException:

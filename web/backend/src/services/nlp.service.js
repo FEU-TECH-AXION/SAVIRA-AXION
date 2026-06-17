@@ -38,19 +38,27 @@ async function runNLPAnalysis(report) {
 
         // Step 3 — Update the pending record with full results
         await updateAnalysisByReportId(case_report_id, {
-            model_used:           result.model_used,
-            language_detected:    result.language_detected,
-            anonymized_text:      result.anonymized_text,
-            detected_pii:         result.detected_pii,
-            primary_categories:   result.primary_categories,
-            case_types:           result.case_types,
-            classification_notes: result.classification_notes,
-            summary:              result.summary,
-            recommended_steps:    result.recommended_steps,
-            referral_suggested:   result.referral_suggested,
-            referral_notes:       result.referral_notes,
-            status:               'completed',
-            analyzed_at:          new Date().toISOString(),
+            // ── Core analysis ──
+            model_used:           result.model_used           || null,
+            language_detected:    result.language_detected    || null,
+            anonymized_text:      result.anonymized_text      || null,
+            detected_pii:         result.detected_pii         || null,
+            primary_categories:   result.primary_categories   || [],
+            case_types:           result.case_types           || [],
+            classification_notes: result.classification_notes || null,
+            summary:              result.summary              || null,
+            recommended_steps:    result.recommended_steps    || [],
+            referral_suggested:   result.referral_suggested   ?? false,
+            referral_notes:       result.referral_notes       || null,
+
+            // ── Report quality assessment (new fields) ──
+            clarity_score:        result.clarity_score        ?? null,
+            needs_clarification:  result.needs_clarification  ?? false,
+            clarification_reason: result.clarification_reason || null,
+            report_structure:     result.report_structure     || null,
+
+            status:      'completed',
+            analyzed_at: new Date().toISOString(),
         });
 
         console.log(`[NLP] Analysis completed for report ${case_report_id}`);
