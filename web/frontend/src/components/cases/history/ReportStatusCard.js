@@ -77,7 +77,7 @@ export default function ReportStatusCard({ report, reportNumber }) {
         <span>Report {reportNumber}</span>
         <button
           className={styles.headerViewBtn}
-          onClick={() => router.push(`/cases/view?caseId=${report.id}&from=cases`)}
+          onClick={() => router.push(`/cases/view?caseId=${report.id}&from=history`)}
         >
           View &rarr;
         </button>

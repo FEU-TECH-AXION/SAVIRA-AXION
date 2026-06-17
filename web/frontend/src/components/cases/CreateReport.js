@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CreateReport.module.css";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
@@ -29,11 +29,106 @@ const NCR_CITIES = [
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 0, label: "Complainant's Info" },
-  { id: 1, label: "Incident Details" },
-  { id: 2, label: "Supporting Evidence" },
-  { id: 3, label: "Review & Submit" },
+  { id: 0, label: "Consent" },
+  { id: 1, label: "Complainant's Info" },
+  { id: 2, label: "Incident Details" },
+  { id: 3, label: "Supporting Evidence" },
+  { id: 4, label: "Review & Submit" },
 ];
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+const OUTCOME_OPTIONS = [
+  "Safety planning and support",
+  "Counseling or psychosocial support",
+  "Legal advice or legal action",
+  "Mediation or restorative process",
+  "Referral to police or another agency",
+  "Financial support",
+  "Medical support",
+  "Documentation only",
+  "I am not sure yet",
+  "Other support",
+];
+
+const LOCAL_POLICE_STATIONS = [
+  "Caloocan City Police Station",
+  "Las Pinas City Police Station",
+  "Makati City Police Station",
+  "Malabon City Police Station",
+  "Mandaluyong City Police Station",
+  "Manila Police District",
+  "Marikina City Police Station",
+  "Muntinlupa City Police Station",
+  "Navotas City Police Station",
+  "Paranaque City Police Station",
+  "Pasay City Police Station",
+  "Pasig City Police Station",
+  "Pateros Municipal Police Station",
+  "Quezon City Police District",
+  "QCPD Station 1 La Loma",
+  "QCPD Station 2 Masambong",
+  "QCPD Station 3 Talipapa",
+  "QCPD Station 4 Novaliches",
+  "QCPD Station 5 Fairview",
+  "QCPD Station 6 Batasan",
+  "QCPD Station 7 Cubao",
+  "QCPD Station 8 Project 4",
+  "QCPD Station 9 Anonas",
+  "QCPD Station 10 Kamuning",
+  "QCPD Station 11 Galas",
+  "QCPD Station 12 Eastwood",
+  "San Juan City Police Station",
+  "Taguig City Police Station",
+  "Valenzuela City Police Station",
+  "Women and Children Protection Desk",
+];
+
+function getLocalPoliceStationSuggestions(query) {
+  const normalized = query.trim().toLowerCase();
+  if (normalized.length < 2) return [];
+  return LOCAL_POLICE_STATIONS
+    .filter((station) => station.toLowerCase().includes(normalized))
+    .slice(0, 6)
+    .map((station, index) => ({
+      id: `local-${index}-${station}`,
+      text: station,
+      place_name: "Suggested from local NCR station list",
+      source: "local",
+    }));
+}
+
+function getTodayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentTimeInputValue() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function isFutureIncident(date, time) {
+  if (!date) return false;
+  const incidentDateTime = new Date(`${date}T${time || "23:59"}`);
+  if (Number.isNaN(incidentDateTime.getTime())) return false;
+  return incidentDateTime > new Date();
+}
+
+async function mapboxSearch(query, params = {}) {
+  if (!MAPBOX_TOKEN) return { features: [] };
+  const search = new URLSearchParams({
+    access_token: MAPBOX_TOKEN,
+    country: "PH",
+    limit: "6",
+    proximity: "121.0244,14.5547",
+    ...params,
+  });
+  const res = await fetch(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${search}`
+  );
+  if (!res.ok) throw new Error("Location search failed.");
+  return res.json();
+}
 
 // ── Cookie ───────────────────────────────────────────────────────
 function getCookie(name) {
@@ -60,7 +155,7 @@ function WizardStepper({ current }) {
                 ${active ? styles.wizardDotActive : ""}
                 ${done   ? styles.wizardDotDone  : ""}`}
             >
-              {done ? <FaCheckCircle /> : i + 1}
+              {done ? <FaCheck /> : i + 1}
             </div>
             <span className={`${styles.wizardLabel} ${active ? styles.wizardLabelActive : ""} ${done ? styles.wizardLabelDone : ""}`}>
               {step.label}
@@ -178,6 +273,19 @@ function normalisePhone(raw) {
   return digits ? `+63${digits}` : "";
 }
 
+function validateConsentStep(data, consents) {
+  const errors = {};
+
+  if (!data.interview)
+    errors.interview = "Please let us know whether you are willing to be interviewed. You can choose what feels safest for you.";
+  if (!consents.dataPrivacy)
+    errors.dataPrivacy = "Please confirm this so we can handle your report for case management.";
+  if (!consents.caseAnalysis)
+    errors.caseAnalysis = "Please confirm this so anonymized details may help improve case handling.";
+
+  return errors;
+}
+
 function validateStep0(data) {
   const errors = {};
 
@@ -193,10 +301,9 @@ function validateStep0(data) {
   if (!data.email) {
     errors.email = "Email is required.";
   } else if (!EMAIL_REGEX.test(data.email)) {
-    errors.email = "Enter a valid email address (e.g. sample@gmail.com).";
+    errors.email = "Enter a valid email address such as sample@gmail.com.";
   }
 
-  if (!data.interview)     errors.interview     = "Consent to interview is required.";
   if (!data.organization)  errors.organization  = "Organization is required.";
 
   const isScoutOrg =
@@ -231,6 +338,11 @@ function validateStep1(data) {
 
   if (!data.time)
     errors.time = "An approximate time is completely fine — this helps us piece together the full picture.";
+
+  if (data.date && isFutureIncident(data.date, data.time)) {
+    errors.date = "The incident date and time cannot be in the future. Please choose the date and time when it already happened.";
+    if (data.time) errors.time = "The incident time cannot be in the future for the selected date.";
+  }
 
   if (!data.locationType)
     errors.locationType = "Please let us know whether this happened in person or online — this helps us understand the nature of the incident.";
@@ -279,6 +391,127 @@ function validateStep1(data) {
 }
 
 // ── Page 1 — Complainant's Information ───────────────────────────────────────
+function StepConsent({ complainant, onComplainantChange, consents, onConsentChange, errors, clearError }) {
+  const setConsent = (key, checked) => {
+    clearError(key);
+    onConsentChange(key, checked);
+  };
+
+  return (
+    <div>
+      <h2 className={styles.stepTitle}>
+        <span className={styles.stepTitleAccent}>Consent, Authorization</span> & Disclaimers
+      </h2>
+      <p className={styles.stepDesc}>
+        Before continuing, please read and confirm the statements below. These steps are here to ensure your rights are protected, your privacy is safeguarded, and your report is handled with the utmost care and responsibility.
+      </p>
+
+      <div className={styles.consentStack}>
+        <section className={`${styles.consentSection} ${styles.noticePanel}`}>
+          <div className={styles.consentSectionHeader}>
+            <h3 className={styles.noticeTitle}>Important Notices</h3>
+          </div>
+          <ul className={styles.noticeList}>
+            <li className={styles.noticeItem}>
+              <span className={styles.noticeItemTitle}>Response Time</span>
+              <span>
+                To give every report careful attention, the review and verification process may take up to <strong>72 hours</strong>.
+              </span>
+            </li>
+            <li className={`${styles.noticeItem} ${styles.highlightEmergency}`}>
+              <span className={styles.noticeItemTitle}>If You Need Immediate Help</span>
+              <span>
+                This platform is for case management and is not monitored for immediate crisis intervention.
+                Your safety and well-being matter deeply to us. If you are in immediate danger, need urgent medical care,
+                or need crisis safety assistance, please visit our <a href="/helplines" className={styles.emergencyLink}>Helplines and Support Resources page</a> for trusted emergency contacts who can help you right now.
+              </span>
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.consentSection}>
+          <div className={styles.consentSectionHeader}>
+            <span className={styles.sectionKicker}>Consent & acknowledgement</span>
+            <h3 className={styles.subSectionTitle}>How Your Report Will Be Handled</h3>
+            <p className={styles.sectionIntro}>
+              These confirmations help us protect your information and use only anonymized details when improving case handling.
+            </p>
+          </div>
+          <div className={styles.consentBlock}>
+            <label className={`${styles.consentLabel} ${errors?.dataPrivacy ? styles.consentLabelError : ""}`}>
+              <input
+                type="checkbox"
+                className={styles.consentCheckbox}
+                checked={consents.dataPrivacy}
+                onChange={(e) => setConsent("dataPrivacy", e.target.checked)}
+                data-error={errors?.dataPrivacy ? "true" : "false"}
+              />
+              <span>
+                I understand and agree that the information I have provided in this report will be collected,
+                stored, and processed by the institution solely for the purpose of case management and resolution.
+                All data will be handled in accordance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> and the institution&apos;s
+                privacy policy. My information will not be shared with unauthorized third parties without my consent.
+              </span>
+            </label>
+            {errors?.dataPrivacy && <p className={styles.fieldError}>{errors.dataPrivacy}</p>}
+
+            <label className={`${styles.consentLabel} ${errors?.caseAnalysis ? styles.consentLabelError : ""}`}>
+              <input
+                type="checkbox"
+                className={styles.consentCheckbox}
+                checked={consents.caseAnalysis}
+                onChange={(e) => setConsent("caseAnalysis", e.target.checked)}
+                data-error={errors?.caseAnalysis ? "true" : "false"}
+              />
+              <span>
+                I agree that the narrative details of my report may be used to support ongoing efforts to improve case handling and outcomes.
+                Any such use will be conducted on <strong>anonymized, de-identified data only</strong>. Personally identifiable information such as names,
+                contact details, and age will be excluded and will not be retained or linked to any analysis.
+              </span>
+            </label>
+            {errors?.caseAnalysis && <p className={styles.fieldError}>{errors.caseAnalysis}</p>}
+          </div>
+        </section>
+
+      <section className={`${styles.consentSection} ${styles.communicationPanel}`}>
+        <div className={styles.consentSectionHeader}>
+        <h3 className={styles.subSectionTitle}>Your Communication Preferences</h3>
+        <p className={styles.stepDesc}>
+          Your comfort and safety are our priorities. Please let us know how you would like to proceed with your report.
+        </p>
+        </div>
+      <Field
+        label="Willingness to be interviewed"
+        required
+        hint="Would you be comfortable speaking with a SASHA Representative, together with a SASHA paralegal and/or lawyer, so your case can be reviewed with more care?"
+        error={errors.interview}
+      >
+        <RadioGroup
+          name="interview"
+          options={["Yes, I am open to an interview.", "No, I prefer not to be interviewed at this time."]}
+          value={
+            complainant.interview === "Yes"
+              ? "Yes, I am open to an interview."
+              : complainant.interview === "No"
+              ? "No, I prefer not to be interviewed at this time."
+              : ""
+          }
+          onChange={(v) => {
+            clearError("interview");
+            onComplainantChange({ ...complainant, interview: v.startsWith("Yes") ? "Yes" : "No" });
+          }}
+          error={errors.interview}
+        />
+      </Field>
+        <p className={styles.communicationNote}>
+          You are in control of what happens next. Choose the option that feels safest and most supportive for you right now; whatever you choose, SASHA will still review your report with care.
+        </p>
+      </section>
+      </div>
+    </div>
+  );
+}
+
 function StepComplainantInfo({ data, onChange, errors, clearError }) {
   const set = (key) => (e) => {
     clearError(key);
@@ -320,7 +553,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Complainant's</span> Information
+        <span className={styles.stepTitleAccent}>Complainant&apos;s</span> Information
       </h2>
       <p className={styles.stepDesc}>
         Please provide your personal details. All information is kept strictly confidential.
@@ -393,7 +626,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
           <div className={styles.formDivider} />
           <h3 className={styles.subSectionTitle}>Scout Organization Details</h3>
           <div className={styles.formGrid}>
-            <Field label="Council" required hint="e.g. Manila Council, Rizal Council" error={errors.council}>
+            <Field label="Council" required hint="Share your council name if you are part of BSP or GSP." error={errors.council}>
               <Input
                 placeholder="Enter your council"
                 value={data.council || ""}
@@ -478,7 +711,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
           hint="Enter the type of organization or affiliation."
         >
           <Input
-            placeholder="e.g. Sports Club"
+            placeholder="Sports club"
             value={data.organizationTypeOther || ""}
             onChange={set("organizationTypeOther")}
           />
@@ -624,25 +857,102 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
         </Field>
       </div>
 
-      <div className={styles.formDivider} />
-      <h3 className={styles.subSectionTitle}>Consent</h3>
-      <Field
-        label="Willingness to be interviewed by a SASHA Representative and a SASHA paralegal and/or lawyer"
-        required error={errors.interview}
-      >
-        <RadioGroup
-          name="interview"
-          options={["Yes", "No"]}
-          value={data.interview}
-          onChange={(v) => { clearError("interview"); onChange({ ...data, interview: v }); }}
-          error={errors.interview}
-        />
-      </Field>
     </div>
   );
 }
 
 // ── Page 2 — Incident Details ─────────────────────────────────────────────────
+function PoliceStationTypeahead({ value, onChange }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [status, setStatus] = useState("idle");
+
+  useEffect(() => {
+    const trimmed = value.trim();
+    if (trimmed.length < 2) {
+      const timer = setTimeout(() => {
+        setSuggestions([]);
+        setStatus("idle");
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+
+      const localSuggestions = getLocalPoliceStationSuggestions(trimmed);
+      if (!MAPBOX_TOKEN) {
+        setSuggestions(localSuggestions);
+        setStatus(localSuggestions.length ? "local" : "empty");
+        return;
+      }
+
+      setStatus("loading");
+      try {
+        const data = await mapboxSearch(`${trimmed} police station`, {
+          types: "poi,address,place",
+        });
+        if (cancelled) return;
+        const next = (data.features || [])
+          .filter((feature) => {
+            const text = `${feature.text || ""} ${feature.place_name || ""}`.toLowerCase();
+            return text.includes("police") || text.includes("station") || text.includes("precinct");
+          })
+          .slice(0, 5);
+        const merged = [...next, ...localSuggestions].filter(
+          (item, index, list) =>
+            index === list.findIndex((candidate) => candidate.text === item.text)
+        );
+        setSuggestions(merged.slice(0, 6));
+        setStatus(next.length ? "idle" : localSuggestions.length ? "local" : "empty");
+      } catch (_) {
+        if (!cancelled) {
+          setSuggestions(localSuggestions);
+          setStatus(localSuggestions.length ? "local" : "error");
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [value]);
+
+  return (
+    <div className={styles.typeahead}>
+      <Input
+        placeholder="Search for the police station or precinct"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete="off"
+      />
+      {suggestions.length > 0 && (
+        <div className={styles.suggestionsList}>
+          {suggestions.map((feature) => (
+            <button
+              type="button"
+              className={styles.suggestionItem}
+              key={feature.id}
+              onClick={() => {
+                onChange(feature.place_name || feature.text || "");
+                setSuggestions([]);
+              }}
+            >
+              <span className={styles.suggestionName}>{feature.text}</span>
+              <span className={styles.suggestionAddress}>{feature.place_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {status === "loading" && <p className={styles.fieldHint}>Looking for nearby police station matches...</p>}
+      {status === "local" && <p className={styles.fieldHint}>Showing local suggestions. You can still type the exact station name if it is not listed.</p>}
+      {status === "empty" && <p className={styles.fieldHint}>No suggestions found yet. You can still type the station name you know.</p>}
+      {status === "error" && <p className={styles.fieldHint}>Suggestions are unavailable right now. You can still type the station name.</p>}
+    </div>
+  );
+}
+
 function StepIncidentDetails({ data, onChange, errors, clearError }) {
   const set = (key) => (e) => {
     clearError(key);
@@ -666,10 +976,16 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
       <h3 className={styles.subSectionTitle}>Date and Time of Incident</h3>
       <div className={styles.formGrid3}>
         <Field label="Date" required hint="When did the incident happen?" error={errors.date}>
-          <Input type="date" value={data.date} onChange={set("date")} error={errors.date} />
+          <Input type="date" value={data.date} onChange={set("date")} max={getTodayInputValue()} error={errors.date} />
         </Field>
         <Field label="Time" hint="Approximate time is fine if exact time is unknown." error={errors.time}>
-          <Input type="time" value={data.time} onChange={set("time")} error={errors.time} />
+          <Input
+            type="time"
+            value={data.time}
+            onChange={set("time")}
+            max={data.date === getTodayInputValue() ? getCurrentTimeInputValue() : undefined}
+            error={errors.time}
+          />
         </Field>
       </div>
 
@@ -696,9 +1012,9 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
                 {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
               </Select>
             </Field>
-            <Field label="Specific Place / Venue" hint="e.g. school campus, community center — do not include your home address.">
+            <Field label="Specific Place / Venue" hint="You may share a general place, such as a school campus or community center, without giving a home address.">
               <Input
-                placeholder="e.g. Barangay hall, school gymnasium, park"
+                placeholder="Barangay hall, school gymnasium, park"
                 value={data.incidentVenue || ""}
                 onChange={set("incidentVenue")}
               />
@@ -709,7 +1025,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
         {data.locationType === "Online" && (
           <Field label="Online Platform / Service" hint="Where did this incident occur online?">
             <Input
-              placeholder="e.g. Facebook, Instagram, WhatsApp, email, gaming platform, website"
+              placeholder="Facebook, Instagram, WhatsApp, email, gaming platform, website"
               value={data.incidentVenue || ""}
               onChange={set("incidentVenue")}
             />
@@ -753,13 +1069,12 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
       </Field>
 
       <Field label="What action or outcome are you seeking?" hint="Optional — let us know what resolution or support you are looking for.">
-        <textarea
-          className={styles.textarea}
-          placeholder="e.g. legal action, mediation, counseling support..."
-          value={data.outcome}
-          onChange={set("outcome")}
-          rows={3}
-        />
+        <Select value={data.outcome || ""} onChange={set("outcome")}>
+          <option value="">Select an option</option>
+          {OUTCOME_OPTIONS.map((option) => (
+            <option key={option}>{option}</option>
+          ))}
+        </Select>
       </Field>
 
       {/* ── Perpetrator ── */}
@@ -786,14 +1101,14 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
           </Field>
           <Field label="Occupation of Perpetrator" hint="What does the perpetrator do for a living?">
             <Input
-              placeholder="e.g. teacher, coach, relative, stranger"
+              placeholder="Teacher, coach, relative, stranger"
               value={data.perpetratorOccupation || ""}
               onChange={set("perpetratorOccupation")}
             />
           </Field>
           <Field label="Relationship to Perpetrator" hint="How do you know this person?">
             <Input
-              placeholder="e.g. classmate, supervisor, partner, unknown"
+              placeholder="Classmate, supervisor, partner, unknown"
               value={data.perpetratorRelationship || ""}
               onChange={set("perpetratorRelationship")}
             />
@@ -812,6 +1127,30 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
 
       {/* ── Witnesses ── */}
       <div className={styles.formDivider} />
+      {data.perpetratorKnown === "No" && (
+        <div className={styles.formGrid}>
+          <Field label="Perceived Gender" hint="Optional. Share only what you remember or feel comfortable noting.">
+            <Select value={data.perpetratorUnknownGender || ""} onChange={set("perpetratorUnknownGender")}>
+              <option value="">Select if remembered</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Non-binary</option>
+              <option>Unable to tell</option>
+              <option>Prefer not to say</option>
+            </Select>
+          </Field>
+          <Field label="Appearance or identifying details" hint="Optional. Any detail you remember may help, but it is okay to leave this blank.">
+            <textarea
+              className={styles.textarea}
+              placeholder="Clothing, approximate age, build, height, voice, marks, or other details you remember"
+              value={data.perpetratorUnknownAppearance || ""}
+              onChange={set("perpetratorUnknownAppearance")}
+              rows={3}
+            />
+          </Field>
+        </div>
+      )}
+
       <h3 className={styles.subSectionTitle}>Witnesses</h3>
       <Field label="Are there any witnesses?" required error={errors.witnesses}>
         <RadioGroup
@@ -834,7 +1173,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
           </Field>
           <Field label="Contact Information of Witness" hint="What is the witness's contact information?">
             <Input
-              placeholder="e.g. phone number, email"
+              placeholder="Phone number or email"
               value={data.witnessContact || ""}
               onChange={set("witnessContact")}
               error={errors.witnessContact}
@@ -842,7 +1181,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
           </Field>
           <Field label="Relationship to Witness" hint="How do you know this person?">
             <Input
-              placeholder="e.g. classmate, supervisor, partner, unknown"
+              placeholder="Classmate, supervisor, partner, unknown"
               value={data.witnessRelationship || ""}
               onChange={set("witnessRelationship")}
             />
@@ -864,9 +1203,9 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
             />
           </Field>
           {data.toldAnyone === "Yes" && (
-            <Field label="Who did you tell?" hint="e.g. family member, friend, school counselor">
+            <Field label="Who did you tell?" hint="Share the person or role if you feel comfortable.">
               <Input
-                placeholder="e.g. mother, friend, guidance counselor"
+                placeholder="Mother, friend, guidance counselor"
                 value={data.toldAnyoneWho || ""}
                 onChange={set("toldAnyoneWho")}
               />
@@ -884,11 +1223,13 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
             />
           </Field>
           {data.toldPolice === "Yes" && (
-            <Field label="Which police station?" hint="e.g. Quezon City Police District, Station 5">
-              <Input
-                placeholder="e.g. QCPD Station 5"
+            <Field label="Which police station?" hint="Start typing the station, precinct, or district name. Suggestions may appear as you type.">
+              <PoliceStationTypeahead
                 value={data.policeStation || ""}
-                onChange={set("policeStation")}
+                onChange={(value) => {
+                  clearError("policeStation");
+                  onChange({ ...data, policeStation: value });
+                }}
               />
             </Field>
           )}
@@ -994,13 +1335,16 @@ function StepEvidence({ data, onChange }) {
 }
 
 // ── Page 4 — Review & Submit ──────────────────────────────────────────────────
-function StepReview({ complainant, incident, evidence, consents, onConsentChange, consentErrors = {} }) {
-  const Row = ({ label, value }) => (
+function ReviewRow({ label, value }) {
+  return (
     <div className={styles.reviewRow}>
       <span className={styles.reviewLabel}>{label}</span>
       <span className={styles.reviewValue}>{value || <em className={styles.reviewEmpty}>Not provided</em>}</span>
     </div>
   );
+}
+
+function StepReview({ complainant, incident, evidence }) {
 
   // Reconstruct composed address fields for display
   const orgAddress = [complainant.orgCity, "National Capital Region (NCR)"].filter(Boolean).join(", ");
@@ -1019,71 +1363,77 @@ function StepReview({ complainant, incident, evidence, consents, onConsentChange
       </p>
 
       <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Complainant's Information</h3>
-        <Row label="Report Type"               value={complainant.reporteeType} />
-        <Row label="Name"                   value={complainant.name} />
-        <Row label="Age"                    value={complainant.age} />
-        <Row label="Gender Identity"        value={complainant.gender} />
-        <Row label="Organization"           value={complainant.organization} />
+        <h3 className={styles.reviewSectionTitle}>Complainant&apos;s Information</h3>
+        <ReviewRow label="Report Type"               value={complainant.reporteeType} />
+        <ReviewRow label="Name"                   value={complainant.name} />
+        <ReviewRow label="Age"                    value={complainant.age} />
+        <ReviewRow label="Gender Identity"        value={complainant.gender} />
+        <ReviewRow label="Organization"           value={complainant.organization} />
         {(complainant.organization === "Boy Scouts of the Philippines (BSP)" ||
           complainant.organization === "Girl Scouts of the Philippines (GSP)") && (
           <>
-            <Row label="Council"            value={complainant.council} />
-            <Row label="Region"             value={complainant.region} />
+            <ReviewRow label="Council"            value={complainant.council} />
+            <ReviewRow label="Region"             value={complainant.region} />
           </>
         )}
         {complainant.organization === "Others" && (
           <>
-            <Row label="Organization Name"  value={complainant.orgName} />
-            <Row label="Organization Type"  value={complainant.organizationType} />
-            <Row label="Organization Address" value={orgAddress} />
-            <Row label="Your Location"      value={userAddress} />
+            <ReviewRow label="Organization Name"  value={complainant.orgName} />
+            <ReviewRow label="Organization Type"  value={complainant.organizationType} />
+            <ReviewRow label="Organization Address" value={orgAddress} />
+            <ReviewRow label="Your Location"      value={userAddress} />
           </>
         )}
-        <Row label="Willing to be interviewed" value={complainant.interview} />
-        <Row label="Contact Number"         value={complainant.contactNumber} />
-        <Row label="Email"                  value={complainant.email} />
+        <ReviewRow label="Willing to be interviewed" value={complainant.interview} />
+        <ReviewRow label="Contact Number"         value={complainant.contactNumber} />
+        <ReviewRow label="Email"                  value={complainant.email} />
       </div>
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Incident Details</h3>
-        <Row label="Date"                   value={incident.date} />
-        <Row label="Time"                   value={incident.time} />
-        <Row label="Location Type"          value={incident.locationType} />
-        <Row label="Location"               value={incidentLocation} />
-        <Row label="Description"            value={incident.description} />
-        <Row label="Outcome sought"         value={incident.outcome} />
-        <Row label="Perpetrator known"      value={incident.perpetratorKnown} />
+        <ReviewRow label="Date"                   value={incident.date} />
+        <ReviewRow label="Time"                   value={incident.time} />
+        <ReviewRow label="Location Type"          value={incident.locationType} />
+        <ReviewRow label="Location"               value={incidentLocation} />
+        <ReviewRow label="Description"            value={incident.description} />
+        <ReviewRow label="Outcome sought"         value={incident.outcome} />
+        <ReviewRow label="Perpetrator known"      value={incident.perpetratorKnown} />
         {incident.perpetratorKnown === "Yes" && (
           <>
-            <Row label="Perpetrator name"       value={incident.perpetratorName} />
-            <Row label="Perpetrator occupation" value={incident.perpetratorOccupation} />
-            <Row label="Relationship to perpetrator" value={incident.perpetratorRelationship} />
-            <Row label="Perpetrator gender"     value={incident.perpetratorGender} />
+            <ReviewRow label="Perpetrator name"       value={incident.perpetratorName} />
+            <ReviewRow label="Perpetrator occupation" value={incident.perpetratorOccupation} />
+            <ReviewRow label="Relationship to perpetrator" value={incident.perpetratorRelationship} />
+            <ReviewRow label="Perpetrator gender"     value={incident.perpetratorGender} />
           </>
         )}
-        <Row label="Witnesses"              value={incident.witnesses} />
+        {incident.perpetratorKnown === "No" && (
+          <>
+            <ReviewRow label="Perceived gender" value={incident.perpetratorUnknownGender} />
+            <ReviewRow label="Appearance or identifying details" value={incident.perpetratorUnknownAppearance} />
+          </>
+        )}
+        <ReviewRow label="Witnesses"              value={incident.witnesses} />
         {incident.witnesses === "Yes" && (
           <>
-          <Row label="Witness name"         value={incident.witnessName} />
-          <Row label="Witness contact"      value={incident.witnessContact} />
-          <Row label="Relationship to witness" value={incident.witnessRelationship} />
+          <ReviewRow label="Witness name"         value={incident.witnessName} />
+          <ReviewRow label="Witness contact"      value={incident.witnessContact} />
+          <ReviewRow label="Relationship to witness" value={incident.witnessRelationship} />
           </>
         )}
-        <Row label="Told anyone"            value={incident.toldAnyone} />
+        <ReviewRow label="Told anyone"            value={incident.toldAnyone} />
         {incident.toldAnyone === "Yes" && (
-          <Row label="Who was told"         value={incident.toldAnyoneWho} />
+          <ReviewRow label="Who was told"         value={incident.toldAnyoneWho} />
         )}
-        <Row label="Told police"            value={incident.toldPolice} />
+        <ReviewRow label="Told police"            value={incident.toldPolice} />
         {incident.toldPolice === "Yes" && (
-          <Row label="Police station"       value={incident.policeStation} />
+          <ReviewRow label="Police station"       value={incident.policeStation} />
         )}
       </div>
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Supporting Evidence</h3>
-        {/* <Row label="Anonymous submission" value={evidence.anonymous ? "Yes" : "No"} /> */}
-        <Row
+        {/* <ReviewRow label="Anonymous submission" value={evidence.anonymous ? "Yes" : "No"} /> */}
+        <ReviewRow
           label="Files attached"
           value={
             evidence.files && evidence.files.length > 0
@@ -1093,54 +1443,6 @@ function StepReview({ complainant, incident, evidence, consents, onConsentChange
         />
       </div>
 
-      {/* ── Consent & Acknowledgement ── */}
-      <div className={styles.formDivider} />
-      <h3 className={styles.subSectionTitle}>Consent & Acknowledgement</h3>
-      <p className={styles.stepDesc}>
-        Before submitting, please read and confirm the following statements.
-      </p>
-
-      <div className={styles.consentBlock}>
-        {/* Checkbox 1 — Data Privacy */}
-        <label className={`${styles.consentLabel} ${consentErrors?.dataPrivacy ? styles.consentLabelError : ""}`}>
-          <input
-            type="checkbox"
-            className={styles.consentCheckbox}
-            checked={consents.dataPrivacy}
-            onChange={(e) => onConsentChange("dataPrivacy", e.target.checked)}
-          />
-          <span>
-            I understand and agree that the information I have provided in this report will be collected,
-            stored, and processed by the institution solely for the purpose of case management and resolution.
-            All data will be handled in accordance with the{" "}
-            <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> and the institution's
-            privacy policy. My information will not be shared with unauthorized third parties without my consent.
-          </span>
-        </label>
-        {consentErrors?.dataPrivacy && (
-          <p className={styles.fieldError}>You must agree to the data privacy terms to proceed.</p>
-        )}
-
-        {/* Checkbox 2 — Case Analysis (NLP, softened) */}
-        <label className={`${styles.consentLabel} ${consentErrors?.caseAnalysis ? styles.consentLabelError : ""}`}>
-          <input
-            type="checkbox"
-            className={styles.consentCheckbox}
-            checked={consents.caseAnalysis}
-            onChange={(e) => onConsentChange("caseAnalysis", e.target.checked)}
-          />
-          <span>
-            I agree that the narrative details of my report may be used to support ongoing efforts to
-            improve case handling and outcomes. Any such use will be conducted on{" "}
-            <strong>anonymized, de-identified data only</strong> — personally identifiable information
-            such as names, contact details, and age will be excluded and will not be retained or
-            linked to any analysis.
-          </span>
-        </label>
-        {consentErrors?.caseAnalysis && (
-          <p className={styles.fieldError}>You must acknowledge the case analysis terms to proceed.</p>
-        )}
-      </div>
     </div>
 
   );
@@ -1289,6 +1591,7 @@ export default function CreateReport({
     description: "", outcome: "",
     perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
     perpetratorRelationship: "", perpetratorGender: "",
+    perpetratorUnknownGender: "", perpetratorUnknownAppearance: "",
     witnesses: "", witnessName: "", witnessContact: "", witnessRelationship: "",
     toldAnyone: "", toldAnyoneWho: "", toldPolice: "", policeStation: "",
   });
@@ -1303,11 +1606,14 @@ export default function CreateReport({
       const raw = localStorage.getItem("savira_case_report_draft");
       if (!raw) return;
       const draft = JSON.parse(raw);
-      if (draft.complainant) setComplainant(draft.complainant);
-      if (draft.incident) setIncident(draft.incident);
-      if (draft.evidence) setEvidence(draft.evidence);
-      if (draft.consents) setConsents(draft.consents);
-      setDraftNotice("You have an unfinished report draft. It has been loaded so you can continue.");
+      const timer = setTimeout(() => {
+        if (draft.complainant) setComplainant(draft.complainant);
+        if (draft.incident) setIncident(draft.incident);
+        if (draft.evidence) setEvidence(draft.evidence);
+        if (draft.consents) setConsents(draft.consents);
+        setDraftNotice("You have an unfinished report draft. It has been loaded so you can continue.");
+      }, 0);
+      return () => clearTimeout(timer);
     } catch (_) {}
   }, []);
 
@@ -1338,8 +1644,9 @@ export default function CreateReport({
 
   const handleNext = () => {
     let errors = {};
-    if (step === 0) errors = validateStep0(complainant);
-    if (step === 1) errors = validateStep1(incident);
+    if (step === 0) errors = validateConsentStep(complainant, consents);
+    if (step === 1) errors = validateStep0(complainant);
+    if (step === 2) errors = validateStep1(incident);
 
     if (Object.keys(errors).length > 0) {
       setStepErrors(errors);
@@ -1455,7 +1762,7 @@ export default function CreateReport({
                   Submit a Report
                 </p>
                 <h1 className={styles.heroTitle}>
-                  We're Here
+                  We&apos;re Here
                   <span className={styles.heroTitleAccent}> to Help</span>
                 </h1>
                 <p className={styles.heroDesc}>
@@ -1467,12 +1774,14 @@ export default function CreateReport({
 
           {/* ── Paginated Form Card ── */}
           {draftNotice && !submitted && (
-            <div className={styles.errorAlert}>
-              <strong>Draft found:</strong> {draftNotice}
+            <div className={`${styles.alertCard} ${styles.alertCardInfo}`}>
+              <div className={styles.alertContent}>
+                <span className={styles.alertLabel}>Draft found</span>
+                <p className={styles.alertText}>{draftNotice}</p>
+              </div>
               <button
                 type="button"
-                className={styles.backBtn}
-                style={{ marginLeft: 12 }}
+                className={styles.alertAction}
                 onClick={() => {
                   localStorage.removeItem("savira_case_report_draft");
                   setDraftNotice("");
@@ -1498,6 +1807,16 @@ export default function CreateReport({
 
               <div className={styles.formBody}>
                 {step === 0 && (
+                  <StepConsent
+                    complainant={complainant}
+                    onComplainantChange={setComplainant}
+                    consents={consents}
+                    onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))}
+                    errors={stepErrors}
+                    clearError={clearError}
+                  />
+                )}
+                {step === 1 && (
                   <StepComplainantInfo
                     data={complainant}
                     onChange={setComplainant}
@@ -1505,7 +1824,7 @@ export default function CreateReport({
                     clearError={clearError}
                   />
                 )}
-                {step === 1 && (
+                {step === 2 && (
                   <StepIncidentDetails
                     data={incident}
                     onChange={setIncident}
@@ -1513,24 +1832,24 @@ export default function CreateReport({
                     clearError={clearError}
                   />
                 )}
-                {step === 2 && (
+                {step === 3 && (
                   <StepEvidence data={evidence} onChange={setEvidence} />
                 )}
-                {step === 3 && (
+                {step === 4 && (
                   <StepReview
                     complainant={complainant}
                     incident={incident}
                     evidence={evidence}
-                    consents={consents}
-                    onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))}
-                    consentErrors={stepErrors}
                   />
                 )}
               </div>
 
               {submissionError && (
-                <div className={styles.errorAlert}>
-                  <strong>Error:</strong> {submissionError}
+                <div className={`${styles.alertCard} ${styles.alertCardWarning}`}>
+                  <div className={styles.alertContent}>
+                    <span className={styles.alertLabel}>Unable to submit report</span>
+                    <p className={styles.alertText}>{submissionError}</p>
+                  </div>
                 </div>
               )}
 
@@ -1554,7 +1873,7 @@ export default function CreateReport({
             </div>
           ) : (
             <div className={styles.successCard}>
-              <div className={styles.successIcon}><FaCheckCircle /></div>
+              <div className={styles.successIcon}><FaCheck /></div>
               <h2 className={styles.successTitle}>Report Submitted!</h2>
               <p className={styles.successDesc}>
                 Your report has been received. We will review it and get back to you via your provided contact details.
@@ -1606,3 +1925,4 @@ export default function CreateReport({
     </main>
   );
 }
+

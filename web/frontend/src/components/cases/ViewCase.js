@@ -1241,10 +1241,10 @@ export default function ViewCase() {
 
   const backRoute = isStaff
     ? "/cases"
-    : fromParam === "dashboard" ? "/dashboard" : "/cases";
+    : fromParam === "dashboard" ? "/dashboard" : "/cases/history";
   const backLabel = isStaff
     ? "Back to Case Management"
-    : fromParam === "dashboard" ? "Back to Dashboard" : "Back to My Reports";
+    : fromParam === "dashboard" ? "Back to Dashboard" : "Back to Report History";
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });

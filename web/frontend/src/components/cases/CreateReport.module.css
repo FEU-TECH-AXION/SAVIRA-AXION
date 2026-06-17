@@ -49,7 +49,7 @@
   z-index: 1;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem 2rem 5rem;
+  padding: 2rem 2rem 1rem;
   display: flex;
   align-items: center;
   gap: 3rem;
@@ -384,6 +384,10 @@
   color: #b45309; 
 }
 
+.textareaFooterNeutral {
+  color: var(--sasha-muted);
+}
+
 .textareaFooterOk {
   color: #15803d;
 }
@@ -403,8 +407,8 @@
 .radioGroupError {
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
-  border: 1px solid #dc2626;
-  background: #fef2f2;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
   width: fit-content;
 }
 
@@ -905,21 +909,229 @@
 }
 
 .inputError {
-  border: 1px solid #dc2626 !important;
-  background: #fef2f2;
+  border: 1px solid #f97316 !important;
+  background: #fff7ed;
 }
 
 .inputError:focus {
   outline: none;
-  border-color: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+  border-color: #f97316;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.14);
 }
 
 .fieldError {
   margin-top: 6px;
   font-size: 0.85rem;
-  color: #dc2626;
+  color: #b45309;
   font-weight: 500;
+}
+
+.consentStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.consentSection {
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.consentSectionHeader {
+  margin-bottom: 0.85rem;
+}
+
+.sectionKicker {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--sasha-orange);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sectionIntro {
+  margin: 0.25rem 0 0;
+  color: var(--sasha-muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.noticePanel {
+  background: #f7fbfb;
+  border-color: #d7ecec;
+}
+
+.noticeTitle {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0;
+}
+
+.noticeList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+}
+
+.noticeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-left: 3px solid var(--sasha-teal);
+  background: var(--sasha-white);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  color: #374151;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.noticeItemTitle {
+  color: var(--sasha-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.highlightEmergency {
+  border-left-color: var(--sasha-orange);
+  background: #fff7ed;
+}
+
+.helplineLinkText {
+  margin: 0.85rem 0 0;
+  color: var(--sasha-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.emergencyLink {
+  color: var(--sasha-teal);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.emergencyLink:hover {
+  color: var(--sasha-teal-dark);
+}
+
+.communicationPanel {
+  background: #fffdfb;
+  border-color: #fed7aa;
+}
+
+.communicationPanel .stepDesc {
+  margin-bottom: 1rem;
+}
+
+.communicationPanel .radioGroup {
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.communicationPanel .radioLabel {
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.communicationNote {
+  margin: 0.8rem 0 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  background: var(--sasha-teal-light);
+  color: #025f61;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.consentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.consentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--sasha-text);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.consentLabelError {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.consentCheckbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 0.2rem;
+  accent-color: var(--sasha-teal);
+  flex-shrink: 0;
+}
+
+.typeahead {
+  position: relative;
+}
+
+.suggestionsList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: var(--sasha-white);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+}
+
+.suggestionItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  transition: background 0.12s;
+}
+
+.suggestionItem:hover,
+.suggestionItem:focus {
+  background: var(--sasha-teal-light);
+  outline: none;
+}
+
+.suggestionName {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sasha-text);
+}
+
+.suggestionAddress {
+  font-size: 0.74rem;
+  color: var(--sasha-muted);
+  line-height: 1.35;
 }
 
 .errorBanner {
@@ -936,11 +1148,86 @@
   margin: 0 1.25rem 1.25rem 1.25rem ;
   padding: 12px 16px;
   border-radius: 8px;
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
-  color: #dc2626;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.alertCard {
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  color: #7c2d12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.alertCardInfo {
+  border-color: #fed7aa;
+  background: #fffaf5;
+}
+
+.alertCardWarning {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.alertContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.alertLabel {
+  color: #9a3412;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.alertText {
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.alertAction {
+  flex-shrink: 0;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #9a3412;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.alertAction:hover {
+  border-color: var(--sasha-orange);
+  color: var(--sasha-orange-dark);
+  background: #fff7ed;
+}
+
+@media (max-width: 767.98px) {
+  .alertCard {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .alertAction {
+    width: 100%;
+  }
 }
 
 .statusBadge {
