@@ -296,12 +296,79 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
     fetchNlp();
   }, [caseReportId]);
 
-  const CategoryBadge = ({ label }) => (
-    <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#e1f5f5", color: "#037F81", marginRight: 6, marginBottom: 4 }}>{label}</span>
-  );
-  const CaseTypeBadge = ({ label }) => (
-    <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#f3e8ff", color: "#6b21a8", marginRight: 6, marginBottom: 4 }}>{label}</span>
-  );
+  // const CategoryBadge = ({ label }) => (
+  //   <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#e1f5f5", color: "#037F81", marginRight: 6, marginBottom: 4 }}>{label}</span>
+  // );
+  // const CaseTypeBadge = ({ label }) => (
+  //   <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#f3e8ff", color: "#6b21a8", marginRight: 6, marginBottom: 4 }}>{label}</span>
+  // );
+
+  const CONFIDENCE_COLORS = {
+    high:     { bar: "#16a34a", bg: "#f0fdf4", border: "#86efac", label: "#166534" },
+    moderate: { bar: "#d97706", bg: "#fffbeb", border: "#fde68a", label: "#92400e" },
+    low:      { bar: "#9ca3af", bg: "#f9fafb", border: "#e5e7eb", label: "#6b7280" },
+  };
+
+  const ConfidenceBar = ({ confidence }) => {
+    const c     = CONFIDENCE_COLORS[confidence] || CONFIDENCE_COLORS.low;
+    const width = confidence === "high" ? "85%" : confidence === "moderate" ? "50%" : "25%";
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+        <div style={{ flex: 1, height: 6, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ width, height: "100%", background: c.bar, borderRadius: 999, transition: "width 0.4s ease" }} />
+        </div>
+        <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "capitalize", color: c.label, minWidth: 64 }}>
+          {confidence} confidence
+        </span>
+      </div>
+    );
+  };
+
+  const ClassificationCard = ({ item, type }) => {
+    const isObj      = typeof item === "object" && item !== null;
+    const label      = isObj ? (item.category || item.type) : item;
+    const confidence = isObj ? item.confidence : null;
+    const basis      = isObj ? item.basis : null;
+    const c          = CONFIDENCE_COLORS[confidence] || { bg: "#f9fafb", border: "#e5e7eb" };
+    const badgeBg    = type === "category" ? "#e1f5f5" : "#f3e8ff";
+    const badgeColor = type === "category" ? "#037F81" : "#6b21a8";
+    {nlpData.primary_categories?.length > 0
+      ? nlpData.primary_categories.map((c, i) => {
+          // ── Parse if item is a JSON string instead of an object ──
+          let item = c;
+          if (typeof c === "string") {
+            try { item = JSON.parse(c); } catch { item = { category: c }; }
+          }
+          return <ClassificationCard key={i} item={item} type="category" />;
+        })
+      : <p style={{ fontSize: "0.82rem", color: "#9ca3af", marginBottom: 12 }}>None suggested</p>
+    }
+
+    {nlpData.case_types?.length > 0
+      ? nlpData.case_types.map((t, i) => {
+          // ── Parse if item is a JSON string instead of an object ──
+          let item = t;
+          if (typeof t === "string") {
+            try { item = JSON.parse(t); } catch { item = { type: t }; }
+          }
+          return <ClassificationCard key={i} item={item} type="type" />;
+        })
+      : <p style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</p>
+    }
+    return (
+      <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
+        <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 700, background: badgeBg, color: badgeColor }}>
+          {label}
+        </span>
+        {confidence && <ConfidenceBar confidence={confidence} />}
+        {basis && (
+          <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#4b5563", lineHeight: 1.5, fontStyle: "italic" }}>
+            "{basis}"
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -335,21 +402,42 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
             </div>
           )}
 
+    
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Classification</h4>
-            <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Case Categories</p>
-            <div style={{ marginBottom: 12 }}>
-              {nlpData.case_categories?.length > 0 ? nlpData.case_categories.map((c) => <CategoryBadge key={c} label={c} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
-            </div>
-            <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Possible Case Types</p>
-            <div style={{ marginBottom: 12 }}>
-              {nlpData.case_types?.length > 0 ? nlpData.case_types.map((t) => <CaseTypeBadge key={t} label={t} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
-            </div>
+            <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
+              🏷️ Suggested Classification
+            </h4>
+
+            {/* Confidence tier disclaimer */}
+            <p style={{ margin: "0 0 12px", fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", lineHeight: 1.5 }}>
+              Confidence tiers reflect the AI's assessment based on language in the report — not statistical probabilities.
+              High = clearly described · Moderate = implied · Low = vaguely suggested.
+            </p>
+
+            {/* Case Categories */}
+            <p style={{ margin: "0 0 6px", fontSize: "0.78rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Case Categories
+            </p>
+            {nlpData.primary_categories?.length > 0
+              ? nlpData.primary_categories.map((c, i) => <ClassificationCard key={i} item={c} type="category" />)
+              : <p style={{ fontSize: "0.82rem", color: "#9ca3af", marginBottom: 12 }}>None suggested</p>
+            }
+
+            {/* Case Types */}
+            <p style={{ margin: "8px 0 6px", fontSize: "0.78rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Case Types
+            </p>
+            {nlpData.case_types?.length > 0
+              ? nlpData.case_types.map((t, i) => <ClassificationCard key={i} item={t} type="type" />)
+              : <p style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</p>
+            }
+
+            {/* Classification Notes */}
             {nlpData.classification_notes && (
-              <>
-                <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Notes</p>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #e5e7eb" }}>
+                <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Notes</p>
                 <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.classification_notes}</p>
-              </>
+              </div>
             )}
           </div>
 
@@ -380,6 +468,113 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
                 <p style={{ margin: "4px 0 0", background: "#f3f4f6", padding: "8px 10px", borderRadius: 6, lineHeight: 1.6 }}>{nlpData.anonymized_text}</p>
               </div>
             </details>
+          )}
+
+          {/* ── Clarification Warning ── */}
+          {nlpData.needs_clarification && (
+              <div style={{
+                  background: "#fffbeb",
+                  border: "1px solid #fcd34d",
+                  borderRadius: 8,
+                  padding: "12px 16px",
+                  marginBottom: "1.25rem",
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+              }}>
+                  <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>⚠️</span>
+                  <div>
+                      <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "#92400e" }}>
+                          Report Needs Clarification
+                      </p>
+                      <p style={{ margin: "4px 0 8px", fontSize: "0.82rem", color: "#78350f", lineHeight: 1.6 }}>
+                          {nlpData.clarification_reason}
+                      </p>
+                      <button
+                          onClick={() => {/* trigger your clarification request flow */}}
+                          style={{
+                              background: "#d97706", color: "#fff",
+                              border: "none", borderRadius: 999,
+                              padding: "6px 16px", fontSize: "0.82rem",
+                              fontWeight: 700, cursor: "pointer",
+                          }}
+                      >
+                          Request Clarification
+                      </button>
+                  </div>
+              </div>
+          )}
+
+          {/* ── Report Structure Assessment ── */}
+          {nlpData.report_structure && (
+              <div style={{
+                  background: "#f9fafb", borderRadius: 8,
+                  padding: "14px 16px", marginBottom: "1.25rem",
+                  border: "1px solid #e5e7eb",
+              }}>
+                  <h4 style={{ margin: "0 0 12px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
+                      📋 Report Structure Assessment
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {[
+                          { key: "has_introduction", label: "Introduction", notes: nlpData.report_structure.introduction_notes },
+                          { key: "has_body",         label: "Body",         notes: nlpData.report_structure.body_notes },
+                          { key: "has_conclusion",   label: "Conclusion",   notes: nlpData.report_structure.conclusion_notes },
+                      ].map(({ key, label, notes }) => (
+                          <div key={key} style={{
+                              display: "flex", gap: 10, alignItems: "flex-start",
+                              padding: "8px 10px", borderRadius: 6,
+                              background: nlpData.report_structure[key] ? "#f0fdf4" : "#fef2f2",
+                              border: `1px solid ${nlpData.report_structure[key] ? "#86efac" : "#fca5a5"}`,
+                          }}>
+                              <span style={{
+                                  fontSize: "0.85rem", fontWeight: 700, minWidth: 20,
+                                  color: nlpData.report_structure[key] ? "#16a34a" : "#dc2626",
+                              }}>
+                                  {nlpData.report_structure[key] ? "✓" : "✗"}
+                              </span>
+                              <div>
+                                  <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 700, color: "#374151" }}>
+                                      {label}
+                                  </p>
+                                  {notes && (
+                                      <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#6b7280", lineHeight: 1.5 }}>
+                                          {notes}
+                                      </p>
+                                  )}
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+
+                  {/* Clarity score */}
+                  <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>
+                          Clarity Score
+                      </span>
+                      <div style={{ display: "flex", gap: 3 }}>
+                          {[1,2,3,4,5].map(n => (
+                              <div key={n} style={{
+                                  width: 20, height: 8, borderRadius: 999,
+                                  background: n <= nlpData.clarity_score
+                                      ? nlpData.clarity_score >= 4 ? "#16a34a"
+                                      : nlpData.clarity_score >= 3 ? "#d97706" : "#dc2626"
+                                      : "#e5e7eb",
+                              }} />
+                          ))}
+                      </div>
+                      <span style={{
+                          fontSize: "0.78rem", fontWeight: 700,
+                          color: nlpData.clarity_score >= 4 ? "#16a34a"
+                              : nlpData.clarity_score >= 3 ? "#d97706" : "#dc2626",
+                      }}>
+                          {nlpData.clarity_score}/5 — {
+                              nlpData.clarity_score >= 4 ? "Clear" :
+                              nlpData.clarity_score >= 3 ? "Moderate" : "Vague"
+                          }
+                      </span>
+                  </div>
+              </div>
           )}
         </div>
       )}

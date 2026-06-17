@@ -737,7 +737,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
               ? { text: `You're not alone in this. Share only what feels right for you.`, style: styles.textareaFooterNeutral }
               : wordCount < 50
               ? { text: `You're doing great. If you're able to, a few more details can help us support you better. (${wordCount}/50 words)`, style: styles.textareaFooterWarn }
-              : { text: `Thank you for trusting us with this. Your account has been noted.`, style: styles.textareaFooterOk };
+              : { text: `Thank you for trusting us with this. Your account will be noted.`, style: styles.textareaFooterOk };
 
           return (
             <div className={styles.textareaFooter}>
