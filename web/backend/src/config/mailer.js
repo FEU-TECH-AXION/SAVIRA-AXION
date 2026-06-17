@@ -2,14 +2,13 @@ const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// TODO: UPDATE ONCE DOMAIN IS LIVE — replace with e.g. no-reply@yourdomain.com
-const FROM_EMAIL = 'SASHA@support.saviraphilippines.org';
+const FROM_EMAIL = 'no-reply@support.saviraphilippines.org';
 
 async function sendResetPasswordEmail(to, resetLink) {
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: 'Reset your SASHA password',
+    subject: 'Reset your SAVIRA password',
     html: `
       <p>We received a request to reset your password.</p>
       <p><a href="${resetLink}">Click here to reset your password</a></p>
