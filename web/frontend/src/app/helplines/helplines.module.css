@@ -1,0 +1,467 @@
+.pagewrapper {
+  min-height: 100vh;
+  background: #f7f9fa;
+  color: #1f2937;
+  margin-top: 64px;
+  font-family: Poppins, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.hero {
+  position: relative;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  background: url("/sasha-bg-2.png") center/cover no-repeat, #e8f5f4;
+  overflow: hidden;
+}
+
+.heroContent {
+  position: relative;
+  width: min(880px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 64px 0 76px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #025f61;
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin-bottom: 30px;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: #e06030;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  color: #56616f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.eyebrowLine {
+  width: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: #e06030;
+  flex: 0 0 auto;
+}
+
+.hero h1 {
+  max-width: 640px;
+  margin: 0;
+  color: #037f81;
+  font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+  line-height: 1.15;
+  font-weight: 900;
+}
+
+.hero p:last-child {
+  max-width: 580px;
+  margin: 18px 0 0;
+  color: #4b5563;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.emergencyBand {
+  width: min(880px, calc(100% - 32px));
+  margin: -40px auto 0;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 24px;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: #fff7ed;
+  box-shadow: 0 16px 38px rgba(31, 41, 55, 0.12);
+}
+
+.emergencyIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #e06030;
+  font-size: 1.25rem;
+  flex: 0 0 auto;
+}
+
+.emergencyBand span {
+  display: block;
+  margin-bottom: 4px;
+  color: #9a3412;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.emergencyBand strong {
+  color: #7c2d12;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.content {
+  width: min(880px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0 80px;
+}
+
+/* Vertical rhythm between sections lives here, on the section heading
+   that introduces each block, so spacing stays consistent regardless of
+   how many cards/items the block contains. */
+.sectionHeading {
+  margin: 56px 0 22px;
+}
+
+.sectionHeading:first-child {
+  margin-top: 0;
+}
+
+.sectionLabel {
+  margin: 0 0 6px;
+  color: #e06030;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: #025f61;
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.sectionSubtext {
+  margin: 0;
+  color: #56616f;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+/* Emergency contacts: single column of full-width rows reads far better
+   than a cramped 2-up grid once descriptions wrap to multiple lines. */
+.priorityGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.contactCard {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid #dfe7ea;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(31, 41, 55, 0.05);
+}
+
+.cardIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #037f81;
+  background: #e1f5f5;
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.cardBody {
+  min-width: 0;
+}
+
+.cardLabel {
+  margin: 0 0 6px;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.contactCard h3,
+.agencyItem h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.contactNumber {
+  margin: 10px 0 0;
+  color: #025f61;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.cardText {
+  margin: 8px 0 0;
+  color: #56616f;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+/* Agencies: a simple two-up grid of compact cards (no descriptions to
+   wrap awkwardly, so this stays tidy at this width). */
+.agencyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.agencyItem {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #dfe7ea;
+  box-shadow: 0 8px 22px rgba(31, 41, 55, 0.05);
+}
+
+/* Legal resources accordion */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.accordionItem {
+  border: 1px solid #dfe7ea;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(31, 41, 55, 0.04);
+}
+
+.accordionTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: #1f2937;
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-family: inherit;
+}
+
+.accordionTrigger:hover {
+  color: #037f81;
+}
+
+.accordionTrigger:focus-visible {
+  outline: 2px solid #037f81;
+  outline-offset: -2px;
+}
+
+.accordionIcon,
+.accordionIconOpen {
+  flex: 0 0 auto;
+  color: #037f81;
+  transition: transform 0.2s ease;
+}
+
+.accordionIconOpen {
+  transform: rotate(180deg);
+}
+
+.accordionPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 20px 20px;
+  border-top: 1px solid #eef2f3;
+  padding-top: 16px;
+}
+
+.lawEntry h4 {
+  margin: 0 0 6px;
+  color: #025f61;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.lawEntry p {
+  margin: 0;
+  color: #56616f;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.lawEntry a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #037f81;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.lawEntry a:hover {
+  color: #e06030;
+}
+
+/* Safety note + sources: same panel treatment, full width, stacked,
+   instead of competing for space in a two-column layout. */
+.safetyNote,
+.sources {
+  margin-top: 56px;
+  padding: 24px;
+  border: 1px solid #dfe7ea;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(31, 41, 55, 0.05);
+}
+
+.safetyNote {
+  background: #f7fbfb;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.panelHeader > svg {
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #037f81;
+  flex: 0 0 auto;
+}
+
+.panelHeader p {
+  margin: 0 0 3px;
+  color: #e06030;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  color: #025f61;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.safetyNote p {
+  margin: 0;
+  color: #56616f;
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.sourceLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sourceLinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #d7ecec;
+  border-radius: 8px;
+  color: #025f61;
+  background: #f7fbfb;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.sourceLinks a:hover {
+  border-color: #037f81;
+  color: #037f81;
+  background: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .heroContent {
+    padding: 44px 0 68px;
+  }
+
+  .backLink {
+    margin-bottom: 24px;
+  }
+
+  .emergencyBand {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .content {
+    padding-top: 40px;
+  }
+
+  .sectionHeading {
+    margin-top: 44px;
+  }
+
+  .agencyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .contactCard,
+  .agencyItem {
+    flex-direction: column;
+  }
+
+  .safetyNote,
+  .sources {
+    padding: 18px;
+  }
+
+  .accordionTrigger {
+    padding: 16px;
+    font-size: 0.92rem;
+  }
+
+  .accordionPanel {
+    padding: 0 16px 16px;
+  }
+}
