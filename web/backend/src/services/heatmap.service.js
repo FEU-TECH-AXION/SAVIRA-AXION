@@ -180,6 +180,18 @@ function getFilteredReports(reports, filters = {}) {
     });
   }
 
+  if (filters.victim_gender) {
+    filtered = filtered.filter(
+      (r) => r.gender_identity && r.gender_identity.toLowerCase() === filters.victim_gender.toLowerCase()
+    );
+  }
+
+  if (filters.perpetrator_gender) {
+    filtered = filtered.filter(
+      (r) => r.perpetrator_gender && r.perpetrator_gender.toLowerCase() === filters.perpetrator_gender.toLowerCase()
+    );
+  }
+
   return filtered;
 }
 

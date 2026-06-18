@@ -383,7 +383,7 @@ const update = async (caseReportId, payload) => {
 async function getHeatmapReports() {
   const { data, error } = await supabase
     .from('case_reports')
-    .select('case_report_id, incident_city, case_status_id')
+    .select('case_report_id, incident_city, case_status_id, gender_identity, perpetrator_gender')
     .eq('is_current', true)
   if (error) {
     console.error('[getHeatmapReports] Supabase error:', error.message)

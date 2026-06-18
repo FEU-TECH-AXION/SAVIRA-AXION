@@ -519,6 +519,28 @@ function FilterSection({ filters, onChange, meta }) {
           ],
           placeholder: "All",
         },
+        {
+          label: "Victim Gender",
+          key: "victim_gender",
+          options: [
+            { value: "Male", label: "Male" },
+            { value: "Female", label: "Female" },
+            { value: "Non-binary", label: "Non-binary" },
+            { value: "Prefer not to say", label: "Prefer not to say" },
+          ],
+          placeholder: "All",
+        },
+        {
+          label: "Perpetrator Gender",
+          key: "perpetrator_gender",
+          options: [
+            { value: "Male", label: "Male" },
+            { value: "Female", label: "Female" },
+            { value: "Non-binary", label: "Non-binary" },
+            { value: "Prefer not to say", label: "Prefer not to say" },
+          ],
+          placeholder: "All",
+        },
       ].map(
         ({ label, key, options, placeholder, onChange: customOnChange }) => (
           <div key={key} className={styles.filterGroup}>
@@ -575,6 +597,8 @@ export default function HeatmapPage() {
     council: "",
     status: "",
     verification: "",
+    victim_gender: "",
+    perpetrator_gender: "",
   });
 
   useEffect(() => {
@@ -614,6 +638,10 @@ export default function HeatmapPage() {
         if (filters.status) queryParams.append("status", filters.status);
         if (filters.verification)
           queryParams.append("verification", filters.verification);
+        if (filters.victim_gender)
+          queryParams.append("victim_gender", filters.victim_gender);
+        if (filters.perpetrator_gender)
+          queryParams.append("perpetrator_gender", filters.perpetrator_gender);
 
         const res = await fetch(
           `${API_URL}/api/case_reports/heatmap/data?${queryParams}`,
@@ -648,6 +676,8 @@ export default function HeatmapPage() {
         council: "",
         status: "",
         verification: "",
+        victim_gender: "",
+        perpetrator_gender: "",
       });
     } else {
       setFilters((prev) => ({ ...prev, [field]: value }));
