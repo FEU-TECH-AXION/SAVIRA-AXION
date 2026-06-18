@@ -126,8 +126,7 @@ const VIOLENCE_TYPES = [
   "Sexual harassment",
 ];
 
-const OFFICERS = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
-const LEGAL_OFFICERS = ["Ryan Dela Paz", "Noel Ramos", "Lena Cruz"];
+// Officers are fetched dynamically from the backend — see `officers` state in CaseManagement()
 const PAGE_SIZE = 10;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,7 +147,7 @@ function makeCase(id) {
     reporterId: String(10000000 + id * 7).slice(0, 8),
     region: ["NCR", "Region I", "Region III", "Region IV-A"][id % 4],
     status: statuses[id % statuses.length],
-    assignedOfficer: OFFICERS[id % OFFICERS.length],
+    assignedOfficer: null,
     dateSubmitted: dateISO,  // ISO string so CasesTable can format it
     caseType: [
       "Child Sexual Abuse",
@@ -167,7 +166,7 @@ function makeCase(id) {
     endorsementDetails: null,
     pendingApproval: null,
     statusHistory: [
-      { status: "For Verification", date: dateISO, by: OFFICERS[id % OFFICERS.length], notes: "Report received and logged." }
+      { status: "For Verification", date: dateISO, by: "System", notes: "Report received and logged." }
     ],
   };
 }
@@ -672,79 +671,287 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ASSIGN CASE MODAL (admin only)
+// ASSIGN CASE MODAL (admin only) — chip-based search & select
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, officers: officersProp = [] }) {
-  const [officerId, setOfficerId] = useState("");
-  const [error, setError] = useState("");
-  
+function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, officers: officersProp = [], showToast }) {
+  const [search,   setSearch]   = useState("");
+  const [assigned, setAssigned] = useState([]); // [{ case_officer_id, first_name, last_name, name }]
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState("");
+
   // Support both single case and array of cases
   const casesData = Array.isArray(casesDataProp) ? casesDataProp : (casesDataProp ? [casesDataProp] : []);
-  
-  useEffect(() => { 
-    if (casesData.length > 0) {
-      // Reset officer selection when cases change
-      setOfficerId("");
-    }
-  }, [casesData]);
-  
+
+  useEffect(() => {
+    if (open) { setSearch(""); setAssigned([]); setError(""); setSaving(false); }
+  }, [open]);
+
   if (casesData.length === 0) return null;
 
-  function handleSave() {
-    if (!officerId) { setError("Please select an officer."); return; }
-    
-    // Find the selected officer object to get the officer name
-    const selectedOfficer = officersProp.find(o => o.case_officer_id == officerId);
-    const officerName = selectedOfficer?.name || `${selectedOfficer?.first_name || ''} ${selectedOfficer?.last_name || ''}`.trim() || officerId;
-    
-    // Call onSave for each case
-    casesData.forEach(caseData => {
-      onSave({ ...caseData, assignedOfficer: officerName, assignedOfficerId: officerId });
-    });
-    onClose();
+  const isBulk = casesData.length > 1;
+  const assignedIds = assigned.map(o => String(o.case_officer_id));
+
+  // Live-filter: if no query show all not yet added, else filter by name
+  const searchResults = officersProp.filter(o => {
+    const fullName = (o.name || `${o.first_name || ""} ${o.last_name || ""}`).toLowerCase();
+    const query    = search.toLowerCase();
+    const notAdded = !assignedIds.includes(String(o.case_officer_id));
+    if (!search.trim()) return notAdded;
+    return notAdded && fullName.includes(query);
+  });
+
+  function addOfficer(officer) {
+    setAssigned(prev => [...prev, officer]);
+    setSearch("");
+    setError("");
   }
 
-  const isBulk = casesData.length > 1;
-  const availableOfficers = (officersProp && officersProp.length > 0) ? officersProp : [];
+  function removeOfficer(id) {
+    setAssigned(prev => prev.filter(o => String(o.case_officer_id) !== String(id)));
+  }
+
+  async function handleAssign() {
+    if (assigned.length === 0) { setError("Please select at least one case officer."); return; }
+    setSaving(true);
+    setError("");
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const officerIds = assigned.map(o => o.case_officer_id);
+      const caseIds    = casesData.map(c => c.id);
+
+      const res = await fetch(`${API_URL}/api/case_assignments/bulk-assign`, {
+        method:      "POST",
+        headers:     { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          case_report_ids:  caseIds,
+          case_officer_ids: officerIds,
+        }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) throw new Error(body.error || "Failed to assign.");
+
+      // Partial failures
+      if (body.failed?.length > 0) {
+        const failMsgs = body.failed.map(f => `Officer #${f.case_officer_id}: ${f.reason}`).join(" · ");
+        setError(`Some assignments failed — ${failMsgs}`);
+      }
+
+      // Update local state
+      if (body.data?.length > 0) {
+        const officerName = assigned.map(o => o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim()).join(", ");
+        casesData.forEach(caseData => {
+          onSave({
+            ...caseData,
+            assignedOfficer:    officerName,
+            assignedOfficerIds: officerIds,
+          });
+        });
+        if (showToast) showToast(body.message || "Assigned successfully.");
+      }
+
+      if (!body.failed?.length) onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <Modal open={open} onClose={onClose} title={isBulk ? `Assign Case Officer (${casesData.length} cases)` : "Assign Case Officer"}>
+    <Modal open={open} onClose={onClose} title={isBulk ? `Assign Case Officer — ${casesData.length} Cases` : "Assign Case Officer"} wide>
       <div className={styles.formGrid}>
+
+        {/* Case ID or bulk list */}
         {isBulk ? (
-          <>
-            <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
-              <label className={styles.formLabel}>Cases to assign:</label>
-              <div style={{ background: "#f3f4f6", borderRadius: 6, padding: 10, fontSize: "0.875rem", maxHeight: 150, overflowY: "auto" }}>
-                {casesData.map((c, i) => (
-                  <div key={i} style={{ padding: "4px 0", borderBottom: i < casesData.length - 1 ? "1px solid #e5e7eb" : "none" }}>
-                    <strong>{c.caseId}</strong> — {c.status} (Reporter: {c.reporterId})
-                  </div>
-                ))}
-              </div>
+          <FormGroup label="Cases">
+            <div style={{ background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb", padding: "0.5rem 0.75rem", maxHeight: 100, overflowY: "auto" }}>
+              {casesData.map((c, i) => (
+                <div key={i} style={{ fontSize: "0.82rem", padding: "2px 0", color: "#374151" }}>
+                  <strong>{c.caseId}</strong> — {c.status}
+                </div>
+              ))}
             </div>
-          </>
+          </FormGroup>
         ) : (
           <FormGroup label="Case ID"><FInput value={casesData[0].caseId} disabled /></FormGroup>
         )}
-        <FormGroup label="Assign to Officer" required error={error} style={isBulk ? { gridColumn: "1 / -1" } : {}}>
-          <FSelect value={officerId} onChange={(e) => { setOfficerId(e.target.value); setError(""); }} error={error}>
-            <option value="">— Select Officer —</option>
-            {availableOfficers.length > 0 ? (
-              availableOfficers.map((o) => {
-                const officerName = o.name || `${o.first_name || ''} ${o.last_name || ''}`.trim();
-                return <option key={o.case_officer_id} value={o.case_officer_id}>{officerName}</option>;
-              })
+
+        {/* Chip display — who will be assigned */}
+        <FormGroup label="Selected Case Officers">
+          <div style={{
+            display:      "flex",
+            flexWrap:     "wrap",
+            gap:          "0.4rem",
+            minHeight:    "2.25rem",
+            padding:      "0.5rem",
+            borderRadius: 8,
+            border:       "1px solid #e5e7eb",
+            background:   "#f9fafb",
+          }}>
+            {assigned.length === 0 ? (
+              <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                No one selected yet — search below to add.
+              </span>
             ) : (
-              <option disabled>No case officers available</option>
+              assigned.map(o => {
+                const name = o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim();
+                return (
+                  <span
+                    key={o.case_officer_id}
+                    style={{
+                      display:      "inline-flex",
+                      alignItems:   "center",
+                      gap:          "0.35rem",
+                      padding:      "0.25rem 0.6rem",
+                      borderRadius: 999,
+                      background:   "#e0f2fe",
+                      color:        "#0369a1",
+                      fontSize:     "0.8rem",
+                      fontWeight:   600,
+                    }}
+                  >
+                    {name}
+                    <span style={{ fontSize: "0.7rem", color: "#0284c7", opacity: 0.75 }}>
+                      Case Officer
+                    </span>
+                    <button
+                      onClick={() => removeOfficer(o.case_officer_id)}
+                      style={{
+                        background: "none",
+                        border:     "none",
+                        cursor:     "pointer",
+                        color:      "#0369a1",
+                        padding:    0,
+                        lineHeight: 1,
+                        fontSize:   "0.9rem",
+                        marginLeft: "0.1rem",
+                      }}
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })
             )}
-          </FSelect>
+          </div>
         </FormGroup>
+
+        {/* Search input */}
+        <FormGroup
+          label="Search Case Officers"
+          hint="Browse the list or type to filter by name."
+        >
+          <div style={{ position: "relative" }}>
+            <FInput
+              placeholder="e.g. Maria, Juan…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoComplete="off"
+            />
+
+            {/* Dropdown results */}
+            {(search.trim().length > 0 || searchResults.length > 0) && searchResults.length > 0 && (
+              <div style={{
+                position:     "absolute",
+                top:          "calc(100% + 4px)",
+                left:         0,
+                right:        0,
+                background:   "#fff",
+                border:       "1px solid #e5e7eb",
+                borderRadius: 8,
+                boxShadow:    "0 4px 12px rgba(0,0,0,0.08)",
+                zIndex:       100,
+                maxHeight:    "200px",
+                overflowY:    "auto",
+              }}>
+                {searchResults.map(o => {
+                  const name = o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim();
+                  return (
+                    <button
+                      key={o.case_officer_id}
+                      onClick={() => addOfficer(o)}
+                      style={{
+                        display:        "flex",
+                        alignItems:     "center",
+                        justifyContent: "space-between",
+                        width:          "100%",
+                        padding:        "0.6rem 0.85rem",
+                        background:     "none",
+                        border:         "none",
+                        borderBottom:   "1px solid #f3f4f6",
+                        color:          "#292929",
+                        cursor:         "pointer",
+                        textAlign:      "left",
+                        fontSize:       "0.875rem",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
+                      onMouseLeave={e => e.currentTarget.style.background = "none"}
+                    >
+                      <span style={{ fontWeight: 500 }}>{name}</span>
+                      <span style={{
+                        fontSize:     "0.75rem",
+                        color:        "#6b7280",
+                        background:   "#f3f4f6",
+                        padding:      "2px 8px",
+                        borderRadius: 999,
+                      }}>
+                        Case Officer
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* No results */}
+            {search.trim().length > 0 && searchResults.length === 0 && (
+              <div style={{
+                position:     "absolute",
+                top:          "calc(100% + 4px)",
+                left:         0,
+                right:        0,
+                background:   "#fff",
+                border:       "1px solid #e5e7eb",
+                borderRadius: 8,
+                padding:      "0.75rem",
+                fontSize:     "0.8rem",
+                color:        "#9ca3af",
+                zIndex:       100,
+              }}>
+                No case officers found matching &quot;{search}&quot;.
+              </div>
+            )}
+          </div>
+        </FormGroup>
+
+        {error && (
+          <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: 0 }}>{error}</p>
+        )}
       </div>
+
+      <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem" }}>
+        The same officer cannot be assigned to the same case twice simultaneously.
+      </p>
+
       <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSave} disabled={availableOfficers.length === 0}>
-          {isBulk ? `Assign to ${casesData.length} Case${casesData.length === 1 ? '' : 's'}` : "Assign Officer"}
+        <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>
+          Cancel
+        </button>
+        <button
+          className={styles.btnPrimary}
+          onClick={handleAssign}
+          disabled={saving || assigned.length === 0}
+        >
+          {saving
+            ? `Assigning ${assigned.length}…`
+            : `Assign${assigned.length > 0 ? ` (${assigned.length})` : ""}`
+          }
         </button>
       </div>
     </Modal>
@@ -1192,39 +1399,9 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     showToast(`Status change for ${caseData.caseId} rejected.`, "danger");
   }
 
-  // ── Assign officer (admin) ──
+  // ── Assign officer (admin) — modal handles API, this just updates local state ──
   function assignOfficer(updated) {
-    // Update local state
     setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
-    
-    // Save to backend via API
-    const saveToBackend = async () => {
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        if (updated.assignedOfficerId) {
-          const res = await fetch(`${API_URL}/api/case_assignments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              case_report_id: updated.id,
-              case_officer_id: updated.assignedOfficerId,
-            }),
-          });
-          if (!res.ok) {
-            console.error('[assignOfficer] API error:', res.status);
-            showToast('Failed to save assignment to database', 'danger');
-          } else {
-            showToast(`Officer assigned to ${updated.caseId}.`);
-          }
-        }
-      } catch (err) {
-        console.error('[assignOfficer] Error:', err);
-        showToast('Error saving assignment', 'danger');
-      }
-    };
-    
-    saveToBackend();
   }
 
   // ── Open correct status modal ──
@@ -1348,7 +1525,8 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                   <FilterMenu 
                     activeFilters={advancedFilters} 
                     onFilterChange={setAdvancedFilters}
-                    onDone={() => {}} 
+                    onDone={() => {}}
+                    officers={officers}
                   />
                 </div>
                 <CasesTable
@@ -1396,7 +1574,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       />
 
       {/* Assign (admin) */}
-      <AssignCaseModal open={modal === "assign"} onClose={closeModal} casesData={selected} onSave={assignOfficer} officers={officers} />
+      <AssignCaseModal open={modal === "assign"} onClose={closeModal} casesData={selected} onSave={assignOfficer} officers={officers} showToast={showToast} />
 
       {/* Status Router — inline transition picker */}
       <UpdateStatusModal

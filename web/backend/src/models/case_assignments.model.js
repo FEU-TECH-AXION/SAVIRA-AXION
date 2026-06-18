@@ -65,4 +65,26 @@ const getAssignmentsByOfficerId = async (caseOfficerId) => {
     return data.map(a => a.case_report_id);
 };
 
-module.exports = { assignCaseToOfficer, getAssignmentsByCaseId, getAssignmentsByOfficerId };
+// Check if this person is already actively assigned to this case
+const isAlreadyAssigned = async (case_report_id, case_officer_id) => {
+    const { data, error } = await supabase
+        .from('case_assignments')
+        .select('assignment_id')
+        .eq('case_report_id', case_report_id)
+        .eq('case_officer_id', case_officer_id)
+        .eq('is_active', true)
+        .single()
+    if (error && error.code !== 'PGRST116') throw error // PGRST116 = no rows found
+    return !!data
+}
+
+const bulkCreate = async (assignments) => {
+    const { data, error } = await supabase
+        .from('case_assignments')
+        .insert(assignments)
+        .select()
+    if (error) throw error
+    return data
+}
+
+module.exports = { assignCaseToOfficer, getAssignmentsByCaseId, getAssignmentsByOfficerId, bulkCreate, isAlreadyAssigned };

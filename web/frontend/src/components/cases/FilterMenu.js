@@ -97,11 +97,7 @@ const ALL_FILTER_FIELDS = [
   },
 ];
 
-// Placeholder officers list (up to 20 shown)
-const OFFICERS_LIST = [
-  "Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres",
-  "Shannon Clark", "Brittany Fulman", "Derek Greene", "Noel Ramos", "Lena Cruz",
-];
+
 
 // ─── Simple dropdown for select & date filters ────────────────────────────────
 
@@ -261,8 +257,12 @@ function DefaultFilterDropdown({ field, value, onChange }) {
   }
 
   if (field.type === "officer") {
+    const officerNames = (field.officers || []).map(o =>
+      o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim()
+    ).filter(Boolean);
+
     const [search, setSearch] = useState("");
-    const filtered = OFFICERS_LIST.filter(o =>
+    const filtered = officerNames.filter(o =>
       o.toLowerCase().includes(search.toLowerCase())
     ).slice(0, 20);
 
@@ -379,7 +379,7 @@ function DefaultFilterDropdown({ field, value, onChange }) {
  *  onFilterChange   — (newFilters) => void
  *  onDone           — () => void
  */
-export default function FilterMenu({ activeFilters, onFilterChange, onDone }) {
+export default function FilterMenu({ activeFilters, onFilterChange, onDone, officers = [] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -427,7 +427,7 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone }) {
         {DEFAULT_FILTERS.map(field => (
           <DefaultFilterDropdown
             key={field.key}
-            field={field}
+            field={{ ...field, officers: field.type === "officer" ? officers : undefined }}
             value={activeFilters[field.key] || ""}
             onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
           />
