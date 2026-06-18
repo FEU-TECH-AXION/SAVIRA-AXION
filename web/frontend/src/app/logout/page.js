@@ -11,7 +11,7 @@ export default function LogoutPage() {
       method: 'POST',
       credentials: 'include',
     }).finally(() => {
-      router.push('/login');
+      router.push('/');
     });
   }, []);
 

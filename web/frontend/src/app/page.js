@@ -11,6 +11,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 import styles from "./page.module.css";
 import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
 
@@ -20,6 +22,15 @@ export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [publicEvents, setPublicEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     let mounted = true;

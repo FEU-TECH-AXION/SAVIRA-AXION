@@ -16,7 +16,7 @@ export default function CasesPage() {
 
   useEffect(() => {
     const userCookie = getCookie('user');
-    if (!userCookie) { router.push('/login'); return; }
+    if (!userCookie) { router.push('/'); return; }
     const user = JSON.parse(userCookie);
     setRole(user.role_name?.toLowerCase());
   }, []);

@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
       credentials: "include",
     });
     setUser(null);
-    router.push("/login");
+    router.push("/");
   };
 
   return (

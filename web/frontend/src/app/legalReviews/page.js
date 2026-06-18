@@ -17,7 +17,7 @@ export default function LegalReviewPage() {
   useEffect(() => {
     const userCookie = getCookie('user');
     if (!userCookie) {
-      router.push('/login');
+      router.push('/');
       return;
     }
     const user = JSON.parse(userCookie);
