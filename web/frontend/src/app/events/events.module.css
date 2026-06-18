@@ -402,6 +402,11 @@
   color: var(--teal);
 }
 
+.categoryActive {
+  border-color: var(--teal) !important;
+  color: var(--teal) !important;
+}
+
 .recentList {
   list-style: none;
   padding: 0;

@@ -78,8 +78,32 @@ export const metadata = {
   description: "SASHA Initiatives — Advocacy events and activities across chapters nationwide.",
 };
 
-export default async function EventsPage() {
+export default async function EventsPage({ searchParams }) {
+  const params = await searchParams;
+  let activeCategories = [];
+  if (Array.isArray(params?.category)) {
+    activeCategories = params.category;
+  } else if (typeof params?.category === "string") {
+    activeCategories = params.category.includes(",") 
+      ? params.category.split(",").map(c => c.trim())
+      : [params.category];
+  }
+  const searchQuery = (params?.search || "").toLowerCase();
+
   const PUBLIC_EVENTS = await fetchProjectEvents();
+  
+  let filteredEvents = PUBLIC_EVENTS;
+  if (activeCategories.length > 0) {
+    filteredEvents = filteredEvents.filter(ev => activeCategories.includes(ev.category));
+  }
+  if (searchQuery) {
+    filteredEvents = filteredEvents.filter(ev => 
+      ev.title.toLowerCase().includes(searchQuery) ||
+      ev.description.toLowerCase().includes(searchQuery) ||
+      (ev.tagline && ev.tagline.toLowerCase().includes(searchQuery))
+    );
+  }
+
   const recentPosts = PUBLIC_EVENTS.slice(0, 3).map((p) => ({
     title: p.title,
     date: p.dateStart,
@@ -125,10 +149,10 @@ export default async function EventsPage() {
           <div className={styles.contentGrid}>
             {/* Events list */}
             <div className={styles.eventsList}>
-              {PUBLIC_EVENTS.length === 0 ? (
+              {filteredEvents.length === 0 ? (
                 <p style={{ color: "#6b7280" }}>No public events available at this time.</p>
               ) : (
-                PUBLIC_EVENTS.map((ev) => {
+                filteredEvents.map((ev) => {
                   const slug = ev.slug || ev.title.toLowerCase().replace(/\s+/g, "-");
                   const isUpcoming = ev.status?.toLowerCase() === "upcoming";
                   const isActive = ev.status?.toLowerCase() === "active";
@@ -203,26 +227,50 @@ export default async function EventsPage() {
               {/* Search */}
               <div className={styles.sidebarBlock}>
                 <h4 className={styles.sidebarTitle}>Search</h4>
-                <div className={styles.searchBox}>
-                  <input type="text" placeholder="Search events…" className={styles.searchInput} />
-                  <button className={styles.searchBtn} aria-label="Search">
+                <form action="/events" method="GET" className={styles.searchBox}>
+                  {activeCategories.map((cat) => (
+                    <input key={cat} type="hidden" name="category" value={cat} />
+                  ))}
+                  <input type="text" name="search" defaultValue={params?.search || ""} placeholder="Search events…" className={styles.searchInput} />
+                  <button type="submit" className={styles.searchBtn} aria-label="Search">
                     <FaSearch />
                   </button>
-                </div>
+                </form>
               </div>
 
               {/* Categories */}
               <div className={styles.sidebarBlock}>
                 <h4 className={styles.sidebarTitle}>Categories</h4>
                 <ul className={styles.categoryList}>
-                  {CATEGORIES.map((cat) => (
+                  {CATEGORIES.map((cat) => {
+                    const query = new URLSearchParams();
+                    if (searchQuery) query.set("search", searchQuery);
+                    
+                    let isActive = false;
+                    let nextCategories = [];
+                    
+                    if (cat === "All") {
+                      isActive = activeCategories.length === 0;
+                    } else {
+                      isActive = activeCategories.includes(cat);
+                      if (isActive) {
+                        nextCategories = activeCategories.filter(c => c !== cat);
+                      } else {
+                        nextCategories = [...activeCategories, cat];
+                      }
+                    }
+                    
+                    nextCategories.forEach(c => query.append("category", c));
+                    const href = `/events${query.toString() ? `?${query.toString()}` : ""}`;
+                    
+                    return (
                     <li key={cat}>
-                      <Link href={cat === "All" ? "/events" : `/events?category=${encodeURIComponent(cat)}`}
-                        className={styles.categoryItem}>
+                      <Link href={href} scroll={false}
+                        className={`${styles.categoryItem} ${isActive ? styles.categoryActive : ""}`}>
                         {cat}
                       </Link>
                     </li>
-                  ))}
+                  )})}
                 </ul>
               </div>
 
@@ -230,7 +278,7 @@ export default async function EventsPage() {
               <div className={styles.sidebarBlock}>
                 <h4 className={styles.sidebarTitle}>Recent Events</h4>
                 <ul className={styles.recentList}>
-                  {RECENT_POSTS.map((p) => (
+                  {recentPosts.map((p) => (
                     <li key={p.title} className={styles.recentItem}>
                       <img src={p.image} alt={p.title} className={styles.recentThumb} />
                       <div>
