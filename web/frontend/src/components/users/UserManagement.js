@@ -821,13 +821,13 @@ function ViewAllModal({ open, onClose, users, onEdit, onDelete, onView, defaultA
                   <td>
                     <div className={styles.actionBtns}>
                       {(!defaultAction || defaultAction === "view") && (
-                        <button className={styles.tblBtnView} onClick={() => { onView(u); onClose(); }}>View</button>
+                        <button className={styles.tblBtnView} onClick={() => onView(u)}>View</button>
                       )}
                       {(!defaultAction || defaultAction === "edit") && (
-                        <button className={styles.tblBtnEdit} onClick={() => { onEdit(u); onClose(); }}>Edit</button>
+                        <button className={styles.tblBtnEdit} onClick={() => onEdit(u)}>Edit</button>
                       )}
                       {(!defaultAction || defaultAction === "delete") && (
-                        <button className={styles.tblBtnDelete} onClick={() => { onDelete(u); onClose(); }}>Manage</button>
+                        <button className={styles.tblBtnDelete} onClick={() => onDelete(u)}>Manage</button>
                       )}
                     </div>
                   </td>
