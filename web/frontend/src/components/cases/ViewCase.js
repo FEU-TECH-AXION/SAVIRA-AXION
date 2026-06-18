@@ -1229,6 +1229,9 @@ export default function ViewCase() {
   const [user, setUser]         = useState({ role: null });
   const [userLoaded, setUserLoaded] = useState(false);
   const [toast, setToast]       = useState(null);
+  
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [undoWithdrawModalOpen, setUndoWithdrawModalOpen] = useState(false);
 
   const isAdmin      = user.role?.toLowerCase() === "admin";
   const isCaseOfficer = user.role?.toLowerCase() === "case officer" || user.role?.toLowerCase() === "case_officer";
@@ -1248,6 +1251,36 @@ export default function ViewCase() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
+
+  const handleWithdraw = async (id) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_reports/${id}/withdraw`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to withdraw case.");
+      showToast("Case withdrawn successfully.");
+      window.location.reload();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
+
+  const handleUndoWithdraw = async (id) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_reports/${id}/undo_withdraw`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to undo withdrawal.");
+      showToast("Withdrawal undone successfully.");
+      window.location.reload();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
 
   useEffect(() => {
     const userCookie = getCookie("user");
@@ -1457,7 +1490,25 @@ export default function ViewCase() {
               <h1 className={styles.caseTitle}>{caseData.caseId}</h1>
               <p className={styles.caseSubtitle}>Submitted: {caseData.dateSubmitted}</p>
             </div>
-            <StatusBadge status={caseData.status} />
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <StatusBadge status={caseData.status} />
+              {!isStaff && (caseData.status === "For Verification" || caseData.status === "Undergoing Review") && (
+                <button
+                  style={{ background: "#6b7280", padding: "6px 14px", color: "white", border: "none", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}
+                  onClick={() => setWithdrawModalOpen(true)}
+                >
+                  Withdraw
+                </button>
+              )}
+              {!isStaff && caseData.status === "Withdrawn" && (
+                <button
+                  style={{ background: "#10b981", padding: "6px 14px", color: "white", border: "none", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}
+                  onClick={() => setUndoWithdrawModalOpen(true)}
+                >
+                  Undo Withdraw
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1513,6 +1564,28 @@ export default function ViewCase() {
           )}
 
         </div>
+        
+        {/* Withdraw Modals */}
+        <Modal open={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} title="Withdraw Case Report">
+          <p className={styles.formDesc}>
+            Are you sure you want to withdraw this case report? This action will stop the current progress, but it can be undone later if needed.
+          </p>
+          <div className={styles.modalFooter}>
+            <button className={styles.btnSecondary} onClick={() => setWithdrawModalOpen(false)}>Cancel</button>
+            <button className={styles.btnPrimary} style={{ background: "#dc2626", borderColor: "#dc2626" }} onClick={() => { setWithdrawModalOpen(false); handleWithdraw(caseData.id); }}>Confirm Withdraw</button>
+          </div>
+        </Modal>
+
+        <Modal open={undoWithdrawModalOpen} onClose={() => setUndoWithdrawModalOpen(false)} title="Undo Withdrawal">
+          <p className={styles.formDesc}>
+            Are you sure you want to undo the withdrawal of this case report? Your report will return to its previous status.
+          </p>
+          <div className={styles.modalFooter}>
+            <button className={styles.btnSecondary} onClick={() => setUndoWithdrawModalOpen(false)}>Cancel</button>
+            <button className={styles.btnPrimary} onClick={() => { setUndoWithdrawModalOpen(false); handleUndoWithdraw(caseData.id); }}>Confirm Undo</button>
+          </div>
+        </Modal>
+
       </div>
     </div>
   );

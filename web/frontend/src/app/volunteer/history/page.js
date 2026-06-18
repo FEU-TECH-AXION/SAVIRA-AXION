@@ -105,6 +105,10 @@ export default function ApplicationHistoryPage() {
   const [draft,        setDraft]        = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
+  
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [undoWithdrawModalOpen, setUndoWithdrawModalOpen] = useState(false);
+  const [selectedAppId, setSelectedAppId] = useState(null);
 
   useEffect(() => {
     // Load any saved draft from localStorage
@@ -133,6 +137,36 @@ export default function ApplicationHistoryPage() {
     }
     fetchApplications();
   }, []);
+
+  const handleWithdraw = async () => {
+    if (!selectedAppId) return;
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/withdraw`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to withdraw application.");
+      window.location.reload();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleUndoWithdraw = async () => {
+    if (!selectedAppId) return;
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/undo_withdraw`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to undo withdrawal.");
+      window.location.reload();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   // Eligibility is derived from the fetched list (cheap, client-side)
   const eligibility = loading ? null : getSubmissionEligibility(applications);
@@ -242,13 +276,25 @@ export default function ApplicationHistoryPage() {
                           <button
                             className={styles.submitBtn}
                             style={{ background: "#6b7280" }}
-                            onClick={() =>
-                              router.push(
-                                `/volunteer/withdraw?id=${app.volunteer_application_id}`
-                              )
-                            }
+                            onClick={() => {
+                              setSelectedAppId(app.volunteer_application_id);
+                              setWithdrawModalOpen(true);
+                            }}
                           >
                             Withdraw
+                          </button>
+                        )}
+                        {/* Show Undo Withdraw for withdrawn applications */}
+                        {status.toLowerCase() === "withdrawn" && (
+                          <button
+                            className={styles.submitBtn}
+                            style={{ background: "#10b981", color: "white" }}
+                            onClick={() => {
+                              setSelectedAppId(app.volunteer_application_id);
+                              setUndoWithdrawModalOpen(true);
+                            }}
+                          >
+                            Undo Withdraw
                           </button>
                         )}
                       </div>
@@ -258,6 +304,33 @@ export default function ApplicationHistoryPage() {
               );
             })}
           </div>
+
+          {/* Simple Inline Modals for withdraw actions */}
+          {withdrawModalOpen && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+              <div style={{ background: "white", padding: "1.5rem", borderRadius: "8px", maxWidth: "400px", width: "90%" }}>
+                <h3 style={{ marginTop: 0 }}>Withdraw Application</h3>
+                <p>Are you sure you want to withdraw this application? This action can be undone later.</p>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1rem" }}>
+                  <button onClick={() => setWithdrawModalOpen(false)} style={{ padding: "8px 16px", borderRadius: "4px", border: "1px solid #ccc", background: "white", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={() => { setWithdrawModalOpen(false); handleWithdraw(); }} style={{ padding: "8px 16px", borderRadius: "4px", border: "none", background: "#dc2626", color: "white", cursor: "pointer" }}>Confirm Withdraw</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {undoWithdrawModalOpen && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+              <div style={{ background: "white", padding: "1.5rem", borderRadius: "8px", maxWidth: "400px", width: "90%" }}>
+                <h3 style={{ marginTop: 0 }}>Undo Withdrawal</h3>
+                <p>Are you sure you want to undo your withdrawal? Your application will resume.</p>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1rem" }}>
+                  <button onClick={() => setUndoWithdrawModalOpen(false)} style={{ padding: "8px 16px", borderRadius: "4px", border: "1px solid #ccc", background: "white", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={() => { setUndoWithdrawModalOpen(false); handleUndoWithdraw(); }} style={{ padding: "8px 16px", borderRadius: "4px", border: "none", background: "#10b981", color: "white", cursor: "pointer" }}>Confirm Undo</button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

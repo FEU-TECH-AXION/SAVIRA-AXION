@@ -253,4 +253,94 @@ const updateItem = async (req, res) => {
   }
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem }
+const withdrawCase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supabase = require('../config/supabase');
+    
+    // 1. Get the case report
+    const { data: caseReport, error: fetchErr } = await supabase
+      .from('case_reports')
+      .select('*')
+      .eq('case_report_id', id)
+      .single();
+      
+    if (fetchErr || !caseReport) throw new Error('Case report not found');
+    
+    // 2. Insert into case_status_history
+    const { error: histErr } = await supabase
+      .from('case_status_history')
+      .insert([{
+        case_report_id: id,
+        case_status_id: 13, // Withdrawn
+        changed_by_id: req.user?.id || req.user?.user_id,
+        changed_by_role: 'complainant',
+        notes: 'Complainant withdrew the case',
+        approval_status: 'approved',
+        approved_at: new Date().toISOString()
+      }]);
+      
+    if (histErr) throw histErr;
+    
+    // 3. Update case_reports
+    const { data: updatedCase, error: updateErr } = await supabase
+      .from('case_reports')
+      .update({ case_status_id: 13 })
+      .eq('case_report_id', id)
+      .select()
+      .single();
+      
+    if (updateErr) throw updateErr;
+    
+    res.json({ message: 'Case withdrawn successfully', data: updatedCase });
+  } catch (err) {
+    console.error('[withdrawCase]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const undoWithdrawCase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supabase = require('../config/supabase');
+    
+    // 1. Find the latest status history before it was withdrawn
+    const { data: historyList, error: histErr } = await supabase
+      .from('case_status_history')
+      .select('*')
+      .eq('case_report_id', id)
+      .order('created_at', { ascending: false });
+      
+    if (histErr) throw histErr;
+    
+    // Find the latest non-Withdrawn status
+    const previousStatusRow = historyList.find(h => h.case_status_id !== 13);
+    const prevStatusId = previousStatusRow ? previousStatusRow.case_status_id : 2; // default to 'For Verification' if none found
+    
+    // 2. Delete the withdrawn history rows
+    const withdrawnRows = historyList.filter(h => h.case_status_id === 13).map(h => h.history_id);
+    if (withdrawnRows.length > 0) {
+      await supabase
+        .from('case_status_history')
+        .delete()
+        .in('history_id', withdrawnRows);
+    }
+    
+    // 3. Revert case_reports status
+    const { data: updatedCase, error: updateErr } = await supabase
+      .from('case_reports')
+      .update({ case_status_id: prevStatusId })
+      .eq('case_report_id', id)
+      .select()
+      .single();
+      
+    if (updateErr) throw updateErr;
+    
+    res.json({ message: 'Withdrawal undone successfully', data: updatedCase });
+  } catch (err) {
+    console.error('[undoWithdrawCase]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase }

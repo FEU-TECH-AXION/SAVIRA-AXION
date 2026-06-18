@@ -489,6 +489,51 @@ const getMyApplications = async (req, res) => {
     }
 }
 
-module.exports = { getItems, getItem, createItem, updateItem, getMyApplications, getScores, assignAssessors, getRankings }
+const withdrawApplication = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { data, error } = await supabase
+            .from('volunteer_applications')
+            .update({ application_status: 'withdrawn', updated_at: new Date() })
+            .eq('volunteer_application_id', id)
+            .select()
+            .single();
+            
+        if (error) throw error;
+        res.json({ message: 'Application withdrawn successfully', data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
+const undoWithdrawApplication = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Check if assessors exist
+        const { data: assignments, error: assignError } = await supabase
+            .from('volunteer_application_assignments')
+            .select('assignment_id')
+            .eq('volunteer_application_id', id)
+            .eq('is_active', true);
+            
+        if (assignError) throw assignError;
+        
+        const newStatus = assignments && assignments.length > 0 ? 'reviewing' : 'pending';
+        
+        const { data, error } = await supabase
+            .from('volunteer_applications')
+            .update({ application_status: newStatus, updated_at: new Date() })
+            .eq('volunteer_application_id', id)
+            .select()
+            .single();
+            
+        if (error) throw error;
+        res.json({ message: 'Withdrawal undone successfully', data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
+module.exports = { getItems, getItem, createItem, updateItem, getMyApplications, getScores, assignAssessors, getRankings, withdrawApplication, undoWithdrawApplication }
