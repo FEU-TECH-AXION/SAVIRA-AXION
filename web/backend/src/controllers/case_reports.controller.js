@@ -82,7 +82,6 @@ function buildPayload(complainantId, organizationId, complainant, incident, evid
 }
 
 async function submitReport(req, res) {
-  console.log('[submitReport] req.files:', req.files?.length, req.files?.map(f => f.originalname));
   try {
     const complainant = JSON.parse(req.body.complainant);
     const incident     = JSON.parse(req.body.incident);
@@ -407,7 +406,6 @@ async function uploadEvidenceFiles(caseReportId, files, uploadedById) {
       .single();
 
     if (insertErr) {
-      console.error('[uploadEvidenceFiles] metadata insert failed:', JSON.stringify(insertErr, null, 2));
       console.error('[uploadEvidenceFiles] metadata insert failed:', insertErr.message);
       throw new Error(`Failed to save metadata for ${file.originalname}.`);
     }
