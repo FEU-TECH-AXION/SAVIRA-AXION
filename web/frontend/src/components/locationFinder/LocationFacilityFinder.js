@@ -10,6 +10,7 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const MAPBOX_SCRIPT_ID = "mapbox-gl-js";
 const MAPBOX_CSS_ID = "mapbox-gl-css";
 
+// Mapbox Search Box category slugs — these are the official IDs
 const SERVICE_COPY = {
   hospital: {
     icon: <MdLocalHospital />,
@@ -17,9 +18,8 @@ const SERVICE_COPY = {
     title: "Find Hospitals",
     prompt: "Please enter location to find hospitals in that area",
     searchPlaceholder: "Enter city, barangay, landmark, or address",
-    query: "hospital",
-    queries: ["hospital", "medical center", "emergency hospital"],
-    keywords: ["hospital", "medical", "clinic", "health", "emergency"],
+    // Comma-separated category slugs — Search Box supports multi-category
+    categories: ["hospital", "emergency_room_and_urgent_care_facility"],
     empty: "Search for a location to see nearby hospitals.",
     color: "#037F81",
   },
@@ -29,21 +29,19 @@ const SERVICE_COPY = {
     title: "Find Police Stations",
     prompt: "Please enter location to find police stations in that area",
     searchPlaceholder: "Enter city, barangay, landmark, or address",
-    query: "police station",
-    queries: ["police station", "police", "precinct"],
-    keywords: ["police", "station", "precinct"],
+    categories: ["police_station"],
     empty: "Search for a location to see nearby police stations.",
     color: "#E8663A",
   },
 };
 
+// --- Mapbox GL loader (unchanged) ---
 function loadMapbox() {
   if (!MAPBOX_TOKEN) return Promise.reject(new Error("Mapbox token is missing."));
   if (window.mapboxgl) return Promise.resolve(window.mapboxgl);
 
   return new Promise((resolve, reject) => {
     let script = document.getElementById(MAPBOX_SCRIPT_ID);
-
     if (!document.getElementById(MAPBOX_CSS_ID)) {
       const link = document.createElement("link");
       link.id = MAPBOX_CSS_ID;
@@ -51,7 +49,6 @@ function loadMapbox() {
       link.href = "https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css";
       document.head.appendChild(link);
     }
-
     if (!script) {
       script = document.createElement("script");
       script.id = MAPBOX_SCRIPT_ID;
@@ -59,50 +56,46 @@ function loadMapbox() {
       script.async = true;
       document.head.appendChild(script);
     }
-
     script.addEventListener("load", () => resolve(window.mapboxgl), { once: true });
-    script.addEventListener("error", () => reject(new Error("Failed to load Mapbox.")), {
-      once: true,
-    });
+    script.addEventListener("error", () => reject(new Error("Failed to load Mapbox.")), { once: true });
   });
 }
 
-async function mapboxSearch(query, params = {}) {
+// --- Geocoding API: kept ONLY for location (address/place) autocomplete ---
+async function geocodeSearch(query, params = {}) {
   const search = new URLSearchParams({
     access_token: MAPBOX_TOKEN,
     country: "PH",
-    limit: "10",
+    limit: "6",
     ...params,
   });
   const res = await fetch(
     `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${search}`
   );
-
   if (!res.ok) throw new Error("Location search failed.");
+  return res.json();
+}
+
+// --- Search Box API: used for POI/facility category search ---
+async function searchBoxCategory(categorySlug, proximity, bbox) {
+  const params = new URLSearchParams({
+    access_token: MAPBOX_TOKEN,
+    proximity: proximity.join(","),
+    bbox,
+    limit: "10",
+    country: "PH",
+    language: "en",
+  });
+  const res = await fetch(
+    `https://api.mapbox.com/search/searchbox/v1/category/${encodeURIComponent(categorySlug)}?${params}`
+  );
+  if (!res.ok) throw new Error(`Category search failed for: ${categorySlug}`);
   return res.json();
 }
 
 function buildBbox(center, radius = 0.45) {
   const [lng, lat] = center;
   return [lng - radius, lat - radius, lng + radius, lat + radius].join(",");
-}
-
-function formatAddress(feature) {
-  return feature.place_name || feature.text || "Address unavailable";
-}
-
-function isRelevantFacility(feature, keywords) {
-  const haystack = [
-    feature.text,
-    feature.place_name,
-    ...(feature.properties?.category?.split(",") || []),
-    ...(feature.properties?.maki ? [feature.properties.maki] : []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return keywords.some((keyword) => haystack.includes(keyword));
 }
 
 function distanceKm(from, to) {
@@ -140,20 +133,17 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     return [...facilities].sort((a, b) => (a.distance || 999) - (b.distance || 999));
   }, [facilities, searchedLocation]);
 
+  // Autocomplete suggestions — still uses Geocoding API (correct use case)
   useEffect(() => {
     const trimmed = query.trim();
-
-    if (!MAPBOX_TOKEN || selectedSuggestion?.place_name === query || trimmed.length < 2) {
-      return;
-    }
+    if (!MAPBOX_TOKEN || selectedSuggestion?.place_name === query || trimmed.length < 2) return;
 
     const timer = setTimeout(async () => {
       setSuggestStatus("loading");
       try {
-        const data = await mapboxSearch(trimmed, {
+        const data = await geocodeSearch(trimmed, {
           autocomplete: "true",
           types: "place,locality,neighborhood,address,poi",
-          limit: "6",
         });
         setSuggestions(data.features || []);
         setSuggestStatus("success");
@@ -166,9 +156,9 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     return () => clearTimeout(timer);
   }, [query, selectedSuggestion]);
 
+  // Map init
   useEffect(() => {
     if (!mapContainerRef.current || !MAPBOX_TOKEN) return;
-
     loadMapbox()
       .then((mapboxgl) => {
         if (mapRef.current) return;
@@ -183,19 +173,16 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
       .catch((err) => setError(err.message));
 
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
     };
   }, []);
 
+  // Update markers when results change
   useEffect(() => {
     if (!mapRef.current || !searchedLocation) return;
-
-    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
     const mapboxgl = window.mapboxgl;
@@ -212,7 +199,11 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
       bounds.extend(facility.center);
       const marker = new mapboxgl.Marker({ color: copy.color })
         .setLngLat(facility.center)
-        .setPopup(new mapboxgl.Popup().setHTML(`<strong>${facility.name}</strong><br/>${facility.address}`))
+        .setPopup(
+          new mapboxgl.Popup().setHTML(
+            `<strong>${facility.name}</strong><br/>${facility.address}`
+          )
+        )
         .addTo(mapRef.current);
       markersRef.current.push(marker);
     });
@@ -224,77 +215,49 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     });
   }, [copy.color, searchedLocation, sortedFacilities]);
 
+  // Core: fetch facilities via Search Box /category endpoint
   async function searchNearbyFacilities(location) {
-    const locationName = location.place_name || location.text || query;
-    const searchPlans = copy.queries.flatMap((facilityQuery) => [
-      {
-        query: facilityQuery,
-        params: {
-          bbox: buildBbox(location.center),
-          proximity: location.center.join(","),
-          types: "poi",
-          limit: "10",
-        },
-      },
-      {
-        query: `${facilityQuery} ${locationName}`,
-        params: {
-          proximity: location.center.join(","),
-          types: "poi",
-          limit: "10",
-        },
-      },
-      {
-        query: `${facilityQuery} near ${locationName}`,
-        params: {
-          proximity: location.center.join(","),
-          types: "poi",
-          limit: "10",
-        },
-      },
-    ]);
+    const proximity = location.center;
+    const bbox = buildBbox(location.center);
 
-    const searches = await Promise.all(
-      searchPlans.map((plan) =>
-        mapboxSearch(plan.query, plan.params).catch(() => ({ features: [] }))
+    // Fetch all category slugs in parallel
+    const results = await Promise.all(
+      copy.categories.map((slug) =>
+        searchBoxCategory(slug, proximity, bbox).catch(() => ({ features: [] }))
       )
     );
 
     const seen = new Set();
-    return searches
+    return results
       .flatMap((data) => data.features || [])
-      .filter((feature) => feature.center?.length === 2)
-      .map((feature) => ({
-        id: feature.id,
-        name: feature.text,
-        address: formatAddress(feature),
-        center: feature.center,
-        distance: distanceKm(location.center, feature.center),
-      }))
-      .filter((facility) => {
-        const key = `${facility.name}-${facility.center.join(",")}`.toLowerCase();
+      .filter((f) => f.geometry?.coordinates?.length === 2)
+      .map((f) => {
+        const coords = f.geometry.coordinates;
+        return {
+          // Search Box uses feature.properties for metadata
+          id: f.properties?.mapbox_id || `${f.properties?.name}-${coords.join(",")}`,
+          name: f.properties?.name || "Unknown",
+          address:
+            f.properties?.full_address ||
+            f.properties?.place_formatted ||
+            f.properties?.address ||
+            "Address unavailable",
+          center: coords,
+          distance: distanceKm(proximity, coords),
+        };
+      })
+      .filter((f) => {
+        const key = `${f.name}-${f.center.join(",")}`.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
-      })
-      .filter((facility) => {
-        if (facility.distance === null) return true;
-        if (facility.distance <= 25) return true;
-        return isRelevantFacility(
-          { text: facility.name, place_name: facility.address, properties: {} },
-          copy.keywords
-        );
       })
       .sort((a, b) => (a.distance || 999) - (b.distance || 999))
       .slice(0, 12);
   }
 
   async function runSearch(locationFeature) {
-    if (!MAPBOX_TOKEN) {
-      setStatus("missingToken");
-      return;
-    }
-
+    if (!MAPBOX_TOKEN) { setStatus("missingToken"); return; }
     const trimmed = query.trim();
     if (!locationFeature && !trimmed) return;
 
@@ -306,17 +269,15 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     try {
       let location = locationFeature;
       if (!location) {
-        const locationData = await mapboxSearch(trimmed, {
+        const data = await geocodeSearch(trimmed, {
           types: "place,locality,neighborhood,address,poi",
           limit: "1",
         });
-        location = locationData.features?.[0];
+        location = data.features?.[0];
       }
-
       if (!location) throw new Error("We could not find that location.");
 
       const mapped = await searchNearbyFacilities(location);
-
       setSearchedLocation({
         name: location.place_name || location.text,
         center: location.center,
@@ -341,13 +302,12 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     runSearch(feature);
   }
 
+  // JSX is identical to your original — no UI changes needed
   return (
     <section className={styles.finder}>
       <div className={styles.searchPanel}>
         <div className={styles.headingRow}>
-          <span className={styles.serviceIcon} style={{ color: copy.color }}>
-            {copy.icon}
-          </span>
+          <span className={styles.serviceIcon} style={{ color: copy.color }}>{copy.icon}</span>
           <div>
             <p className={styles.eyebrow}>{copy.eyebrow}</p>
             <h1 className={styles.title}>{copy.title}</h1>
@@ -363,14 +323,11 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
               id={`${service}-location`}
               className={styles.searchInput}
               value={query}
-              onChange={(event) => {
-                const nextValue = event.target.value;
-                setQuery(nextValue);
+              onChange={(e) => {
+                const v = e.target.value;
+                setQuery(v);
                 setSelectedSuggestion(null);
-                if (nextValue.trim().length < 2) {
-                  setSuggestions([]);
-                  setSuggestStatus("idle");
-                }
+                if (v.trim().length < 2) { setSuggestions([]); setSuggestStatus("idle"); }
               }}
               placeholder={copy.searchPlaceholder}
               autoComplete="off"
@@ -385,15 +342,15 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
               {suggestStatus === "loading" && (
                 <div className={styles.suggestionMeta}>Finding suggestions...</div>
               )}
-              {suggestions.map((feature) => (
+              {suggestions.map((f) => (
                 <button
-                  key={feature.id}
+                  key={f.id}
                   type="button"
                   className={styles.suggestionItem}
-                  onClick={() => handleSuggestionSelect(feature)}
+                  onClick={() => handleSuggestionSelect(f)}
                 >
                   <FiMapPin />
-                  <span>{feature.place_name || feature.text}</span>
+                  <span>{f.place_name || f.text}</span>
                 </button>
               ))}
             </div>
@@ -422,14 +379,10 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
         <div className={styles.resultList}>
           {sortedFacilities.map((facility) => (
             <article key={facility.id} className={styles.resultItem}>
-              <div className={styles.resultIcon} style={{ color: copy.color }}>
-                {copy.icon}
-              </div>
+              <div className={styles.resultIcon} style={{ color: copy.color }}>{copy.icon}</div>
               <div className={styles.resultBody}>
                 <h2>{facility.name}</h2>
-                <p>
-                  <FiMapPin /> {facility.address}
-                </p>
+                <p><FiMapPin /> {facility.address}</p>
                 {facility.distance !== null && (
                   <span className={styles.distance}>{facility.distance.toFixed(1)} km away</span>
                 )}
@@ -452,8 +405,7 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
         <div ref={mapContainerRef} className={styles.mapCanvas}>
           {!MAPBOX_TOKEN && (
             <div className={styles.mapFallback}>
-              <FiExternalLink />
-              Map preview needs a Mapbox token.
+              <FiExternalLink /> Map preview needs a Mapbox token.
             </div>
           )}
         </div>
