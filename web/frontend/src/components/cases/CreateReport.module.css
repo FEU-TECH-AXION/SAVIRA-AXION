@@ -770,7 +770,21 @@
   font-weight: 800;
 }
 
-.successNextSteps p,
+.successStepsList {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--sasha-text);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.successStepsList li {
+  padding-left: 0.2rem;
+}
+
 .successSupportText {
   margin: 0;
   color: var(--sasha-text);

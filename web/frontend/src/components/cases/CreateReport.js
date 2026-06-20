@@ -2148,23 +2148,28 @@ export default function CreateReport({
               <div className={styles.successIcon}><FaCheck /></div>
               <h2 className={styles.successTitle}>Thank you for sharing your story.</h2>
               <p className={styles.successDesc}>
-                Your report has been safely received. We understand that taking this step requires courage,
-                and we want to reassure you that your information is completely secure and will be handled
-                with the utmost care and privacy.
+                It takes courage to come forward, and we&apos;re glad you did. Your report has been
+                received and will be kept private and handled with care.
               </p>
 
               <div className={styles.successNextSteps}>
                 <h3>What happens next?</h3>
-                <p>
-                  Our team will carefully review what you&apos;ve shared. We will reach out to you through
-                  your provided contact details to discuss the next steps and how we can support you.
-                </p>
+                <ul className={styles.successStepsList}>
+                  <li>Our team will carefully review your report.</li>
+                  <li>
+                    You can check its status anytime on your{" "}
+                    <Link href="/cases/history">Report History page</Link>.
+                  </li>
+                  <li>
+                    We&apos;ll reach out using the contact details you provided to talk through next
+                    steps and the support available to you.
+                  </li>
+                </ul>
               </div>
 
               <div className={styles.successSupportCallout}>
                 <p className={styles.successSupportText}>
-                  If you need immediate support, please visit our{" "}
-                  <Link href="/helplines">Helplines Page</Link> or contact emergency services.
+                  Need help right now? If you're in immediate danger, contact emergency services.
                 </p>
                 <Link className={styles.supportResourcesButton} href="/helplines">
                   Find Support &amp; Resources
@@ -2220,4 +2225,3 @@ export default function CreateReport({
     </main>
   );
 }
-
