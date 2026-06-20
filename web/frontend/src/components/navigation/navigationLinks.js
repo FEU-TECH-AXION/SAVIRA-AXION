@@ -9,6 +9,12 @@ export const ROLE_LABELS = {
   user: "User",
 };
 
+export const SUPPORT_RESOURCE_LINKS = [
+  { href: "/hospital", label: "Nearby Hospitals" },
+  { href: "/police-station", label: "Nearby Police Stations" },
+  { href: "/helplines", label: "Helplines" },
+];
+
 export const PUBLIC_LINKS = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
@@ -16,19 +22,20 @@ export const PUBLIC_LINKS = [
   { href: "/contact", label: "Contact" },
   { href: "/volunteer", label: "Volunteer" },
   { href: "/heatmap", label: "Heatmap" },
-  { href: "/hospital", label: "Nearby Hospitals" },
-  { href: "/police-station", label: "Nearby Police Stations" },
-  { href: "/helplines", label: "Helplines" },
+  {
+    label: "Support & Resources",
+    icon: "handsHelping",
+    children: SUPPORT_RESOURCE_LINKS,
+  },
 ];
 
-export const SUPPORT_RESOURCE_LINKS = [
-  { href: "/hospital", label: "Nearby Hospitals" },
-  { href: "/police-station", label: "Nearby Police Stations" },
-  { href: "/helplines", label: "Helplines" },
+const PUBLIC_FOOTER_LINKS = [
+  ...PUBLIC_LINKS.filter((link) => !link.children),
+  ...SUPPORT_RESOURCE_LINKS,
 ];
 
 export const FOOTER_QUICK_LINKS = {
-  public: PUBLIC_LINKS,
+  public: PUBLIC_FOOTER_LINKS,
   complainant: [
     { href: "/dashboard", label: "Home" },
     { href: "/about", label: "About" },
@@ -74,15 +81,12 @@ export const SIDEBAR_LINKS = {
   public: PUBLIC_LINKS.map((link) => ({
     ...link,
     icon:
-      link.href === "/hospital"
-        ? "hospital"
-        : link.href === "/police-station"
-          ? "police"
-          : link.href === "/events"
-            ? "event"
-            : link.href === "/heatmap"
-              ? "map"
-              : "folder",
+      link.icon ||
+      (link.href === "/events"
+        ? "event"
+        : link.href === "/heatmap"
+          ? "map"
+          : "folder"),
   })),
   // USER
   complainant: [

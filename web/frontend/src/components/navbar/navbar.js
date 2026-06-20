@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import {
   FiMenu,
   FiBell,
+  FiChevronDown,
   FiHelpCircle,
   FiSearch,
 } from "react-icons/fi";
@@ -18,11 +19,35 @@ import styles from "./navbar.module.css";
 
 export default function Navbar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openPublicMenu, setOpenPublicMenu] = useState(null);
+  const publicNavRef = useRef(null);
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!publicNavRef.current?.contains(event.target)) {
+        setOpenPublicMenu(null);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpenPublicMenu(null);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   return (
     <>
@@ -90,17 +115,84 @@ export default function Navbar() {
               </Link>
 
               {/* Desktop public links */}
-              <ul className={styles.navLinks}>
-                {PUBLIC_LINKS.map(({ href, label }) => (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      className={isActive(href) ? styles.navLinkActive : styles.navLink}
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
+              <ul className={styles.navLinks} ref={publicNavRef}>
+                {PUBLIC_LINKS.map((item) => {
+                  const { href, label, children } = item;
+
+                  if (children?.length) {
+                    const isGroupActive = children.some((child) =>
+                      isActive(child.href)
+                    );
+                    const isGroupOpen = openPublicMenu === label;
+                    const menuId = `public-nav-${label
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-")}`;
+
+                    return (
+                      <li
+                        key={label}
+                        className={`${styles.navGroup} ${
+                          isGroupOpen ? styles.navGroupOpen : ""
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className={
+                            isGroupActive ? styles.navLinkActive : styles.navLink
+                          }
+                          aria-haspopup="true"
+                          aria-expanded={isGroupOpen}
+                          aria-controls={menuId}
+                          onClick={() =>
+                            setOpenPublicMenu((current) =>
+                              current === label ? null : label
+                            )
+                          }
+                        >
+                          {label}
+                          <FiChevronDown
+                            className={styles.navGroupChevron}
+                            aria-hidden="true"
+                          />
+                        </button>
+                        <ul
+                          id={menuId}
+                          className={styles.navDropdown}
+                          aria-hidden={!isGroupOpen}
+                        >
+                          {children.map((child) => (
+                            <li key={child.href}>
+                              <Link
+                                href={child.href}
+                                onClick={() => setOpenPublicMenu(null)}
+                                className={
+                                  isActive(child.href)
+                                    ? styles.navDropdownLinkActive
+                                    : styles.navDropdownLink
+                                }
+                              >
+                                {child.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    );
+                  }
+
+                  return (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        className={
+                          isActive(href) ? styles.navLinkActive : styles.navLink
+                        }
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
 
               {/* Right slot */}
