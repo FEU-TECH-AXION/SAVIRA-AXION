@@ -26,6 +26,7 @@ import {
   MdPhone,
 } from "react-icons/md";
 import { RiPoliceBadgeFill } from "react-icons/ri";
+import { FaHandsHelping } from "react-icons/fa";
 import {
   getSidebarLinks,
   SIDEBAR_FOOTER_LINKS,
@@ -49,6 +50,7 @@ const ICONS = {
   police: <RiPoliceBadgeFill />,
   event: <MdEvent />,
   phone: <MdPhone />,
+  handsHelping: <FaHandsHelping />,
 };
 
 function withIcons(items) {

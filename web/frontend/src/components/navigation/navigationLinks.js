@@ -21,6 +21,12 @@ export const PUBLIC_LINKS = [
   { href: "/helplines", label: "Helplines" },
 ];
 
+export const SUPPORT_RESOURCE_LINKS = [
+  { href: "/hospital", label: "Nearby Hospitals" },
+  { href: "/police-station", label: "Nearby Police Stations" },
+  { href: "/helplines", label: "Helplines" },
+];
+
 export const FOOTER_QUICK_LINKS = {
   public: PUBLIC_LINKS,
   complainant: [
@@ -102,9 +108,10 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-    { href: "/hospital", label: "Nearby Hospitals", icon: "hospital" },
-    { href: "/police-station", label: "Nearby Police Stations", icon: "police" },
-    { href: "/helplines", label: "Helplines", icon: "phone" },
+    { label: "Support & Resources", icon: "handsHelping",
+      children: SUPPORT_RESOURCE_LINKS,
+     },
+
   ],
   // CASE OFFICER
   case_officer: [
