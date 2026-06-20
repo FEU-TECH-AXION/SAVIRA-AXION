@@ -1669,48 +1669,51 @@ export default function CreateReport({
     if (step > 0) setStep((s) => s - 1);
   };
 
-    const handleSubmit = async () => {
-    // Validate consents first
-    const consentErrs = {};
-    if (!consents.dataPrivacy)  consentErrs.dataPrivacy  = true;
-    if (!consents.caseAnalysis) consentErrs.caseAnalysis = true;
-    if (Object.keys(consentErrs).length > 0) {
-    setStepErrors(consentErrs);
-    return;
-  }
-    setSubmissionError(null);
-    setIsSubmitting(true);
-    fetchUserReports();
-
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/api/case_reports/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // sends the token cookie
-        body: JSON.stringify({ complainant, incident, evidence }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        const errorMsg = errorBody?.error || `Server error (${response.status})`;
-        console.error('[CreateReport Submit Error]', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorMsg,
-          body: errorBody,
-        });
-        throw new Error(errorMsg);
-      }
-
-      setSubmitted(true);
-      localStorage.removeItem("savira_case_report_draft");
-    } catch (err) {
-      console.error('[CreateReport Submit Exception]', err);
-      setSubmissionError(err.message || 'Failed to submit report.');
-    } finally {
-      setIsSubmitting(false);
+  const handleSubmit = async () => {
+      // Validate consents first
+      const consentErrs = {};
+      if (!consents.dataPrivacy)  consentErrs.dataPrivacy  = true;
+      if (!consents.caseAnalysis) consentErrs.caseAnalysis = true;
+      if (Object.keys(consentErrs).length > 0) {
+      setStepErrors(consentErrs);
+      return;
     }
+      setSubmissionError(null);
+      setIsSubmitting(true);
+      fetchUserReports();
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const formData = new FormData();
+        formData.append('complainant', JSON.stringify(complainant));
+        formData.append('incident', JSON.stringify(incident));
+        formData.append('evidence', JSON.stringify({ anonymous: evidence.anonymous }));
+        (evidence.files || []).forEach((file) => formData.append('files', file));
+
+        const response = await fetch(`${API_URL}/api/case_reports/submit`, {
+          method: 'POST',
+          credentials: 'include', // sends the token cookie
+          body: formData, // do NOT set Content-Type — browser sets the multipart boundary
+        });
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => null);
+          const errorMsg = errorBody?.error || `Server error (${response.status})`;
+          console.error('[CreateReport Submit Error]', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorMsg,
+            body: errorBody,
+          });
+          throw new Error(errorMsg);
+        }
+        setSubmitted(true);
+        localStorage.removeItem("savira_case_report_draft");
+      } catch (err) {
+        console.error('[CreateReport Submit Exception]', err);
+        setSubmissionError(err.message || 'Failed to submit report.');
+      } finally {
+        setIsSubmitting(false);
+      }
   };
 
   const [userReports, setUserReports] = useState([]);
@@ -1730,7 +1733,7 @@ export default function CreateReport({
   'Perpetrator Convicted': 'Perpetrator Convicted',
   'Resolved':              'Resolved',
   'Withdrawn':             'Withdrawn',
-};
+  };
 
   const fetchUserReports = async () => {
     try {

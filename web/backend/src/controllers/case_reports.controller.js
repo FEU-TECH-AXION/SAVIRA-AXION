@@ -3,6 +3,7 @@ const { findOrCreateOrganization } = require("../models/organizations.model");
 const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
+const { randomUUID } = require('crypto');
 
 const getItems = async (req, res) => {
     try {
@@ -81,8 +82,11 @@ function buildPayload(complainantId, organizationId, complainant, incident, evid
 }
 
 async function submitReport(req, res) {
+  console.log('[submitReport] req.files:', req.files?.length, req.files?.map(f => f.originalname));
   try {
-    const { complainant, incident, evidence } = req.body;
+    const complainant = JSON.parse(req.body.complainant);
+    const incident     = JSON.parse(req.body.incident);
+    const evidence     = JSON.parse(req.body.evidence || '{}');
     const userId = req.user?.id;
 
     if (!userId) {
@@ -96,8 +100,19 @@ async function submitReport(req, res) {
       throw new Error('Failed to save organization details.');
     }
 
-    const payload    = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
-    const newReport  = await createReport(payload);
+    const payload   = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
+    const newReport = await createReport(payload);
+
+    let uploadedFiles = [];
+    try {
+      uploadedFiles = await uploadEvidenceFiles(newReport.case_report_id, req.files, userId);
+    } catch (fileErr) {
+      console.error('[submitReport] evidence upload error:', fileErr.message);
+      return res.status(201).json({
+        data: newReport,
+        warning: 'Report submitted, but some evidence files failed to upload. Please contact support to add them.',
+      });
+    }
 
     runNLPAnalysis({
       case_report_id:       newReport.case_report_id,
@@ -107,7 +122,7 @@ async function submitReport(req, res) {
       action_requested:     newReport.action_requested,
     });
 
-    return res.status(201).json({ data: newReport });
+    return res.status(201).json({ data: newReport, files: uploadedFiles });
   } catch (err) {
     console.error('[submitReport]', err?.message ?? err, err?.stack ?? '');
     return res.status(500).json({ error: err?.message || 'Failed to submit report. Please try again.' });
@@ -345,4 +360,62 @@ const undoWithdrawCase = async (req, res) => {
   }
 };
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase }
+const EVIDENCE_BUCKET = 'case-evidence';
+
+function getEvidenceType(mimetype) {
+  if (mimetype === 'application/pdf') return 'document';
+  if (mimetype.startsWith('image/'))  return 'photo';
+  if (mimetype.startsWith('video/'))  return 'video';
+  return 'other';
+}
+
+async function uploadEvidenceFiles(caseReportId, files, uploadedById) {
+  if (!files || files.length === 0) return [];
+
+  const supabase = require('../config/supabase');
+  const uploaded = [];
+
+  for (const file of files) {
+    const ext = file.originalname.split('.').pop();
+    const storagePath = `${caseReportId}/${randomUUID()}.${ext}`;
+
+    const { error: uploadErr } = await supabase
+      .storage
+      .from(EVIDENCE_BUCKET)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadErr) {
+      console.error('[uploadEvidenceFiles] storage upload failed:', uploadErr.message);
+      throw new Error(`Failed to upload ${file.originalname}: ${uploadErr.message}`);
+    }
+
+    const { data: row, error: insertErr } = await supabase
+      .from('evidences')
+      .insert([{
+        case_report_id: caseReportId,
+        evidence_type:  getEvidenceType(file.mimetype),
+        file_path:      storagePath,
+        original_name:  file.originalname,
+        mime_type:      file.mimetype,
+        size_bytes:     file.size,
+        uploaded_by_id: uploadedById ?? null,
+      }])
+      .select()
+      .single();
+
+    if (insertErr) {
+      console.error('[uploadEvidenceFiles] metadata insert failed:', JSON.stringify(insertErr, null, 2));
+      console.error('[uploadEvidenceFiles] metadata insert failed:', insertErr.message);
+      throw new Error(`Failed to save metadata for ${file.originalname}.`);
+    }
+
+    uploaded.push(row);
+  }
+
+  return uploaded;
+}
+
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, uploadEvidenceFiles }
