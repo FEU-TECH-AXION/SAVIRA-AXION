@@ -1228,6 +1228,8 @@ export default function ViewCase() {
   const [activeTab, setActiveTab] = useState("details");
   const [user, setUser]         = useState({ role: null });
   const [userLoaded, setUserLoaded] = useState(false);
+  const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
+  const [interviewsChecked, setInterviewsChecked] = useState(false);
   const [toast, setToast]       = useState(null);
   
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
@@ -1424,6 +1426,43 @@ export default function ViewCase() {
     fetchCase();
   }, [caseId]);
 
+  useEffect(() => {
+    if (!userLoaded || !caseData?.id) return;
+    if (isStaff) return;
+
+    let cancelled = false;
+    const fetchInterviewAccess = async () => {
+      setInterviewsChecked(false);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(
+          `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) throw new Error("Failed to check interview invitation");
+        const json = await res.json();
+        if (!cancelled) {
+          setHasInterviewRecord(Array.isArray(json.data) && json.data.length > 0);
+        }
+      } catch {
+        if (!cancelled) setHasInterviewRecord(false);
+      } finally {
+        if (!cancelled) setInterviewsChecked(true);
+      }
+    };
+
+    fetchInterviewAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseData?.id, isStaff, userLoaded]);
+
+  const showInterviewTab =
+    Boolean(caseData?.isWillingForInterview) &&
+    (isStaff || (interviewsChecked && hasInterviewRecord));
+  const displayedActiveTab =
+    activeTab === "interview" && !showInterviewTab ? "details" : activeTab;
+
   if (loading) {
     return (
       <div className={styles.pageWrapper} style={{ padding: "2rem", textAlign: "center" }}>
@@ -1448,7 +1487,7 @@ export default function ViewCase() {
   // Tab definitions — staff gets 4 tabs, complainant gets 2 (details + interview if eligible)
   const tabs = [
     { id: "details", label: "Case Details", staffOnly: false },
-    ...(caseData.isWillingForInterview ? [
+    ...(showInterviewTab ? [
       { id: "interview", label: "Interview", staffOnly: false },
     ] : []),
     ...(isStaff ? [
@@ -1460,10 +1499,10 @@ export default function ViewCase() {
   const tabStyle = (id) => ({
     padding: "10px 20px",
     border: "none",
-    borderBottom: activeTab === id ? "2px solid #037F81" : "2px solid transparent",
+    borderBottom: displayedActiveTab === id ? "2px solid #037F81" : "2px solid transparent",
     background: "none",
-    color: activeTab === id ? "#037F81" : "#6b7280",
-    fontWeight: activeTab === id ? 700 : 500,
+    color: displayedActiveTab === id ? "#037F81" : "#6b7280",
+    fontWeight: displayedActiveTab === id ? 700 : 500,
     cursor: "pointer",
     fontSize: "0.875rem",
     transition: "all 0.15s",
@@ -1531,11 +1570,11 @@ export default function ViewCase() {
           </div>
 
           {/* Tab content */}
-          {activeTab === "details" && userLoaded && (
+          {displayedActiveTab === "details" && userLoaded && (
             <CaseDetailsTab caseData={caseData} isStaff={isStaff} />
           )}
 
-          {activeTab === "interview" && caseData.isWillingForInterview && userLoaded && (
+          {displayedActiveTab === "interview" && showInterviewTab && userLoaded && (
             <InterviewTab
               caseData={caseData}
               isStaff={isStaff}
@@ -1545,7 +1584,7 @@ export default function ViewCase() {
             />
           )}
 
-          {activeTab === "management" && isStaff && userLoaded && (
+          {displayedActiveTab === "management" && isStaff && userLoaded && (
             <CaseManagementTab
               caseData={caseData}
               setCaseData={setCaseData}
@@ -1559,7 +1598,7 @@ export default function ViewCase() {
             />
           )}
 
-          {activeTab === "nlp" && isStaff && userLoaded && (
+          {displayedActiveTab === "nlp" && isStaff && userLoaded && (
             <NLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
           )}
 
