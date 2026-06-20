@@ -579,6 +579,36 @@
   cursor: pointer;
 }
 
+.checkboxGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.checkboxOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: var(--sasha-white);
+  color: var(--sasha-text);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.checkboxOption:hover {
+  border-color: var(--sasha-teal);
+  background: var(--sasha-teal-light);
+}
+
+.checkboxOption .checkbox {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
 /* ── Review step ── */
 .reviewSection {
   border: 1px solid var(--sasha-border);
@@ -719,9 +749,90 @@
 .successDesc {
   font-size: 0.9rem;
   color: var(--sasha-muted);
-  max-width: 480px;
-  margin: 0 auto 1.75rem;
+  max-width: 680px;
+  margin: 0 auto 1.5rem;
   line-height: 1.7;
+}
+
+.successNextSteps {
+  max-width: 680px;
+  margin: 0 auto 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  background: var(--sasha-teal-light);
+  text-align: left;
+}
+
+.successNextSteps h3 {
+  margin: 0 0 0.4rem;
+  color: var(--sasha-teal);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.successNextSteps p,
+.successSupportText {
+  margin: 0;
+  color: var(--sasha-text);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.successSupportCallout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 680px;
+  margin: 0 auto 1.5rem;
+}
+
+.successSupportText {
+  margin: 0;
+  text-align: center;
+}
+
+.successSupportText a,
+.successAnotherReport button {
+  color: var(--sasha-teal);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.supportResourcesButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.72rem 1.25rem;
+  background: var(--sasha-orange);
+  color: var(--sasha-white);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.supportResourcesButton:hover,
+.supportResourcesButton:focus {
+  background: var(--sasha-orange-dark);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.successAnotherReport {
+  margin: 0;
+  color: var(--sasha-muted);
+  font-size: 0.84rem;
+}
+
+.successAnotherReport button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
 }
 
 /* ════════════════════════════════════════
@@ -1117,9 +1228,16 @@
 }
 
 .suggestionItem:hover,
-.suggestionItem:focus {
+.suggestionItem:focus,
+.suggestionItemActive {
   background: var(--sasha-teal-light);
   outline: none;
+}
+
+@media (max-width: 640px) {
+  .checkboxGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .suggestionName {

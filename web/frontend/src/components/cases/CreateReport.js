@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import styles from "./CreateReport.module.css";
 import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
@@ -48,8 +49,23 @@ const OUTCOME_OPTIONS = [
   "Medical support",
   "Documentation only",
   "I am not sure yet",
-  "Other support",
 ];
+
+function normalizeOutcomeSelection(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.filter((item) => OUTCOME_OPTIONS.includes(item)))];
+  }
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  if (OUTCOME_OPTIONS.includes(value.trim())) return [value.trim()];
+
+  const savedValues = value.split(",").map((item) => item.trim());
+  return OUTCOME_OPTIONS.filter((option) => savedValues.includes(option));
+}
+
+function formatOutcomeSelection(value) {
+  return normalizeOutcomeSelection(value).join(", ");
+}
 
 const LOCAL_POLICE_STATIONS = [
   "Caloocan City Police Station",
@@ -131,6 +147,23 @@ async function searchPoliceStations(query) {
     `https://api.mapbox.com/search/searchbox/v1/forward?${search}`
   );
   if (!res.ok) throw new Error("Police station search failed.");
+  return res.json();
+}
+
+async function searchLocations(query) {
+  if (!MAPBOX_TOKEN) return { features: [] };
+  const search = new URLSearchParams({
+    access_token: MAPBOX_TOKEN,
+    country: "PH",
+    limit: "6",
+    proximity: "121.0244,14.5547",
+    autocomplete: "true",
+    types: "poi,address,place,locality,neighborhood",
+  });
+  const res = await fetch(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${search}`
+  );
+  if (!res.ok) throw new Error("Location search failed.");
   return res.json();
 }
 
@@ -427,7 +460,7 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
               <span>
                 This platform is for case management and is not monitored for immediate crisis intervention.
                 Your safety and well-being matter deeply to us. If you are in immediate danger, need urgent medical care,
-                or need crisis safety assistance, please visit our <a href="/helplines" className={styles.emergencyLink}>Helplines and Support Resources page</a> for trusted emergency contacts who can help you right now.
+                or need crisis safety assistance, please visit our <a href="/helplines" className={styles.emergencyLink}>Helplines page</a> for trusted emergency contacts who can help you right now.
               </span>
             </li>
           </ul>
@@ -869,8 +902,18 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
 function PoliceStationTypeahead({ value, onChange }) {
   const [suggestions, setSuggestions] = useState([]);
   const [status, setStatus] = useState("idle");
+  const [isTyping, setIsTyping] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   useEffect(() => {
+    if (!isTyping) {
+      const timer = setTimeout(() => {
+        setSuggestions([]);
+        setStatus("idle");
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+
     const trimmed = value.trim();
     if (trimmed.length < 2) {
       const timer = setTimeout(() => {
@@ -887,6 +930,7 @@ function PoliceStationTypeahead({ value, onChange }) {
       const localSuggestions = getLocalPoliceStationSuggestions(trimmed);
       if (!MAPBOX_TOKEN) {
         setSuggestions(localSuggestions);
+        setActiveIndex(-1);
         setStatus(localSuggestions.length ? "local" : "empty");
         return;
       }
@@ -924,6 +968,7 @@ function PoliceStationTypeahead({ value, onChange }) {
             )
         );
         setSuggestions(merged.slice(0, 6));
+        setActiveIndex(-1);
         setStatus(next.length ? "idle" : localSuggestions.length ? "local" : "empty");
       } catch (_) {
         if (!cancelled) {
@@ -937,28 +982,71 @@ function PoliceStationTypeahead({ value, onChange }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [value]);
+  }, [value, isTyping]);
+
+  const selectSuggestion = (feature) => {
+    onChange(feature.value || feature.text || "");
+    setSuggestions([]);
+    setStatus("idle");
+    setIsTyping(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (event) => {
+    if (!isTyping || suggestions.length === 0) {
+      if (event.key === "Escape") setIsTyping(false);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      selectSuggestion(suggestions[activeIndex]);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setIsTyping(false);
+    }
+  };
 
   return (
     <div className={styles.typeahead}>
       <Input
         placeholder="Search for the police station or precinct"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          setIsTyping(true);
+          onChange(e.target.value);
+        }}
+        onKeyDown={handleKeyDown}
+        onBlur={() => setIsTyping(false)}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={isTyping && suggestions.length > 0}
+        aria-controls="police-station-suggestions"
+        aria-activedescendant={
+          activeIndex >= 0 ? `police-station-suggestion-${activeIndex}` : undefined
+        }
         autoComplete="off"
       />
-      {suggestions.length > 0 && (
-        <div className={styles.suggestionsList}>
-          {suggestions.map((feature) => (
+      {isTyping && suggestions.length > 0 && (
+        <div id="police-station-suggestions" className={styles.suggestionsList} role="listbox">
+          {suggestions.map((feature, index) => (
             <button
+              id={`police-station-suggestion-${index}`}
               type="button"
-              className={styles.suggestionItem}
+              className={`${styles.suggestionItem} ${
+                activeIndex === index ? styles.suggestionItemActive : ""
+              }`}
               key={feature.id}
-              onClick={() => {
-                onChange(feature.value || feature.text || "");
-                setSuggestions([]);
-                setStatus("idle");
-              }}
+              role="option"
+              aria-selected={activeIndex === index}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => selectSuggestion(feature)}
             >
               <span className={styles.suggestionName}>{feature.text}</span>
               <span className={styles.suggestionAddress}>{feature.place_name}</span>
@@ -966,10 +1054,135 @@ function PoliceStationTypeahead({ value, onChange }) {
           ))}
         </div>
       )}
-      {status === "loading" && <p className={styles.fieldHint}>Looking for nearby police station matches...</p>}
-      {status === "local" && <p className={styles.fieldHint}>Showing local suggestions. You can still type the exact station name if it is not listed.</p>}
-      {status === "empty" && <p className={styles.fieldHint}>No suggestions found yet. You can still type the station name you know.</p>}
-      {status === "error" && <p className={styles.fieldHint}>Suggestions are unavailable right now. You can still type the station name.</p>}
+      {isTyping && status === "loading" && <p className={styles.fieldHint}>Looking for nearby police station matches...</p>}
+      {isTyping && status === "local" && <p className={styles.fieldHint}>Showing local suggestions. You can still type the exact station name if it is not listed.</p>}
+      {isTyping && status === "empty" && <p className={styles.fieldHint}>No suggestions found yet. You can still type the station name you know.</p>}
+      {isTyping && status === "error" && <p className={styles.fieldHint}>Suggestions are unavailable right now. You can still type the station name.</p>}
+    </div>
+  );
+}
+
+function IncidentLocationTypeahead({ value, onChange, city }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [status, setStatus] = useState("idle");
+  const [isTyping, setIsTyping] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  useEffect(() => {
+    const trimmed = value.trim();
+    if (!isTyping || trimmed.length < 2) {
+      const timer = setTimeout(() => {
+        setSuggestions([]);
+        setStatus("idle");
+        setActiveIndex(-1);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setStatus("loading");
+      try {
+        const data = await searchLocations(
+          [trimmed, city, "Metro Manila"].filter(Boolean).join(", ")
+        );
+        if (cancelled) return;
+        setSuggestions(data.features || []);
+        setActiveIndex(-1);
+        setStatus(data.features?.length ? "idle" : "empty");
+      } catch (_) {
+        if (!cancelled) {
+          setSuggestions([]);
+          setStatus(MAPBOX_TOKEN ? "error" : "missingToken");
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [city, isTyping, value]);
+
+  const selectSuggestion = (feature) => {
+    onChange(feature.place_name || feature.text || "");
+    setSuggestions([]);
+    setStatus("idle");
+    setIsTyping(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (event) => {
+    if (!isTyping || suggestions.length === 0) {
+      if (event.key === "Escape") setIsTyping(false);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      selectSuggestion(suggestions[activeIndex]);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className={styles.typeahead}>
+      <Input
+        placeholder="Barangay hall, school, park, landmark, or address"
+        value={value}
+        onChange={(event) => {
+          setIsTyping(true);
+          onChange(event.target.value);
+        }}
+        onKeyDown={handleKeyDown}
+        onBlur={() => setIsTyping(false)}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={isTyping && suggestions.length > 0}
+        aria-controls="incident-location-suggestions"
+        aria-activedescendant={
+          activeIndex >= 0 ? `incident-location-suggestion-${activeIndex}` : undefined
+        }
+        autoComplete="off"
+      />
+      {isTyping && suggestions.length > 0 && (
+        <div id="incident-location-suggestions" className={styles.suggestionsList} role="listbox">
+          {suggestions.map((feature, index) => (
+            <button
+              id={`incident-location-suggestion-${index}`}
+              type="button"
+              className={`${styles.suggestionItem} ${
+                activeIndex === index ? styles.suggestionItemActive : ""
+              }`}
+              key={feature.id}
+              role="option"
+              aria-selected={activeIndex === index}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => selectSuggestion(feature)}
+            >
+              <span className={styles.suggestionName}>{feature.text}</span>
+              <span className={styles.suggestionAddress}>{feature.place_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {isTyping && status === "loading" && (
+        <p className={styles.fieldHint}>Finding location suggestions...</p>
+      )}
+      {isTyping && status === "empty" && (
+        <p className={styles.fieldHint}>No suggestions found. You can still enter the location manually.</p>
+      )}
+      {isTyping && (status === "error" || status === "missingToken") && (
+        <p className={styles.fieldHint}>Suggestions are unavailable. You can still enter the location manually.</p>
+      )}
     </div>
   );
 }
@@ -1033,11 +1246,14 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
                 {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
               </Select>
             </Field>
-            <Field label="Specific Place / Venue" hint="You may share a general place, such as a school campus or community center, without giving a home address.">
-              <Input
-                placeholder="Barangay hall, school gymnasium, park"
+            <Field label="Where did this happen?" hint="Tell us a little about where this occurred.">
+              <IncidentLocationTypeahead
                 value={data.incidentVenue || ""}
-                onChange={set("incidentVenue")}
+                city={data.incidentCity || ""}
+                onChange={(value) => {
+                  clearError("incidentVenue");
+                  onChange({ ...data, incidentVenue: value });
+                }}
               />
             </Field>
           </>
@@ -1090,12 +1306,27 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
       </Field>
 
       <Field label="What action or outcome are you seeking?" hint="Optional — let us know what resolution or support you are looking for.">
-        <Select value={data.outcome || ""} onChange={set("outcome")}>
-          <option value="">Select an option</option>
+        <div className={styles.checkboxGrid}>
           {OUTCOME_OPTIONS.map((option) => (
-            <option key={option}>{option}</option>
+            <label key={option} className={styles.checkboxOption}>
+              <input
+                type="checkbox"
+                className={styles.checkbox}
+                checked={normalizeOutcomeSelection(data.outcome).includes(option)}
+                onChange={(event) => {
+                  const selected = normalizeOutcomeSelection(data.outcome);
+                  onChange({
+                    ...data,
+                    outcome: event.target.checked
+                      ? [...selected, option]
+                      : selected.filter((item) => item !== option),
+                  });
+                }}
+              />
+              <span>{option}</span>
+            </label>
           ))}
-        </Select>
+        </div>
       </Field>
 
       {/* ── Perpetrator ── */}
@@ -1417,7 +1648,10 @@ function StepReview({ complainant, incident, evidence }) {
         <ReviewRow label="Location Type"          value={incident.locationType} />
         <ReviewRow label="Location"               value={incidentLocation} />
         <ReviewRow label="Description"            value={incident.description} />
-        <ReviewRow label="Outcome sought"         value={incident.outcome} />
+        <ReviewRow
+          label="Outcome sought"
+          value={formatOutcomeSelection(incident.outcome)}
+        />
         <ReviewRow label="Perpetrator known"      value={incident.perpetratorKnown} />
         {incident.perpetratorKnown === "Yes" && (
           <>
@@ -1609,7 +1843,7 @@ export default function CreateReport({
 
   const [incident, setIncident] = useState({
     date: "", time: "", locationType: "", incidentCity: "", incidentVenue: "",
-    description: "", outcome: "",
+    description: "", outcome: [],
     perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
     perpetratorRelationship: "", perpetratorGender: "",
     perpetratorUnknownGender: "", perpetratorUnknownAppearance: "",
@@ -1629,7 +1863,13 @@ export default function CreateReport({
       const draft = JSON.parse(raw);
       const timer = setTimeout(() => {
         if (draft.complainant) setComplainant(draft.complainant);
-        if (draft.incident) setIncident(draft.incident);
+        if (draft.incident) {
+          setIncident((current) => ({
+            ...current,
+            ...draft.incident,
+            outcome: normalizeOutcomeSelection(draft.incident.outcome),
+          }));
+        }
         if (draft.evidence) setEvidence(draft.evidence);
         if (draft.consents) setConsents(draft.consents);
         setDraftNotice("You have an unfinished report draft. It has been loaded so you can continue.");
@@ -1642,7 +1882,9 @@ export default function CreateReport({
     if (submitted) return;
     const hasDraft =
       Object.values(complainant).some(Boolean) ||
-      Object.values(incident).some(Boolean) ||
+      Object.values(incident).some((value) =>
+        Array.isArray(value) ? value.length > 0 : Boolean(value)
+      ) ||
       evidence.files.length > 0 ||
       evidence.anonymous ||
       consents.dataPrivacy ||
@@ -1707,7 +1949,13 @@ export default function CreateReport({
 
         const formData = new FormData();
         formData.append('complainant', JSON.stringify(complainant));
-        formData.append('incident', JSON.stringify(incident));
+        formData.append(
+          'incident',
+          JSON.stringify({
+            ...incident,
+            outcome: formatOutcomeSelection(incident.outcome),
+          })
+        );
         formData.append('evidence', JSON.stringify({ anonymous: evidence.anonymous }));
         (evidence.files || []).forEach((file) => formData.append('files', file));
 
@@ -1898,14 +2146,37 @@ export default function CreateReport({
           ) : (
             <div className={styles.successCard}>
               <div className={styles.successIcon}><FaCheck /></div>
-              <h2 className={styles.successTitle}>Report Submitted!</h2>
+              <h2 className={styles.successTitle}>Thank you for sharing your story.</h2>
               <p className={styles.successDesc}>
-                Your report has been received. We will review it and get back to you via your provided contact details.
-                All information is handled with strict confidentiality.
+                Your report has been safely received. We understand that taking this step requires courage,
+                and we want to reassure you that your information is completely secure and will be handled
+                with the utmost care and privacy.
               </p>
-              <button className={styles.submitBtn} onClick={() => { setSubmitted(false); setStep(0); }}>
-                Submit Another Report
-              </button>
+
+              <div className={styles.successNextSteps}>
+                <h3>What happens next?</h3>
+                <p>
+                  Our team will carefully review what you&apos;ve shared. We will reach out to you through
+                  your provided contact details to discuss the next steps and how we can support you.
+                </p>
+              </div>
+
+              <div className={styles.successSupportCallout}>
+                <p className={styles.successSupportText}>
+                  If you need immediate support, please visit our{" "}
+                  <Link href="/helplines">Helplines Page</Link> or contact emergency services.
+                </p>
+                <Link className={styles.supportResourcesButton} href="/helplines">
+                  Find Support &amp; Resources
+                </Link>
+              </div>
+
+              <p className={styles.successAnotherReport}>
+                Need to file for a different incident?{" "}
+                <button type="button" onClick={() => window.location.reload()}>
+                  Submit another report
+                </button>
+              </p>
             </div>
           )}
 
