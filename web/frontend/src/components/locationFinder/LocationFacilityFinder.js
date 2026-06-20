@@ -122,6 +122,8 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [suggestStatus, setSuggestStatus] = useState("idle");
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
   const [searchedLocation, setSearchedLocation] = useState(null);
   const [facilities, setFacilities] = useState([]);
@@ -136,8 +138,14 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
   // Autocomplete suggestions — still uses Geocoding API (correct use case)
   useEffect(() => {
     const trimmed = query.trim();
-    if (!MAPBOX_TOKEN || selectedSuggestion?.place_name === query || trimmed.length < 2) return;
+    if (
+      !MAPBOX_TOKEN ||
+      !isSearchFocused ||
+      selectedSuggestion?.place_name === query ||
+      trimmed.length < 2
+    ) return;
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       setSuggestStatus("loading");
       try {
@@ -145,16 +153,23 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
           autocomplete: "true",
           types: "place,locality,neighborhood,address,poi",
         });
+        if (cancelled) return;
         setSuggestions(data.features || []);
+        setActiveSuggestionIndex(-1);
         setSuggestStatus("success");
       } catch (_) {
+        if (cancelled) return;
         setSuggestions([]);
+        setActiveSuggestionIndex(-1);
         setSuggestStatus("error");
       }
     }, 250);
 
-    return () => clearTimeout(timer);
-  }, [query, selectedSuggestion]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isSearchFocused, query, selectedSuggestion]);
 
   // Map init
   useEffect(() => {
@@ -299,7 +314,32 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     setSelectedSuggestion(feature);
     setQuery(feature.place_name || feature.text);
     setSuggestions([]);
+    setActiveSuggestionIndex(-1);
+    setSuggestStatus("idle");
     runSearch(feature);
+  }
+
+  function handleSuggestionKeyDown(event) {
+    if (suggestions.length === 0) {
+      if (event.key === "Escape") setSuggestions([]);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSuggestionIndex((index) => (index + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSuggestionIndex((index) =>
+        index <= 0 ? suggestions.length - 1 : index - 1
+      );
+    } else if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      handleSuggestionSelect(suggestions[activeSuggestionIndex]);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setSuggestions([]);
+      setActiveSuggestionIndex(-1);
+    }
   }
 
   // JSX is identical to your original — no UI changes needed
@@ -327,9 +367,27 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
                 const v = e.target.value;
                 setQuery(v);
                 setSelectedSuggestion(null);
+                setActiveSuggestionIndex(-1);
                 if (v.trim().length < 2) { setSuggestions([]); setSuggestStatus("idle"); }
               }}
+              onKeyDown={handleSuggestionKeyDown}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => {
+                setIsSearchFocused(false);
+                setSuggestions([]);
+                setActiveSuggestionIndex(-1);
+                setSuggestStatus("idle");
+              }}
               placeholder={copy.searchPlaceholder}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={suggestions.length > 0}
+              aria-controls={`${service}-location-suggestions`}
+              aria-activedescendant={
+                activeSuggestionIndex >= 0
+                  ? `${service}-location-suggestion-${activeSuggestionIndex}`
+                  : undefined
+              }
               autoComplete="off"
             />
             <button className={styles.searchButton} type="submit" disabled={status === "loading"}>
@@ -338,15 +396,26 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
             </button>
           </div>
           {(suggestions.length > 0 || suggestStatus === "loading") && (
-            <div className={styles.suggestions} role="listbox">
+            <div
+              id={`${service}-location-suggestions`}
+              className={styles.suggestions}
+              role="listbox"
+            >
               {suggestStatus === "loading" && (
                 <div className={styles.suggestionMeta}>Finding suggestions...</div>
               )}
-              {suggestions.map((f) => (
+              {suggestions.map((f, index) => (
                 <button
+                  id={`${service}-location-suggestion-${index}`}
                   key={f.id}
                   type="button"
-                  className={styles.suggestionItem}
+                  className={`${styles.suggestionItem} ${
+                    activeSuggestionIndex === index ? styles.suggestionItemActive : ""
+                  }`}
+                  role="option"
+                  aria-selected={activeSuggestionIndex === index}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setActiveSuggestionIndex(index)}
                   onClick={() => handleSuggestionSelect(f)}
                 >
                   <FiMapPin />

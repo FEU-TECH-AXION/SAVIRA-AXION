@@ -150,7 +150,8 @@
   text-align: left;
 }
 
-.suggestionItem:hover {
+.suggestionItem:hover,
+.suggestionItemActive {
   background: #e1f5f5;
   color: #037F81;
 }
