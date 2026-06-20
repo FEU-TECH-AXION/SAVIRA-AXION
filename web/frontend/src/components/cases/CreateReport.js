@@ -114,19 +114,23 @@ function isFutureIncident(date, time) {
   return incidentDateTime > new Date();
 }
 
-async function mapboxSearch(query, params = {}) {
+async function searchPoliceStations(query) {
   if (!MAPBOX_TOKEN) return { features: [] };
   const search = new URLSearchParams({
+    q: query,
     access_token: MAPBOX_TOKEN,
     country: "PH",
     limit: "6",
     proximity: "121.0244,14.5547",
-    ...params,
+    language: "en",
+    types: "poi",
+    poi_category: "police_station",
+    auto_complete: "true",
   });
   const res = await fetch(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${search}`
+    `https://api.mapbox.com/search/searchbox/v1/forward?${search}`
   );
-  if (!res.ok) throw new Error("Location search failed.");
+  if (!res.ok) throw new Error("Police station search failed.");
   return res.json();
 }
 
@@ -889,19 +893,35 @@ function PoliceStationTypeahead({ value, onChange }) {
 
       setStatus("loading");
       try {
-        const data = await mapboxSearch(`${trimmed} police station`, {
-          types: "poi,address,place",
-        });
+        const data = await searchPoliceStations(trimmed);
         if (cancelled) return;
         const next = (data.features || [])
-          .filter((feature) => {
-            const text = `${feature.text || ""} ${feature.place_name || ""}`.toLowerCase();
-            return text.includes("police") || text.includes("station") || text.includes("precinct");
+          .map((feature) => {
+            const properties = feature.properties || {};
+            const name = properties.name_preferred || properties.name;
+            if (!name) return null;
+            const address =
+              properties.full_address ||
+              properties.place_formatted ||
+              properties.address ||
+              "";
+            return {
+              id: properties.mapbox_id || feature.id || name,
+              text: name,
+              place_name: address,
+              value: address ? `${name}, ${address}` : name,
+              source: "mapbox",
+            };
           })
+          .filter(Boolean)
           .slice(0, 5);
         const merged = [...next, ...localSuggestions].filter(
           (item, index, list) =>
-            index === list.findIndex((candidate) => candidate.text === item.text)
+            index ===
+            list.findIndex(
+              (candidate) =>
+                candidate.text.trim().toLowerCase() === item.text.trim().toLowerCase()
+            )
         );
         setSuggestions(merged.slice(0, 6));
         setStatus(next.length ? "idle" : localSuggestions.length ? "local" : "empty");
@@ -935,8 +955,9 @@ function PoliceStationTypeahead({ value, onChange }) {
               className={styles.suggestionItem}
               key={feature.id}
               onClick={() => {
-                onChange(feature.place_name || feature.text || "");
+                onChange(feature.value || feature.text || "");
                 setSuggestions([]);
+                setStatus("idle");
               }}
             >
               <span className={styles.suggestionName}>{feature.text}</span>
