@@ -1,787 +1,1181 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IoIosArrowBack } from "react-icons/io";
 import {
-  FiPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiChevronUp, FiChevronDown,
-  FiAlertCircle, FiEye, FiEyeOff,
+  FiAlertCircle,
+  FiArrowDown,
+  FiArrowLeft,
+  FiArrowUp,
+  FiCheck,
+  FiClock,
+  FiEdit2,
+  FiEye,
+  FiEyeOff,
+  FiHelpCircle,
+  FiPlus,
+  FiRefreshCw,
+  FiRotateCcw,
+  FiSave,
+  FiShield,
+  FiTrash2,
+  FiX,
 } from "react-icons/fi";
-import { IoIosWarning } from "react-icons/io";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}
+import { ConfirmDialog, TextInputDialog } from "@/components/ui/Dialog";
+import Tooltip from "@/components/ui/Tooltip";
+import styles from "./ScreeningQuestions.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const QUESTION_TYPES = ["yes_no", "in_favor"];
-
-const TYPE_LABELS = {
-  yes_no:   "Yes / No",
-  in_favor: "In Favor / Not in Favor",
-};
-
-// Default options per type — matches apply/page.js RadioGroup values
-const DEFAULT_OPTIONS = {
-  yes_no:   ["Yes", "No"],
+const ANSWER_PRESETS = {
+  yes_no: ["Yes", "No"],
   in_favor: ["In Favor", "Not in Favor"],
 };
 
-// ─── Inline Toast ─────────────────────────────────────────────────────────────
+function getCookie(name) {
+  if (typeof document === "undefined") return null;
+  const parts = `; ${document.cookie}`.split(`; ${name}=`);
+  return parts.length === 2
+    ? decodeURIComponent(parts.pop().split(";").shift())
+    : null;
+}
+
+function headers(extra = {}) {
+  const token = getCookie("token");
+  return { ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
+
+async function readResponse(response, fallback) {
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || fallback);
+  return body;
+}
+
+function humanizeCategory(value) {
+  return String(value || "Uncategorized")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDate(value) {
+  if (!value) return "Unknown date";
+  return new Date(value).toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function newQuestionKey(text) {
+  const slug =
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40) || "question";
+  return `${slug}_${Date.now()}`;
+}
 
 function Toast({ toast }) {
   if (!toast) return null;
-  const bg = toast.type === "success" ? "#037F81" : "#dc2626";
   return (
-    <div style={{
-      position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 2000,
-      padding: "0.75rem 1.25rem", borderRadius: 10, fontSize: "0.88rem",
-      fontWeight: 600, background: bg, color: "#fff",
-      boxShadow: "0 8px 24px rgba(0,0,0,0.15)", maxWidth: 380,
-      animation: "toastIn 0.2s ease",
-    }}>
-      {toast.msg}
+    <div
+      className={`${styles.toast} ${
+        toast.type === "error" ? styles.toastError : styles.toastSuccess
+      }`}
+      role="status"
+    >
+      {toast.type === "error" ? <FiAlertCircle /> : <FiCheck />}
+      {toast.message}
     </div>
   );
 }
 
-// ─── Question Form (add / edit) ───────────────────────────────────────────────
+function SectionCard({ title, subtitle, action, children }) {
+  return (
+    <section className={styles.sectionCard}>
+      <div className={styles.sectionCardHeader}>
+        <div>
+          <h2>{title}</h2>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      <div className={styles.sectionCardBody}>{children}</div>
+    </section>
+  );
+}
 
-function QuestionForm({ initial, categories, onSave, onCancel, saving }) {
-  const isEdit = !!initial;
-
+function QuestionForm({
+  initial,
+  categories,
+  defaultCategory,
+  onSectionCreated,
+  onSave,
+  onCancel,
+}) {
+  const initialOptions =
+    Array.isArray(initial?.options) && initial.options.length >= 2
+      ? initial.options.slice(0, 2)
+      : ANSWER_PRESETS.yes_no;
   const [form, setForm] = useState({
-    question_text:    initial?.question_text    ?? "",
-    category:         initial?.category         ?? (categories[0] ?? ""),
-    newCategory:      "",
-    type:             initial?.type             ?? "yes_no",
-    preferred_answer: initial?.preferred_answer ?? "Yes",
-    auto_fail:        initial?.auto_fail        ?? false,
-    is_active:        initial?.is_active        ?? true,
+    question_text: initial?.question_text || "",
+    category: initial?.category || defaultCategory || categories[0] || "",
+    type: initial?.type || "negotiable",
+    answerPreset:
+      initialOptions[0] === "In Favor" ? "in_favor" : "yes_no",
+    options: initialOptions,
+    preferred_answer: initial?.preferred_answer || initialOptions[0],
+    is_active: initial?.is_active ?? true,
   });
+  const [errors, setErrors] = useState({});
+  const [showSectionDialog, setShowSectionDialog] = useState(false);
+  const [sectionDialogError, setSectionDialogError] = useState("");
 
-  const [useNewCat, setUseNewCat] = useState(false);
-
-  const options = DEFAULT_OPTIONS[form.type] ?? ["Yes", "No"];
-
-  function set(key, val) {
-    setForm(prev => {
-      const next = { ...prev, [key]: val };
-      // When type changes, reset preferred_answer to first option of new type
-      if (key === "type") {
-        next.preferred_answer = DEFAULT_OPTIONS[val]?.[0] ?? "";
-      }
+  function set(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
       return next;
     });
   }
 
-  function handleSave() {
-    const resolvedCategory = useNewCat
-      ? form.newCategory.trim()
-      : form.category;
+  function chooseAnswers(preset) {
+    const options = ANSWER_PRESETS[preset];
+    setForm((current) => ({
+      ...current,
+      answerPreset: preset,
+      options,
+      preferred_answer: options[0],
+    }));
+  }
 
-    if (!form.question_text.trim()) return;
-    if (!resolvedCategory) return;
+  function createSection(sectionName) {
+    const cleaned = humanizeCategory(sectionName);
+    const duplicate = categories.some(
+      (category) => humanizeCategory(category).toLowerCase() === cleaned.toLowerCase()
+    );
+    if (duplicate) {
+      setSectionDialogError("A section with this name already exists.");
+      return;
+    }
+
+    onSectionCreated(cleaned);
+    set("category", cleaned);
+    setSectionDialogError("");
+    setShowSectionDialog(false);
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    const questionText = form.question_text.trim();
+    const category = form.category.trim();
+    const nextErrors = {};
+    if (!questionText) {
+      nextErrors.question_text =
+        "Write the exact question applicants should answer.";
+    } else if (questionText.length < 10) {
+      nextErrors.question_text =
+        "Add a little more detail so applicants can understand the question.";
+    }
+    if (!category) {
+      nextErrors.category =
+        "Choose a section first. You can add one from Question Sections.";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
 
     onSave({
-      ...(isEdit ? { screening_question_id: initial.screening_question_id } : {}),
-      question_text:    form.question_text.trim(),
-      category:         resolvedCategory,
-      type:             form.type,
-      options:          DEFAULT_OPTIONS[form.type],
+      ...initial,
+      question_key: initial?.question_key || newQuestionKey(questionText),
+      question_text: questionText,
+      category,
+      type: form.type,
+      options: form.options,
       preferred_answer: form.preferred_answer,
-      auto_fail:        form.auto_fail,
-      is_active:        form.is_active,
+      auto_fail: form.type === "non_negotiable",
+      is_active: form.is_active,
     });
   }
 
-  const inputStyle = {
-    width: "100%", padding: "0.5rem 0.85rem",
-    border: "1px solid #e5e7eb", borderRadius: 8,
-    fontSize: "0.875rem", color: "#292929", background: "#fff",
-    fontFamily: "inherit", boxSizing: "border-box", outline: "none",
-  };
-
-  const labelStyle = {
-    fontSize: "0.78rem", fontWeight: 700, color: "#6b7280",
-    textTransform: "uppercase", letterSpacing: "0.04em",
-    display: "block", marginBottom: 4,
-  };
-
   return (
-    <div style={{
-      background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12,
-      padding: "1.25rem 1.4rem", display: "flex", flexDirection: "column", gap: "1rem",
-    }}>
-      <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 800, color: "#037F81" }}>
-        {isEdit ? "Edit Question" : "Add New Question"}
-      </h3>
-
-      {/* Question Text */}
-      <div>
-        <label style={labelStyle}>Question Text *</label>
-        <textarea
-          rows={2}
-          placeholder="e.g. Do you believe survivors deserve to be treated with dignity?"
-          value={form.question_text}
-          onChange={e => set("question_text", e.target.value)}
-          style={{ ...inputStyle, resize: "vertical" }}
-        />
-      </div>
-
-      {/* Category */}
-      <div>
-        <label style={labelStyle}>Category *</label>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-          {!useNewCat ? (
-            <>
-              <select
-                value={form.category}
-                onChange={e => set("category", e.target.value)}
-                style={{ ...inputStyle, flex: 1 }}
-              >
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                {categories.length === 0 && (
-                  <option value="">No categories yet — create one</option>
-                )}
-              </select>
-              <button
-                onClick={() => setUseNewCat(true)}
-                style={{ background: "#e1f5f5", color: "#037F81", border: "none", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                + New Category
-              </button>
-            </>
-          ) : (
-            <>
-              <input
-                type="text"
-                placeholder="e.g. Values & Conduct"
-                value={form.newCategory}
-                onChange={e => set("newCategory", e.target.value)}
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button
-                onClick={() => setUseNewCat(false)}
-                style={{ background: "#f3f4f6", color: "#6b7280", border: "none", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                Use Existing
-              </button>
-            </>
-          )}
+    <>
+      <TextInputDialog
+        open={showSectionDialog}
+        title="Add a Question Section"
+        description="Create a clear group for related screening questions."
+        label="Section name"
+        placeholder="Example: Values & Conduct"
+        confirmLabel="Add and select section"
+        error={sectionDialogError}
+        onConfirm={createSection}
+        onCancel={() => {
+          setShowSectionDialog(false);
+          setSectionDialogError("");
+        }}
+      />
+      <form className={styles.questionForm} onSubmit={submit}>
+      <div className={styles.questionFormHeader}>
+        <div>
+          <h3>{initial ? "Edit Question" : "Add Question"}</h3>
+          <p>This change will be included when you save the next version.</p>
         </div>
+        <Tooltip text="Close without adding this question">
+          <button type="button" className={styles.iconButton} onClick={onCancel}>
+            <FiX />
+          </button>
+        </Tooltip>
       </div>
 
-      {/* Type */}
-      <div>
-        <label style={labelStyle}>Answer Type *</label>
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          {QUESTION_TYPES.map(t => (
-            <label key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.875rem", color: "#292929", cursor: "pointer" }}>
-              <input
-                type="radio"
-                name={`type-${initial?.screening_question_id ?? "new"}`}
-                value={t}
-                checked={form.type === t}
-                onChange={() => set("type", t)}
-              />
-              {TYPE_LABELS[t]}
-            </label>
-          ))}
-        </div>
-        <p style={{ margin: "4px 0 0", fontSize: "0.76rem", color: "#9ca3af" }}>
-          Options shown to applicant: <strong>{DEFAULT_OPTIONS[form.type]?.join(" / ")}</strong>
-        </p>
-      </div>
-
-      {/* Preferred Answer */}
-      <div>
-        <label style={labelStyle}>Preferred Answer (auto-score)</label>
-        <select
-          value={form.preferred_answer}
-          onChange={e => set("preferred_answer", e.target.value)}
-          style={{ ...inputStyle, maxWidth: 240 }}
-        >
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      </div>
-
-      {/* Flags */}
-      <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.875rem", color: "#292929", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={form.auto_fail}
-            onChange={e => set("auto_fail", e.target.checked)}
-          />
-          <span>
-            <strong>Auto-fail</strong> — wrong answer immediately disqualifies the applicant
-          </span>
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.875rem", color: "#292929", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={form.is_active}
-            onChange={e => set("is_active", e.target.checked)}
-          />
-          <span><strong>Active</strong> — shown to applicants</span>
-        </label>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-        <button
-          onClick={onCancel}
-          style={{ background: "#fff", color: "#6b7280", border: "1px solid #e5e7eb", borderRadius: 999, padding: "0.45rem 1.1rem", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving || !form.question_text.trim() || (!useNewCat ? !form.category : !form.newCategory.trim())}
-          style={{
-            background: "#037F81", color: "#fff", border: "none", borderRadius: 999,
-            padding: "0.45rem 1.25rem", fontSize: "0.85rem", fontWeight: 700,
-            cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Question"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Question Row ─────────────────────────────────────────────────────────────
-
-function QuestionRow({ q, onEdit, onDelete, onToggleActive, onMoveUp, onMoveDown, isFirst, isLast }) {
-  const typeLabel = TYPE_LABELS[q.type] ?? q.type;
-  const options   = Array.isArray(q.options) ? q.options.join(" / ") : JSON.stringify(q.options);
-
-  return (
-    <div style={{
-      background: q.is_active ? "#fff" : "#fafafa",
-      border: `1px solid ${q.is_active ? "#e5e7eb" : "#e5e7eb"}`,
-      borderRadius: 10, padding: "0.9rem 1rem",
-      display: "flex", alignItems: "flex-start", gap: "0.75rem",
-      opacity: q.is_active ? 1 : 0.65,
-      transition: "opacity 0.15s",
-    }}>
-      {/* Order controls */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0, paddingTop: 2 }}>
-        <button
-          onClick={onMoveUp}
-          disabled={isFirst}
-          style={{ background: "none", border: "none", cursor: isFirst ? "default" : "pointer", color: isFirst ? "#d1d5db" : "#6b7280", padding: 2, display: "flex", alignItems: "center" }}
-          title="Move up"
-        >
-          <FiChevronUp size={14} />
-        </button>
-        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textAlign: "center", lineHeight: 1 }}>
-          {q.order}
-        </span>
-        <button
-          onClick={onMoveDown}
-          disabled={isLast}
-          style={{ background: "none", border: "none", cursor: isLast ? "default" : "pointer", color: isLast ? "#d1d5db" : "#6b7280", padding: 2, display: "flex", alignItems: "center" }}
-          title="Move down"
-        >
-          <FiChevronDown size={14} />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: "0 0 4px", fontSize: "0.875rem", fontWeight: 600, color: "#1f2937", lineHeight: 1.5 }}>
-          {q.question_text}
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "center" }}>
-          <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#e1f5f5", color: "#037F81", padding: "2px 8px", borderRadius: 999 }}>
-            {typeLabel}
-          </span>
-          <span style={{ fontSize: "0.72rem", color: "#9ca3af" }}>{options}</span>
-          {q.preferred_answer && (
-            <span style={{ fontSize: "0.72rem", fontWeight: 600, background: "#f0fdf4", color: "#16a34a", padding: "2px 8px", borderRadius: 999 }}>
-              Preferred: {q.preferred_answer}
-            </span>
-          )}
-          {q.auto_fail && (
-            <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#fee2e2", color: "#dc2626", padding: "2px 8px", borderRadius: 999 }}>
-              <IoIosWarning /> Auto-fail
-            </span>
-          )}
-          {!q.is_active && (
-            <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#f3f4f6", color: "#6b7280", padding: "2px 8px", borderRadius: 999 }}>
-              Hidden
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: "flex", gap: "0.35rem", flexShrink: 0 }}>
-        <button
-          onClick={onToggleActive}
-          title={q.is_active ? "Hide from applicants" : "Show to applicants"}
-          style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}
-        >
-          {q.is_active ? <FiEye size={14} /> : <FiEyeOff size={14} />}
-        </button>
-        <button
-          onClick={onEdit}
-          title="Edit"
-          style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#037F81", display: "flex", alignItems: "center" }}
-        >
-          <FiEdit2 size={14} />
-        </button>
-        <button
-          onClick={onDelete}
-          title="Delete"
-          style={{ background: "#fff0f0", border: "1px solid #fecaca", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#dc2626", display: "flex", alignItems: "center" }}
-        >
-          <FiTrash2 size={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({ open, question, onConfirm, onCancel }) {
-  if (!open || !question) return null;
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
-      onClick={onCancel}
-    >
-      <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", maxWidth: 480, width: "100%", padding: "1.5rem", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
-        onClick={e => e.stopPropagation()}
+      <div
+        className={`${styles.formGroup} ${
+          errors.question_text ? styles.formGroupInvalid : ""
+        }`}
       >
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", marginBottom: "1rem" }}>
-          <FiAlertCircle size={22} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <h3 style={{ margin: "0 0 6px", fontSize: "1rem", fontWeight: 800, color: "#1f2937" }}>Delete Question?</h3>
-            <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>
-              This will permanently delete:<br />
-              <strong>"{question.question_text}"</strong>
+        <label>
+          Question shown to applicants
+          <Tooltip text="This wording appears exactly as written on the volunteer application.">
+            <span className={styles.helpIcon}><FiHelpCircle /></span>
+          </Tooltip>
+        </label>
+        <textarea
+          rows={3}
+          value={form.question_text}
+          onChange={(event) => set("question_text", event.target.value)}
+          placeholder="Write one clear question."
+          autoFocus
+          aria-invalid={Boolean(errors.question_text)}
+        />
+        <p className={styles.formHint}>Ask one clear thing at a time.</p>
+        {errors.question_text && (
+          <p className={styles.fieldError}>
+            <FiAlertCircle /> {errors.question_text}
+          </p>
+        )}
+      </div>
+
+      <div className={styles.sectionChoicePanel}>
+        <div
+          className={`${styles.formGroup} ${
+            errors.category ? styles.formGroupInvalid : ""
+          }`}
+        >
+          <label>
+            Question section
+            <Tooltip text="Sections group related questions together on the application.">
+              <span className={styles.helpIcon}><FiHelpCircle /></span>
+            </Tooltip>
+          </label>
+          <div className={styles.sectionSelectRow}>
+            <select
+              value={form.category}
+              onChange={(event) => set("category", event.target.value)}
+              aria-invalid={Boolean(errors.category)}
+            >
+              <option value="">Select a section</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {humanizeCategory(category)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className={styles.addSectionInline}
+              onClick={() => setShowSectionDialog(true)}
+            >
+              <FiPlus /> Add Section
+            </button>
+          </div>
+          <p className={styles.formHint}>
+            Choose where this question belongs, or create a new section now.
+          </p>
+          {errors.category && (
+            <p className={styles.fieldError}>
+              <FiAlertCircle /> {errors.category}
             </p>
-            <p style={{ margin: "6px 0 0", fontSize: "0.8rem", color: "#9ca3af" }}>
-              Existing applicant responses will not be deleted from the database.
-            </p>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label>
+            Answer choices
+            <Tooltip text="Choose the labels applicants will select from.">
+              <span className={styles.helpIcon}><FiHelpCircle /></span>
+            </Tooltip>
+          </label>
+          <div className={styles.modeTabs}>
+            <button
+              type="button"
+              className={form.answerPreset === "yes_no" ? styles.modeTabActive : ""}
+              onClick={() => chooseAnswers("yes_no")}
+            >
+              Yes / No
+            </button>
+            <button
+              type="button"
+              className={form.answerPreset === "in_favor" ? styles.modeTabActive : ""}
+              onClick={() => chooseAnswers("in_favor")}
+            >
+              In Favor
+            </button>
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-          <button onClick={onCancel} style={{ background: "#fff", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 999, padding: "0.45rem 1.1rem", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm} style={{ background: "#dc2626", color: "#fff", border: "none", borderRadius: 999, padding: "0.45rem 1.25rem", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}>
-            Delete
-          </button>
+      </div>
+
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label>
+            Screening rule
+            <Tooltip text="Required answers can disqualify an application. Score answers only affect ranking.">
+              <span className={styles.helpIcon}><FiHelpCircle /></span>
+            </Tooltip>
+          </label>
+          <select value={form.type} onChange={(event) => set("type", event.target.value)}>
+            <option value="non_negotiable">Required answer</option>
+            <option value="negotiable">Adds to screening score</option>
+          </select>
+          <p className={styles.formHint}>
+            Required answers should only be used for essential volunteer expectations.
+          </p>
+        </div>
+        <div className={styles.formGroup}>
+          <label>
+            Expected answer
+            <Tooltip text="This is the answer SASHA considers aligned with its expectations.">
+              <span className={styles.helpIcon}><FiHelpCircle /></span>
+            </Tooltip>
+          </label>
+          <select
+            value={form.preferred_answer}
+            onChange={(event) => set("preferred_answer", event.target.value)}
+          >
+            {form.options.map((option) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
         </div>
       </div>
+
+      <label className={styles.checkboxLabel}>
+        <input
+          type="checkbox"
+          checked={form.is_active}
+          onChange={(event) => set("is_active", event.target.checked)}
+        />
+        Show this question to applicants
+      </label>
+
+      <div className={styles.formActions}>
+        <button type="button" className={styles.btnSecondary} onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="submit" className={styles.btnPrimary}>
+          <FiCheck /> {initial ? "Save to draft" : "Add to draft"}
+        </button>
+      </div>
+      </form>
+    </>
+  );
+}
+
+function CategoryManager({ categories, questions, onRename, onRemove }) {
+  return (
+    <div className={styles.categoryList}>
+      {categories.map((category) => (
+        <CategoryRow
+          key={category}
+          category={category}
+          count={questions.filter((question) => question.category === category).length}
+          onRename={onRename}
+          onRemove={onRemove}
+        />
+      ))}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+function CategoryRow({ category, count, onRename, onRemove }) {
+  const [name, setName] = useState(humanizeCategory(category));
+
+  function commitName() {
+    const nextName = name.trim();
+    if (!nextName) {
+      setName(humanizeCategory(category));
+      return;
+    }
+    onRename(category, nextName);
+  }
+
+  return (
+    <div className={styles.categoryRow}>
+      <input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        onBlur={commitName}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+        aria-label={`Rename ${humanizeCategory(category)}`}
+      />
+      <span>{count} questions</span>
+      <Tooltip text="Remove this section and all questions inside it" position="left">
+        <button
+          type="button"
+          className={styles.removeButton}
+          onClick={() => onRemove(category)}
+          aria-label={`Remove ${humanizeCategory(category)}`}
+        >
+          <FiTrash2 />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}
+
+function QuestionCard({
+  question,
+  index,
+  total,
+  editMode,
+  onMove,
+  onToggle,
+  onEdit,
+  onRemove,
+}) {
+  const required = question.type === "non_negotiable" || question.auto_fail;
+  return (
+    <article
+      className={`${styles.questionCard} ${
+        !question.is_active ? styles.questionCardHidden : ""
+      } ${editMode ? styles.questionCardEditing : ""}`}
+    >
+      {editMode && (
+        <div className={styles.orderColumn}>
+          <Tooltip text="Move earlier in this section" position="left">
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() => onMove("up")}
+              aria-label="Move question up"
+            >
+              <FiArrowUp />
+            </button>
+          </Tooltip>
+          <span>{index + 1}</span>
+          <Tooltip text="Move later in this section" position="left">
+            <button
+              type="button"
+              disabled={index === total - 1}
+              onClick={() => onMove("down")}
+              aria-label="Move question down"
+            >
+              <FiArrowDown />
+            </button>
+          </Tooltip>
+        </div>
+      )}
+
+      <div className={styles.questionContent}>
+        <div className={styles.badges}>
+          <span className={styles.categoryBadge}>
+            {humanizeCategory(question.category)}
+          </span>
+          <span className={required ? styles.requiredBadge : styles.scoreBadge}>
+            {required ? <FiShield /> : <FiCheck />}
+            {required ? "Required answer" : "Adds to score"}
+          </span>
+          {!question.is_active && (
+            <span className={styles.hiddenBadge}><FiEyeOff /> Hidden</span>
+          )}
+        </div>
+        <h3>{question.question_text}</h3>
+        <div className={styles.answers}>
+          {(question.options || []).map((option) => (
+            <span
+              key={option}
+              className={
+                option === question.preferred_answer ? styles.expectedAnswer : ""
+              }
+            >
+              {option === question.preferred_answer && <FiCheck />} {option}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {editMode && (
+        <div className={styles.questionActions}>
+          <Tooltip
+            text={
+              question.is_active
+                ? "Hide from new applicants"
+                : "Show to new applicants"
+            }
+          >
+            <button type="button" onClick={onToggle}>
+              {question.is_active ? <FiEyeOff /> : <FiEye />}
+              {question.is_active ? "Hide" : "Show"}
+            </button>
+          </Tooltip>
+          <Tooltip text="Change the wording, section, answers, or scoring rule">
+            <button type="button" onClick={onEdit}><FiEdit2 /> Edit</button>
+          </Tooltip>
+          <Tooltip text="Remove from this draft; published history is preserved">
+            <button type="button" className={styles.dangerText} onClick={onRemove}>
+              <FiTrash2 /> Remove
+            </button>
+          </Tooltip>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function VersionHistory() {
+  return null;
+}
 
 export default function ScreeningQuestionsPage() {
   const router = useRouter();
+  const [questionSet, setQuestionSet] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [draftQuestions, setDraftQuestions] = useState([]);
+  const [draftCategories, setDraftCategories] = useState([]);
+  const [history] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [questionFormCategory, setQuestionFormCategory] = useState("");
+  const [editingKey, setEditingKey] = useState(null);
+  const [publishing, setPublishing] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+  const [showAddSectionDialog, setShowAddSectionDialog] = useState(false);
+  const [sectionDialogError, setSectionDialogError] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
-  const [questions,    setQuestions]    = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(null);
-  const [toast,        setToast]        = useState(null);
-  const [saving,       setSaving]       = useState(false);
+  const visibleQuestions = editMode ? draftQuestions : questions;
+  const categories = useMemo(
+    () =>
+      editMode
+        ? draftCategories
+        : [...new Set(visibleQuestions.map((question) => question.category))],
+    [draftCategories, editMode, visibleQuestions]
+  );
+  const groupedQuestions = useMemo(
+    () =>
+      categories.map((category) => ({
+        category,
+        questions: visibleQuestions.filter(
+          (question) => question.category === category
+        ),
+      })),
+    [categories, visibleQuestions]
+  );
 
-  // UI state
-  const [showAddForm,  setShowAddForm]  = useState(false);
-  const [editingId,    setEditingId]    = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null); // question obj
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  function showToast(msg, type = "success") {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  }
-
-  // ── Fetch questions ───────────────────────────────────────────────────────
-
-  useEffect(() => {
-    async function fetchQuestions() {
-      try {
-        const res = await fetch(`${API}/api/screening_questions`, {
-          credentials: "include",
-          headers: { Authorization: `Bearer ${getCookie("token")}` },
-        });
-        if (!res.ok) throw new Error("Failed to load screening questions.");
-        const data = await res.json();
-        // Support both { questions: [...] } and plain array responses
-        const list = Array.isArray(data) ? data : (data.questions ?? []);
-        setQuestions(list.sort((a, b) => a.order - b.order));
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchQuestions();
+  const notify = useCallback((message, type = "success") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 3500);
   }, []);
 
-  // Derived: distinct categories in order of first appearance
-  const categories = [...new Set(questions.map(q => q.category))];
-
-  // ── Add question ──────────────────────────────────────────────────────────
-
-  async function handleAdd(formData) {
-    setSaving(true);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      // question_key: snake_case of question_text, truncated, suffixed with id
-      const slug = formData.question_text
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_|_$/g, "")
-        .slice(0, 40);
+      const questionsResponse = await fetch(`${API}/api/screening_questions`, {
+        credentials: "include",
+        headers: headers(),
+      });
+      const current = await readResponse(
+        questionsResponse,
+        "Could not load screening questions."
+      );
+      const currentQuestions = current.questions || [];
+      setQuestionSet(current.questionSet);
+      setQuestions(currentQuestions);
+      setDraftQuestions(currentQuestions);
+      setDraftCategories([
+        ...new Set(currentQuestions.map((question) => question.category)),
+      ]);
+    } catch (loadError) {
+      setError(loadError.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      const payload = {
-        ...formData,
-        question_key: slug + "_" + Date.now(),
-        order: questions.length + 1,
-        // screening_question_set_id: 1 — adjust if your app uses multiple sets
-        screening_question_set_id: 1,
-        options: formData.options ?? DEFAULT_OPTIONS[formData.type],
-      };
+  useEffect(() => {
+    const timer = window.setTimeout(loadData, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadData]);
 
-      const res = await fetch(`${API}/api/screening_questions`, {
+  function beginEditing(openForm = false) {
+    setDraftQuestions(questions.map((question) => ({ ...question })));
+    setDraftCategories([
+      ...new Set(questions.map((question) => question.category)),
+    ]);
+    setEditMode(true);
+    setEditingKey(null);
+    setQuestionFormCategory("");
+    setShowQuestionForm(openForm);
+  }
+
+  function cancelEditing() {
+    setDraftQuestions(questions);
+    setDraftCategories([
+      ...new Set(questions.map((question) => question.category)),
+    ]);
+    setEditMode(false);
+    setEditingKey(null);
+    setQuestionFormCategory("");
+    setShowQuestionForm(false);
+  }
+
+  function addQuestion(question) {
+    if (!draftCategories.includes(question.category)) {
+      setDraftCategories((current) => [...current, question.category]);
+    }
+    setDraftQuestions((current) => [
+      ...current,
+      { ...question, order: current.length + 1 },
+    ]);
+    setShowQuestionForm(false);
+    setQuestionFormCategory("");
+  }
+
+  function updateQuestion(updated) {
+    setDraftQuestions((current) =>
+      current.map((question) =>
+        question.question_key === updated.question_key ? updated : question
+      )
+    );
+    setEditingKey(null);
+  }
+
+  function moveQuestion(questionKey, direction) {
+    setDraftQuestions((current) => {
+      const index = current.findIndex(
+        (question) => question.question_key === questionKey
+      );
+      if (index < 0) return current;
+      const category = current[index].category;
+      const categoryIndexes = current
+        .map((question, questionIndex) =>
+          question.category === category ? questionIndex : -1
+        )
+        .filter((questionIndex) => questionIndex >= 0);
+      const categoryPosition = categoryIndexes.indexOf(index);
+      const targetPosition =
+        direction === "up" ? categoryPosition - 1 : categoryPosition + 1;
+      if (targetPosition < 0 || targetPosition >= categoryIndexes.length) {
+        return current;
+      }
+      const target = categoryIndexes[targetPosition];
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next.map((question, order) => ({ ...question, order: order + 1 }));
+    });
+  }
+
+  function renameCategory(oldCategory, nextCategory) {
+    setDraftCategories((current) =>
+      current.map((category) =>
+        category === oldCategory ? nextCategory : category
+      )
+    );
+    setDraftQuestions((current) =>
+      current.map((question) =>
+        question.category === oldCategory
+          ? { ...question, category: nextCategory }
+          : question
+      )
+    );
+  }
+
+  function removeCategory(category) {
+    const count = draftQuestions.filter(
+      (question) => question.category === category
+    ).length;
+    setConfirmDialog({
+      type: "remove-category",
+      title: "Remove this section?",
+      description:
+        count > 0
+          ? "All questions inside it will also be removed from this draft."
+          : "This empty section will be removed from the draft.",
+      detail: `${humanizeCategory(category)} · ${count} question${
+        count === 1 ? "" : "s"
+      }`,
+      target: category,
+      tone: "danger",
+      confirmLabel: "Remove section",
+    });
+  }
+
+  function confirmRemoveCategory(category) {
+    setDraftCategories((current) =>
+      current.filter((item) => item !== category)
+    );
+    setDraftQuestions((current) =>
+      current
+        .filter((question) => question.category !== category)
+        .map((question, order) => ({ ...question, order: order + 1 }))
+    );
+    setConfirmDialog(null);
+  }
+
+  function addSection(sectionName) {
+    const cleaned = humanizeCategory(sectionName);
+    const duplicate = draftCategories.some(
+      (category) => category.toLowerCase() === cleaned.toLowerCase()
+    );
+    if (duplicate) {
+      setSectionDialogError("A section with this name already exists.");
+      return;
+    }
+    setDraftCategories((current) => [...current, cleaned]);
+    setSectionDialogError("");
+    setShowAddSectionDialog(false);
+    notify(`"${cleaned}" was added to this draft.`);
+  }
+
+  function addSectionFromQuestionForm(sectionName) {
+    setDraftCategories((current) =>
+      current.includes(sectionName) ? current : [...current, sectionName]
+    );
+  }
+
+  async function publishVersion() {
+    const cleaned = draftQuestions.map((question) => ({
+      ...question,
+      category: humanizeCategory(question.category),
+    }));
+    if (cleaned.length === 0) {
+      notify("A version must contain at least one question.", "error");
+      return;
+    }
+    if (cleaned.some((question) => !question.category.trim())) {
+      notify("Every section needs a name.", "error");
+      return;
+    }
+    const emptyCategories = draftCategories.filter((category) => {
+      const normalizedCategory = humanizeCategory(category).toLowerCase();
+      return !cleaned.some(
+        (question) =>
+          humanizeCategory(question.category).toLowerCase() ===
+          normalizedCategory
+      );
+    });
+    if (emptyCategories.length > 0) {
+      setConfirmDialog({
+        type: "empty-sections",
+        title: "Some sections are still empty",
+        description:
+          "Add at least one question to every section before publishing. Empty sections cannot be saved because sections are stored with their questions.",
+        detail: emptyCategories.map(humanizeCategory).join(", "),
+        confirmLabel: "Got it",
+      });
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      const response = await fetch(`${API}/api/screening_question_set`, {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getCookie("token")}`,
-        },
-        body: JSON.stringify(payload),
+        headers: headers({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ questions: cleaned }),
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to add question.");
-      }
-
-      const created = await res.json();
-      const newQ = created.question ?? created;
-      setQuestions(prev => [...prev, newQ].sort((a, b) => a.order - b.order));
-      setShowAddForm(false);
-      showToast("Question added successfully.");
-    } catch (err) {
-      showToast(err.message, "error");
+      await readResponse(response, "Could not publish the new version.");
+      await loadData();
+      setEditMode(false);
+      setShowQuestionForm(false);
+      setEditingKey(null);
+      notify("A new screening-question version is now active.");
+    } catch (publishError) {
+      notify(publishError.message, "error");
     } finally {
-      setSaving(false);
+      setPublishing(false);
     }
   }
 
-  // ── Edit question ─────────────────────────────────────────────────────────
+  function restoreVersion(version) {
+    setConfirmDialog({
+      type: "restore",
+      title: `Restore ${version.version}?`,
+      description:
+        "This snapshot will be published as a new active version. Your current version will remain available in history.",
+      detail: `${formatDate(version.created_at)} · ${
+        (version.screening_questions || []).length
+      } questions`,
+      target: version,
+      confirmLabel: "Restore as new version",
+    });
+  }
 
-  async function handleEdit(formData) {
-    setSaving(true);
+  async function confirmRestoreVersion(version) {
+    setConfirmDialog(null);
+    setRestoringId(version.screening_question_set_id);
     try {
-      const res = await fetch(
-        `${API}/api/screening_questions/${formData.screening_question_id}`,
+      const response = await fetch(
+        `${API}/api/screening_question_set/${version.screening_question_set_id}/restore`,
         {
-          method: "PUT",
+          method: "POST",
           credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getCookie("token")}`,
-          },
-          body: JSON.stringify({
-            question_text:    formData.question_text,
-            category:         formData.category,
-            type:             formData.type,
-            options:          formData.options ?? DEFAULT_OPTIONS[formData.type],
-            preferred_answer: formData.preferred_answer,
-            auto_fail:        formData.auto_fail,
-            is_active:        formData.is_active,
-          }),
+          headers: headers(),
         }
       );
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to update question.");
-      }
-
-      const updated = await res.json();
-      const updQ = updated.question ?? updated;
-      setQuestions(prev => prev.map(q =>
-        q.screening_question_id === updQ.screening_question_id ? updQ : q
-      ).sort((a, b) => a.order - b.order));
-      setEditingId(null);
-      showToast("Question updated.");
-    } catch (err) {
-      showToast(err.message, "error");
+      await readResponse(response, "Could not restore that version.");
+      await loadData();
+      notify(`${version.version} was restored as a new active version.`);
+    } catch (restoreError) {
+      notify(restoreError.message, "error");
     } finally {
-      setSaving(false);
+      setRestoringId(null);
     }
   }
 
-  // ── Toggle active ─────────────────────────────────────────────────────────
-
-  async function handleToggleActive(q) {
-    const next = !q.is_active;
-    try {
-      const res = await fetch(`${API}/api/screening_questions/${q.screening_question_id}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getCookie("token")}`,
-        },
-        body: JSON.stringify({ is_active: next }),
-      });
-      if (!res.ok) throw new Error("Failed to update.");
-      const updated = await res.json();
-      const updQ = updated.question ?? updated;
-      setQuestions(prev => prev.map(x =>
-        x.screening_question_id === q.screening_question_id ? { ...x, is_active: updQ.is_active ?? next } : x
-      ));
-      showToast(next ? "Question is now visible to applicants." : "Question hidden from applicants.");
-    } catch (err) {
-      showToast(err.message, "error");
-    }
+  function requestRemoveQuestion(question) {
+    setConfirmDialog({
+      type: "remove-question",
+      title: "Remove this question?",
+      description:
+        "It will be removed from this draft only. Published versions and previous applicant answers will stay unchanged.",
+      detail: question.question_text,
+      target: question,
+      tone: "danger",
+      confirmLabel: "Remove question",
+    });
   }
 
-  // ── Reorder (move up / down) ──────────────────────────────────────────────
-
-  async function handleReorder(qId, direction) {
-    const idx = questions.findIndex(q => q.screening_question_id === qId);
-    if (idx < 0) return;
-    if (direction === "up"   && idx === 0) return;
-    if (direction === "down" && idx === questions.length - 1) return;
-
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    const reordered = [...questions];
-    // Swap
-    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
-    // Reassign order values
-    const withOrders = reordered.map((q, i) => ({ ...q, order: i + 1 }));
-    setQuestions(withOrders); // Optimistic update
-
-    try {
-      await fetch(`${API}/api/screening_questions/reorder`, {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getCookie("token")}`,
-        },
-        body: JSON.stringify({
-          order: withOrders.map(q => ({
-            screening_question_id: q.screening_question_id,
-            order: q.order,
-          })),
-        }),
-      });
-    } catch (err) {
-      showToast("Reorder failed — refresh to re-sync.", "error");
-    }
+  function confirmRemoveQuestion(question) {
+    setDraftQuestions((current) =>
+      current
+        .filter((item) => item.question_key !== question.question_key)
+        .map((item, order) => ({ ...item, order: order + 1 }))
+    );
+    setConfirmDialog(null);
   }
 
-  // ── Delete ────────────────────────────────────────────────────────────────
-
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    try {
-      const res = await fetch(
-        `${API}/api/screening_questions/${deleteTarget.screening_question_id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-          headers: { Authorization: `Bearer ${getCookie("token")}` },
-        }
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to delete question.");
-      }
-      setQuestions(prev =>
-        prev
-          .filter(q => q.screening_question_id !== deleteTarget.screening_question_id)
-          .map((q, i) => ({ ...q, order: i + 1 }))
-      );
-      showToast("Question deleted.");
-    } catch (err) {
-      showToast(err.message, "error");
-    } finally {
-      setDeleteTarget(null);
+  function handleDialogConfirm() {
+    if (!confirmDialog) return;
+    if (confirmDialog.type === "remove-category") {
+      confirmRemoveCategory(confirmDialog.target);
+      return;
     }
+    if (confirmDialog.type === "remove-question") {
+      confirmRemoveQuestion(confirmDialog.target);
+      return;
+    }
+    if (confirmDialog.type === "restore") {
+      confirmRestoreVersion(confirmDialog.target);
+      return;
+    }
+    setConfirmDialog(null);
   }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <>
+    <main className={styles.page}>
       <Toast toast={toast} />
-      <ConfirmDeleteModal
-        open={!!deleteTarget}
-        question={deleteTarget}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+      <TextInputDialog
+        open={showAddSectionDialog}
+        title="Add a Question Section"
+        description="Sections help applicants understand why related questions are grouped together."
+        label="Section name"
+        placeholder="Example: Values & Conduct"
+        confirmLabel="Add section"
+        error={sectionDialogError}
+        onConfirm={addSection}
+        onCancel={() => {
+          setShowAddSectionDialog(false);
+          setSectionDialogError("");
+        }}
       />
-
-      <div style={{ background: "#f7f8fa", minHeight: "100vh", padding: "2rem 1.5rem", marginTop: 64 }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
-
-          {/* Back + Header */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <button
-              onClick={() => router.push("/volunteer")}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#037F81", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer", padding: 0, marginBottom: "1rem" }}
-            >
-              <IoIosArrowBack /> Back to Volunteer Management
-            </button>
-
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
-              <div>
-                <h1 style={{ margin: "0 0 4px", fontSize: "1.6rem", fontWeight: 800, color: "#1f2937" }}>
-                  Screening Questions
-                </h1>
-                <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280", lineHeight: 1.5 }}>
-                  These questions appear on the volunteer application form (<strong>Step 2 — Screening Questions</strong>).
-                  Changes take effect for new applicants immediately.
-                </p>
-              </div>
-              {!showAddForm && (
-                <button
-                  onClick={() => { setShowAddForm(true); setEditingId(null); }}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#037F81", color: "#fff", border: "none", borderRadius: 999, padding: "0.5rem 1.3rem", fontSize: "0.875rem", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-                >
-                  <FiPlus size={15} /> Add Question
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Info banner */}
-          <div style={{ background: "#e1f5f5", border: "1px solid #a5d8d8", borderRadius: 10, padding: "0.75rem 1rem", marginBottom: "1.5rem", fontSize: "0.82rem", color: "#037F81", lineHeight: 1.6 }}>
-            <strong>How it works:</strong> Each question you add here will be fetched dynamically by the application form and ViewApplication. Use the <strong>In Favor / Not in Favor</strong> type for advocacy questions, and <strong>Yes / No</strong> for standard ones. Drag questions up/down to control the display order.
-          </div>
-
-          {/* Add form */}
-          {showAddForm && (
-            <div style={{ marginBottom: "1.25rem" }}>
-              <QuestionForm
-                initial={null}
-                categories={categories}
-                onSave={handleAdd}
-                onCancel={() => setShowAddForm(false)}
-                saving={saving}
-              />
-            </div>
-          )}
-
-          {/* Loading / error */}
-          {loading && (
-            <p style={{ color: "#6b7280", fontSize: "0.9rem", textAlign: "center", padding: "2rem 0" }}>
-              Loading questions…
-            </p>
-          )}
-          {error && (
-            <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "0.75rem 1rem", color: "#991b1b", fontSize: "0.875rem", marginBottom: "1rem" }}>
-              {error}
-            </div>
-          )}
-
-          {/* Questions grouped by category */}
-          {!loading && !error && (
-            categories.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#9ca3af" }}>
-                <p style={{ fontSize: "1rem", fontWeight: 600, margin: "0 0 6px" }}>No questions yet</p>
-                <p style={{ fontSize: "0.875rem", margin: 0 }}>Click <strong>Add Question</strong> to create the first screening question.</p>
-              </div>
-            ) : (
-              categories.map(cat => {
-                const catQuestions = questions.filter(q => q.category === cat);
-                return (
-                  <div key={cat} style={{ marginBottom: "1.75rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
-                      <h2 style={{ margin: 0, fontSize: "0.82rem", fontWeight: 800, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        {cat}
-                      </h2>
-                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-                      <span style={{ fontSize: "0.75rem", color: "#9ca3af", flexShrink: 0 }}>
-                        {catQuestions.filter(q => q.is_active).length} of {catQuestions.length} active
-                      </span>
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                      {catQuestions.map((q, i) => {
-                        const globalIdx = questions.findIndex(x => x.screening_question_id === q.screening_question_id);
-                        const isFirst = globalIdx === 0;
-                        const isLast  = globalIdx === questions.length - 1;
-
-                        if (editingId === q.screening_question_id) {
-                          return (
-                            <QuestionForm
-                              key={q.screening_question_id}
-                              initial={q}
-                              categories={categories}
-                              onSave={handleEdit}
-                              onCancel={() => setEditingId(null)}
-                              saving={saving}
-                            />
-                          );
-                        }
-
-                        return (
-                          <QuestionRow
-                            key={q.screening_question_id}
-                            q={q}
-                            onEdit={() => { setEditingId(q.screening_question_id); setShowAddForm(false); }}
-                            onDelete={() => setDeleteTarget(q)}
-                            onToggleActive={() => handleToggleActive(q)}
-                            onMoveUp={() => handleReorder(q.screening_question_id, "up")}
-                            onMoveDown={() => handleReorder(q.screening_question_id, "down")}
-                            isFirst={isFirst}
-                            isLast={isLast}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })
-            )
-          )}
-
-          {/* Summary footer */}
-          {!loading && questions.length > 0 && (
-            <div style={{ marginTop: "2rem", borderTop: "1px solid #e5e7eb", paddingTop: "1rem", display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#9ca3af" }}>
-              <span>{questions.length} total questions · {questions.filter(q => q.is_active).length} active</span>
-              <span>{categories.length} categories</span>
-            </div>
-          )}
-
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
+      <ConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={confirmDialog?.title}
+        description={confirmDialog?.description}
+        detail={confirmDialog?.detail}
+        confirmLabel={confirmDialog?.confirmLabel}
+        tone={confirmDialog?.tone}
+        busy={
+          confirmDialog?.type === "restore" &&
+          restoringId === confirmDialog?.target?.screening_question_set_id
         }
-      `}</style>
-    </>
+        onConfirm={handleDialogConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
+      <div className={styles.container}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={() => router.push("/volunteer")}
+        >
+          <FiArrowLeft /> Back to Volunteer Management
+        </button>
+
+        <section className={styles.hero}>
+          <div>
+            <span>Volunteer applications</span>
+            <h1>Screening Questions</h1>
+            <p>
+              Manage the questions applicants answer and keep a complete history
+              of every published version.
+            </p>
+            {questionSet && <small>Current version: {questionSet.version}</small>}
+          </div>
+          <div className={styles.heroActions}>
+            <Tooltip text="Add a question to a new unpublished draft" position="bottom">
+              <button
+                type="button"
+                className={styles.heroPrimary}
+                onClick={() => {
+                  setQuestionFormCategory("");
+                  if (editMode) setShowQuestionForm(true);
+                  else beginEditing(true);
+                }}
+                disabled={loading}
+              >
+                <FiPlus /> Add Question
+              </button>
+            </Tooltip>
+            <Tooltip text="Open the full version history workspace" position="bottom">
+              <button
+                type="button"
+                className={styles.heroSecondary}
+                onClick={() =>
+                  router.push("/volunteer/screening-questions/history")
+                }
+                disabled={loading}
+              >
+                <FiClock /> Version History
+              </button>
+            </Tooltip>
+            {!editMode ? (
+              <Tooltip text="Open editing tools without changing the live version" position="bottom">
+                <button
+                  type="button"
+                  className={styles.heroSecondary}
+                  onClick={() => beginEditing(false)}
+                  disabled={loading}
+                >
+                  <FiEdit2 /> Edit
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip text="Discard all unpublished changes" position="bottom">
+                <button
+                  type="button"
+                  className={styles.heroSecondary}
+                  onClick={cancelEditing}
+                >
+                  <FiX /> Cancel Editing
+                </button>
+              </Tooltip>
+            )}
+          </div>
+        </section>
+
+        {editMode && (
+          <div className={styles.editBanner}>
+            <div>
+              <strong>Editing a new version</strong>
+              <span>
+                Your changes are only visible to applicants after you publish.
+              </span>
+            </div>
+            <Tooltip text="Publish this complete draft and preserve the current version in history">
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={publishVersion}
+                disabled={publishing}
+              >
+                {publishing ? (
+                  <><FiRefreshCw className={styles.spin} /> Publishing</>
+                ) : (
+                  <><FiSave /> Save as New Version</>
+                )}
+              </button>
+            </Tooltip>
+          </div>
+        )}
+
+        {loading && (
+          <div className={styles.stateCard}>
+            <FiRefreshCw className={styles.spin} />
+            Loading screening questions...
+          </div>
+        )}
+        {error && (
+          <div className={`${styles.stateCard} ${styles.errorState}`}>
+            <FiAlertCircle /> {error}
+            <button type="button" className={styles.btnPrimary} onClick={loadData}>
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className={styles.layout}>
+            <div className={styles.mainColumn}>
+              {showQuestionForm && (
+                <QuestionForm
+                  categories={categories}
+                  defaultCategory={questionFormCategory}
+                  onSectionCreated={addSectionFromQuestionForm}
+                  onSave={addQuestion}
+                  onCancel={() => {
+                    setShowQuestionForm(false);
+                    setQuestionFormCategory("");
+                  }}
+                />
+              )}
+
+              {editMode && (
+                <SectionCard
+                  title="Question Sections"
+                  subtitle="Create, rename, or remove the groups applicants see."
+                  action={
+                    <Tooltip text="Create a new group for related questions">
+                      <button
+                        type="button"
+                        className={styles.addSectionButton}
+                        onClick={() => setShowAddSectionDialog(true)}
+                      >
+                        <FiPlus /> Add Section
+                      </button>
+                    </Tooltip>
+                  }
+                >
+                  <CategoryManager
+                    categories={categories}
+                    questions={draftQuestions}
+                    onRename={renameCategory}
+                    onRemove={removeCategory}
+                  />
+                </SectionCard>
+              )}
+
+              <SectionCard
+                title="Questions Applicants Will Answer"
+                subtitle={
+                  editMode
+                    ? "Arrange, edit, hide, or remove questions in this draft."
+                    : "Questions are shown below in the same order applicants see them."
+                }
+              >
+                {visibleQuestions.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    No questions are included in this version.
+                  </div>
+                ) : (
+                  <div className={styles.groupList}>
+                    {groupedQuestions.map((group) => (
+                      <div className={styles.questionGroup} key={group.category}>
+                        <div className={styles.groupHeader}>
+                          <h3>{humanizeCategory(group.category)}</h3>
+                          <span>{group.questions.length} questions</span>
+                        </div>
+                        <div className={styles.questionList}>
+                          {group.questions.length === 0 && (
+                            <div className={styles.emptySection}>
+                              <div>
+                                <strong>This section has no questions yet.</strong>
+                                <span>
+                                  Add at least one question before publishing.
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.btnSecondary}
+                                onClick={() => {
+                                  setQuestionFormCategory(group.category);
+                                  setShowQuestionForm(true);
+                                }}
+                              >
+                                <FiPlus /> Add Question
+                              </button>
+                            </div>
+                          )}
+                          {group.questions.map((question, groupIndex) => {
+                            return editingKey === question.question_key ? (
+                              <QuestionForm
+                                key={question.question_key}
+                                initial={question}
+                                categories={categories}
+                                defaultCategory={question.category}
+                                onSectionCreated={addSectionFromQuestionForm}
+                                onSave={updateQuestion}
+                                onCancel={() => setEditingKey(null)}
+                              />
+                            ) : (
+                              <QuestionCard
+                                key={question.question_key}
+                                question={question}
+                                index={groupIndex}
+                                total={group.questions.length}
+                                editMode={editMode}
+                                onMove={(direction) =>
+                                  moveQuestion(question.question_key, direction)
+                                }
+                                onToggle={() =>
+                                  updateQuestion({
+                                    ...question,
+                                    is_active: !question.is_active,
+                                  })
+                                }
+                                onEdit={() => setEditingKey(question.question_key)}
+                                onRemove={() => requestRemoveQuestion(question)}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            </div>
+
+            <aside className={styles.sidebar}>
+              <SectionCard
+                title="Version History"
+                subtitle="Older versions are read-only and can be restored safely."
+              >
+                <VersionHistory
+                  history={history}
+                  restoringId={restoringId}
+                  onRestore={restoreVersion}
+                />
+              </SectionCard>
+
+              <SectionCard title="Current Version">
+                <dl className={styles.versionSummary}>
+                  <div><dt>Version</dt><dd>{questionSet?.version || "—"}</dd></div>
+                  <div><dt>Questions</dt><dd>{questions.length}</dd></div>
+                  <div>
+                    <dt>Visible</dt>
+                    <dd>{questions.filter((question) => question.is_active).length}</dd>
+                  </div>
+                  <div><dt>Published</dt><dd>{formatDate(questionSet?.created_at)}</dd></div>
+                </dl>
+              </SectionCard>
+            </aside>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

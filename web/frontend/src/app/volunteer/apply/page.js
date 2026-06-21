@@ -6,6 +6,16 @@ import { useRouter } from "next/navigation";
 import { FaCheckCircle } from "react-icons/fa";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
 
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+function humanizeCategory(value) {
+  return String(value || "Screening Questions")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
   { id: 0, label: "Applicant's Info" },
@@ -260,7 +270,7 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Applicant's</span> Information
+        <span className={styles.stepTitleAccent}>Applicant&apos;s</span> Information
       </h2>
       <p className={styles.stepDesc}>
         Please provide your personal details. All information is kept strictly confidential.
@@ -399,7 +409,7 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
           <h3 className={styles.subSectionTitle}>Affiliation Details</h3>
           <p className={styles.stepDesc}>
             Tell us whether you are affiliated with any group, institution, or organization.
-            If none, you may select "No Organization / Independent".
+            If none, you may select &quot;No Organization / Independent&quot;.
           </p>
 
           <div className={styles.formGrid}>
@@ -588,9 +598,19 @@ const EXPERTISE_OPTIONS = [
 const HOURS_OPTIONS = ["Less than 5 hours", "6-10 hours", "10-15 hours", "More than 15 hours"];
 
 // ── Page 2 — Screening Questions ───────────────────────────────────────────────
-function StepScreeningQuestions({ data, onChange }) {
+function StepScreeningQuestions({
+  data,
+  onChange,
+  questions,
+  answers,
+  onAnswer,
+  loading,
+  loadError,
+  errors,
+}) {
   const setRadio = (key) => (v) => onChange({ ...data, [key]: v });
   const setCheckbox = (key) => (v) => onChange({ ...data, [key]: v });
+  const categories = [...new Set(questions.map((question) => question.category))];
 
   return (
     <div>
@@ -601,81 +621,45 @@ function StepScreeningQuestions({ data, onChange }) {
         Please answer the following questions truthfully and honestly.
       </p>
 
-      {/* ── Values & Conduct ── */}
-      <div className={styles.screeningGroup}>
-        <div className={styles.screeningGroupHeader}>
-          <h3 className={styles.screeningGroupTitle}>Values &amp; Conduct</h3>
+      {loading && <p className={styles.stepDesc}>Loading screening questions...</p>}
+      {loadError && (
+        <div className={styles.submitError}>
+          <span><IoIosWarning /></span> {loadError}
         </div>
-        <div className={styles.radioColumn}>
-          <Field label="Do you believe survivors of harassment and abuse deserve to be treated with dignity, confidentiality, and respect?" required>
-            <RadioGroup name="survivorDignity" options={["Yes", "No"]} value={data.survivorDignity} onChange={setRadio("survivorDignity")} />
-          </Field>
-          <Field label="Are you willing to follow SASHA's confidentiality and safeguarding policies when handling sensitive concerns?" required>
-            <RadioGroup name="confidentialityPolicy" options={["Yes", "No"]} value={data.confidentialityPolicy} onChange={setRadio("confidentialityPolicy")} />
-          </Field>
-          <Field label="Do you agree that harassment, discrimination, victim-blaming, and hate speech are unacceptable within volunteer spaces?" required>
-            <RadioGroup name="noHarassment" options={["Yes", "No"]} value={data.noHarassment} onChange={setRadio("noHarassment")} />
-          </Field>
-          <Field label="Are you willing to communicate respectfully with individuals regardless of gender identity, sexual orientation, religion, or background?" required>
-            <RadioGroup name="respectfulComms" options={["Yes", "No"]} value={data.respectfulComms} onChange={setRadio("respectfulComms")} />
-          </Field>
-        </div>
-      </div>
+      )}
 
-      <div className={styles.formDivider} />
-
-      {/* ── Advocacy & Participation ── */}
-      <div className={styles.screeningGroup}>
-        <div className={styles.screeningGroupHeader}>
-          <h3 className={styles.screeningGroupTitle}>Advocacy &amp; Participation</h3>
+      {!loading && !loadError && categories.map((category, categoryIndex) => (
+        <div key={category}>
+          {categoryIndex > 0 && <div className={styles.formDivider} />}
+          <div className={styles.screeningGroup}>
+            <div className={styles.screeningGroupHeader}>
+              <h3 className={styles.screeningGroupTitle}>
+                {humanizeCategory(category)}
+              </h3>
+            </div>
+            <div className={styles.radioColumn}>
+              {questions
+                .filter((question) => question.category === category)
+                .map((question) => (
+                  <Field
+                    key={question.screening_question_id}
+                    label={question.question_text}
+                    required
+                    error={errors?.[question.question_key]}
+                  >
+                    <RadioGroup
+                      name={`screening-${question.screening_question_id}`}
+                      options={question.options || []}
+                      value={answers[question.question_key] || ""}
+                      onChange={(value) => onAnswer(question.question_key, value)}
+                      error={errors?.[question.question_key]}
+                    />
+                  </Field>
+                ))}
+            </div>
+          </div>
         </div>
-        <div className={styles.radioColumn}>
-          <Field label="Are you in favor of creating safer environments free from sexual harassment and abuse?" required>
-            <RadioGroup name="saferEnvironments" options={["In Favor", "Not in Favor"]} value={data.saferEnvironments} onChange={setRadio("saferEnvironments")} />
-          </Field>
-          <Field label="Are you willing to support advocacy efforts related to gender equality, consent, and harassment prevention?" required>
-            <RadioGroup name="advocacySupport" options={["Yes", "No"]} value={data.advocacySupport} onChange={setRadio("advocacySupport")} />
-          </Field>
-          <Field label="Are you enthusiastic about contributing your time and skills to SASHA's initiatives and activities?" required>
-            <RadioGroup name="enthusiasm" options={["Yes", "No"]} value={data.enthusiasm} onChange={setRadio("enthusiasm")} />
-          </Field>
-          <Field label="Are you committed to maintaining professionalism and responsible conduct as a SASHA volunteer?" required>
-            <RadioGroup name="professionalism" options={["Yes", "No"]} value={data.professionalism} onChange={setRadio("professionalism")} />
-          </Field>
-        </div>
-      </div>
-
-      <div className={styles.formDivider} />
-
-      {/* ── Learning & Awareness ── */}
-      <div className={styles.screeningGroup}>
-        <div className={styles.screeningGroupHeader}>
-          <h3 className={styles.screeningGroupTitle}>Learning &amp; Awareness</h3>
-        </div>
-        <div className={styles.radioColumn}>
-          <Field label="Are you familiar with issues related to gender equality, consent, and harassment prevention?" required>
-            <RadioGroup name="genderAwareness" options={["Yes", "No"]} value={data.genderAwareness} onChange={setRadio("genderAwareness")} />
-          </Field>
-          <Field label="Do you actively stay informed about community, youth, or social issues?" required>
-            <RadioGroup name="stayInformed" options={["Yes", "No"]} value={data.stayInformed} onChange={setRadio("stayInformed")} />
-          </Field>
-          <Field label="Are you open to learning more about survivor-centered approaches and advocacy work?" required>
-            <RadioGroup name="openToLearn" options={["Yes", "No"]} value={data.openToLearn} onChange={setRadio("openToLearn")} />
-          </Field>
-          <Field label="Are you comfortable working with diverse individuals and teams?" required>
-            <RadioGroup name="diverseTeams" options={["Yes", "No"]} value={data.diverseTeams} onChange={setRadio("diverseTeams")} />
-          </Field>
-          <Field label="Are you willing to participate in required orientations, trainings, or volunteer briefings conducted by SASHA?" required>
-            <RadioGroup name="orientationWilling" options={["Yes", "No"]} value={data.orientationWilling} onChange={setRadio("orientationWilling")} />
-          </Field>
-          <Field label="Are you able to dedicate time consistently for volunteer responsibilities and activities?" required>
-            <RadioGroup name="timeCommitment" options={["Yes", "No"]} value={data.timeCommitment} onChange={setRadio("timeCommitment")} />
-          </Field>
-          <Field label="Are you willing to receive constructive feedback and continuously improve as a volunteer?" required>
-            <RadioGroup name="feedbackWilling" options={["Yes", "No"]} value={data.feedbackWilling} onChange={setRadio("feedbackWilling")} />
-          </Field>
-        </div>
-      </div>
+      ))}
 
       <div className={styles.formDivider} />
 
@@ -849,14 +833,24 @@ function StepEssay({ data, onChange }) {
 // }
 
 // ── Page 4 — Review & Submit ──────────────────────────────────────────────────
-function StepReview({ applicant, screeningQuestions, essay }) {
-  const Row = ({ label, value }) => (
+function ReviewRow({ label, value }) {
+  return (
     <div className={styles.reviewRow}>
       <span className={styles.reviewLabel}>{label}</span>
-      <span className={styles.reviewValue}>{value || <em className={styles.reviewEmpty}>Not provided</em>}</span>
+      <span className={styles.reviewValue}>
+        {value || <em className={styles.reviewEmpty}>Not provided</em>}
+      </span>
     </div>
   );
+}
 
+function StepReview({
+  applicant,
+  screeningQuestions,
+  screeningQuestionList,
+  screeningAnswers,
+  essay,
+}) {
   return (
     <div>
       <h2 className={styles.stepTitle}>
@@ -867,85 +861,77 @@ function StepReview({ applicant, screeningQuestions, essay }) {
       </p>
 
       <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Applicant's Information</h3>
-        <Row label="Name" value={applicant.name} />
-        <Row label="Birthday" value={applicant.birthday} />
-        <Row label="Age" value={applicant.age} />
-        <Row label="Gender Identity" value={applicant.gender} />
-        <Row label="Pronouns" value={
+        <h3 className={styles.reviewSectionTitle}>Applicant&apos;s Information</h3>
+        <ReviewRow label="Name" value={applicant.name} />
+        <ReviewRow label="Birthday" value={applicant.birthday} />
+        <ReviewRow label="Age" value={applicant.age} />
+        <ReviewRow label="Gender Identity" value={applicant.gender} />
+        <ReviewRow label="Pronouns" value={
           applicant.pronouns === "he" ? "He/Him/His" :
           applicant.pronouns === "she" ? "She/Her/Hers" :
           applicant.pronouns === "they" ? "They/Them/Theirs" :
           applicant.pronouns
         } />
-        <Row label="Organization" value={
+        <ReviewRow label="Organization" value={
           applicant.organization === "BSP" ? "Boy Scouts of the Philippines (BSP)" :
           applicant.organization === "GSP" ? "Girl Scouts of the Philippines (GSP)" :
           applicant.organization
         } />
         {(applicant.organization === "BSP" || applicant.organization === "GSP") && (
           <>
-            <Row label="Council" value={applicant.council} />
-            <Row label="Tenure in Scouting (years)" value={applicant.tenureInScouting} />
-            <Row label="Rank" value={applicant.rank} />
-            <Row label="Scouting Membership Category" value={applicant.scoutingMembership} />
+            <ReviewRow label="Council" value={applicant.council} />
+            <ReviewRow label="Tenure in Scouting (years)" value={applicant.tenureInScouting} />
+            <ReviewRow label="Rank" value={applicant.rank} />
+            <ReviewRow label="Scouting Membership Category" value={applicant.scoutingMembership} />
           </>
         )}
         {applicant.organization === "Other" && (
           <>
-            <Row label="Organization Type" value={applicant.organizationType} />
-            {applicant.organizationType === "Other" && <Row label="Specified Type" value={applicant.organizationTypeOther} />}
+            <ReviewRow label="Organization Type" value={applicant.organizationType} />
+            {applicant.organizationType === "Other" && <ReviewRow label="Specified Type" value={applicant.organizationTypeOther} />}
             {applicant.organizationType && applicant.organizationType !== "No Organization / Independent" && (
               <>
-                <Row label="Organization Name" value={applicant.orgName} />
-                <Row label="Organization City" value={applicant.orgCity} />
+                <ReviewRow label="Organization Name" value={applicant.orgName} />
+                <ReviewRow label="Organization City" value={applicant.orgCity} />
               </>
             )}
-            <Row label="Your City / Municipality" value={applicant.userCity} />
+            <ReviewRow label="Your City / Municipality" value={applicant.userCity} />
           </>
         )}
-        <Row label="Willing to be interviewed" value={applicant.interview} />
-        <Row label="Contact Number" value={applicant.contactNumber} />
-        <Row label="Email" value={applicant.email} />
+        <ReviewRow label="Willing to be interviewed" value={applicant.interview} />
+        <ReviewRow label="Contact Number" value={applicant.contactNumber} />
+        <ReviewRow label="Email" value={applicant.email} />
       </div>
 
-      <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Values &amp; Conduct</h3>
-        <Row label="Survivors deserve dignity & respect" value={screeningQuestions.survivorDignity} />
-        <Row label="Follow confidentiality policies" value={screeningQuestions.confidentialityPolicy} />
-        <Row label="Harassment is unacceptable" value={screeningQuestions.noHarassment} />
-        <Row label="Communicate respectfully" value={screeningQuestions.respectfulComms} />
-      </div>
-
-      <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Advocacy &amp; Participation</h3>
-        <Row label="In favor of safer environments" value={screeningQuestions.saferEnvironments} />
-        <Row label="Support advocacy efforts" value={screeningQuestions.advocacySupport} />
-        <Row label="Enthusiastic to contribute" value={screeningQuestions.enthusiasm} />
-        <Row label="Committed to professionalism" value={screeningQuestions.professionalism} />
-      </div>
-
-      <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Learning &amp; Awareness</h3>
-        <Row label="Familiar with gender equality issues" value={screeningQuestions.genderAwareness} />
-        <Row label="Stays informed on social issues" value={screeningQuestions.stayInformed} />
-        <Row label="Open to learning" value={screeningQuestions.openToLearn} />
-        <Row label="Comfortable with diverse teams" value={screeningQuestions.diverseTeams} />
-        <Row label="Willing for orientations/trainings" value={screeningQuestions.orientationWilling} />
-        <Row label="Able to dedicate time consistently" value={screeningQuestions.timeCommitment} />
-        <Row label="Open to constructive feedback" value={screeningQuestions.feedbackWilling} />
-      </div>
+      {[...new Set(screeningQuestionList.map((question) => question.category))].map(
+        (category) => (
+          <div className={styles.reviewSection} key={category}>
+            <h3 className={styles.reviewSectionTitle}>
+              {humanizeCategory(category)}
+            </h3>
+            {screeningQuestionList
+              .filter((question) => question.category === category)
+              .map((question) => (
+                <ReviewRow
+                  key={question.question_key}
+                  label={question.question_text}
+                  value={screeningAnswers[question.question_key]}
+                />
+              ))}
+          </div>
+        )
+      )}
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Expertise and Interest</h3>
-        <Row label="Fields with background" value={screeningQuestions.withBackground?.join(", ")} />
-        <Row label="Fields of interest" value={screeningQuestions.interestedFields?.join(", ")} />
-        <Row label="Hours per week" value={screeningQuestions.hoursPerWeek} />
+        <ReviewRow label="Fields with background" value={screeningQuestions.withBackground?.join(", ")} />
+        <ReviewRow label="Fields of interest" value={screeningQuestions.interestedFields?.join(", ")} />
+        <ReviewRow label="Hours per week" value={screeningQuestions.hoursPerWeek} />
       </div>
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Essay Details</h3>
-        <Row label="Description" value={essay.description} />
+        <ReviewRow label="Description" value={essay.description} />
       </div>
 
       {/* <div className={styles.reviewSection}>
@@ -1143,11 +1129,16 @@ export default function CreateApplication({
 
   const [myApplications, setMyApplications] = useState([])
   const [appsLoading, setAppsLoading] = useState(true)
+  const [screeningQuestionList, setScreeningQuestionList] = useState([]);
+  const [screeningQuestionSetId, setScreeningQuestionSetId] = useState(null);
+  const [screeningAnswers, setScreeningAnswers] = useState({});
+  const [screeningLoading, setScreeningLoading] = useState(true);
+  const [screeningLoadError, setScreeningLoadError] = useState("");
 
   useEffect(() => {
       const fetchMyApplications = async () => {
           try {
-              const res = await fetch('http://localhost:5000/api/volunteer_applications/my_applications', {
+              const res = await fetch(`${API}/api/volunteer_applications/my_applications`, {
                   credentials: 'include',
               })
               if (res.ok) {
@@ -1162,6 +1153,44 @@ export default function CreateApplication({
       }
       fetchMyApplications()
   }, [submitted]) // ← refetches after a new submission
+
+  useEffect(() => {
+    const fetchScreeningQuestions = async () => {
+      setScreeningLoading(true);
+      setScreeningLoadError("");
+      try {
+        const res = await fetch(`${API}/api/screening_questions`, {
+          credentials: "include",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(body.error || "Screening questions could not be loaded.");
+        }
+        const activeQuestions = (body.questions || []).filter(
+          (question) => question.is_active
+        );
+        setScreeningQuestionList(activeQuestions);
+        setScreeningQuestionSetId(
+          body.questionSet?.screening_question_set_id || null
+        );
+        setScreeningAnswers((current) =>
+          Object.fromEntries(
+            activeQuestions
+              .filter((question) => current[question.question_key])
+              .map((question) => [
+                question.question_key,
+                current[question.question_key],
+              ])
+          )
+        );
+      } catch (error) {
+        setScreeningLoadError(error.message);
+      } finally {
+        setScreeningLoading(false);
+      }
+    };
+    fetchScreeningQuestions();
+  }, []);
 
   const [applicant, setApplicant] = useState({
     name: "", birthday: "", age: "", gender: "", pronouns: "", organization: "",
@@ -1190,15 +1219,19 @@ export default function CreateApplication({
   const totalSteps = STEPS.length;
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("savira_volunteer_application_draft");
-      if (!raw) return;
-      const draft = JSON.parse(raw);
-      if (draft.applicant) setApplicant(draft.applicant);
-      if (draft.screeningQuestions) setScreeningQuestions(draft.screeningQuestions);
-      if (draft.essay) setEssay(draft.essay);
-      setDraftNotice("You have an unfinished volunteer application draft. It has been loaded so you can continue.");
-    } catch (_) {}
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem("savira_volunteer_application_draft");
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (draft.applicant) setApplicant(draft.applicant);
+        if (draft.screeningQuestions) setScreeningQuestions(draft.screeningQuestions);
+        if (draft.screeningAnswers) setScreeningAnswers(draft.screeningAnswers);
+        if (draft.essay) setEssay(draft.essay);
+        setDraftNotice("You have an unfinished volunteer application draft. It has been loaded so you can continue.");
+      } catch (_) {}
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -1206,13 +1239,28 @@ export default function CreateApplication({
     const hasDraft =
       Object.values(applicant).some(Boolean) ||
       Object.values(screeningQuestions).some((v) => Array.isArray(v) ? v.length > 0 : Boolean(v)) ||
+      Object.values(screeningAnswers).some(Boolean) ||
       Boolean(essay.description);
     if (!hasDraft) return;
     localStorage.setItem(
       "savira_volunteer_application_draft",
-      JSON.stringify({ applicant, screeningQuestions, essay, updatedAt: new Date().toISOString() })
+      JSON.stringify({
+        applicant,
+        screeningQuestions,
+        screeningAnswers,
+        screeningQuestionSetId,
+        essay,
+        updatedAt: new Date().toISOString(),
+      })
     );
-  }, [applicant, screeningQuestions, essay, submitted]);
+  }, [
+    applicant,
+    screeningQuestions,
+    screeningAnswers,
+    screeningQuestionSetId,
+    essay,
+    submitted,
+  ]);
 
   const clearError = (key) => {
     setStepErrors((prev) => {
@@ -1226,6 +1274,17 @@ export default function CreateApplication({
   const handleNext = () => {
     let errors = {};
     if (step === 0) errors = validateStep0(applicant);
+    if (step === 1) {
+      if (screeningLoading || screeningLoadError) {
+        errors.screening = screeningLoadError || "Please wait for the questions to load.";
+      } else {
+        screeningQuestionList.forEach((question) => {
+          if (!screeningAnswers[question.question_key]) {
+            errors[question.question_key] = "Please select an answer.";
+          }
+        });
+      }
+    }
 
     if (Object.keys(errors).length > 0) {
       setStepErrors(errors);
@@ -1254,11 +1313,17 @@ export default function CreateApplication({
       try {
           setSubmitError(null)
 
-          const res = await fetch('http://localhost:5000/api/volunteer_applications/submit', {
+          const res = await fetch(`${API}/api/volunteer_applications/submit`, {
               method:      'POST',
               headers:     { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body:        JSON.stringify({ applicant, screeningQuestions, essay }),
+              body: JSON.stringify({
+                applicant,
+                screeningQuestions,
+                screeningAnswers,
+                screening_question_set_id: screeningQuestionSetId,
+                essay,
+              }),
           })
 
           const result = await res.json()
@@ -1321,12 +1386,14 @@ export default function CreateApplication({
 
         {/* ── Paginated Form Card ── */}
         {draftNotice && !submitted && (
-          <div className={styles.submitError}>
-            <span><IoIosWarning /></span> {draftNotice}
+          <div className={`${styles.alertCard} ${styles.alertCardInfo}`}>
+            <div className={styles.alertContent}>
+              <span className={styles.alertLabel}>Draft found</span>
+              <p className={styles.alertText}>{draftNotice}</p>
+            </div>
             <button
               type="button"
-              className={styles.backBtn}
-              style={{ marginLeft: 12 }}
+              className={styles.alertAction}
               onClick={() => {
                 localStorage.removeItem("savira_volunteer_application_draft");
                 setDraftNotice("");
@@ -1355,10 +1422,35 @@ export default function CreateApplication({
             {/* Step content */}
             <div className={styles.formBody}>
               {step === 0 && <StepApplicantInfo data={applicant} onChange={setApplicant} errors={stepErrors} clearError={clearError} />}
-              {step === 1 && <StepScreeningQuestions data={screeningQuestions} onChange={setScreeningQuestions} />}
+              {step === 1 && (
+                <StepScreeningQuestions
+                  data={screeningQuestions}
+                  onChange={setScreeningQuestions}
+                  questions={screeningQuestionList}
+                  answers={screeningAnswers}
+                  onAnswer={(questionKey, value) => {
+                    clearError(questionKey);
+                    setScreeningAnswers((current) => ({
+                      ...current,
+                      [questionKey]: value,
+                    }));
+                  }}
+                  loading={screeningLoading}
+                  loadError={screeningLoadError || stepErrors.screening}
+                  errors={stepErrors}
+                />
+              )}
               {step === 2 && <StepEssay data={essay} onChange={setEssay} />}
               {/* {step === 3 && <StepCredentials        data={credentials}    onChange={setCredentials}    />} */}
-              {step === 3 && <StepReview applicant={applicant} screeningQuestions={screeningQuestions} essay={essay} />}
+              {step === 3 && (
+                <StepReview
+                  applicant={applicant}
+                  screeningQuestions={screeningQuestions}
+                  screeningQuestionList={screeningQuestionList}
+                  screeningAnswers={screeningAnswers}
+                  essay={essay}
+                />
+              )}
             </div>
 
             {/* Navigation buttons */}
@@ -1368,13 +1460,6 @@ export default function CreateApplication({
                   ← Back
                 </button>
               ) : <div />}
-
-                  {/* ── Active application warning ── */}
-                  {submitError && (
-                      <div className={styles.submitError}>
-                          <span><IoIosWarning /></span> {submitError}
-                      </div>
-                  )}
 
               {step < totalSteps - 1 ? (
                 <button type="button" className={styles.nextBtn} onClick={handleNext}>
@@ -1386,6 +1471,16 @@ export default function CreateApplication({
                 </button>
               )}
             </div>
+            {submitError && (
+              <div className={`${styles.alertCard} ${styles.alertCardWarning}`}>
+                <div className={styles.alertContent}>
+                  <span className={styles.alertLabel}>
+                    Unable to submit application
+                  </span>
+                  <p className={styles.alertText}>{submitError}</p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className={styles.successCard}>

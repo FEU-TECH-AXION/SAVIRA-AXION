@@ -2,6 +2,7 @@ const VolunteerApplicationsModel = require("../models/volunteer_applications.mod
 const VolunteerApplicantModel = require("../models/volunteer_applicants.model");
 const ScreeningAnswerModel      = require('../models/screening_answers.model')
 const ScreeningQuestionSetModel = require('../models/screening_question_set.model')
+const ScreeningQuestionsModel   = require('../models/screening_questions.model')
 const OrganizationsModel         = require('../models/organizations.model')
 const supabase                     = require('../config/supabase')
 const { runVolunteerEssayAnalysis } = require('../services/volunteerNlp.service')
@@ -308,7 +309,13 @@ const getRankings = async (req, res) => {
 
 const createItem = async (req, res) => {
     try {
-        const { applicant, screeningQuestions, essay } = req.body
+        const {
+            applicant,
+            screeningQuestions = {},
+            screeningAnswers = {},
+            screening_question_set_id,
+            essay,
+        } = req.body
         const userId = req.user?.id
         if (!userId) return res.status(401).json({ error: 'Authentication required.' })
 
@@ -343,9 +350,35 @@ const createItem = async (req, res) => {
         const org = await OrganizationsModel.findOrCreateOrganization(applicant)
 
         // ── 3. Fetch active question set + all 15 questions ──
-        const questionSet = await ScreeningQuestionSetModel.getActive()
+        const questionSet = screening_question_set_id
+            ? await ScreeningQuestionSetModel.getById(screening_question_set_id)
+            : await ScreeningQuestionSetModel.getActive()
+
+        if (!questionSet) {
+            return res.status(400).json({
+                error: 'The screening-question version used by this application is no longer available.',
+            })
+        }
         
-        const questions   = questionSet.screening_questions
+        const questions = (await ScreeningQuestionsModel.getBySet(
+            questionSet.screening_question_set_id
+        )).filter((question) => question.is_active)
+
+        const unansweredQuestion = questions.find((question) => {
+            const legacyFormKey = Object.keys(ANSWER_MAP).find(
+                (key) => ANSWER_MAP[key] === question.question_key
+            )
+            return !(
+                screeningAnswers[question.question_key] ??
+                screeningQuestions[legacyFormKey]
+            )
+        })
+
+        if (unansweredQuestion) {
+            return res.status(400).json({
+                error: `Please answer all screening questions before submitting. Missing: ${unansweredQuestion.question_text}`,
+            })
+        }
         
 
         // ── 4. Evaluate answers ──
@@ -354,11 +387,16 @@ const createItem = async (req, res) => {
         const answerRows        = []
 
         for (const question of questions) {
-            const formKey     = Object.keys(ANSWER_MAP).find(k => ANSWER_MAP[k] === question.question_key)
-            const answerValue = screeningQuestions[formKey] ?? ''
+            const legacyFormKey = Object.keys(ANSWER_MAP).find(
+                (key) => ANSWER_MAP[key] === question.question_key
+            )
+            const answerValue =
+                screeningAnswers[question.question_key] ??
+                screeningQuestions[legacyFormKey] ??
+                ''
             const isCorrect   = answerValue === question.preferred_answer
 
-            if (question.type === 'non_negotiable' && !isCorrect) {
+            if ((question.auto_fail || question.type === 'non_negotiable') && !isCorrect) {
                 nonNegotiablePassed = false
             }
 
@@ -391,7 +429,7 @@ const createItem = async (req, res) => {
         const application = await VolunteerApplicationsModel.create({
             volunteer_applicant_id:    volunteerApplicantId,
             organization_id:           org.organization_id,
-            screening_question_set_id: questionSet.id,
+            screening_question_set_id: questionSet.screening_question_set_id,
             essay_response:            essay.description,
             contact_number:            applicant.contactNumber    || null,
             name:                      applicant.name             || null,

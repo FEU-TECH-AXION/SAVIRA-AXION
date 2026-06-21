@@ -1,12 +1,12 @@
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
-    const { data, error } = await supabase.from('screening_question_set').select('*')
+    const { data, error } = await supabase
+        .from('screening_question_set')
+        .select('*, screening_questions(*)')
+        .order('created_at', { ascending: false })
 
-    // Supabase returns error as a value, not an exception — we throw it
-    // manually so controllers can handle it in a uniform try/catch
     if (error) throw error
-
     return data
 }
 
@@ -14,22 +14,88 @@ const create = async (payload) => {
     const { data, error } = await supabase
         .from('screening_question_set')
         .insert([payload])
-        .select() // Without .select(), Supabase returns null instead of the new row
-    if (error) throw error
+        .select()
+        .single()
 
-    // We only insert one row at a time, so we unwrap the array here
-    // instead of forcing every caller to do data[0]
-    return data[0]
+    if (error) throw error
+    return data
 }
 
 const getActive = async () => {
     const { data, error } = await supabase
         .from('screening_question_set')
-        .select('*, screening_questions(*)')  
+        .select('*')
         .eq('is_active', true)
-        .single()
+        .order('effective_from', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
     if (error) throw error
     return data
 }
 
-module.exports = { getAll, create, getActive }
+const getById = async (id, { includeQuestions = false } = {}) => {
+    const selection = includeQuestions ? '*, screening_questions(*)' : '*'
+    const { data, error } = await supabase
+        .from('screening_question_set')
+        .select(selection)
+        .eq('screening_question_set_id', id)
+        .maybeSingle()
+
+    if (error) throw error
+    return data
+}
+
+const deactivateAll = async () => {
+    const { error } = await supabase
+        .from('screening_question_set')
+        .update({ is_active: false })
+        .eq('is_active', true)
+
+    if (error) throw error
+}
+
+const setActive = async (id, isActive = true) => {
+    const { data, error } = await supabase
+        .from('screening_question_set')
+        .update({ is_active: isActive })
+        .eq('screening_question_set_id', id)
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+const rename = async (id, version) => {
+    const { data, error } = await supabase
+        .from('screening_question_set')
+        .update({ version })
+        .eq('screening_question_set_id', id)
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+const remove = async (id) => {
+    const { error } = await supabase
+        .from('screening_question_set')
+        .delete()
+        .eq('screening_question_set_id', id)
+
+    if (error) throw error
+}
+
+module.exports = {
+    getAll,
+    create,
+    getActive,
+    getById,
+    deactivateAll,
+    setActive,
+    rename,
+    remove,
+}
