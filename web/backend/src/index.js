@@ -121,6 +121,9 @@ app.use('/api/case_assignments', caseAssignmentsRouter)
 const caseStatusHistoryRouter = require('./routes/case_status_history.routes')
 app.use('/api/case_status_history', caseStatusHistoryRouter)
 
+const followUpsRouter = require('./routes/follow_ups.routes')
+app.use('/api/follow-ups', followUpsRouter)
+
 // Route for legal case assignments tbl
 const legalCaseAssignmentsRouter = require('./routes/legal_case_assignments.routes')
 app.use('/api/legal_case_assignments', legalCaseAssignmentsRouter)

@@ -2,9 +2,11 @@ const supabase = require('../config/supabase')
 
 const REVIEW_DETAIL_COLUMNS = {
   paralegal_record: null,
+  lawyer_record: null,
   endorsed_to: null,
   endorsement_details: null,
   monitoring_log: [],
+  document_repository: [],
 }
 
 async function getLatestByCase(caseReportId) {
@@ -41,6 +43,7 @@ async function getAssignedLegalPersonnelId(caseReportId) {
 
   const assignments = data || []
   return (
+    assignments.find((a) => a.assignment_role === 'lawyer')?.legal_personnel_id ||
     assignments.find((a) => a.assignment_role === 'legal_officer')?.legal_personnel_id ||
     assignments.find((a) => a.assignment_role === 'paralegal')?.legal_personnel_id ||
     null

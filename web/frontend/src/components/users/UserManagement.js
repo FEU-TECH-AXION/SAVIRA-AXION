@@ -66,6 +66,9 @@ function normalizeUser(raw) {
   const dateCreated = formatDate(raw.created_at || raw.date_created);
   const staffRow = Array.isArray(raw.staff) ? raw.staff[0] : raw.staff;
   const committeeRow = staffRow?.committees || raw.committee;
+  const legalPersonnelRow = Array.isArray(raw.legal_personnel)
+    ? raw.legal_personnel[0]
+    : raw.legal_personnel;
 
   return {
     ...raw,
@@ -88,6 +91,8 @@ function normalizeUser(raw) {
     staff_id:       staffRow?.staff_id ?? raw.staff_id ?? null,
     committee_id:   staffRow?.committee_id ?? raw.committee_id ?? committeeRow?.committee_id ?? "",
     committee:      committeeRow?.committee_name ?? raw.committee_name ?? raw.committee ?? "",
+    legal_personnel_id: legalPersonnelRow?.legal_personnel_id ?? raw.legal_personnel_id ?? null,
+    legal_personnel_type: legalPersonnelRow?.legal_personnel_type ?? raw.legal_personnel_type ?? "",
   };
 }
 
@@ -194,6 +199,7 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
     role_id:        "",
     is_active:      true,
     committee_id:   "",
+    legal_personnel_type: "",
   };
 
   const ROLES = [
@@ -221,7 +227,9 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
 
     const selectedRole = ROLES.find((r) => String(r.id) === String(form.role_id));
     if (selectedRole?.name === "Staff" && !form.committee_id)
-    e.committee_id = "Committee is required for Staff role.";
+      e.committee_id = "Committee is required for Staff role.";
+    if (selectedRole?.name === "Legal Personnel" && !form.legal_personnel_type)
+      e.legal_personnel_type = "Select whether this user is a lawyer or paralegal.";
 
     return e;
   }
@@ -259,6 +267,7 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
           user_name:      username,
           password:       TEMP_PASSWORD,
           committee_id:   form.committee_id || null,
+          legal_personnel_type: form.legal_personnel_type || null,
         }),
       });
 
@@ -352,7 +361,16 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
           <select
             className={`${styles.formInput} ${errors.role_id ? styles.inputError : ""}`}
             value={form.role_id}
-            onChange={(e) => { setForm({ ...form, role_id: e.target.value }); setErrors((p) => { const n = {...p}; delete n.role_id; return n; }); }}
+            onChange={(e) => {
+              setForm({ ...form, role_id: e.target.value, committee_id: "", legal_personnel_type: "" });
+              setErrors((p) => {
+                const n = {...p};
+                delete n.role_id;
+                delete n.committee_id;
+                delete n.legal_personnel_type;
+                return n;
+              });
+            }}
           >
             <option value="">— Select Role —</option>
             {ROLES.map((r) => (
@@ -380,6 +398,25 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
               ))}
             </select>
             {errors.committee_id && <span className={styles.errorMsg}>{errors.committee_id}</span>}
+          </div>
+        )}
+
+        {ROLES.find((r) => String(r.id) === String(form.role_id))?.name === "Legal Personnel" && (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Legal Personnel Type *</label>
+            <select
+              className={`${styles.formInput} ${errors.legal_personnel_type ? styles.inputError : ""}`}
+              value={form.legal_personnel_type}
+              onChange={(e) => {
+                setForm({ ...form, legal_personnel_type: e.target.value });
+                setErrors((p) => { const n = {...p}; delete n.legal_personnel_type; return n; });
+              }}
+            >
+              <option value="">— Select Type —</option>
+              <option value="Lawyer">Lawyer</option>
+              <option value="Paralegal">Paralegal</option>
+            </select>
+            {errors.legal_personnel_type && <span className={styles.errorMsg}>{errors.legal_personnel_type}</span>}
           </div>
         )}
 
@@ -455,6 +492,12 @@ function ViewUserModal({ open, onClose, user }) {
           <span className={styles.viewKey}>Role</span>
           <span className={styles.viewVal}>{user.role}</span>
         </div>
+        {user.role === "Legal Personnel" && (
+          <div className={styles.viewRow}>
+            <span className={styles.viewKey}>Legal Personnel Type</span>
+            <span className={styles.viewVal}>{user.legal_personnel_type || "Not classified"}</span>
+          </div>
+        )}
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Status</span>
           <span className={styles.viewVal}><StatusBadge status={user.status} /></span>
@@ -491,7 +534,7 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
   const EMPTY_FORM = {
     first_name: "", middle_name: "", last_name: "", extension_name: "",
     user_name: "", password: "", contact_number: "", profile_img: "",
-    role_id: "", role: "", status: "Active", committee_id: "",
+    role_id: "", role: "", status: "Active", committee_id: "", legal_personnel_type: "",
   };
 
   const [form, setForm]               = useState(EMPTY_FORM);
@@ -528,6 +571,9 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
         role:           user.role           ?? "",
         status:         user.status         ?? "Active",
         committee_id:   user.committee_id   ?? user.committee ?? "",
+        legal_personnel_type: ["Lawyer", "Paralegal"].includes(user.legal_personnel_type)
+          ? user.legal_personnel_type
+          : "",
       });
       setPreview(user.profile_img || null);
       setErrors({});
@@ -545,6 +591,8 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
     const matchedRole = roleOptions.find((r) => String(r.role_id) === String(form.role_id));
     if (matchedRole?.role_name === "Staff" && !form.committee_id)
       e.committee_id = "Committee is required for Staff role.";
+    if (matchedRole?.role_name === "Legal Personnel" && !form.legal_personnel_type)
+      e.legal_personnel_type = "Select whether this user is a lawyer or paralegal.";
     return e;
   }
 
@@ -622,7 +670,12 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
           <select
             className={`${styles.formInput} ${errors.role_id ? styles.inputError : ""}`}
             value={form.role_id}
-            onChange={(e) => setForm((prev) => ({ ...prev, role_id: e.target.value, committee_id: "" }))}
+            onChange={(e) => setForm((prev) => ({
+              ...prev,
+              role_id: e.target.value,
+              committee_id: "",
+              legal_personnel_type: "",
+            }))}
           >
             <option value="">Select a role</option>
             {roleOptions.map((r) => (
@@ -646,6 +699,21 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
               ))}
             </select>
             {errors.committee_id && <span className={styles.errorMsg}>{errors.committee_id}</span>}
+          </div>
+        )}
+        {roleOptions.find((r) => String(r.role_id) === String(form.role_id))?.role_name === "Legal Personnel" && (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Legal Personnel Type *</label>
+            <select
+              className={`${styles.formInput} ${errors.legal_personnel_type ? styles.inputError : ""}`}
+              value={form.legal_personnel_type}
+              onChange={(e) => setForm((prev) => ({ ...prev, legal_personnel_type: e.target.value }))}
+            >
+              <option value="">Select a type</option>
+              <option value="Lawyer">Lawyer</option>
+              <option value="Paralegal">Paralegal</option>
+            </select>
+            {errors.legal_personnel_type && <span className={styles.errorMsg}>{errors.legal_personnel_type}</span>}
           </div>
         )}
         <div className={styles.formGroup}>
@@ -934,6 +1002,7 @@ export default function AdminDashboard() {
       role_id:        roleId,
       is_active:      updated.status === "Active",
       committee_id:   roleName === "Staff" ? updated.committee_id || null : null,
+      legal_personnel_type: roleName === "Legal Personnel" ? updated.legal_personnel_type : null,
     };
 
     if (updated.password) payload.password = updated.password;
@@ -973,6 +1042,8 @@ export default function AdminDashboard() {
         ...payload,
         role: roleName,
         staff: body.staff || null,
+        legal_personnel: body.legal_personnel || null,
+        legal_personnel_type: body.legal_personnel?.legal_personnel_type || "",
         committee_id: roleName === "Staff" ? body.staff?.committee_id || updated.committee_id : "",
         committee: roleName === "Staff" ? body.staff?.committees?.committee_name || committee?.committee_name || "" : "",
       } : u))

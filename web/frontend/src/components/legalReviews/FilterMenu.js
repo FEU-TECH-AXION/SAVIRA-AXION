@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiFilter, FiX, FiChevronDown, FiSearch } from "react-icons/fi";
 import styles from "./FilterMenu.module.css";
+import Tooltip from "../ui/Tooltip";
 
 // ─── Default filter fields shown in the top bar ───────────────────────────────
 // Matches: Case Status, Legal Officer, Case Type, Submission Date
@@ -20,12 +21,18 @@ const DEFAULT_FILTERS = [
       "Hearing Ongoing",
       "Dismissed",
       "Perpetrator Convicted",
+      "Resolved",
     ],
   },
   {
     key: "assignedLegalOfficer",
-    label: "Legal Officer",
-    type: "officer",   // special: shows search + up-to-20 users
+    label: "Lawyer",
+    type: "lawyer",
+  },
+  {
+    key: "assignedParalegal",
+    label: "Paralegal",
+    type: "paralegal",
   },
   {
     key: "caseType",
@@ -43,6 +50,12 @@ const DEFAULT_FILTERS = [
       "Sexual Harassment",
       "Stalking With Sexual Nature or Intent",
     ],
+  },
+  {
+    key: "caseCategory",
+    label: "Case Categories",
+    type: "select",
+    options: ["All", "Physical", "Verbal", "Virtual"],
   },
   {
     key: "dateReported",
@@ -100,7 +113,7 @@ const OFFICERS_LIST = [
 
 // ─── Simple dropdown for select & date filters ────────────────────────────────
 
-function DefaultFilterDropdown({ field, value, onChange }) {
+function DefaultFilterDropdown({ field, value, onChange, lawyerOptions = [], paralegalOptions = [] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -255,9 +268,12 @@ function DefaultFilterDropdown({ field, value, onChange }) {
     );
   }
 
-  if (field.type === "officer") {
+  if (field.type === "lawyer" || field.type === "paralegal") {
     const [search, setSearch] = useState("");
-    const filtered = OFFICERS_LIST.filter(o =>
+    const personnelOptions = field.type === "paralegal"
+      ? paralegalOptions
+      : (lawyerOptions.length ? lawyerOptions : OFFICERS_LIST);
+    const filtered = personnelOptions.filter(o =>
       o.toLowerCase().includes(search.toLowerCase())
     ).slice(0, 20);
 
@@ -277,7 +293,7 @@ function DefaultFilterDropdown({ field, value, onChange }) {
               <input
                 type="text"
                 className={styles.officerSearchInput}
-                placeholder="Search officers…"
+                placeholder={`Search ${field.label.toLowerCase()}s…`}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 autoFocus
@@ -300,7 +316,7 @@ function DefaultFilterDropdown({ field, value, onChange }) {
                 </button>
               ))}
               {filtered.length === 0 && (
-                <div className={styles.officerEmpty}>No officers found</div>
+                <div className={styles.officerEmpty}>No {field.label.toLowerCase()}s found</div>
               )}
             </div>
             <div className={styles.defaultFilterFooter}>
@@ -374,7 +390,7 @@ function DefaultFilterDropdown({ field, value, onChange }) {
  *  onFilterChange   — (newFilters) => void
  *  onDone           — () => void
  */
-export default function FilterMenu({ activeFilters, onFilterChange, onDone }) {
+export default function FilterMenu({ activeFilters, onFilterChange, onDone, lawyerOptions = [], paralegalOptions = [] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -395,7 +411,7 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone }) {
 
   function handleClearAll() {
     const cleared = {};
-    ALL_FILTER_FIELDS.forEach(f => { cleared[f.key] = ""; });
+    [...DEFAULT_FILTERS, ...ALL_FILTER_FIELDS].forEach(f => { cleared[f.key] = ""; });
     onFilterChange(cleared);
     setExtraFields([]);
   }
@@ -425,6 +441,8 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone }) {
             field={field}
             value={activeFilters[field.key] || ""}
             onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+            lawyerOptions={lawyerOptions}
+            paralegalOptions={paralegalOptions}
           />
         ))}
 
@@ -435,33 +453,37 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone }) {
               field={field}
               value={activeFilters[field.key] || ""}
               onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+              lawyerOptions={lawyerOptions}
+              paralegalOptions={paralegalOptions}
             />
-            <button
-              className={styles.removeExtraBtn}
-              onClick={() => {
-                toggleExtraField(field.key);
-                onFilterChange({ ...activeFilters, [field.key]: "" });
-              }}
-              title={`Remove ${field.label} filter`}
-            >
-              <FiX size={12} />
-            </button>
+            <Tooltip text={`Remove ${field.label} filter`}>
+              <button
+                className={styles.removeExtraBtn}
+                onClick={() => {
+                  toggleExtraField(field.key);
+                  onFilterChange({ ...activeFilters, [field.key]: "" });
+                }}
+              >
+                <FiX size={12} />
+              </button>
+            </Tooltip>
           </div>
         ))}
 
         {/* ── Filter Menu button (⊞ icon) ── */}
         <div className={styles.filterMenuWrapper} ref={menuRef}>
-          <button
-            className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`}
-            onClick={() => setMenuOpen(!menuOpen)}
-            title="Add more filters"
-            aria-label="Open filter menu"
-          >
-            <FiFilter size={15} />
-            {activeFilterCount > 0 && (
-              <span className={styles.filterBadge}>{activeFilterCount}</span>
-            )}
-          </button>
+          <Tooltip text="Add more filters">
+            <button
+              className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`}
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Open filter menu"
+            >
+              <FiFilter size={15} />
+              {activeFilterCount > 0 && (
+                <span className={styles.filterBadge}>{activeFilterCount}</span>
+              )}
+            </button>
+          </Tooltip>
 
           {menuOpen && (
             <div className={styles.filterDropdown}>

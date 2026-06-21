@@ -45,7 +45,8 @@ const assignCase = async (req, res) => {
 
     // Normalize to assignment_role value
     const typeMap = {
-      'legal officer': 'legal_officer',
+      'legal officer': 'lawyer',
+      'lawyer':        'lawyer',
       'paralegal':     'paralegal',
     }
     const assignment_role = typeMap[personnelData.legal_personnel_type?.toLowerCase()]
@@ -154,7 +155,8 @@ const bulkAssignCase = async (req, res) => {
             }
 
             const typeMap = {
-                'legal officer': 'legal_officer',
+                'legal officer': 'lawyer',
+                'lawyer':        'lawyer',
                 'paralegal':     'paralegal',
             }
             const assignment_role = typeMap[personnelData.legal_personnel_type?.toLowerCase()]
@@ -188,7 +190,7 @@ const bulkAssignCase = async (req, res) => {
             const logRows = validRows.map(r => ({
                 case_report_id,
                 action_type:          `${r.assignment_role}_assigned`,
-                remarks:              `${r.assignment_role === 'legal_officer' ? 'Legal officer' : 'Paralegal'} assigned: ${r._name}.${notes ? ' Notes: ' + notes : ''}`,
+                remarks:              `${r.assignment_role === 'lawyer' ? 'Lawyer' : 'Paralegal'} assigned: ${r._name}.${notes ? ' Notes: ' + notes : ''}`,
                 performed_by_user_id: performed_by,
                 performed_at:         new Date().toISOString(),
             }))

@@ -282,6 +282,73 @@
   font-weight: 500;
 }
 
+.modalOverlay {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 1000;
+}
+
+.modalBox {
+  background: var(--sasha-white);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  max-width: 480px;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.modalTitle {
+  color: var(--sasha-text);
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0 0 0.75rem;
+}
+
+.modalText {
+  color: var(--sasha-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 1.25rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.modalCancel,
+.modalDanger {
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.55rem 1rem;
+}
+
+.modalCancel {
+  background: var(--sasha-white);
+  border: 1px solid var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+.modalDanger {
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  color: var(--sasha-white);
+}
+
+.modalCancel:disabled,
+.modalDanger:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 /* ════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════ */

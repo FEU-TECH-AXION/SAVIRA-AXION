@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import FilterMenu from "@/components/cases/history/FilterMenu";
 import ReportStatusCard from "@/components/cases/history/ReportStatusCard";
+import { FollowUpComposer } from "@/components/cases/FollowUps";
 import {
   getDateRangeFromFilter,
   isReportInDateRange,
@@ -79,6 +80,10 @@ export default function ReportHistoryPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [withdrawReport, setWithdrawReport] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [followUpReport, setFollowUpReport] = useState(null);
 
   useEffect(() => {
     async function fetchReports() {
@@ -110,6 +115,22 @@ export default function ReportHistoryPage() {
     fetchReports();
   }, []);
 
+  useEffect(() => {
+    if (!withdrawReport) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape" && !withdrawing) setWithdrawReport(null);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [withdrawReport, withdrawing]);
+
   const filteredReports = useMemo(
     () => filterReports(reports, filters, search),
     [reports, filters, search]
@@ -118,6 +139,39 @@ export default function ReportHistoryPage() {
     () => [...new Set(reports.map((report) => report.assignedPersonnel).filter(Boolean))],
     [reports]
   );
+
+  async function handleWithdraw() {
+    if (!withdrawReport?.id) return;
+
+    setWithdrawing(true);
+    setActionError("");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/case_reports/${withdrawReport.id}/withdraw`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to withdraw case.");
+
+      setReports((current) =>
+        current.map((report) =>
+          report.id === withdrawReport.id
+            ? {
+                ...report,
+                statusName: "Withdrawn",
+                updatedAt: body.data?.updated_at || new Date().toISOString(),
+              }
+            : report
+        )
+      );
+      setWithdrawReport(null);
+    } catch (err) {
+      setActionError(err.message || "Failed to withdraw case.");
+    } finally {
+      setWithdrawing(false);
+    }
+  }
 
   return (
     <main className={styles.pageWrapper}>
@@ -169,12 +223,82 @@ export default function ReportHistoryPage() {
 
             {filteredReports.map((report, index) => (
               <div className="col-12" key={report.id}>
-                <ReportStatusCard reportNumber={index + 1} report={report} />
+                <ReportStatusCard
+                  reportNumber={index + 1}
+                  report={report}
+                  onWithdraw={() => {
+                    setActionError("");
+                    setWithdrawReport(report);
+                  }}
+                  onFollowUp={() => setFollowUpReport(report)}
+                />
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {withdrawReport && (
+        <div
+          className={styles.modalOverlay}
+          onMouseDown={() => !withdrawing && setWithdrawReport(null)}
+        >
+          <div
+            className={styles.modalBox}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="withdraw-case-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <h2 id="withdraw-case-title" className={styles.modalTitle}>
+              Withdraw Case Report
+            </h2>
+            <p className={styles.modalText}>
+              Withdraw <strong>{withdrawReport.caseId}</strong>? This will stop
+              its current progress. You can undo the withdrawal later from the
+              report details page.
+            </p>
+            {actionError && <div className={styles.errorAlert}>{actionError}</div>}
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancel}
+                disabled={withdrawing}
+                onClick={() => setWithdrawReport(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.modalDanger}
+                disabled={withdrawing}
+                onClick={handleWithdraw}
+              >
+                {withdrawing ? "Withdrawing..." : "Confirm Withdraw"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <FollowUpComposer
+        open={Boolean(followUpReport)}
+        onClose={() => setFollowUpReport(null)}
+        caseId={followUpReport?.id}
+        isStaff={false}
+        activeFollowUp={
+          followUpReport?.followUpSummary?.type === "user_change_request" &&
+          ["open", "responded"].includes(followUpReport?.followUpSummary?.status)
+            ? followUpReport.followUpSummary
+            : null
+        }
+        onCreated={(created) => {
+          setReports((current) => current.map((report) =>
+            report.id === followUpReport?.id
+              ? { ...report, followUpSummary: created }
+              : report
+          ));
+        }}
+      />
     </main>
   );
 }

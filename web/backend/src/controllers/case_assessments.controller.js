@@ -47,7 +47,34 @@ const recordAssessmentAction  = async (req, res) => {
   ]
 
   try {
-    const { case_officer_id, ...body } = req.body
+    const body = { ...req.body }
+    delete body.case_officer_id
+    const { data: approver, error: approverError } = await supabase
+      .from('users')
+      .select('user_id, roles(role_name)')
+      .eq('user_id', req.user?.id)
+      .maybeSingle()
+
+    if (approverError) throw approverError
+
+    const approverRole = String(approver?.roles?.role_name || '')
+      .toLowerCase()
+      .replaceAll('_', ' ')
+
+    const isClassificationApproval = [
+      'case_type',
+      'primary_category',
+      'additional_categories',
+    ].some((field) => Object.hasOwn(body, field))
+
+    if (
+      isClassificationApproval &&
+      !['admin', 'case officer'].includes(approverRole)
+    ) {
+      return res.status(403).json({
+        error: 'Only an admin or case officer may approve case classifications.',
+      })
+    }
 
     const updates = Object.fromEntries(
       Object.entries(body).filter(([k]) => ALLOWED.includes(k))
@@ -62,7 +89,7 @@ const recordAssessmentAction  = async (req, res) => {
       .from('case_assessments')
       .insert([{
         case_report_id: req.params.caseReportId,
-        changed_by_id:   case_officer_id || null,
+        changed_by_id:   approver.user_id,
         ...updates,
       }])
       .select()

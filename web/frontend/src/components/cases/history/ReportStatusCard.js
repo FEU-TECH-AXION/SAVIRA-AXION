@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Tooltip from "@/components/ui/Tooltip";
+import { FollowUpBadge } from "@/components/cases/FollowUps";
 import { STATUS_DISPLAY } from "./reportHistoryData";
 import styles from "./ReportStatusCard.module.css";
 
@@ -66,26 +68,73 @@ function StatusStepper({ statusName }) {
   );
 }
 
-export default function ReportStatusCard({ report, reportNumber }) {
+export default function ReportStatusCard({ report, reportNumber, onWithdraw, onFollowUp }) {
   const router = useRouter();
   const assigned = report.assignedPersonnel || "Unassigned";
   const updatedAgo = timeAgo(report.updatedAt);
+  const canWithdraw =
+    report.statusName === "For Verification" ||
+    report.statusName === "Undergoing Review";
+  const withdrawTooltip = canWithdraw
+    ? "Withdraw this report and stop its current progress"
+    : report.statusName === "Withdrawn"
+      ? "This report has already been withdrawn"
+      : "Reports can only be withdrawn during verification or review";
+  const followUpAllowed = !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"]
+    .includes(report.statusName);
+  const followUpActive =
+    report.followUpSummary?.type === "user_change_request" &&
+    ["open", "responded"].includes(report.followUpSummary?.status);
+  const followUpTooltip = !followUpAllowed
+    ? "Follow-ups are unavailable for this case status"
+    : followUpActive
+      ? "A follow-up is already in progress"
+      : "Request a correction or add information";
 
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
         <span>Report {reportNumber}</span>
-        <button
-          className={styles.headerViewBtn}
-          onClick={() => router.push(`/cases/view?caseId=${report.id}&from=history`)}
-        >
-          View &rarr;
-        </button>
+        <div className={styles.headerActions}>
+          <Tooltip text={followUpTooltip}>
+            <button
+              type="button"
+              className={styles.headerFollowUpBtn}
+              disabled={!followUpAllowed || followUpActive}
+              onClick={onFollowUp}
+            >
+              Follow Up
+            </button>
+          </Tooltip>
+          <Tooltip text={withdrawTooltip}>
+            <button
+              type="button"
+              className={styles.headerWithdrawBtn}
+              disabled={!canWithdraw}
+              aria-label={`Withdraw ${report.caseId}`}
+              onClick={onWithdraw}
+            >
+              Withdraw
+            </button>
+          </Tooltip>
+          <Tooltip text={`View details for ${report.caseId}`}>
+            <button
+              type="button"
+              className={styles.headerViewBtn}
+              onClick={() => router.push(`/cases/view?caseId=${report.id}&from=history`)}
+            >
+              View &rarr;
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className={styles.statusCardBody}>
         <div className={styles.cardTopRow}>
-          <span className={styles.cardCaseId}>{report.caseId}</span>
+          <div className={styles.caseIdentity}>
+            <span className={styles.cardCaseId}>{report.caseId}</span>
+            <FollowUpBadge summary={report.followUpSummary} />
+          </div>
           {updatedAgo && <span className={styles.cardUpdated}>Updated {updatedAgo}</span>}
         </div>
 

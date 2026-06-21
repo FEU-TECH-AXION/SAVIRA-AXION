@@ -282,6 +282,17 @@ const withdrawCase = async (req, res) => {
       .single();
       
     if (fetchErr || !caseReport) throw new Error('Case report not found');
+
+    const complainantId = await getComplainantId(req.user?.id);
+    if (caseReport.complainant_id !== complainantId) {
+      return res.status(403).json({ error: 'You can only withdraw your own case report.' });
+    }
+
+    if (![2, 3].includes(Number(caseReport.case_status_id))) {
+      return res.status(409).json({
+        error: 'This report can only be withdrawn during verification or review.',
+      });
+    }
     
     // 2. Insert into case_status_history
     const { error: histErr } = await supabase
@@ -328,6 +339,23 @@ const undoWithdrawCase = async (req, res) => {
       .order('created_at', { ascending: false });
       
     if (histErr) throw histErr;
+
+    const { data: caseReport, error: caseErr } = await supabase
+      .from('case_reports')
+      .select('complainant_id, case_status_id')
+      .eq('case_report_id', id)
+      .single();
+
+    if (caseErr || !caseReport) throw new Error('Case report not found');
+
+    const complainantId = await getComplainantId(req.user?.id);
+    if (caseReport.complainant_id !== complainantId) {
+      return res.status(403).json({ error: 'You can only restore your own case report.' });
+    }
+
+    if (Number(caseReport.case_status_id) !== 13) {
+      return res.status(409).json({ error: 'This report is not currently withdrawn.' });
+    }
     
     // Find the latest non-Withdrawn status
     const previousStatusRow = historyList.find(h => h.case_status_id !== 13);

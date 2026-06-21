@@ -615,22 +615,22 @@
 .btnSecondary:hover { background: var(--sasha-offwhite); border-color: var(--sasha-muted); }
 
 .btnDanger {
-  background: #ef4444; color: var(--sasha-white);
+  background: var(--sasha-orange); color: var(--sasha-white);
   border: none; border-radius: 999px;
   padding: 0.5rem 1.4rem; font-size: 0.85rem; font-weight: 700;
   cursor: pointer; transition: background 0.15s, transform 0.1s;
 }
-.btnDanger:hover { background: #dc2626; transform: translateY(-1px); }
+.btnDanger:hover { background: var(--sasha-orange-dark); transform: translateY(-1px); }
 .btnDanger:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .btnSuccess {
-  background: #16a34a; color: var(--sasha-white);
+  background: var(--sasha-teal); color: var(--sasha-white);
   border: none; border-radius: 999px;
   padding: 0.5rem 1.4rem; font-size: 0.85rem; font-weight: 700;
   cursor: pointer; transition: background 0.15s, transform 0.1s;
   display: inline-flex; align-items: center; gap: 0.4rem;
 }
-.btnSuccess:hover { background: #15803d; transform: translateY(-1px); }
+.btnSuccess:hover { background: var(--sasha-teal-dark); transform: translateY(-1px); }
 
 /* ── Toast ── */
 .toast {

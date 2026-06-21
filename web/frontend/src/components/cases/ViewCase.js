@@ -22,6 +22,9 @@ import styles from "./ViewCase.module.css";
 import InterviewTab from "./interview/InterviewTab";
 import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals";
 import StatusDetailsSection from "./StatusDetailsSection";
+import DetailAccordion from "./DetailAccordion";
+import PendingStatusApproval from "./PendingStatusApproval";
+import FollowUpsPanel, { FollowUpBadge, FollowUpComposer } from "./FollowUps";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -90,7 +93,6 @@ const VIOLENCE_TYPES = [
 ];
 
 const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
-const PARALEGALS  = ["Maria Reyes", "John Valdez", "Ana Bautista", "Carlo Dizon"];
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
 
@@ -695,6 +697,41 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
 
 // ─── Case Management Tab (staff only) ────────────────────────────────────────
 
+function AssessmentActionGroup({ title, records, fields, emptyText }) {
+  return (
+    <DetailAccordion
+      title={title}
+      summary={`${records.length} saved update${records.length === 1 ? "" : "s"}`}
+    >
+      {records.length === 0 ? (
+        <p className={styles.emptyState}>{emptyText}</p>
+      ) : (
+        records.map((record, index) => (
+          <div key={record.case_assessment_id || `${title}-${record.created_at}-${index}`} className={styles.reviewDetailBlock}>
+            <p className={styles.historyMeta}>
+              {record.created_at
+                ? new Date(record.created_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })
+                : "Date unavailable"}
+            </p>
+            <div className={styles.detailGrid}>
+              {fields(record).map(([label, value]) => {
+                const formatted = Array.isArray(value) ? value.filter(Boolean).join(", ") : value;
+                if (formatted === undefined || formatted === null || String(formatted).trim() === "") return null;
+                return (
+                  <div key={label} className={styles.detailItem}>
+                    <p className={styles.detailKey}>{label}</p>
+                    <p className={styles.detailVal}>{formatted}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))
+      )}
+    </DetailAccordion>
+  );
+}
+
 function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
   const [modal, setModal] = useState(null);
 
@@ -718,17 +755,31 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           form_data: changeDetails.formData,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to submit.");
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to submit.");
+      const historyId = payload.historyRow?.history_id;
       setCaseData((prev) => ({
         ...prev,
-        status: proposedStatus,
-        pendingApproval: null,
+        status: payload.requiresApproval ? prev.status : proposedStatus,
+        pendingApproval: payload.requiresApproval ? {
+          historyId,
+          proposedStatus,
+          ...changeDetails,
+        } : null,
         statusHistory: [
           ...(prev.statusHistory || []),
-          { status: proposedStatus, date: new Date().toLocaleDateString("en-PH"), by: actorName, notes: changeDetails.notes, formData: changeDetails.formData },
+          {
+            historyId,
+            status: proposedStatus,
+            date: new Date().toLocaleDateString("en-PH"),
+            by: actorName,
+            notes: changeDetails.notes,
+            formData: changeDetails.formData,
+            approvalStatus: payload.requiresApproval ? "pending" : "approved",
+          },
         ],
       }));
-      showToast(`Status updated to "${proposedStatus}".`);
+      showToast(payload.message || `Status updated to "${proposedStatus}".`);
       setModal(null);
     } catch (err) {
       showToast(err.message, "error");
@@ -743,13 +794,35 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   const [referralVal, setReferralVal] = useState(caseData.referralBody || "");
   const [referralReq, setReferralReq] = useState(caseData.referralRequired ? "yes" : "no");
   const [endorseNotes, setEndorseNotes] = useState("");
-  const [paralegalVal, setParalegalVal] = useState(caseData.assignedParalegal || "");
   const [internalNotes, setInternalNotes] = useState(caseData.internalNotes || "");
   const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [noteLogs, setNoteLogs] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editingNoteText, setEditingNoteText] = useState("");
+  const [nlpSuggestion, setNlpSuggestion] = useState(null);
+  const [nlpSuggestionLoading, setNlpSuggestionLoading] = useState(false);
+
+  const hasSavedCaseType = Boolean(
+    (Array.isArray(caseData.caseType) && caseData.caseType.length > 0) ||
+    (!Array.isArray(caseData.caseType) && caseData.caseType) ||
+    (caseData.assessmentHistory || []).some((record) =>
+      Array.isArray(record.case_type)
+        ? record.case_type.length > 0
+        : Boolean(record.case_type)
+    )
+  );
+  const hasSavedCategory = Boolean(
+    caseData.caseCategory ||
+    caseData.primaryCategory ||
+    (caseData.assessmentHistory || []).some(
+      (record) =>
+        record.primary_category ||
+      (record.additional_categories || []).length > 0
+    )
+  );
+  const hasSuggestedCaseType = Boolean(nlpSuggestion?.case_types?.length);
+  const hasSuggestedCategory = Boolean(nlpSuggestion?.primary_categories?.length);
 
   const getLogId = (log) => log.case_report_log_id || log.id || log.log_id;
   const getLogDate = (log) => log.performed_at || log.created_at || log.updated_at;
@@ -779,6 +852,51 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     fetchNoteLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseData.id]);
+
+  useEffect(() => {
+    if (
+      !caseData.id ||
+      !["setCaseType", "setCategory"].includes(modal) ||
+      (hasSavedCaseType && hasSavedCategory)
+    ) return;
+
+    const fetchNlpSuggestion = async () => {
+      setNlpSuggestionLoading(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+
+        const body = await res.json();
+        const suggestion = body.data || body;
+        setNlpSuggestion(suggestion);
+
+        if (!hasSavedCaseType) {
+          const suggestedTypes = (suggestion.case_types || [])
+            .map((item) => typeof item === "string" ? item : item?.type)
+            .filter((item) => VIOLENCE_TYPES.includes(item));
+          setCaseTypeVal([...new Set(suggestedTypes)]);
+        }
+
+        if (!hasSavedCategory) {
+          const suggestedCategories = (suggestion.primary_categories || [])
+            .map((item) => typeof item === "string" ? item : item?.category)
+            .filter((item) => ["Physical", "Virtual", "Verbal"].includes(item));
+          const [primary, ...additional] = [...new Set(suggestedCategories)];
+          setCaseCatVal(primary || "");
+          setAlsoCatVal(additional);
+        }
+      } catch (_) {
+        // Keep the forms manually editable when analysis is unavailable.
+      } finally {
+        setNlpSuggestionLoading(false);
+      }
+    };
+
+    fetchNlpSuggestion();
+  }, [caseData.id, modal, hasSavedCaseType, hasSavedCategory]);
 
   async function saveInternalNote() {
     const trimmed = internalNotes.trim();
@@ -851,8 +969,15 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, case_officer_id: userId }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to save.");
-      onSuccess();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to save.");
+      setCaseData((current) => ({
+        ...current,
+        assessmentHistory: body.data
+          ? [body.data, ...(current.assessmentHistory || [])]
+          : current.assessmentHistory || [],
+      }));
+      onSuccess(body.data);
       setModal(null);
     } catch (err) {
       showToast(err.message, "error");
@@ -861,12 +986,13 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {caseData.pendingApproval && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#fffbeb", border: "1px solid #fde047", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#92400e" }}>
-          <FiClock style={{ flexShrink: 0, marginTop: 2 }} />
-          <div><strong>Pending Admin Approval:</strong> A status change to <strong>{caseData.pendingApproval.proposedStatus}</strong> has been submitted by {caseData.pendingApproval.submittedBy} and is awaiting admin review.</div>
-        </div>
-      )}
+      <PendingStatusApproval
+        caseData={caseData}
+        setCaseData={setCaseData}
+        isAdmin={isAdmin}
+        approverId={userId}
+        showToast={showToast}
+      />
 
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Actions</h2>
@@ -876,7 +1002,6 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
           <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
           {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>}
           <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
-          {caseData.status === "Verified - True" && <button onClick={() => setModal("assignParalegal")} style={btnStyle("#037F81")}>Assign Paralegal</button>}
         </div>
       </section>
 
@@ -885,7 +1010,6 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         <div className={styles.detailGrid}>
           {[
             ["Assigned Case Officer", caseData.assignedOfficer || "Unassigned"],
-            ["Assigned Paralegal", caseData.assignedParalegal || (caseData.status === "Verified - True" ? "Pending assignment" : "Unassigned")],
             ["Case Type", Array.isArray(caseData.caseType) ? caseData.caseType.join(", ") : caseData.caseType || "Not yet classified"],
             ["Case Categories", caseData.caseCategory ? caseData.alsoInvolves?.length ? `${caseData.caseCategory} (also: ${caseData.alsoInvolves.join(", ")})` : caseData.caseCategory : "Not yet classified"],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
@@ -897,12 +1021,53 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         </div>
       </section>
 
-      <StatusDetailsSection
-        caseData={caseData}
-        styles={styles}
-        title="Case Management Details"
-        emptyText="No case management status details have been saved yet."
-      />
+      <section className={styles.section}>
+        <h2 className={styles.sectionHeadingText}>Case Management Details</h2>
+        <DetailAccordion
+          title="Update Status"
+          summary={`${(caseData.statusHistory || []).filter((entry) => entry.formData || entry.form_data).length} saved update${(caseData.statusHistory || []).filter((entry) => entry.formData || entry.form_data).length === 1 ? "" : "s"}`}
+        >
+          <StatusDetailsSection
+            caseData={caseData}
+            styles={styles}
+            title={null}
+            emptyText="No status details have been saved yet."
+            wrap={false}
+            newestFirst
+          />
+        </DetailAccordion>
+
+        <AssessmentActionGroup
+          title="Set Case Type"
+          records={(caseData.assessmentHistory || []).filter((record) => Array.isArray(record.case_type) ? record.case_type.length > 0 : Boolean(record.case_type))}
+          emptyText="No case type changes have been saved yet."
+          fields={(record) => [["Case Type(s)", record.case_type]]}
+        />
+
+        <AssessmentActionGroup
+          title="Set Category"
+          records={(caseData.assessmentHistory || []).filter((record) => record.primary_category || (record.additional_categories || []).length > 0)}
+          emptyText="No category changes have been saved yet."
+          fields={(record) => [
+            ["Primary Category", record.primary_category],
+            ["Also Involves", record.additional_categories],
+          ]}
+        />
+
+        <AssessmentActionGroup
+          title="Referral / Endorse"
+          records={(caseData.assessmentHistory || []).filter((record) =>
+            record.referral_required !== null &&
+            record.referral_required !== undefined
+          )}
+          emptyText="No referral or endorsement changes have been saved yet."
+          fields={(record) => [
+            ["Referral Required", record.referral_required ? "Yes" : "No"],
+            ["Referral Body", record.referral_body || "None"],
+            ["Endorsement Notes", record.endorsement?.notes],
+          ]}
+        />
+      </section>
 
       <section className={styles.section}>
         <div className={styles.noteSectionHeader}>
@@ -950,6 +1115,21 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       {modal === "inviteInterview" && <InviteToInterviewModal open onClose={() => setModal(null)} caseData={caseData} actorName={actorName} userId={userId} userRole={userRole} showToast={showToast} />}
 
       <Modal open={modal === "setCaseType"} onClose={() => setModal(null)} title="Set Case Type" wide>
+        {!hasSavedCaseType && (
+          <div className={styles.nlpApprovalNotice}>
+            <FiInfo />
+            <div>
+              <strong>NLP-suggested classification</strong>
+              <p>
+                {nlpSuggestionLoading
+                  ? "Loading the latest NLP analysis..."
+                  : hasSuggestedCaseType
+                    ? "Review the preselected result below. You may change it before approving."
+                    : "No case type was suggested. Select the correct classification and save it."}
+              </p>
+            </div>
+          </div>
+        )}
         <div className={styles.formGrid}>
           <FormGroup label="Case Type(s)" required>
             <div className={styles.checkGroup}>
@@ -957,10 +1137,25 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             </div>
           </FormGroup>
         </div>
-        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={caseTypeVal.length === 0} onClick={() => saveAssessment({ case_type: caseTypeVal }, () => { setCaseData((p) => ({ ...p, caseType: caseTypeVal })); showToast("Case type updated."); })}>Save</button></div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={caseTypeVal.length === 0} onClick={() => saveAssessment({ case_type: caseTypeVal }, () => { setCaseData((p) => ({ ...p, caseType: caseTypeVal })); showToast(hasSuggestedCaseType && !hasSavedCaseType ? "Case type approved and saved." : "Case type saved."); })}>{hasSavedCaseType ? "Save Changes" : hasSuggestedCaseType ? "Approve Classification" : "Save"}</button></div>
       </Modal>
 
       <Modal open={modal === "setCategory"} onClose={() => setModal(null)} title="Set Category" wide>
+        {!hasSavedCategory && (
+          <div className={styles.nlpApprovalNotice}>
+            <FiInfo />
+            <div>
+              <strong>NLP-suggested classification</strong>
+              <p>
+                {nlpSuggestionLoading
+                  ? "Loading the latest NLP analysis..."
+                  : hasSuggestedCategory
+                    ? "Review the preselected primary and additional categories. You may change them before approving."
+                    : "No category was suggested. Select the correct category and save it."}
+              </p>
+            </div>
+          </div>
+        )}
         <div className={styles.formGrid}>
           <FormGroup label="Case Category" required>
             <FSelect value={caseCatVal} onChange={(e) => { setCaseCatVal(e.target.value); setAlsoCatVal((prev) => prev.filter((c) => c !== e.target.value)); }}><option value="">Select case category</option><option value="Physical">Physical</option><option value="Virtual">Virtual</option><option value="Verbal">Verbal</option></FSelect>
@@ -969,7 +1164,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             <div className={styles.checkGroup}>{["Physical", "Virtual", "Verbal"].filter((c) => c !== caseCatVal).map((c) => <label key={c} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={alsoCatVal.includes(c)} onChange={() => setAlsoCatVal((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])} />{c}</label>)}</div>
           </FormGroup>
         </div>
-        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, alsoInvolves: alsoCatVal })); showToast("Category updated."); })}>Save</button></div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, primaryCategory: caseCatVal, alsoInvolves: alsoCatVal, additionalCategories: alsoCatVal })); showToast(hasSuggestedCategory && !hasSavedCategory ? "Category approved and saved." : "Category saved."); })}>{hasSavedCategory ? "Save Changes" : hasSuggestedCategory ? "Approve Classification" : "Save"}</button></div>
       </Modal>
 
       <Modal open={modal === "referralEndorse"} onClose={() => setModal(null)} title="Referral / Endorse Case">
@@ -982,14 +1177,10 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={referralReq === "yes" && !referralVal} onClick={() => {
           const referralRequired = referralReq === "yes";
           const selectedBody = referralRequired ? referralVal : null;
-          saveAssessment({ referral_required: referralRequired, referral_body: selectedBody, endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null }, () => { setCaseData((p) => ({ ...p, referralRequired, referralBody: selectedBody, endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : p.endorsementStatus })); showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated."); });
+          saveAssessment({ referral_required: referralRequired, referral_body: selectedBody, endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null }, () => { setCaseData((p) => ({ ...p, referralRequired, referralBody: selectedBody, endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : null })); showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated."); });
         }}>Save</button></div>
       </Modal>
 
-      <Modal open={modal === "assignParalegal"} onClose={() => setModal(null)} title="Assign Paralegal">
-        <div className={styles.formGrid}><FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup><FormGroup label="Assign Paralegal" required><FSelect value={paralegalVal} onChange={(e) => setParalegalVal(e.target.value)}><option value="">Select paralegal</option>{PARALEGALS.map((p) => <option key={p} value={p}>{p}</option>)}</FSelect></FormGroup></div>
-        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!paralegalVal} onClick={() => saveAssessment({ assigned_paralegal: paralegalVal }, () => { setCaseData((p) => ({ ...p, assignedParalegal: paralegalVal })); showToast("Paralegal assigned."); })}>Assign</button></div>
-      </Modal>
     </div>
   );
 }
@@ -1006,6 +1197,7 @@ function btnStyle(bg) {
 
 function StatusHistorySection({ caseData }) {
   const [showHistory, setShowHistory] = useState(false);
+  const historyEntries = [...(caseData.statusHistory || [])].reverse();
   return (
     <section className={styles.section}>
       <button className={styles.historyToggle} onClick={() => setShowHistory(!showHistory)}>
@@ -1014,11 +1206,11 @@ function StatusHistorySection({ caseData }) {
       </button>
       {showHistory && (
         <div className={styles.historyList}>
-          {(caseData.statusHistory || []).map((h, i) => (
-            <div key={i} className={styles.historyItem}>
+          {historyEntries.map((h, i) => (
+            <div key={h.historyId || `${h.status}-${h.date}-${i}`} className={styles.historyItem}>
               <div style={{ textAlign: "center" }}>
                 <div className={styles.historyDot} />
-                {i < (caseData.statusHistory?.length || 1) - 1 && (
+                {i < historyEntries.length - 1 && (
                   <div style={{ width: 2, height: 40, background: "#e5e7eb", margin: "0 auto" }} />
                 )}
               </div>
@@ -1038,6 +1230,26 @@ function StatusHistorySection({ caseData }) {
 // ─── Case Details Tab ─────────────────────────────────────────────────────────
 
 function CaseDetailsTab({ caseData, isStaff }) {
+  const caseTypes = Array.isArray(caseData.caseType)
+    ? caseData.caseType.filter(Boolean)
+    : caseData.caseType ? [caseData.caseType] : [];
+  const primaryCategory = caseData.caseCategory || caseData.primaryCategory || "";
+  const additionalCategories = Array.isArray(caseData.alsoInvolves)
+    ? caseData.alsoInvolves
+    : Array.isArray(caseData.additionalCategories)
+      ? caseData.additionalCategories
+      : [];
+  const categoryDisplay = primaryCategory
+    ? additionalCategories.length > 0
+      ? `${primaryCategory} (also: ${additionalCategories.join(", ")})`
+      : primaryCategory
+    : additionalCategories.join(", ") || "Not yet classified";
+  const assignedParalegals = (caseData.assignedLegal || [])
+    .filter((person) => person.assignment_role === "paralegal")
+    .map((person) => person.name)
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
@@ -1163,13 +1375,13 @@ function CaseDetailsTab({ caseData, isStaff }) {
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
             ["Current Status",    <StatusBadge status={caseData.status} />],
-            ["Case Type",         caseData.caseType || "Not yet classified"],
-            ["Case Category",     caseData.caseCategory || "Not yet classified"],
+            ["Case Type",         caseTypes.join(", ") || "Not yet classified"],
+            ["Case Categories",   categoryDisplay],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
             ["Referral Body",     caseData.referralBody || "Unassigned"],
             ["Assigned Officer",  caseData.assignedOfficer || "Unassigned"],
-            ...(caseData.status === "Verified - True" || caseData.assignedParalegal
-              ? [["Assigned Paralegal", caseData.assignedParalegal || "Pending assignment"]]
+            ...(caseData.status === "Verified - True" || caseData.assignedParalegal || assignedParalegals
+              ? [["Assigned Paralegal", assignedParalegals || caseData.assignedParalegal || "Pending assignment"]]
               : []),
             ["Endorsement",       caseData.endorsementStatus || "Unassigned"],
           ].map(([k, v]) => (
@@ -1181,13 +1393,13 @@ function CaseDetailsTab({ caseData, isStaff }) {
         </div>
 
         {/* Explanations for complainants */}
-        {!isStaff && caseData.caseType && CASE_TYPE_DESCRIPTIONS[caseData.caseType] && (
+        {!isStaff && caseTypes.length === 1 && CASE_TYPE_DESCRIPTIONS[caseTypes[0]] && (
           <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1rem 1.25rem", marginTop: "0.75rem" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
               <FiInfo style={{ color: "#16a34a", flexShrink: 0, marginTop: 2 }} />
               <div>
-                <p style={{ margin: "0 0 4px", fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>About this case type: {caseData.caseType}</p>
-                <p style={{ margin: 0, fontSize: "0.875rem", color: "#374151", lineHeight: 1.6 }}>{CASE_TYPE_DESCRIPTIONS[caseData.caseType]}</p>
+                <p style={{ margin: "0 0 4px", fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>About this case type: {caseTypes[0]}</p>
+                <p style={{ margin: 0, fontSize: "0.875rem", color: "#374151", lineHeight: 1.6 }}>{CASE_TYPE_DESCRIPTIONS[caseTypes[0]]}</p>
               </div>
             </div>
           </div>
@@ -1234,11 +1446,13 @@ export default function ViewCase() {
   
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [undoWithdrawModalOpen, setUndoWithdrawModalOpen] = useState(false);
+  const [followUpComposerOpen, setFollowUpComposerOpen] = useState(false);
 
   const isAdmin      = user.role?.toLowerCase() === "admin";
   const isCaseOfficer = user.role?.toLowerCase() === "case officer" || user.role?.toLowerCase() === "case_officer";
   const isLegal      = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
   const isStaff      = isAdmin || isCaseOfficer || isLegal;
+  const canManageFollowUps = isAdmin || isCaseOfficer;
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
 
@@ -1371,9 +1585,14 @@ export default function ViewCase() {
           referralRequired:        data.referral_required || false,
           referralBody:            data.referral_body || null,
           assignedParalegal:       data.assigned_paralegal || null,
+          assignedLegal:           (data.assigned_legal || []).map((person) => ({
+            ...person,
+            assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
+          })),
           endorsementStatus:       data.endorsement_status || null,
           internalNotes:           data.internal_notes || null,
           pendingApproval:         null,
+          followUpSummary:         data.follow_up_summary || null,
           statusHistory: [
             {
               status: STATUS_STEP[data.case_status_id] || "For Verification",
@@ -1387,17 +1606,28 @@ export default function ViewCase() {
         const asmRes = await fetch(`${API_URL}/api/case_assessments/case/${data.case_report_id}`, { credentials: "include" });
         if (asmRes.ok) {
           const asmJson = await asmRes.json();
-          const latest = asmJson.data?.[0]; // already ordered by created_at desc
-          if (latest) {
+          const assessments = asmJson.data || [];
+          if (assessments.length > 0) {
+            const latestType = assessments.find((record) => Array.isArray(record.case_type) ? record.case_type.length > 0 : Boolean(record.case_type));
+            const latestCategory = assessments.find((record) => record.primary_category || (record.additional_categories || []).length > 0);
+            const latestReferral = assessments.find((record) =>
+              record.referral_required !== null &&
+              record.referral_required !== undefined
+            );
             setCaseData((prev) => ({
               ...prev,
-              caseType:          latest.case_type || prev.caseType,
-              caseCategory:    latest.primary_category || prev.caseCategory,
-              alsoInvolves:    latest.additional_categories || [],
-              referralRequired: latest.referral_required ?? prev.referralRequired,
-              referralBody:    latest.referral_body || prev.referralBody,
-              endorsementStatus: latest.endorsement?.endorsed_to
-                ? `Endorsed to ${latest.endorsement.endorsed_to}`
+              assessmentHistory: assessments,
+              caseType:          latestType?.case_type || prev.caseType,
+              caseCategory:      latestCategory?.primary_category || prev.caseCategory,
+              primaryCategory:   latestCategory?.primary_category || prev.primaryCategory || prev.caseCategory,
+              alsoInvolves:      latestCategory?.additional_categories || prev.alsoInvolves || [],
+              additionalCategories: latestCategory?.additional_categories || prev.additionalCategories || prev.alsoInvolves || [],
+              referralRequired:  latestReferral?.referral_required ?? prev.referralRequired,
+              referralBody:      latestReferral?.referral_body ?? prev.referralBody,
+              endorsementStatus: latestReferral
+                ? latestReferral.endorsement?.endorsed_to
+                  ? `Endorsed to ${latestReferral.endorsement.endorsed_to}`
+                  : null
                 : prev.endorsementStatus,
             }));
           }
@@ -1408,8 +1638,17 @@ export default function ViewCase() {
           const historyJson = await historyRes.json().catch(() => ({}));
           const statusHistory = historyJson.data || [];
           if (statusHistory.length > 0) {
+            const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
             setCaseData((prev) => ({
               ...prev,
+              pendingApproval: pending ? {
+                historyId: pending.historyId,
+                proposedStatus: pending.status,
+                submittedBy: pending.by,
+                date: pending.date,
+                notes: pending.notes,
+                formData: pending.formData,
+              } : null,
               statusHistory: [
                 ...(prev.statusHistory || []).filter((h) => h.notes === "Report received and logged."),
                 ...statusHistory,
@@ -1490,6 +1729,7 @@ export default function ViewCase() {
     ...(showInterviewTab ? [
       { id: "interview", label: "Interview", staffOnly: false },
     ] : []),
+    { id: "follow-ups", label: "Follow-ups", staffOnly: false },
     ...(isStaff ? [
       { id: "management", label: "Case Management", staffOnly: true },
       { id: "nlp",        label: "NLP Analysis", staffOnly: true },
@@ -1531,6 +1771,28 @@ export default function ViewCase() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <StatusBadge status={caseData.status} />
+              <FollowUpBadge summary={caseData.followUpSummary} />
+              {(!isStaff || canManageFollowUps) &&
+                !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
+                <button
+                  className={styles.followUpButton}
+                  disabled={
+                    caseData.followUpSummary?.type ===
+                      (isStaff ? "officer_clarification_request" : "user_change_request") &&
+                    ["open", "responded"].includes(caseData.followUpSummary?.status)
+                  }
+                  title={
+                    caseData.followUpSummary?.type ===
+                      (isStaff ? "officer_clarification_request" : "user_change_request") &&
+                    ["open", "responded"].includes(caseData.followUpSummary?.status)
+                      ? "A follow-up is already in progress"
+                      : ""
+                  }
+                  onClick={() => setFollowUpComposerOpen(true)}
+                >
+                  {isStaff ? "Request Clarification" : "Follow Up"}
+                </button>
+              )}
               {!isStaff && (caseData.status === "For Verification" || caseData.status === "Undergoing Review") && (
                 <button
                   style={{ background: "#6b7280", padding: "6px 14px", color: "white", border: "none", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}
@@ -1584,6 +1846,19 @@ export default function ViewCase() {
             />
           )}
 
+          {displayedActiveTab === "follow-ups" && userLoaded && (
+            <FollowUpsPanel
+              caseId={caseData.id}
+              caseStatus={caseData.status}
+              isStaff={isStaff}
+              canManage={canManageFollowUps}
+              currentUserId={user.id}
+              onSummaryChange={(followUpSummary) =>
+                setCaseData((current) => ({ ...current, followUpSummary }))
+              }
+            />
+          )}
+
           {displayedActiveTab === "management" && isStaff && userLoaded && (
             <CaseManagementTab
               caseData={caseData}
@@ -1624,6 +1899,24 @@ export default function ViewCase() {
             <button className={styles.btnPrimary} onClick={() => { setUndoWithdrawModalOpen(false); handleUndoWithdraw(caseData.id); }}>Confirm Undo</button>
           </div>
         </Modal>
+
+        <FollowUpComposer
+          open={followUpComposerOpen}
+          onClose={() => setFollowUpComposerOpen(false)}
+          caseId={caseData.id}
+          isStaff={isStaff}
+          activeFollowUp={
+            caseData.followUpSummary?.type ===
+              (isStaff ? "officer_clarification_request" : "user_change_request") &&
+            ["open", "responded"].includes(caseData.followUpSummary?.status)
+              ? caseData.followUpSummary
+              : null
+          }
+          onCreated={(created) => {
+            setCaseData((current) => ({ ...current, followUpSummary: created }));
+            setActiveTab("follow-ups");
+          }}
+        />
 
       </div>
     </div>

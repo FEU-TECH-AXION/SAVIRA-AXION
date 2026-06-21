@@ -17,6 +17,12 @@
   padding: 0.55rem 1rem;
 }
 
+.headerActions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
 .headerViewBtn {
   background: var(--sasha-white);
   border: 0;
@@ -31,6 +37,34 @@
 
 .headerViewBtn:hover {
   opacity: 0.85;
+}
+
+.headerWithdrawBtn,
+.headerFollowUpBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  color: var(--sasha-white);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 14px;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.headerWithdrawBtn:hover:not(:disabled),
+.headerFollowUpBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.headerWithdrawBtn:disabled,
+.headerFollowUpBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.headerFollowUpBtn {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .statusCardBody {
@@ -50,6 +84,13 @@
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.01em;
+}
+
+.caseIdentity {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .cardUpdated {

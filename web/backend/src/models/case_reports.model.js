@@ -136,10 +136,13 @@ async function getCaseById(caseReportId) {
     ? `${assignment.case_officers.users.first_name} ${assignment.case_officers.users.last_name}`.trim()
     : null
 
+  const followUpSummary = await getFollowUpSummary([caseReportId])
+
   return {
     ...normalizedReport,
     complainant_user_id: complainant?.user_id || null,
     assigned_officer:    officerName,
+    follow_up_summary:    followUpSummary[caseReportId] || null,
     ...merged,
   }
 }
@@ -185,7 +188,41 @@ async function getReportsByUserId(complainantId) {
     .eq('is_current', true)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return normalizeSubmittedReportStatuses(data)
+  const normalized = await normalizeSubmittedReportStatuses(data)
+  const followUpSummary = await getFollowUpSummary(normalized.map((report) => report.case_report_id))
+  return normalized.map((report) => ({
+    ...report,
+    follow_up_summary: followUpSummary[report.case_report_id] || null,
+  }))
+}
+
+async function getFollowUpSummary(caseIds) {
+  if (!caseIds?.length) return {}
+  const { data, error } = await supabase
+    .from('follow_up_requests')
+    .select('id, case_id, type, status, awaiting_role, updated_at, created_at')
+    .in('case_id', caseIds)
+    .order('created_at', { ascending: false })
+  if (error) {
+    // Follow-up metadata is optional. A missing or partially applied migration
+    // must never prevent the main case list/detail endpoints from loading.
+    console.warn('[getFollowUpSummary] Follow-up metadata unavailable:', error.message)
+    return {}
+  }
+
+  const summary = {}
+  for (const item of data || []) {
+    const current = summary[item.case_id]
+    const itemIsActive = ['open', 'responded'].includes(item.status)
+    const currentIsActive = ['open', 'responded'].includes(current?.status)
+    const itemHasPriority = itemIsActive &&
+      item.awaiting_role === 'user' &&
+      current?.awaiting_role !== 'user'
+    if (!current || (itemIsActive && !currentIsActive) || itemHasPriority) {
+      summary[item.case_id] = item
+    }
+  }
+  return summary
 }
 
 async function getAllReports() {
@@ -335,10 +372,11 @@ async function getAllReports() {
     let assignedLegalOfficerId = null
     let assignedParalegal = null
     let assignedParalegalId = null
+    let activeLegal = []
 
     if (report.legal_case_assignments?.length > 0) {
-      const activeLegal = report.legal_case_assignments.filter(a => a.is_active)
-      const officerAss = activeLegal.find(a => a.assignment_role === 'legal_officer')
+      activeLegal = report.legal_case_assignments.filter(a => a.is_active)
+      const officerAss = activeLegal.find(a => ['lawyer', 'legal_officer'].includes(a.assignment_role))
       if (officerAss) {
         assignedLegalOfficerId = officerAss.legal_personnel_id
         assignedLegalOfficer = legalMap[assignedLegalOfficerId] || null
@@ -356,6 +394,11 @@ async function getAllReports() {
       assigned_officer_id:    assignedOfficerId,
       assigned_legal_officer: assignedLegalOfficer,
       assigned_paralegal:     assignedParalegal,
+      assigned_legal: activeLegal.map(assignment => ({
+        legal_personnel_id: assignment.legal_personnel_id,
+        assignment_role: assignment.assignment_role === 'legal_officer' ? 'lawyer' : assignment.assignment_role,
+        name: legalMap[assignment.legal_personnel_id] || null,
+      })),
       ...(assessmentMap[report.case_report_id] || {}),
       case_assignments:       undefined,
       legal_case_assignments: undefined,

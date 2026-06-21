@@ -14,9 +14,12 @@ const getItems = async (req, res) => {
 
 const createItem = async (req, res) => {
   try {
-    const { password, role_id, committee_id, ...rest } = req.body
+    const { password, role_id, committee_id, legal_personnel_type, ...rest } = req.body
     if (parseInt(role_id) === 2 && !committee_id) {
       return res.status(400).json({ error: 'committee_id is required for Staff role.' })
+    }
+    if (parseInt(role_id) === 4 && !normalizeLegalPersonnelType(legal_personnel_type)) {
+      return res.status(400).json({ error: 'legal_personnel_type must be Lawyer or Paralegal for Legal Personnel role.' })
     }
 
     const hashedPassword = await bcrypt.hash(password || 'Savira@2026', 10)
@@ -29,11 +32,12 @@ const createItem = async (req, res) => {
     })
 
     if (item?.user_id && role_id) {
-      await syncUserSubTable(item.user_id, role_id, { committee_id })
+      await syncUserSubTable(item.user_id, role_id, { committee_id, legal_personnel_type })
     }
 
     const staff = await getStaffByUserId(item.user_id)
-    res.status(201).json({ ...item, staff })
+    const legal_personnel = await getLegalPersonnelByUserId(item.user_id)
+    res.status(201).json({ ...item, staff, legal_personnel })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -42,9 +46,12 @@ const createItem = async (req, res) => {
 const updateItem = async (req, res) => {
   try {
     const { id } = req.params
-    const { password, role_id, committee_id, ...rest } = req.body
+    const { password, role_id, committee_id, legal_personnel_type, ...rest } = req.body
     if (parseInt(role_id) === 2 && !committee_id) {
       return res.status(400).json({ error: 'committee_id is required for Staff role.' })
+    }
+    if (parseInt(role_id) === 4 && !normalizeLegalPersonnelType(legal_personnel_type)) {
+      return res.status(400).json({ error: 'legal_personnel_type must be Lawyer or Paralegal for Legal Personnel role.' })
     }
 
     const allowed = [
@@ -76,14 +83,16 @@ const updateItem = async (req, res) => {
     if (error) throw error
 
     if (role_id !== undefined) {
-      await syncUserSubTable(id, role_id, { committee_id })
+      await syncUserSubTable(id, role_id, { committee_id, legal_personnel_type })
     }
 
     const staff = await getStaffByUserId(id)
+    const legal_personnel = await getLegalPersonnelByUserId(id)
     res.status(200).json({
       ...data,
       role_name: data.roles?.role_name || null,
       staff,
+      legal_personnel,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -108,8 +117,11 @@ const loginUser = async (req, res) => {
 const syncRole = async (req, res) => {
   try {
     const { userId } = req.params
-    const { role_id, committee_id } = req.body
-    await syncUserSubTable(userId, role_id, { committee_id })
+    const { role_id, committee_id, legal_personnel_type } = req.body
+    if (parseInt(role_id) === 4 && !normalizeLegalPersonnelType(legal_personnel_type)) {
+      return res.status(400).json({ error: 'legal_personnel_type must be Lawyer or Paralegal for Legal Personnel role.' })
+    }
+    await syncUserSubTable(userId, role_id, { committee_id, legal_personnel_type })
     return res.json({ message: 'Role synced successfully.' })
   } catch (err) {
     console.error('[syncRole]', err.message)
@@ -134,6 +146,62 @@ async function getStaffByUserId(userId) {
 
   if (error) throw error
   return data || null
+}
+
+function normalizeLegalPersonnelType(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'lawyer' || normalized === 'legal officer') return 'Lawyer'
+  if (normalized === 'paralegal') return 'Paralegal'
+  return null
+}
+
+async function getLegalPersonnelByUserId(userId) {
+  const { data, error } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id, user_id, legal_personnel_type, is_available')
+    .eq('user_id', String(userId))
+    .maybeSingle()
+
+  if (error) throw error
+  return data || null
+}
+
+async function syncLegalPersonnelRow(userId, legalPersonnelType) {
+  const id = String(userId)
+  const normalizedType = normalizeLegalPersonnelType(legalPersonnelType)
+  if (!normalizedType) {
+    throw new Error('legal_personnel_type must be Lawyer or Paralegal for Legal Personnel role.')
+  }
+
+  const existing = await getLegalPersonnelByUserId(id)
+  const payload = {
+    user_id: id,
+    legal_personnel_type: normalizedType,
+    is_available: true,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('legal_personnels')
+      .update(payload)
+      .eq('legal_personnel_id', existing.legal_personnel_id)
+    if (error) throw error
+    return
+  }
+
+  const { error } = await supabase
+    .from('legal_personnels')
+    .insert([{ ...payload, created_at: new Date().toISOString() }])
+  if (error) throw error
+}
+
+async function disableLegalPersonnelRow(userId) {
+  const { error } = await supabase
+    .from('legal_personnels')
+    .update({ is_available: false, updated_at: new Date().toISOString() })
+    .eq('user_id', String(userId))
+  if (error) throw error
 }
 
 async function syncStaffRow(userId, committeeId) {
@@ -193,19 +261,12 @@ async function syncUserSubTable(userId, roleId, options = {}) {
         .insert([{ user_id: id, is_available: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }])
       if (error) throw error
     }
-  } else if (numericRoleId === 4) {
-    const { data: existing } = await supabase
-      .from('legal_personnels')
-      .select('legal_personnel_id')
-      .eq('user_id', id)
-      .maybeSingle()
+  }
 
-    if (!existing) {
-      const { error } = await supabase
-        .from('legal_personnels')
-        .insert([{ user_id: id, legal_personnel_type: 'General', is_available: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }])
-      if (error) throw error
-    }
+  if (numericRoleId === 4) {
+    await syncLegalPersonnelRow(id, options.legal_personnel_type)
+  } else {
+    await disableLegalPersonnelRow(id)
   }
 }
 

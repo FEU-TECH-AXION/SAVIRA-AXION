@@ -62,6 +62,15 @@ const ENDORSEMENT_BODIES = [
   "Court (with lawyer)",
 ];
 
+export const APPROVAL_REQUIRED_STATUSES = new Set([
+  "Verified - True",
+  "Verified - False",
+  "Case Filed",
+  "Dismissed",
+  "Perpetrator Convicted",
+  "Resolved",
+]);
+
 export const STATUS_MODAL_MAP = {
   "Undergoing Review":     "undergReview",
   "Verified - True":       "verifiedTrue",
@@ -72,6 +81,7 @@ export const STATUS_MODAL_MAP = {
   "Hearing Ongoing":       "hearing",
   "Dismissed":             "dismissed",
   "Perpetrator Convicted": "convicted",
+  "Resolved":              "resolved",
 };
 
 const STATUS_COLORS = {
@@ -259,20 +269,25 @@ function StatusBadge({ status }) {
 
 function StatusChangeShell({ open, onClose, title, caseData, onSubmitForApproval, children, canSubmit = true }) {
   if (!caseData) return null;
+  const proposedStatus = title.includes(":") ? title.split(":").pop().trim() : "";
+  const requiresApproval = APPROVAL_REQUIRED_STATUSES.has(proposedStatus);
   return (
     <Modal open={open} onClose={onClose} title={title} wide>
       <div className={styles.approvalNotice}>
         <FiClock style={{ flexShrink: 0 }} />
         <span>
-          This change will be submitted for <strong>Admin approval</strong> before taking effect.
-          The complainant will be informed after approval.
+          {requiresApproval ? (
+            <>This consequential change requires <strong>Admin approval</strong> before taking effect.</>
+          ) : (
+            <>This routine progress update will be <strong>saved immediately</strong> and added to the audit history.</>
+          )}
         </span>
       </div>
       {children}
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
         <button className={styles.btnPrimary} onClick={onSubmitForApproval} disabled={!canSubmit}>
-          Submit for Approval
+          {requiresApproval ? "Submit for Approval" : "Save Status Update"}
         </button>
       </div>
     </Modal>
@@ -938,6 +953,32 @@ function ConvictedModal({ open, onClose, caseData, onSubmit, actorName }) {
 
 // ─── Sub-modal lookup ─────────────────────────────────────────────────────────
 
+function ResolvedModal({ open, onClose, caseData, onSubmit, actorName }) {
+  const [notes, setNotes] = useState("");
+  useEffect(() => { if (open) setNotes(""); }, [open]);
+
+  function handleSubmit() {
+    onSubmit("Resolved", {
+      submittedBy: actorName,
+      date: new Date().toLocaleDateString("en-PH"),
+      notes,
+      formData: { resolutionNotes: notes },
+    });
+    onClose();
+  }
+
+  return (
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Resolved" caseData={caseData} onSubmitForApproval={handleSubmit} canSubmit={Boolean(notes.trim())}>
+      <p className={styles.formDesc}>Confirm that legal action, survivor support, and required monitoring are complete before closing active monitoring.</p>
+      <div className={styles.formGrid}>
+        <FormGroup label="Resolution notes" required>
+          <FTextarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Summarize the final outcome and any continuing support arrangements." />
+        </FormGroup>
+      </div>
+    </StatusChangeShell>
+  );
+}
+
 const STATUS_MODALS = {
   undergReview: UndergReviewModal,
   verifiedTrue:  VerifiedTrueModal,
@@ -948,6 +989,7 @@ const STATUS_MODALS = {
   hearing:       HearingModal,
   dismissed:     DismissedModal,
   convicted:     ConvictedModal,
+  resolved:      ResolvedModal,
 };
 
 // ─── Main Export ──────────────────────────────────────────────────────────────

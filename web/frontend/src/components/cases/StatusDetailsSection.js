@@ -69,7 +69,14 @@ function formatValue(value) {
   return value;
 }
 
-export default function StatusDetailsSection({ caseData, styles, title = "Status Details", emptyText = "No status details have been saved yet.", wrap = true }) {
+export default function StatusDetailsSection({
+  caseData,
+  styles,
+  title = "Status Details",
+  emptyText = "No status details have been saved yet.",
+  wrap = true,
+  newestFirst = false,
+}) {
   const entries = (caseData?.statusHistory || [])
     .map((entry) => ({ ...entry, formData: normalizeFormData(entry) }))
     .filter((entry) => !entry.approvalStatus || entry.approvalStatus === "approved")
@@ -77,21 +84,22 @@ export default function StatusDetailsSection({ caseData, styles, title = "Status
       const formatted = formatValue(value);
       return formatted !== undefined && formatted !== null && String(formatted).trim() !== "";
     }));
+  const orderedEntries = newestFirst ? [...entries].reverse() : entries;
 
   const content = (
     <>
       {title && <h2 className={styles.sectionHeadingText}>{title}</h2>}
-      {entries.length === 0 ? (
+      {orderedEntries.length === 0 ? (
         <p className={styles.emptyState}>{emptyText}</p>
       ) : (
-        entries.map((entry, index) => (
-          <div key={entry.historyId || `${entry.status}-${entry.date}-${index}`} className={styles.reviewDetailBlock}>
-            <h3 className={styles.reviewDetailTitle}>{entry.status}</h3>
+        orderedEntries.map((entry, index) => {
+          const key = entry.historyId || `${entry.status}-${entry.date}-${index}`;
+          const details = (
             <div className={styles.detailGrid}>
               {[
                 ["Date", entry.date],
                 ["Updated By", entry.by],
-                ...Object.entries(entry.formData).map(([key, value]) => [STATUS_DETAIL_LABELS[key] || humanize(key), formatValue(value)]),
+                ...Object.entries(entry.formData).map(([fieldKey, value]) => [STATUS_DETAIL_LABELS[fieldKey] || humanize(fieldKey), formatValue(value)]),
               ].map(([label, value]) => {
                 if (value === undefined || value === null || String(value).trim() === "") return null;
                 return (
@@ -102,8 +110,15 @@ export default function StatusDetailsSection({ caseData, styles, title = "Status
                 );
               })}
             </div>
-          </div>
-        ))
+          );
+
+          return (
+            <div key={key} className={styles.reviewDetailBlock}>
+              <h3 className={styles.reviewDetailTitle}>{entry.status}</h3>
+              {details}
+            </div>
+          );
+        })
       )}
     </>
   );

@@ -18,6 +18,15 @@ const STATUS_ID_MAP = {
   "Withdrawn":               13
 }
 
+const APPROVAL_REQUIRED_STATUSES = new Set([
+  'Verified - True',
+  'Verified - False',
+  'Case Filed',
+  'Dismissed',
+  'Perpetrator Convicted',
+  'Resolved',
+])
+
 // Fetch all approved history entries for a case — used by the
 // StatusHistorySection component on the frontend
 const getByCaseReport = async (caseReportId, { staffView = false } = {}) => {
@@ -84,18 +93,27 @@ const create = async ({
 
 // Admin approves: update history row + update case_reports.case_status_id
 const approve = async (historyId, approvedById) => {
+  async function updateApproval(approverValue) {
+    return supabase
+      .from('case_status_history')
+      .update({
+        approval_status: 'approved',
+        approved_by_id:  approverValue,
+        approved_at:     new Date().toISOString(),
+      })
+      .eq('history_id', historyId)
+      .eq('approval_status', 'pending')
+      .select()
+      .maybeSingle()
+  }
+
   // 1. Mark the history row as approved
-  const { data: historyRow, error: histErr } = await supabase
-    .from('case_status_history')
-    .update({
-      approval_status: 'approved',
-      approved_by_id:  approvedById,
-      approved_at:     new Date().toISOString(),
-    })
-    .eq('history_id', historyId)
-    .select()
-    .single()
+  let { data: historyRow, error: histErr } = await updateApproval(approvedById)
+  if (histErr?.code === '22P02' && String(histErr.message || '').includes('integer')) {
+    ;({ data: historyRow, error: histErr } = await updateApproval(null))
+  }
   if (histErr) throw histErr
+  if (!historyRow) throw new Error('Pending status change not found or already reviewed.')
 
   // 2. Promote the new status to the case report itself
   const { error: caseErr } = await supabase
@@ -109,18 +127,27 @@ const approve = async (historyId, approvedById) => {
 
 // Admin rejects: mark as rejected with a reason, no case_report update
 const reject = async (historyId, approvedById, rejectionReason) => {
-  const { data, error } = await supabase
-    .from('case_status_history')
-    .update({
-      approval_status:  'rejected',
-      approved_by_id:   approvedById,
-      approved_at:      new Date().toISOString(),
-      rejection_reason: rejectionReason,
-    })
-    .eq('history_id', historyId)
-    .select()
-    .single()
+  async function updateRejection(approverValue) {
+    return supabase
+      .from('case_status_history')
+      .update({
+        approval_status:  'rejected',
+        approved_by_id:   approverValue,
+        approved_at:      new Date().toISOString(),
+        rejection_reason: rejectionReason,
+      })
+      .eq('history_id', historyId)
+      .eq('approval_status', 'pending')
+      .select()
+      .maybeSingle()
+  }
+
+  let { data, error } = await updateRejection(approvedById)
+  if (error?.code === '22P02' && String(error.message || '').includes('integer')) {
+    ;({ data, error } = await updateRejection(null))
+  }
   if (error) throw error
+  if (!data) throw new Error('Pending status change not found or already reviewed.')
   return data
 }
 
@@ -132,9 +159,19 @@ const getPending = async (caseReportId) => {
     .select('*')
     .eq('case_report_id', caseReportId)
     .eq('approval_status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle() // returns null instead of error if none found
   if (error) throw error
   return data
 }
 
-module.exports = { getByCaseReport, create, approve, reject, getPending, STATUS_ID_MAP }
+module.exports = {
+  getByCaseReport,
+  create,
+  approve,
+  reject,
+  getPending,
+  STATUS_ID_MAP,
+  APPROVAL_REQUIRED_STATUSES,
+}

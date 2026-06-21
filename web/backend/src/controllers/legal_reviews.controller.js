@@ -14,12 +14,14 @@ function missingColumnsMessage(err) {
   const msg = err?.message || ''
   const knownMissingDetailColumn = [
     'paralegal_record',
+    'lawyer_record',
     'endorsed_to',
     'endorsement_details',
     'monitoring_log',
+    'document_repository',
   ].some((column) => msg.includes(column))
   if (!knownMissingDetailColumn) return null
-  return 'Legal review detail columns are missing. Add paralegal_record jsonb, endorsed_to text, endorsement_details jsonb, and monitoring_log jsonb to legal_reviews.'
+  return 'Legal review detail columns are missing. Run the legal review improvements migration.'
 }
 
 function toClientPayload(review, logs = []) {
@@ -31,9 +33,11 @@ function toClientPayload(review, logs = []) {
     review_type: review.review_type,
     review_status: review.review_status,
     paralegal_record: review.paralegal_record || null,
+    lawyer_record: review.lawyer_record || null,
     endorsed_to: review.endorsed_to || null,
     endorsement_details: review.endorsement_details || null,
     monitoring_log: review.monitoring_log || [],
+    document_repository: review.document_repository || [],
     logs,
   }
 }
@@ -58,9 +62,11 @@ async function updateByCase(req, res) {
       remarks,
       legal_personnel_id,
       paralegal_record,
+      lawyer_record,
       endorsed_to,
       endorsement_details,
       monitoring_entry,
+      document_repository,
       review_status,
     } = req.body
 
@@ -89,8 +95,10 @@ async function updateByCase(req, res) {
 
     const patch = {}
     if (paralegal_record !== undefined) patch.paralegal_record = paralegal_record
+    if (lawyer_record !== undefined) patch.lawyer_record = lawyer_record
     if (endorsed_to !== undefined) patch.endorsed_to = endorsed_to || null
     if (endorsement_details !== undefined) patch.endorsement_details = endorsement_details
+    if (document_repository !== undefined) patch.document_repository = document_repository
     if (review_status !== undefined) patch.review_status = review_status
     if (monitoring_entry) {
       patch.monitoring_log = [...(review.monitoring_log || []), monitoring_entry]

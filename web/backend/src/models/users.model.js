@@ -22,9 +22,17 @@ const getAll = async () => {
 
     const staffByUserId = new Map((staffRows || []).map((row) => [row.user_id, row]))
 
+    const { data: legalRows, error: legalError } = await supabase
+        .from('legal_personnels')
+        .select('legal_personnel_id, user_id, legal_personnel_type, is_available')
+    if (legalError) throw legalError
+
+    const legalByUserId = new Map((legalRows || []).map((row) => [row.user_id, row]))
+
     return (users || []).map((user) => ({
         ...user,
         staff: staffByUserId.get(user.user_id) || null,
+        legal_personnel: legalByUserId.get(user.user_id) || null,
     }))
 }
 

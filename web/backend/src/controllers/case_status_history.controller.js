@@ -46,6 +46,14 @@ const submitStatusChange = async (req, res) => {
     }
 
     // Step 1 — Insert history row
+    const requiresApproval = CaseStatusHistory.APPROVAL_REQUIRED_STATUSES.has(proposed_status)
+    if (requiresApproval) {
+      const existingPending = await CaseStatusHistory.getPending(case_report_id)
+      if (existingPending) {
+        return res.status(409).json({ error: 'This case already has a pending status change.' })
+      }
+    }
+
     const historyRow = await CaseStatusHistory.create({
       caseReportId:   case_report_id,
       caseStatusId,
@@ -53,17 +61,19 @@ const submitStatusChange = async (req, res) => {
       changedByRole:  changed_by_role,
       notes,
       formData:       form_data,
-      approvalStatus: 'approved',
-      approvedAt:     new Date().toISOString(),
-      approvedById:   null,  // No approver since it's auto-approved
+      approvalStatus: requiresApproval ? 'pending' : 'approved',
+      approvedAt:     requiresApproval ? null : new Date().toISOString(),
+      approvedById:   null,
     })
 
     // Step 2 — Update case_reports.case_status_id
-    const { error: caseErr } = await supabase
-      .from('case_reports')
-      .update({ case_status_id: caseStatusId })
-      .eq('case_report_id', case_report_id)
-    if (caseErr) throw caseErr
+    if (!requiresApproval) {
+      const { error: caseErr } = await supabase
+        .from('case_reports')
+        .update({ case_status_id: caseStatusId })
+        .eq('case_report_id', case_report_id)
+      if (caseErr) throw caseErr
+    }
 
     // Step 3 — Resolve INT ids from UUID before inserting assessment
     let caseOfficerId    = null
@@ -79,7 +89,7 @@ const submitStatusChange = async (req, res) => {
       caseOfficerId = officer?.case_officer_id || null
     }
 
-    if (role.includes('legal')) {
+    if (role.includes('legal') || role.includes('lawyer') || role.includes('paralegal')) {
       const { data: lp } = await supabase
         .from('legal_personnels')
         .select('legal_personnel_id')
@@ -95,7 +105,7 @@ const submitStatusChange = async (req, res) => {
         status_history_id:  historyRow.history_id,
         assessment_type:    assessment_type || proposed_status,
         assessment_stage:   proposed_status,
-        assessment_status:  'approved',
+        assessment_status:  requiresApproval ? 'pending' : 'approved',
         findings:           findings || notes,
         recommendation:     recommendation || null,
         changed_by_id,
@@ -110,7 +120,7 @@ const submitStatusChange = async (req, res) => {
       status_history_id:  historyRow.history_id,
       assessment_type:    assessment_type || proposed_status,
       assessment_stage:   proposed_status,
-      assessment_status:  'approved',
+      assessment_status:  requiresApproval ? 'pending' : 'approved',
       findings:           findings || notes,
       recommendation:     recommendation || null,
       changed_by_id,    // varchar — UUID is fine here
@@ -120,10 +130,12 @@ const submitStatusChange = async (req, res) => {
     
 
     res.status(201).json({
-      message:          'Status updated successfully.',
+      message: requiresApproval
+        ? 'Status change submitted for admin approval.'
+        : 'Status updated successfully.',
       historyRow,
       assessment,
-      requiresApproval: false,
+      requiresApproval,
     })
   } catch (err) {
     console.error('[submitStatusChange]', err.message)
@@ -138,7 +150,15 @@ const approveStatusChange = async (req, res) => {
     if (!approved_by_id) {
       return res.status(400).json({ error: 'approved_by_id is required.' })
     }
-    const historyRow = await CaseStatusHistory.approve(Number(historyId), approved_by_id)
+    const { data: approver, error: approverError } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('user_id', approved_by_id)
+      .maybeSingle()
+    if (approverError) throw approverError
+    if (!approver) return res.status(400).json({ error: 'Approving user was not found.' })
+
+    const historyRow = await CaseStatusHistory.approve(Number(historyId), approver.user_id)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'approved')
     res.json({ message: 'Status change approved and case updated.', historyRow })
   } catch (err) {
@@ -153,7 +173,15 @@ const rejectStatusChange = async (req, res) => {
     if (!approved_by_id || !rejection_reason) {
       return res.status(400).json({ error: 'approved_by_id and rejection_reason are required.' })
     }
-    const historyRow = await CaseStatusHistory.reject(Number(historyId), approved_by_id, rejection_reason)
+    const { data: approver, error: approverError } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('user_id', approved_by_id)
+      .maybeSingle()
+    if (approverError) throw approverError
+    if (!approver) return res.status(400).json({ error: 'Approving user was not found.' })
+
+    const historyRow = await CaseStatusHistory.reject(Number(historyId), approver.user_id, rejection_reason)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'rejected')
     res.json({ message: 'Status change rejected.', historyRow })
   } catch (err) {

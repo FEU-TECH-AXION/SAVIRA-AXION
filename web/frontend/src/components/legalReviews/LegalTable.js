@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import styles from "./LegalTable.module.css";
+import Tooltip from "../ui/Tooltip";
+import { formatCaseCategories, formatCaseTypes } from "./legalReviewCalendar";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 
@@ -23,6 +25,22 @@ const ROW_STATUS_ROW_COLOR = {
   "Dismissed":             "#f8fafc",
   "Perpetrator Convicted": "#f0fdf4",
 };
+
+function assignedLawyerNames(caseData) {
+  return (caseData.assignedLegal || [])
+    .filter((person) => ["lawyer", "legal_officer"].includes(person.assignment_role))
+    .map((person) => person.name)
+    .filter(Boolean)
+    .join(", ");
+}
+
+function assignedParalegalNames(caseData) {
+  return (caseData.assignedLegal || [])
+    .filter((person) => person.assignment_role === "paralegal")
+    .map((person) => person.name)
+    .filter(Boolean)
+    .join(", ");
+}
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -117,7 +135,8 @@ function Pagination({ current, total, totalRecords, pageSize, onChange }) {
 
 function ColumnsBtn() {
   return (
-    <button className={styles.columnsBtn} title="Toggle columns" aria-label="Manage columns">
+    <Tooltip text="Columns appear automatically when their filters are active">
+    <button className={styles.columnsBtn} aria-label="Manage columns">
       {/* 2×3 grid icon */}
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.7" />
@@ -126,6 +145,7 @@ function ColumnsBtn() {
         <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.3" />
       </svg>
     </button>
+    </Tooltip>
   );
 }
 
@@ -158,8 +178,10 @@ export default function LegalTable({
   onPageChange,
   onRowDoubleClick,
   onParalegal,
+  onConsult,
   onEndorse,
   onMonitor,
+  onCalendar,
   onStatus,
   onAssignLegal,
   isAdmin,
@@ -173,6 +195,8 @@ export default function LegalTable({
   // Derived: which extra columns to show based on active extra filters
   const showEndorsedTo = !!(activeFilters.endorsedTo && activeFilters.endorsedTo !== "" && activeFilters.endorsedTo !== "All");
   const showCity = !!(activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All");
+  const showParalegal = !!(activeFilters.assignedParalegal && activeFilters.assignedParalegal !== "" && activeFilters.assignedParalegal !== "All");
+  const showCaseCategories = !!(activeFilters.caseCategory && activeFilters.caseCategory !== "" && activeFilters.caseCategory !== "All");
 
   // Sync selection: clear if paginated changes (page turn)
   const pageIds = useMemo(() => paginated.map(c => c.id), [paginated]);
@@ -246,44 +270,17 @@ export default function LegalTable({
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>{selectionCount} selected</span>
           <div className={styles.bulkActions}>
-            <button
-              className={`${styles.bulkBtn} ${styles.bulkBtnAssign}`}
-              onClick={() => onAssignLegal && onAssignLegal(selectedCases)}
-              title="Assign to legal team member"
-            >
-              Assign
-            </button>
-            <button
-              className={styles.bulkBtn}
-              onClick={() => onParalegal && onParalegal(selectedCases)}
-            >
-              Paralegal Support
-            </button>
-            <button
-              className={styles.bulkBtn}
-              onClick={() => onEndorse && onEndorse(selectedCases)}
-            >
-              Endorse
-            </button>
-            <button
-              className={styles.bulkBtn}
-              onClick={() => onMonitor && onMonitor(selectedCases)}
-            >
-              Monitor
-            </button>
-            <button
-              className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`}
-              onClick={() => onStatus && onStatus(selectedCases)}
-            >
-              Status
-            </button>
+            <Tooltip text="Assign lawyers or paralegals"><button className={`${styles.bulkBtn} ${styles.bulkBtnAssign}`} onClick={() => onAssignLegal?.(selectedCases)}>Assign</button></Tooltip>
+            <Tooltip text="Update the paralegal evidence checklist"><button className={styles.bulkBtn} onClick={() => onParalegal?.(selectedCases)}>Paralegal</button></Tooltip>
+            <Tooltip text="Record a lawyer consultation"><button className={styles.bulkBtn} onClick={() => onConsult?.(selectedCases)}>Consult</button></Tooltip>
+            <Tooltip text="Record or update an endorsement"><button className={styles.bulkBtn} onClick={() => onEndorse?.(selectedCases)}>Endorse</button></Tooltip>
+            <Tooltip text="Add a referral monitoring update"><button className={styles.bulkBtn} onClick={() => onMonitor?.(selectedCases)}>Monitor</button></Tooltip>
+            <Tooltip text="View hearings and follow-up deadlines"><button className={styles.bulkBtn} onClick={() => onCalendar?.(selectedCases)}>Calendar</button></Tooltip>
+            <Tooltip text="Update case status"><button className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`} onClick={() => onStatus?.(selectedCases)}>Status</button></Tooltip>
           </div>
-          <button
-            className={styles.bulkClear}
-            onClick={() => setSelectedIds(new Set())}
-          >
-            Clear
-          </button>
+          <Tooltip text="Clear selected rows">
+            <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>Clear</button>
+          </Tooltip>
         </div>
       )}
 
@@ -306,8 +303,10 @@ export default function LegalTable({
               <SortableTh field="id">Case ID</SortableTh>
               <SortableTh field="status">Status</SortableTh>
               <th className={styles.th}>Case Type</th>
+              {showCaseCategories && <th className={styles.th}>Case Categories</th>}
               <SortableTh field="reporterId">Reporter ID</SortableTh>
-              <th className={styles.th}>Legal Officer</th>
+              <th className={styles.th}>Lawyer(s)</th>
+              {showParalegal && <th className={styles.th}>Paralegal(s)</th>}
               <SortableTh field="dateReported">
                 Submission Date
               </SortableTh>
@@ -322,7 +321,7 @@ export default function LegalTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8 + (showEndorsedTo ? 1 : 0) + (showCity ? 1 : 0)} className={styles.emptyState}>
+                <td colSpan={8 + (showCaseCategories ? 1 : 0) + (showParalegal ? 1 : 0) + (showEndorsedTo ? 1 : 0) + (showCity ? 1 : 0)} className={styles.emptyState}>
                   No cases found.
                 </td>
               </tr>
@@ -377,20 +376,32 @@ export default function LegalTable({
 
                     {/* Case Type */}
                     <td className={styles.td}>
-                      {c.caseType || <span className={styles.muted}>Unassigned</span>}
+                      {formatCaseTypes(c) || <span className={styles.muted}>Unassigned</span>}
                     </td>
+
+                    {showCaseCategories && (
+                      <td className={styles.td}>
+                        {formatCaseCategories(c) || <span className={styles.muted}>Unassigned</span>}
+                      </td>
+                    )}
 
                     {/* Reporter ID */}
                     <td className={`${styles.td} ${styles.reporterIdTd}`}>
                       <strong>{c.reporterId}</strong>
                     </td>
 
-                    {/* Legal Officer */}
+                    {/* Assigned lawyers */}
                     <td className={styles.td}>
-                      {c.assignedLegalOfficer || (
+                      {assignedLawyerNames(c) || (
                         <span className={styles.muted}>Unassigned</span>
                       )}
                     </td>
+
+                    {showParalegal && (
+                      <td className={styles.td}>
+                        {assignedParalegalNames(c) || <span className={styles.muted}>Unassigned</span>}
+                      </td>
+                    )}
 
                     {/* Submission Date */}
                     <td className={styles.td}>

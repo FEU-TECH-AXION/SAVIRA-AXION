@@ -84,6 +84,7 @@ export function normalizeReport(report) {
     primaryCategory: report.primary_category || report.primaryCategory || "",
     city: report.incident_city || report.city || "",
     description: report.incident_description || report.description || "",
+    followUpSummary: report.follow_up_summary || report.followUpSummary || null,
   };
 }
 
