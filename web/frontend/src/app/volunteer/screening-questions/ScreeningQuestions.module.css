@@ -68,7 +68,7 @@
 .hero > div > span {
   display: block;
   margin-bottom: 0.4rem;
-  color: #ffd6c7;
+  color: var(--teal-light);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.1em;
