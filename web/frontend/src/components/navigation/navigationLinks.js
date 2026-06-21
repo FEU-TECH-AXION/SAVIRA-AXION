@@ -134,8 +134,9 @@ export const SIDEBAR_LINKS = {
       icon: "volunteer",
       children: [
         { href: "/volunteer", label: "All Volunteers" },
-        { href: "/volunteerInterviews", label: "Interviews" },
         { href: "/volunteerRanking", label: "Applicant Ranking" },
+        { href: "/volunteerInterviews", label: "Interviews" },
+        { href: "/volunteer/screening-questions", label: "Screening Questions" },
       ],
     },
     { href: "/events", label: "Events", icon: "event" },
@@ -169,8 +170,9 @@ export const SIDEBAR_LINKS = {
       icon: "volunteer",
       children: [
         { href: "/volunteer", label: "All Volunteers" },
-        { href: "/volunteerInterviews", label: "Interviews" },
         { href: "/volunteerRanking", label: "Applicant Ranking" },
+        { href: "/volunteerInterviews", label: "Interviews" },
+        { href: "/volunteer/screening-questions", label: "Screening Questions" },
         { href: "/volunteer/chapters", label: "Chapters" },
       ],
     },
