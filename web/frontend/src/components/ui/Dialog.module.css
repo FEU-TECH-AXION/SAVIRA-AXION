@@ -1,0 +1,185 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(24, 38, 39, 0.56);
+  backdrop-filter: blur(3px);
+}
+
+.dialog {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  animation: dialogIn 0.18s ease;
+}
+
+.closeButton {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #6b7280;
+  background: #fff;
+  cursor: pointer;
+}
+
+.dialogIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  margin-bottom: 0.85rem;
+  border-radius: 50%;
+  font-size: 1.2rem;
+}
+
+.default {
+  color: #037f81;
+  background: #e1f5f5;
+}
+
+.danger {
+  color: #c43b3b;
+  background: #feecec;
+}
+
+.dialog h2 {
+  margin: 0;
+  color: #292929;
+  font-size: 1.1rem;
+}
+
+.dialog > p {
+  margin: 0.45rem 0 0;
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.detail {
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  color: #4b5563;
+  background: #f5f7f8;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.inputLabel {
+  display: block;
+  margin-top: 1rem;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.inputLabel input {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.58rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  font: inherit;
+}
+
+.inputLabel input:focus {
+  border-color: #037f81;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.1);
+}
+
+.inputLabel input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.inputError {
+  margin-top: 0.4rem;
+  color: #b42318;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  min-height: 40px;
+  padding: 0.5rem 1.05rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 0;
+  color: #fff;
+  background: #037f81;
+}
+
+.secondaryButton {
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  background: #fff;
+}
+
+.dangerButton {
+  border: 0;
+  color: #fff;
+  background: #c43b3b;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 520px) {
+  .overlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .dialog {
+    border-radius: 16px 16px 0 0;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
