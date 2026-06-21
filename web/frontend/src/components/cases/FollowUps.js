@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FiCheck, FiMessageCircle, FiPaperclip, FiSend, FiX } from "react-icons/fi";
+import { FiCheck, FiEdit3, FiMessageCircle, FiPaperclip, FiSend, FiX } from "react-icons/fi";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import FollowUpFieldEditor, {
+  AMENDMENT_GROUPS,
+  buildAmendmentValues,
+  buildFieldChanges,
+  FIELD_LABELS,
+  FollowUpFieldChecklist,
+  validateAmendmentFields,
+} from "./FollowUpFieldEditor";
 import styles from "./FollowUps.module.css";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -11,6 +20,67 @@ const CLOSED_CASE_STATUSES = new Set([
   "Resolved",
   "Withdrawn",
 ]);
+
+const USER_REASON_OPTIONS = [
+  {
+    value: "Correction needed",
+    label: "Correct existing information",
+    description: "Choose this when information already recorded on the case is inaccurate.",
+    groupIds: [
+      "complainant_contact",
+      "incident_datetime",
+      "incident_location",
+      "incident_description",
+      "perpetrator",
+      "witnesses",
+      "prior_disclosure",
+    ],
+  },
+  {
+    value: "Additional info",
+    label: "Add information or evidence",
+    description: "Choose this when the existing information is correct, but the case team needs new details or files.",
+    groupIds: [
+      "incident_description",
+      "perpetrator",
+      "witnesses",
+      "prior_disclosure",
+      "evidence",
+    ],
+  },
+  {
+    value: "Other",
+    label: "Other request",
+    description: "Choose this for a request that does not change a case field, then explain it below.",
+    groupIds: [],
+  },
+];
+
+function selectedGroupLabels(fields, groups = AMENDMENT_GROUPS) {
+  return groups
+    .filter((group) => group.fields.some((field) => fields.includes(field)))
+    .map((group) => group.label.toLowerCase());
+}
+
+function suggestedFollowUpMessage({ isStaff, reason, fields, groups }) {
+  const labels = selectedGroupLabels(fields, groups);
+  const subject = labels.length ? labels.join(", ") : "the case information";
+
+  if (isStaff) {
+    return fields.length
+      ? `Please review and update ${subject}. Add any context that may help us verify the correction.`
+      : "";
+  }
+  if (reason === "Correction needed") {
+    return `I need to correct ${subject}. The updated information is provided above.`;
+  }
+  if (reason === "Additional info") {
+    return fields.length
+      ? `I would like to add more information about ${subject}. The new details are provided above.`
+      : "I would like to add information that may help with my case.";
+  }
+  return "I have another request regarding my case:";
+}
 
 export function getFollowUpDisplay(summary) {
   if (!summary) return null;
@@ -42,14 +112,60 @@ export function FollowUpComposer({
   caseId,
   isStaff,
   activeFollowUp,
+  reportData,
   onCreated,
 }) {
   const [reason, setReason] = useState("Correction needed");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() =>
+    suggestedFollowUpMessage({
+      isStaff,
+      reason: "Correction needed",
+      fields: [],
+      groups: AMENDMENT_GROUPS,
+    })
+  );
+  const [messageCustomized, setMessageCustomized] = useState(false);
   const [blocksProcessing, setBlocksProcessing] = useState(true);
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldsRequested, setFieldsRequested] = useState([]);
+  const [editedValues, setEditedValues] = useState(() => buildAmendmentValues(reportData));
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const evidenceSelected = fieldsRequested.includes("evidence.files");
+  const selectedReason = USER_REASON_OPTIONS.find((option) => option.value === reason);
+  const availableGroups = isStaff
+    ? AMENDMENT_GROUPS
+    : AMENDMENT_GROUPS.filter((group) => selectedReason?.groupIds.includes(group.id));
+  const pendingChanges = buildFieldChanges(
+    fieldsRequested,
+    buildAmendmentValues(reportData),
+    editedValues
+  );
+  const requiresStructuredUpdate =
+    !isStaff && ["Correction needed", "Additional info"].includes(reason);
+  const validationMessage = activeFollowUp
+    ? "A follow-up is already active. Continue in the existing thread."
+    : !message.trim()
+      ? "Please add a short note explaining your request."
+      : requiresStructuredUpdate && fieldsRequested.length === 0
+        ? reason === "Correction needed"
+          ? "Select at least one field that you want to correct."
+          : "Select the information or evidence that you want to add."
+        : !isStaff && evidenceSelected && !file
+          ? "Attach an evidence file for the selected Evidence/attachments field."
+          : requiresStructuredUpdate &&
+              fieldsRequested.some((field) => field !== "evidence.files") &&
+              pendingChanges.length === 0
+            ? reason === "Correction needed"
+              ? "The selected values still match the case. Edit at least one field before submitting."
+              : "Enter new information in at least one selected field before submitting."
+            : !isStaff && reason === "Other" && !messageCustomized
+              ? "Please replace the suggested text with a description of your request."
+            : "";
+  const submitGuidance = activeFollowUp
+    ? "Continue in the existing follow-up thread."
+    : validationMessage;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -60,8 +176,22 @@ export function FollowUpComposer({
 
   if (!open) return null;
 
-  async function submit(event) {
+  function requestSubmit(event) {
     event.preventDefault();
+    setError("");
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+    const fieldErrors = validateAmendmentFields(fieldsRequested, editedValues);
+    if (!isStaff && Object.keys(fieldErrors).length) {
+      setError(Object.values(fieldErrors)[0]);
+      return;
+    }
+    setConfirmOpen(true);
+  }
+
+  async function submit() {
     setSubmitting(true);
     setError("");
     try {
@@ -69,7 +199,26 @@ export function FollowUpComposer({
       form.append("type", isStaff ? "officer_clarification_request" : "user_change_request");
       if (!isStaff) form.append("reason_category", reason);
       form.append("message", message);
+      form.append("fields_requested", JSON.stringify(fieldsRequested));
       if (isStaff) form.append("blocks_processing", String(blocksProcessing));
+      if (!isStaff && fieldsRequested.length > 0) {
+        const validationErrors = validateAmendmentFields(fieldsRequested, editedValues);
+        if (Object.keys(validationErrors).length) {
+          throw new Error(Object.values(validationErrors)[0]);
+        }
+        const changes = buildFieldChanges(
+          fieldsRequested,
+          buildAmendmentValues(reportData),
+          editedValues
+        );
+        if (!changes.length && !evidenceSelected) {
+          throw new Error("Change at least one selected field before submitting.");
+        }
+        if (changes.length) form.append("field_changes", JSON.stringify(changes));
+      }
+      if (evidenceSelected && !isStaff && !file) {
+        throw new Error("Attach at least one evidence file.");
+      }
       if (file) form.append("file", file);
 
       const response = await fetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, {
@@ -81,9 +230,12 @@ export function FollowUpComposer({
       if (!response.ok) throw new Error(body.error || "Failed to create follow-up.");
       setMessage("");
       setFile(null);
+      setFieldsRequested([]);
+      setConfirmOpen(false);
       onCreated?.(body.data);
       onClose();
     } catch (submitError) {
+      setConfirmOpen(false);
       setError(submitError.message);
     } finally {
       setSubmitting(false);
@@ -91,7 +243,8 @@ export function FollowUpComposer({
   }
 
   return (
-    <div className={styles.overlay} onMouseDown={() => !submitting && onClose()}>
+    <>
+    <div className={styles.overlay} onMouseDown={() => !submitting && !confirmOpen && onClose()}>
       <div className={styles.modal} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <div>
@@ -113,34 +266,123 @@ export function FollowUpComposer({
           </div>
         )}
 
-        <form onSubmit={submit}>
+        <form onSubmit={requestSubmit}>
           {!isStaff && (
             <label className={styles.field}>
               <span>Reason</span>
-              <select value={reason} onChange={(e) => setReason(e.target.value)}>
-                <option>Correction needed</option>
-                <option>Additional info</option>
-                <option>Other</option>
+              <select
+                value={reason}
+                onChange={(e) => {
+                  const nextReason = e.target.value;
+                  setReason(nextReason);
+                  setFieldsRequested([]);
+                  setFile(null);
+                  setEditedValues(buildAmendmentValues(reportData));
+                  setError("");
+                  setMessage(suggestedFollowUpMessage({
+                    isStaff,
+                    reason: nextReason,
+                    fields: [],
+                    groups: AMENDMENT_GROUPS,
+                  }));
+                  setMessageCustomized(false);
+                }}
+              >
+                {USER_REASON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
+              <small className={styles.fieldHelp}>{selectedReason?.description}</small>
+            </label>
+          )}
+          {(isStaff || availableGroups.length > 0) && (
+            <div className={styles.fieldSelection}>
+              <span className={styles.selectionLabel}>
+                {isStaff
+                  ? "Which fields need correction? (optional)"
+                  : reason === "Additional info"
+                    ? "What information would you like to add?"
+                    : "Which information would you like to correct?"}
+                {!isStaff && <span className={styles.requiredMark} aria-hidden="true"> *</span>}
+              </span>
+              <FollowUpFieldChecklist
+                groups={availableGroups}
+                selectedFields={fieldsRequested}
+              onChange={(nextFields) => {
+                setFieldsRequested(nextFields);
+                setError("");
+                if (!nextFields.includes("evidence.files")) setFile(null);
+                if (!messageCustomized) {
+                  setMessage(suggestedFollowUpMessage({
+                    isStaff,
+                    reason,
+                    fields: nextFields,
+                    groups: availableGroups,
+                  }));
+                }
+              }}
+                disabled={submitting}
+              />
+            </div>
+          )}
+          {!isStaff && reason === "Other" && (
+            <div className={styles.reasonNotice}>
+              No case fields will be edited. Describe what you need from the case team below.
+            </div>
+          )}
+          {!isStaff && fieldsRequested.some((field) => field !== "evidence.files") && (
+            <div className={styles.inlineEditor}>
+              <h3>Edit the selected information</h3>
+              <p>The current case values are prefilled below.</p>
+              <FollowUpFieldEditor
+                fields={fieldsRequested.filter((field) => field !== "evidence.files")}
+                reportData={reportData}
+                values={editedValues}
+                onChange={(nextValues) => {
+                  setEditedValues(nextValues);
+                  setError("");
+                }}
+                showActions={false}
+              />
+            </div>
+          )}
+          {evidenceSelected && (
+            <label className={styles.fileField}>
+              <FiPaperclip />
+              <span>
+                {file?.name || "Attach evidence"}
+                {!isStaff && <span className={styles.requiredMark} aria-hidden="true"> *</span>}
+                <span className={styles.fileLimit}> (max 10 MB)</span>
+              </span>
+              <input
+                type="file"
+                aria-required={!isStaff}
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] || null);
+                  setError("");
+                }}
+                accept="image/*,video/*,.pdf,.doc,.docx"
+              />
             </label>
           )}
           <label className={styles.field}>
-            <span>{isStaff ? "What needs clarification?" : "What would you like to change?"}</span>
+            <span>
+              {isStaff
+                ? "What needs clarification?"
+                : "We're here to help. Please let us know what changed so we can support you."}
+              <span className={styles.requiredMark} aria-hidden="true"> *</span>
+            </span>
             <textarea
               required
+              aria-required="true"
               maxLength={4000}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                setMessageCustomized(true);
+                setError("");
+              }}
               placeholder={isStaff ? "Be specific about the information needed…" : "Describe the correction or additional information…"}
-            />
-          </label>
-          <label className={styles.fileField}>
-            <FiPaperclip />
-            <span>{file?.name || "Attach a file (optional, max 10 MB)"}</span>
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              accept="image/*,video/*,.pdf,.doc,.docx"
             />
           </label>
           {isStaff && (
@@ -154,17 +396,43 @@ export function FollowUpComposer({
             </label>
           )}
           {error && <div className={styles.error}>{error}</div>}
+          {!error && submitGuidance && <div className={styles.submitGuidance}>{submitGuidance}</div>}
           <div className={styles.actions}>
             <button type="button" className={styles.secondaryButton} disabled={submitting} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className={styles.primaryButton} disabled={submitting || !message.trim() || activeFollowUp}>
+            <button
+              type="submit"
+              className={styles.primaryButton}
+              disabled={submitting || Boolean(activeFollowUp)}
+            >
               {submitting ? "Submitting…" : isStaff ? "Send Request" : "Submit Follow-up"}
             </button>
           </div>
         </form>
       </div>
     </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title={isStaff ? "Send clarification request?" : "Submit this follow-up?"}
+        description={
+          isStaff
+            ? "The complainant will be notified about the requested information."
+            : reason === "Other"
+              ? "Your request will be sent to the case team for review."
+              : "Your changes will update the case record and be sent to the case team for review."
+        }
+        detail={
+          fieldsRequested.length
+            ? `Selected: ${selectedGroupLabels(fieldsRequested, availableGroups).join(", ")}${file ? ` · Attachment: ${file.name}` : ""}`
+            : "Message-only request"
+        }
+        confirmLabel={isStaff ? "Send Request" : "Submit Follow-up"}
+        busy={submitting}
+        onConfirm={submit}
+        onCancel={() => !submitting && setConfirmOpen(false)}
+      />
+    </>
   );
 }
 
@@ -178,7 +446,48 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [editorError, setEditorError] = useState("");
   const isOpen = ["open", "responded"].includes(request.status);
+  const requestedFields = Array.isArray(request.fields_requested) ? request.fields_requested : [];
+  const canSubmitCorrection =
+    !isStaff &&
+    isOpen &&
+    request.type === "officer_clarification_request" &&
+    request.awaiting_role === "user" &&
+    requestedFields.length > 0;
+  const evidenceRequested = requestedFields.includes("evidence.files");
+  const editableFields = requestedFields.filter((field) => field !== "evidence.files");
+
+  async function submitCorrection(changes) {
+    setBusy(true);
+    setError("");
+    setEditorError("");
+    try {
+      if (evidenceRequested && !evidenceFile) {
+        throw new Error("Attach at least one evidence file.");
+      }
+      const form = new FormData();
+      form.append("follow_up_request_id", String(request.id));
+      form.append("changes", JSON.stringify(changes));
+      if (evidenceFile) form.append("file", evidenceFile);
+      const response = await fetch(`${API_URL}/api/case_reports/${request.case_id}/fields`, {
+        method: "PATCH",
+        credentials: "include",
+        body: form,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Failed to save corrections.");
+      setEditorOpen(false);
+      setEvidenceFile(null);
+      onChanged();
+    } catch (submitError) {
+      setEditorError(submitError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function sendReply(event) {
     event.preventDefault();
@@ -273,7 +582,38 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
         })}
       </div>
 
-      {isOpen && (
+      {requestedFields.length > 0 && (
+        <div className={styles.requestedFields}>
+          <strong>Fields requested</strong>
+          <div>{requestedFields.map((field) => <span key={field}>{FIELD_LABELS[field] || field}</span>)}</div>
+        </div>
+      )}
+
+      {(request.field_changes || []).length > 0 && (
+        <div className={styles.changeList}>
+          <h4>Submitted corrections</h4>
+          {(request.field_changes || []).map((change) => (
+            <div className={styles.changeCard} key={change.id || `${change.field_key}-${change.changed_at}`}>
+              <strong>{FIELD_LABELS[change.field_key] || change.field_key}</strong>
+              <div><span>Was</span><p>{formatChangeValue(change.previous_value)}</p></div>
+              <div><span>Now</span><p>{formatChangeValue(change.new_value)}</p></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canSubmitCorrection && (
+        <div className={styles.amendmentAction}>
+          <button type="button" className={styles.primaryButton} onClick={() => {
+            setEditorError("");
+            setEditorOpen(true);
+          }}>
+            <FiEdit3 /> Update requested fields
+          </button>
+        </div>
+      )}
+
+      {isOpen && !canSubmitCorrection && (
         <form className={styles.replyForm} onSubmit={sendReply}>
           <textarea
             required
@@ -282,10 +622,13 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
             placeholder="Write a reply…"
           />
           <div className={styles.replyActions}>
-            <label className={styles.compactFile}>
-              <FiPaperclip /> {file?.name || "Attach"}
-              <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            </label>
+            {evidenceRequested && (
+              <label className={styles.compactFile}>
+                <FiPaperclip /> {file?.name || "Attach evidence"}
+                <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              </label>
+            )}
+            {!reply.trim() && <span className={styles.replyGuidance}>Write a reply to enable sending.</span>}
             <button className={styles.primaryButton} disabled={busy || !reply.trim()}>
               <FiSend /> {busy ? "Sending…" : "Reply"}
             </button>
@@ -303,8 +646,67 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
           </button>
         </div>
       )}
+      {editorOpen && (
+        <div className={styles.overlay} onMouseDown={() => !busy && setEditorOpen(false)}>
+          <div className={`${styles.modal} ${styles.editorModal}`} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h2>Update requested information</h2>
+                <p>Only the fields tagged by the case officer are shown.</p>
+              </div>
+              <button type="button" className={styles.iconButton} onClick={() => setEditorOpen(false)} aria-label="Close"><FiX /></button>
+            </div>
+            {evidenceRequested && (
+              <label className={styles.fileField}>
+                <FiPaperclip />
+                <span>
+                  {evidenceFile?.name || "Attach evidence"}
+                  <span className={styles.requiredMark} aria-hidden="true"> *</span>
+                  <span className={styles.fileLimit}> (max 10 MB)</span>
+                </span>
+                <input
+                  type="file"
+                  required
+                  aria-required="true"
+                  onChange={(e) => {
+                    setEvidenceFile(e.target.files?.[0] || null);
+                    setEditorError("");
+                  }}
+                  accept="image/*,video/*,.pdf,.doc,.docx"
+                />
+              </label>
+            )}
+            {editorError && <div className={styles.error}>{editorError}</div>}
+            {!editorError && evidenceRequested && !evidenceFile && (
+              <div className={styles.submitGuidance}>Attach the requested evidence before submitting.</div>
+            )}
+            <FollowUpFieldEditor
+              fields={editableFields}
+              reportData={request.report_data}
+              submitting={busy}
+              onSubmit={submitCorrection}
+              submitLabel={evidenceRequested ? "Submit correction and evidence" : "Save corrections"}
+              allowEmpty={evidenceRequested}
+            />
+          </div>
+        </div>
+      )}
     </article>
   );
+}
+
+function formatChangeValue(value) {
+  if (value === null || value === undefined || value === "") return "Not provided";
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "None";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.length ? parsed.join(", ") : "None";
+    } catch (_) {}
+  }
+  return String(value);
 }
 
 export default function FollowUpsPanel({
@@ -313,7 +715,9 @@ export default function FollowUpsPanel({
   isStaff,
   canManage = isStaff,
   currentUserId,
+  reportData,
   onSummaryChange,
+  onCaseChanged,
 }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -391,7 +795,10 @@ export default function FollowUpsPanel({
             request={request}
             currentUserId={currentUserId}
             isStaff={canManage}
-            onChanged={load}
+            onChanged={() => {
+              load();
+              onCaseChanged?.();
+            }}
           />
         ))}
       </div>
@@ -401,6 +808,7 @@ export default function FollowUpsPanel({
         caseId={caseId}
         isStaff={isStaff}
         activeFollowUp={activeFollowUp}
+        reportData={reportData}
         onCreated={load}
       />
     </section>

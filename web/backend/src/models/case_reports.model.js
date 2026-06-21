@@ -136,12 +136,38 @@ async function getCaseById(caseReportId) {
     ? `${assignment.case_officers.users.first_name} ${assignment.case_officers.users.last_name}`.trim()
     : null
 
+  const { data: evidenceRows, error: evidenceError } = await supabase
+    .from('evidences')
+    .select('*')
+    .eq('case_report_id', caseReportId)
+  if (evidenceError) {
+    console.warn('[getCaseById] Evidence metadata unavailable:', evidenceError.message)
+  }
+
+  let evidences = evidenceRows || []
+  const evidencePaths = evidences.map((item) => item.file_path).filter(Boolean)
+  if (evidencePaths.length > 0) {
+    const { data: signedRows, error: signedError } = await supabase.storage
+      .from('case-evidence')
+      .createSignedUrls(evidencePaths, 60 * 60)
+    if (signedError) {
+      console.warn('[getCaseById] Evidence URLs unavailable:', signedError.message)
+    } else {
+      const urlByPath = new Map((signedRows || []).map((item) => [item.path, item.signedUrl]))
+      evidences = evidences.map((item) => ({
+        ...item,
+        url: urlByPath.get(item.file_path) || null,
+      }))
+    }
+  }
+
   const followUpSummary = await getFollowUpSummary([caseReportId])
 
   return {
     ...normalizedReport,
     complainant_user_id: complainant?.user_id || null,
     assigned_officer:    officerName,
+    evidences,
     follow_up_summary:    followUpSummary[caseReportId] || null,
     ...merged,
   }

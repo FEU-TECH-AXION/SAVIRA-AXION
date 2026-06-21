@@ -3,17 +3,35 @@ const supabase = require('../config/supabase')
 const ACTIVE_STATUSES = ['open', 'responded']
 
 async function getCaseAccess(caseId, userId) {
-  const { data: user, error: userError } = await supabase
+  let { data: user, error: userError } = await supabase
     .from('users')
     .select('user_id, email, first_name, last_name, roles(role_name)')
     .eq('user_id', userId)
     .maybeSingle()
+  if (userError) {
+    const fallback = await supabase
+      .from('users')
+      .select('user_id, email, first_name, last_name, role_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (fallback.error) throw userError
+    user = fallback.data
+    if (user?.role_id) {
+      const { data: role } = await supabase
+        .from('roles')
+        .select('role_name')
+        .eq('role_id', user.role_id)
+        .maybeSingle()
+      user.roles = role || null
+    }
+    userError = null
+  }
   if (userError) throw userError
   if (!user) return null
 
   const { data: report, error: reportError } = await supabase
     .from('case_reports')
-    .select('case_report_id, case_status_id, complainant_id')
+    .select('*')
     .eq('case_report_id', caseId)
     .eq('is_current', true)
     .maybeSingle()
@@ -49,32 +67,127 @@ async function createRequest(payload) {
   return data
 }
 
+async function createRequestWithChanges(payload, changes) {
+  const { data, error } = await supabase.rpc('create_follow_up_with_field_changes', {
+    p_request: payload,
+    p_changes: changes,
+  })
+  if (error) throw error
+  return Array.isArray(data) ? data[0] : data
+}
+
+async function applyFieldChanges(requestId, caseId, userId, changes, message) {
+  const { data, error } = await supabase.rpc('apply_case_field_changes', {
+    p_follow_up_request_id: requestId,
+    p_case_id: caseId,
+    p_changed_by_user_id: userId,
+    p_changes: changes,
+    p_system_message: message,
+  })
+  if (error) throw error
+  return data
+}
+
 async function listByCase(caseId) {
   const { data, error } = await supabase
     .from('follow_up_requests')
-    .select(`
-      *,
-      initiator:users!follow_up_requests_initiated_by_user_id_fkey(
-        user_id, first_name, last_name
-      ),
-      resolver:users!follow_up_requests_resolved_by_user_id_fkey(
-        user_id, first_name, last_name
-      ),
-      follow_up_messages(
-        *,
-        sender:users!follow_up_messages_sender_user_id_fkey(
-          user_id, first_name, last_name
-        )
-      )
-    `)
+    .select('*')
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
   if (error) throw error
 
-  return (data || []).map((request) => ({
+  const requestIds = (data || []).map((request) => request.id)
+  const userIds = new Set()
+  for (const request of data || []) {
+    if (request.initiated_by_user_id) userIds.add(request.initiated_by_user_id)
+    if (request.resolved_by_user_id) userIds.add(request.resolved_by_user_id)
+  }
+
+  let messages = []
+  if (requestIds.length > 0) {
+    try {
+      const { data: messageRows, error: messageError } = await supabase
+        .from('follow_up_messages')
+        .select('*')
+        .in('follow_up_request_id', requestIds)
+        .order('created_at', { ascending: true })
+      if (messageError) {
+        console.warn('[listByCase] Follow-up messages unavailable:', messageError.message)
+      } else {
+        messages = messageRows || []
+        for (const message of messages) {
+          if (message.sender_user_id) userIds.add(message.sender_user_id)
+        }
+      }
+    } catch (messageError) {
+      console.warn('[listByCase] Follow-up messages unavailable:', messageError.message)
+    }
+  }
+
+  let usersById = new Map()
+  if (userIds.size > 0) {
+    try {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, first_name, last_name')
+        .in('user_id', [...userIds])
+      if (usersError) {
+        console.warn('[listByCase] Follow-up participant names unavailable:', usersError.message)
+      } else {
+        usersById = new Map((users || []).map((user) => [user.user_id, user]))
+      }
+    } catch (usersError) {
+      console.warn('[listByCase] Follow-up participant names unavailable:', usersError.message)
+    }
+  }
+
+  const messagesByRequest = new Map()
+  for (const message of messages) {
+    const current = messagesByRequest.get(message.follow_up_request_id) || []
+    current.push({
+      ...message,
+      sender: usersById.get(message.sender_user_id) || null,
+    })
+    messagesByRequest.set(message.follow_up_request_id, current)
+  }
+
+  const requests = (data || []).map((request) => ({
     ...request,
-    follow_up_messages: [...(request.follow_up_messages || [])]
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+    initiator: usersById.get(request.initiated_by_user_id) || null,
+    resolver: usersById.get(request.resolved_by_user_id) || null,
+    follow_up_messages: messagesByRequest.get(request.id) || [],
+    field_changes: [],
+  }))
+
+  if (requests.length === 0) return requests
+
+  let changes = []
+  try {
+    const result = await supabase
+      .from('field_changes')
+      .select('id, follow_up_request_id, field_key, previous_value, new_value, changed_by_user_id, changed_at')
+      .in('follow_up_request_id', requests.map((request) => request.id))
+      .order('changed_at', { ascending: true })
+    if (result.error) {
+      console.warn('[listByCase] Field-change audit unavailable:', result.error.message)
+      return requests
+    }
+    changes = result.data || []
+  } catch (changesError) {
+    console.warn('[listByCase] Field-change audit unavailable:', changesError.message)
+    return requests
+  }
+
+  const changesByRequest = new Map()
+  for (const change of changes) {
+    const current = changesByRequest.get(change.follow_up_request_id) || []
+    current.push(change)
+    changesByRequest.set(change.follow_up_request_id, current)
+  }
+
+  return requests.map((request) => ({
+    ...request,
+    field_changes: changesByRequest.get(request.id) || [],
   }))
 }
 
@@ -109,6 +222,16 @@ async function addMessage(payload, awaitingRole) {
   return data
 }
 
+async function addMessageRecord(payload) {
+  const { data, error } = await supabase
+    .from('follow_up_messages')
+    .insert([payload])
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 async function updateStatus(id, status, resolvedByUserId) {
   const terminal = ['resolved', 'rejected'].includes(status)
   const updates = {
@@ -132,8 +255,11 @@ module.exports = {
   ACTIVE_STATUSES,
   getCaseAccess,
   createRequest,
+  createRequestWithChanges,
+  applyFieldChanges,
   listByCase,
   getRequest,
   addMessage,
+  addMessageRecord,
   updateStatus,
 }

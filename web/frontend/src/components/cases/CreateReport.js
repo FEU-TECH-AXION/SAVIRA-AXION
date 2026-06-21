@@ -205,7 +205,7 @@ function WizardStepper({ current }) {
 }
 
 // ── Shared field components ───────────────────────────────────────────────────
-function Field({
+export function Field({
   label,
   children,
   required,
@@ -238,7 +238,7 @@ function Field({
   );
 }
 
-function Input({ error, ...props }) {
+export function Input({ error, ...props }) {
   return (
     <input
       className={`${styles.input} ${
@@ -250,7 +250,7 @@ function Input({ error, ...props }) {
   );
 }
 
-function Select({ children, error, ...props }) {
+export function Select({ children, error, ...props }) {
   return (
     <select
       className={`${styles.select} ${
@@ -264,7 +264,7 @@ function Select({ children, error, ...props }) {
   );
 }
 
-function RadioGroup({ name, options, value, onChange, error }) {
+export function RadioGroup({ name, options, value, onChange, error }) {
   return (
     <div className={`${styles.radioGroup} ${error ? styles.radioGroupError : ""}`}>
       {options.map((opt) => (
@@ -323,7 +323,7 @@ function validateConsentStep(data, consents) {
   return errors;
 }
 
-function validateStep0(data) {
+export function validateStep0(data) {
   const errors = {};
 
   if (!data.age)           errors.age           = "Age is required.";
@@ -367,7 +367,7 @@ function validateStep0(data) {
   return errors;
 }
 
-function validateStep1(data) {
+export function validateStep1(data) {
   const errors = {};
 
   if (!data.date)

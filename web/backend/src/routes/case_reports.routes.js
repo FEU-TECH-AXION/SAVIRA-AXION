@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
-const { createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
+const { amendCaseFields, createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -15,6 +15,7 @@ router.post('/submit', verifyToken, upload.array('files', 10), submitReport);
 
 router.get('/:id/follow-ups', verifyToken, listFollowUps);
 router.post('/:id/follow-ups', verifyToken, upload.single('file'), createFollowUp);
+router.patch('/:id/fields', verifyToken, upload.single('file'), amendCaseFields);
 router.post('/:id/withdraw', verifyToken, withdrawCase);
 router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
 router.get('/:id/nlp', verifyToken, getNLPAnalysis); 

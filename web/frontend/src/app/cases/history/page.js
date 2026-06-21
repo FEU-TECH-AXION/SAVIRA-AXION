@@ -281,10 +281,12 @@ export default function ReportHistoryPage() {
         </div>
       )}
       <FollowUpComposer
+        key={followUpReport?.id || "closed-follow-up"}
         open={Boolean(followUpReport)}
         onClose={() => setFollowUpReport(null)}
         caseId={followUpReport?.id}
         isStaff={false}
+        reportData={followUpReport?.reportData}
         activeFollowUp={
           followUpReport?.followUpSummary?.type === "user_change_request" &&
           ["open", "responded"].includes(followUpReport?.followUpSummary?.status)

@@ -1450,6 +1450,10 @@ function CaseDetailsTab({ caseData, isStaff }) {
     .map((person) => person.name)
     .filter(Boolean)
     .join(", ");
+  const requestedOutcomes = Array.isArray(caseData.requestedOutcome)
+    ? caseData.requestedOutcome
+    : caseData.requestedOutcome ? [caseData.requestedOutcome] : [];
+  const evidences = Array.isArray(caseData.evidences) ? caseData.evidences : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -1511,6 +1515,34 @@ function CaseDetailsTab({ caseData, isStaff }) {
           <p className={styles.detailKey}>Description</p>
           <p className={styles.descriptionVal}>{caseData.description}</p>
         </div>
+        <div style={{ marginTop: "1rem" }}>
+          <p className={styles.detailKey}>Requested Action / Outcome</p>
+          <p className={styles.descriptionVal}>
+            {requestedOutcomes.length ? requestedOutcomes.join(", ") : "—"}
+          </p>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionHeadingText}>Supporting Evidence</h2>
+        {evidences.length === 0 ? (
+          <p className={styles.descriptionVal}>No evidence files submitted.</p>
+        ) : (
+          <div className={styles.detailGrid}>
+            {evidences.map((evidence, index) => (
+              <div key={evidence.id || evidence.evidence_id || evidence.file_path || index} className={styles.detailItem}>
+                <p className={styles.detailKey}>{evidence.evidence_type || "File"}</p>
+                {evidence.url ? (
+                  <a href={evidence.url} target="_blank" rel="noreferrer" className={styles.detailVal}>
+                    {evidence.original_name || "View evidence"}
+                  </a>
+                ) : (
+                  <p className={styles.detailVal}>{evidence.original_name || "Evidence file"}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Perpetrator Information */}
@@ -1705,6 +1737,8 @@ export default function ViewCase() {
           assignedOfficer:      data.assigned_officer || null,
           dateSubmitted:        new Date(data.created_at).toLocaleDateString("en-PH"),
           description:          data.incident_description || "—",
+          requestedOutcome:     data.action_requested || [],
+          evidences:            data.evidences || [],
           incidentLocationType: data.incident_location_type || null,
           incidentCity:         data.incident_city,
           incidentLocation:     data.incident_location,

@@ -66,6 +66,7 @@ export function normalizeReport(report) {
   const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
 
   return {
+    reportData: report,
     id,
     caseId: report.caseId || `${year}-${String(id).padStart(3, "0")}`,
     statusName: getStatusName(report),
