@@ -642,6 +642,18 @@ export default function ScreeningQuestionsPage() {
     setShowQuestionForm(false);
   }
 
+  function requestCancelEditing() {
+    setConfirmDialog({
+      type: "cancel-editing",
+      title: "Discard unpublished changes?",
+      description:
+        "Any questions, sections, ordering, visibility, or wording changes made in this draft will be lost.",
+      detail: "The current published version will not be affected.",
+      tone: "danger",
+      confirmLabel: "Discard changes",
+    });
+  }
+
   function addQuestion(question) {
     if (!draftCategories.includes(question.category)) {
       setDraftCategories((current) => [...current, question.category]);
@@ -878,6 +890,11 @@ export default function ScreeningQuestionsPage() {
       confirmRemoveQuestion(confirmDialog.target);
       return;
     }
+    if (confirmDialog.type === "cancel-editing") {
+      setConfirmDialog(null);
+      cancelEditing();
+      return;
+    }
     if (confirmDialog.type === "restore") {
       confirmRestoreVersion(confirmDialog.target);
       return;
@@ -936,10 +953,32 @@ export default function ScreeningQuestionsPage() {
             {questionSet && <small>Current version: {questionSet.version}</small>}
           </div>
           <div className={styles.heroActions}>
+            {!editMode ? (
+              <Tooltip text="Open editing tools without changing the live version" position="bottom">
+                <button
+                  type="button"
+                  className={styles.heroPrimary}
+                  onClick={() => beginEditing(false)}
+                  disabled={loading}
+                >
+                  <FiEdit2 /> Edit
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip text="Discard all unpublished changes" position="bottom">
+                <button
+                  type="button"
+                  className={styles.heroSecondary}
+                  onClick={requestCancelEditing}
+                >
+                  <FiX /> Cancel Editing
+                </button>
+              </Tooltip>
+            )}
             <Tooltip text="Add a question to a new unpublished draft" position="bottom">
               <button
                 type="button"
-                className={styles.heroPrimary}
+                className={styles.heroSecondary}
                 onClick={() => {
                   setQuestionFormCategory("");
                   if (editMode) setShowQuestionForm(true);
@@ -962,28 +1001,6 @@ export default function ScreeningQuestionsPage() {
                 <FiClock /> Version History
               </button>
             </Tooltip>
-            {!editMode ? (
-              <Tooltip text="Open editing tools without changing the live version" position="bottom">
-                <button
-                  type="button"
-                  className={styles.heroSecondary}
-                  onClick={() => beginEditing(false)}
-                  disabled={loading}
-                >
-                  <FiEdit2 /> Edit
-                </button>
-              </Tooltip>
-            ) : (
-              <Tooltip text="Discard all unpublished changes" position="bottom">
-                <button
-                  type="button"
-                  className={styles.heroSecondary}
-                  onClick={cancelEditing}
-                >
-                  <FiX /> Cancel Editing
-                </button>
-              </Tooltip>
-            )}
           </div>
         </section>
 
