@@ -208,7 +208,7 @@ function Modal({ open, onClose, title, children, wide }) {
       >
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{title}</h2>
-          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close status dialog"><FiX /></button>
         </div>
         <div className={styles.modalBody}>{children}</div>
       </div>

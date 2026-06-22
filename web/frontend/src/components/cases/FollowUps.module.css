@@ -8,11 +8,12 @@
 .primaryButton, .secondaryButton, .rejectButton, .resolveButton, .iconButton {
   border: 0; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 700;
 }
-.primaryButton, .resolveButton { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; background: #037f81; color: white; padding: .65rem 1rem; }
+.primaryButton, .resolveButton { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; background: #037f81; color: white; }
+.primaryButton { font-size: .8rem; padding: .5rem .78rem; }
 .primaryButton:disabled, .resolveButton:disabled, .rejectButton:disabled { cursor: not-allowed; opacity: .5; }
-.secondaryButton { background: #f3f4f6; color: #374151; padding: .65rem 1rem; }
-.rejectButton { background: #fee2e2; color: #991b1b; padding: .55rem .9rem; }
-.resolveButton { padding: .55rem .9rem; }
+.secondaryButton { background: #f3f4f6; color: #374151; font-size: .8rem; padding: .5rem .78rem; }
+.rejectButton { background: #fee2e2; color: #991b1b; font-size: .78rem; padding: .42rem .68rem; }
+.resolveButton { font-size: .78rem; padding: .42rem .68rem; }
 .badge { display: inline-flex; align-items: center; border-radius: 999px; font-size: .72rem; font-weight: 800; padding: .25rem .65rem; white-space: nowrap; }
 .badge_pending { background: #fef3c7; color: #92400e; }
 .badge_action { background: #fee2e2; color: #991b1b; }
@@ -36,7 +37,7 @@
 .replyActions { margin-top: .65rem; }
 .compactFile, .fileField { display: inline-flex; align-items: center; gap: .45rem; color: #037f81; cursor: pointer; font-size: .82rem; font-weight: 700; }
 .compactFile input, .fileField input { display: none; }
-.resolveActions { border-top: 1px solid #e5e7eb; justify-content: flex-end; padding: .8rem 1rem; }
+.resolveActions { border-top: 1px solid #e5e7eb; gap: .5rem; justify-content: flex-end; padding: .65rem .85rem; }
 .empty { border: 1px dashed #d1d5db; border-radius: 10px; color: #6b7280; margin: 0; padding: 1.2rem; text-align: center; }
 .error, .warning { border-radius: 8px; font-size: .83rem; margin: .75rem 0; padding: .7rem .85rem; }
 .error { background: #fee2e2; color: #991b1b; }

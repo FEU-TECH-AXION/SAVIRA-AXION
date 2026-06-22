@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { FaCheckCircle } from "react-icons/fa";
 import { IoIosInformationCircle, IoIosWarning, IoIosClose } from "react-icons/io";
+import Tooltip from "@/components/ui/Tooltip";
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
 //
@@ -297,9 +298,13 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
       <div className={styles.calPanel}>
         {/* Month navigation */}
         <div className={styles.calPanelHeader}>
-          <button className={styles.calNavBtn} onClick={prevMonth}>‹</button>
+          <Tooltip text="Previous month">
+            <button className={styles.calNavBtn} onClick={prevMonth} aria-label="Previous month">‹</button>
+          </Tooltip>
           <span className={styles.calMonthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</span>
-          <button className={styles.calNavBtn} onClick={nextMonth}>›</button>
+          <Tooltip text="Next month">
+            <button className={styles.calNavBtn} onClick={nextMonth} aria-label="Next month">›</button>
+          </Tooltip>
         </div>
 
         {/* Day-of-week headers */}
@@ -376,7 +381,9 @@ function Modal({ open, onClose, title, children, wide }) {
       >
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{title}</h2>
-          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
+          <Tooltip text="Close dialog">
+            <button className={styles.modalClose} onClick={onClose} aria-label="Close dialog"><FiX /></button>
+          </Tooltip>
         </div>
         <div className={styles.modalBody}>{children}</div>
       </div>
@@ -934,7 +941,9 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
       <div className={styles.modalBox}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Reschedule Interview</h3>
-          <button className={styles.modalClose} onClick={onClose} aria-label="Close"><IoIosClose /></button>
+          <Tooltip text="Close dialog">
+            <button className={styles.modalClose} onClick={onClose} aria-label="Close dialog"><IoIosClose /></button>
+          </Tooltip>
         </div>
         <div className={styles.modalBody}>
           <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>

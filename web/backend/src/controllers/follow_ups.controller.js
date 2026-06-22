@@ -5,7 +5,7 @@ const FollowUps = require('../models/follow_ups.model')
 const TERMINAL_CASE_STATUSES = new Set([10, 11, 12, 13])
 const ALLOWED_TYPES = new Set(['user_change_request', 'officer_clarification_request'])
 const ALLOWED_REASONS = new Set(['Correction needed', 'Additional info', 'Other'])
-const ALLOWED_STATUS_UPDATES = new Set(['resolved', 'rejected'])
+const ALLOWED_STATUS_UPDATES = new Set(['open', 'resolved', 'rejected'])
 const ATTACHMENT_BUCKET = 'case-evidence'
 const FIELD_TO_COLUMN = new Map([
   ['complainant.contactNumber', 'contact_number'],
@@ -22,6 +22,8 @@ const FIELD_TO_COLUMN = new Map([
   ['incident.perpetratorOccupation', 'perpetrator_occupation'],
   ['incident.perpetratorRelationship', 'perpetrator_relationship'],
   ['incident.perpetratorGender', 'perpetrator_gender'],
+  ['incident.perpetratorUnknownGender', 'perpetrator_unknown_gender'],
+  ['incident.perpetratorUnknownAppearance', 'perpetrator_unknown_appearance'],
   ['incident.witnesses', 'has_witnesses'],
   ['incident.witnessName', 'witness_name'],
   ['incident.witnessContact', 'witness_contact'],
@@ -32,6 +34,11 @@ const FIELD_TO_COLUMN = new Map([
   ['incident.policeStation', 'police_station'],
 ])
 const EVIDENCE_FIELD = 'evidence.files'
+const RESOLUTION_MESSAGES = {
+  open: 'This follow-up has been reopened by the case team. You may continue the conversation in this thread.',
+  resolved: 'The follow-up has been reviewed and the necessary action has been completed. This request is now marked as resolved.',
+  rejected: 'The follow-up has been reviewed, but the requested action could not be approved. This request is now closed.',
+}
 
 function actorId(req) {
   return req.user?.id || req.user?.user_id
@@ -204,6 +211,12 @@ async function createFollowUp(req, res) {
     if (type === 'officer_clarification_request' && !access.canManageFollowUps) {
       return res.status(403).json({ error: 'Only authorized staff can request clarification.' })
     }
+    const activeRequest = await FollowUps.getActiveRequest(caseId, type)
+    if (activeRequest) {
+      return res.status(409).json({
+        error: 'A follow-up of this type is already open. Continue in the existing thread.',
+      })
+    }
 
     const evidenceRequested = fieldsRequested.includes(EVIDENCE_FIELD)
     if (req.file && !evidenceRequested) {
@@ -216,6 +229,17 @@ async function createFollowUp(req, res) {
     if (evidenceRequested && req.file) {
       await recordCaseEvidence(caseId, userId, req.file, attachment)
     }
+    const changes = type === 'user_change_request'
+      ? normalizeChanges(req.body.field_changes, fieldsRequested)
+      : []
+    const submittedFields = type === 'user_change_request'
+      ? [
+          ...new Set([
+            ...changes.map((change) => change.field_key),
+            ...(evidenceRequested ? [EVIDENCE_FIELD] : []),
+          ]),
+        ]
+      : fieldsRequested
     const requestPayload = {
       case_id: caseId,
       initiated_by_user_id: userId,
@@ -226,12 +250,9 @@ async function createFollowUp(req, res) {
       awaiting_role: type === 'officer_clarification_request' ? 'user' : 'officer',
       blocks_processing: type === 'officer_clarification_request' &&
         String(blocks_processing) === 'true',
-      fields_requested: fieldsRequested,
+      fields_requested: submittedFields,
       ...attachment,
     }
-    const changes = type === 'user_change_request'
-      ? normalizeChanges(req.body.field_changes, fieldsRequested)
-      : []
     if (
       type === 'user_change_request' &&
       fieldsRequested.some((field) => field !== EVIDENCE_FIELD) &&
@@ -246,7 +267,9 @@ async function createFollowUp(req, res) {
     return res.status(201).json({ data: request })
   } catch (error) {
     if (error?.code === '23505') {
-      return res.status(409).json({ error: 'A follow-up of this type is already in progress.' })
+      return res.status(409).json({
+        error: 'This closed follow-up is still covered by an outdated database uniqueness rule. Apply the follow-up lifecycle migration, then try again.',
+      })
     }
     if ([
       'Invalid fields requested.',
@@ -294,9 +317,7 @@ async function amendCaseFields(req, res) {
     if (!request || Number(request.case_id) !== caseId) {
       return res.status(404).json({ error: 'Follow-up not found.' })
     }
-    if (!FollowUps.ACTIVE_STATUSES.includes(request.status)) {
-      return res.status(409).json({ error: 'This follow-up is already closed.' })
-    }
+    const isActive = FollowUps.ACTIVE_STATUSES.includes(request.status)
     if (request.type !== 'officer_clarification_request' || request.awaiting_role !== 'user') {
       return res.status(409).json({ error: 'This follow-up is not awaiting a complainant correction.' })
     }
@@ -371,15 +392,15 @@ async function replyToFollowUp(req, res) {
     }
 
     const attachment = await uploadAttachment(request.case_id, id, req.file)
-    const message = await FollowUps.addMessage(
-      {
-        follow_up_request_id: id,
-        sender_user_id: actorId(req),
-        message: String(req.body.message).trim(),
-        ...attachment,
-      },
-      access.isStaff ? 'user' : 'officer'
-    )
+    const payload = {
+      follow_up_request_id: id,
+      sender_user_id: actorId(req),
+      message: String(req.body.message).trim(),
+      ...attachment,
+    }
+    const message = isActive
+      ? await FollowUps.addMessage(payload, access.isStaff ? 'user' : 'officer')
+      : await FollowUps.addMessageRecord(payload)
     return res.status(201).json({ data: message })
   } catch (error) {
     console.error('[replyToFollowUp]', error.message)
@@ -394,13 +415,41 @@ async function updateFollowUp(req, res) {
     if (!ALLOWED_STATUS_UPDATES.has(status)) return res.status(400).json({ error: 'Invalid status.' })
     const request = await FollowUps.getRequest(id)
     if (!request) return res.status(404).json({ error: 'Follow-up not found.' })
+    const isActive = FollowUps.ACTIVE_STATUSES.includes(request.status)
+    if (status === 'open' && isActive) {
+      return res.status(409).json({ error: 'This follow-up is already open.' })
+    }
+    if (status === 'open') {
+      const activeRequest = await FollowUps.getActiveRequest(request.case_id, request.type)
+      if (activeRequest && Number(activeRequest.id) !== id) {
+        return res.status(409).json({
+          error: 'Another follow-up of this type is already open. Close it before reopening this thread.',
+        })
+      }
+    }
+    if (status !== 'open' && !isActive) {
+      return res.status(409).json({ error: 'This follow-up is already closed.' })
+    }
     const access = await FollowUps.getCaseAccess(request.case_id, actorId(req))
     if (!access?.canManageFollowUps) return res.status(403).json({ error: 'Only case officers or admins can close follow-ups.' })
 
-    const updated = await FollowUps.updateStatus(id, status, actorId(req))
+    const updated = await FollowUps.updateStatusWithMessage(
+      id,
+      status,
+      actorId(req),
+      RESOLUTION_MESSAGES[status],
+      status === 'open'
+        ? request.type === 'officer_clarification_request' ? 'user' : 'officer'
+        : null
+    )
     return res.json({ data: updated })
   } catch (error) {
     console.error('[updateFollowUp]', error.message)
+    if (error?.code === '23505') {
+      return res.status(409).json({
+        error: 'Another follow-up of this type is already open.',
+      })
+    }
     return res.status(500).json({ error: 'Failed to update follow-up.' })
   }
 }

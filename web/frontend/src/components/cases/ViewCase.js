@@ -25,6 +25,7 @@ import StatusDetailsSection from "./StatusDetailsSection";
 import DetailAccordion from "./DetailAccordion";
 import PendingStatusApproval from "./PendingStatusApproval";
 import FollowUpsPanel, { FollowUpBadge, FollowUpComposer } from "./FollowUps";
+import Tooltip from "@/components/ui/Tooltip";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -240,7 +241,9 @@ function Modal({ open, onClose, title, children, wide }) {
       >
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{title}</h2>
-          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
+          <Tooltip text="Close dialog">
+            <button className={styles.modalClose} onClick={onClose} aria-label="Close dialog"><FiX /></button>
+          </Tooltip>
         </div>
         <div className={styles.modalBody}>{children}</div>
       </div>
@@ -1092,8 +1095,12 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
                 <div className={styles.noteLogHeader}>
                   <div><p className={styles.noteLogAuthor}>{log.performed_by_name || log.performed_by || actorName || "Unknown user"}</p><p className={styles.noteLogMeta}>{formatLogDate(getLogDate(log))}</p></div>
                   <div className={styles.noteLogActions}>
-                    <button type="button" className={styles.noteIconBtn} title="Edit note" aria-label="Edit note" onClick={() => { setEditingNoteId(id); setEditingNoteText(log.remarks || ""); }}><FiEdit2 /></button>
-                    <button type="button" className={`${styles.noteIconBtn} ${styles.noteIconDanger}`} title="Delete note" aria-label="Delete note" onClick={() => deleteNote(log)}><FiTrash2 /></button>
+                    <Tooltip text="Edit this internal note">
+                      <button type="button" className={styles.noteIconBtn} aria-label="Edit note" onClick={() => { setEditingNoteId(id); setEditingNoteText(log.remarks || ""); }}><FiEdit2 /></button>
+                    </Tooltip>
+                    <Tooltip text="Delete this internal note">
+                      <button type="button" className={`${styles.noteIconBtn} ${styles.noteIconDanger}`} aria-label="Delete note" onClick={() => deleteNote(log)}><FiTrash2 /></button>
+                    </Tooltip>
                   </div>
                 </div>
                 {isEditing ? (
@@ -1288,7 +1295,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1306,7 +1313,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1317,7 +1324,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
         <div style={{ marginTop: "1rem" }}>
           <p className={styles.detailKey}>Requested Action / Outcome</p>
           <p className={styles.descriptionVal}>
-            {requestedOutcomes.length ? requestedOutcomes.join(", ") : "—"}
+            {requestedOutcomes.length ? requestedOutcomes.join(", ") : "No requested outcome provided."}
           </p>
         </div>
       </section>
@@ -1345,19 +1352,26 @@ function CaseDetailsTab({ caseData, isStaff }) {
       </section>
 
       {/* Perpetrator Information */}
-      {caseData.perpetratorKnown && (
+      {(
         <section className={styles.section}>
           <h2 className={styles.sectionHeadingText}>Perpetrator Information</h2>
           <div className={styles.detailGrid}>
             {[
-              ["Name",                         caseData.perpetratorName],
-              ["Gender",                       caseData.perpetratorGender],
-              ["Occupation",                   caseData.perpetratorOccupation],
-              ["Relationship to Complainant",  caseData.perpetratorRelationship],
+              ["Known to Complainant?", caseData.perpetratorKnown ? "Yes" : "No"],
+              ...(caseData.perpetratorKnown ? [
+                ["Name", caseData.perpetratorName],
+                ["Gender of Perpetrator (as perceived)", caseData.perpetratorGender],
+                ["Occupation", caseData.perpetratorOccupation],
+                ["Relationship to Complainant", caseData.perpetratorRelationship],
+              ] : []),
+              ...(!caseData.perpetratorKnown ? [
+                ["Gender of Perpetrator (as perceived)", caseData.perpetratorUnknownGender],
+                ["Appearance or identifying details", caseData.perpetratorUnknownAppearance],
+              ] : []),
             ].map(([k, v]) => (
               <div key={k} className={styles.detailItem}>
                 <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v || "—"}</p>
+                <p className={styles.detailVal}>{v || "Not provided"}</p>
               </div>
             ))}
           </div>
@@ -1365,18 +1379,21 @@ function CaseDetailsTab({ caseData, isStaff }) {
       )}
 
       {/* Witness Information */}
-      {caseData.hasWitnesses && (
+      {(
         <section className={styles.section}>
           <h2 className={styles.sectionHeadingText}>Witness Information</h2>
           <div className={styles.detailGrid}>
             {[
-              ["Witness Name",                 caseData.witnessName],
-              ["Contact",                      caseData.witnessContact],
-              ["Relationship to Complainant",  caseData.witnessRelationship],
+              ["Are there witnesses?", caseData.hasWitnesses ? "Yes" : "No"],
+              ...(caseData.hasWitnesses ? [
+                ["Witness Name", caseData.witnessName],
+                ["Contact", caseData.witnessContact],
+                ["Relationship to Complainant", caseData.witnessRelationship],
+              ] : []),
             ].map(([k, v]) => (
               <div key={k} className={styles.detailItem}>
                 <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v || "—"}</p>
+                <p className={styles.detailVal}>{v || "Not provided"}</p>
               </div>
             ))}
           </div>
@@ -1395,7 +1412,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1419,7 +1436,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1567,7 +1584,7 @@ export default function ViewCase() {
           id:                   data.case_report_id,
           caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
           reporterId:           data.complainant_user_id,
-          region:               data.incident_province || data.incident_city || "—",
+          region:               data.incident_province || data.incident_city || "Not provided",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",
           assignedOfficer:      data.assigned_officer || null,
           dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH", {
@@ -1575,7 +1592,7 @@ export default function ViewCase() {
             month: "long",
             year: "numeric",
           }),
-          description:          data.incident_description || "—",
+          description:          data.incident_description || "No incident description provided.",
           requestedOutcome:     data.action_requested || [],
           evidences:            data.evidences || [],
           incidentLocationType: data.incident_location_type || null,
@@ -1583,7 +1600,7 @@ export default function ViewCase() {
           incidentLocation:     data.incident_location,
           incidentLocationDisplay: data.incident_location_type === "Online"
             ? data.incident_location || "Online"
-            : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "—",
+            : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "Not provided",
           incidentDate:         new Date(data.incident_date).toLocaleDateString("en-PH", {
             day: "numeric",
             month: "long",
@@ -1599,6 +1616,8 @@ export default function ViewCase() {
           perpetratorKnown:        data.is_perpetrator_known,
           perpetratorName:         data.perpetrator_name,
           perpetratorGender:       data.perpetrator_gender,
+          perpetratorUnknownGender: data.perpetrator_unknown_gender,
+          perpetratorUnknownAppearance: data.perpetrator_unknown_appearance,
           perpetratorOccupation:   data.perpetrator_occupation,
           perpetratorRelationship: data.perpetrator_relationship,
           hasWitnesses:            data.has_witnesses,
@@ -1761,14 +1780,14 @@ export default function ViewCase() {
 
   // Tab definitions — staff gets 4 tabs, complainant gets 2 (details + interview if eligible)
   const tabs = [
-    { id: "details", label: "Case Details", staffOnly: false },
+    { id: "details", label: "Case Details", tooltip: "View the submitted report and case information.", staffOnly: false },
     ...(showInterviewTab ? [
-      { id: "interview", label: "Interview", staffOnly: false },
+      { id: "interview", label: "Interview", tooltip: "View or manage interview scheduling and details.", staffOnly: false },
     ] : []),
-    { id: "follow-ups", label: "Follow-ups", staffOnly: false },
+    { id: "follow-ups", label: "Follow-ups", tooltip: "View clarification requests, corrections, and replies.", staffOnly: false },
     ...(isStaff ? [
-      { id: "management", label: "Case Management", staffOnly: true },
-      { id: "nlp",        label: "NLP Analysis", staffOnly: true },
+      { id: "management", label: "Case Management", tooltip: "Manage status, classification, referrals, and internal notes.", staffOnly: true },
+      { id: "nlp", label: "NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true },
     ] : []),
   ];
 
@@ -1810,24 +1829,27 @@ export default function ViewCase() {
               <FollowUpBadge summary={caseData.followUpSummary} />
               {(!isStaff || canManageFollowUps) &&
                 !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
-                <button
-                  className={styles.followUpButton}
-                  disabled={
+                <Tooltip text={
                     caseData.followUpSummary?.type ===
                       (isStaff ? "officer_clarification_request" : "user_change_request") &&
                     ["open", "responded"].includes(caseData.followUpSummary?.status)
-                  }
-                  title={
-                    caseData.followUpSummary?.type ===
-                      (isStaff ? "officer_clarification_request" : "user_change_request") &&
-                    ["open", "responded"].includes(caseData.followUpSummary?.status)
-                      ? "A follow-up is already in progress"
-                      : ""
-                  }
-                  onClick={() => setFollowUpComposerOpen(true)}
-                >
-                  {isStaff ? "Request Clarification" : "Follow Up"}
-                </button>
+                      ? "A follow-up is already in progress."
+                      : isStaff
+                        ? "Request additional information from the complainant."
+                        : "Request a correction or provide more case information."
+                }>
+                  <button
+                    className={styles.followUpButton}
+                    disabled={
+                      caseData.followUpSummary?.type ===
+                        (isStaff ? "officer_clarification_request" : "user_change_request") &&
+                      ["open", "responded"].includes(caseData.followUpSummary?.status)
+                    }
+                    onClick={() => setFollowUpComposerOpen(true)}
+                  >
+                    {isStaff ? "Request Clarification" : "Follow Up"}
+                  </button>
+                </Tooltip>
               )}
               {!isStaff && (caseData.status === "For Verification" || caseData.status === "Undergoing Review") && (
                 <button
@@ -1861,9 +1883,11 @@ export default function ViewCase() {
             gap: 0,
           }}>
             {tabs.map((t) => (
-              <button key={t.id} style={tabStyle(t.id)} onClick={() => setActiveTab(t.id)}>
-                {t.label}
-              </button>
+              <Tooltip key={t.id} text={t.tooltip} position="bottom">
+                <button style={tabStyle(t.id)} onClick={() => setActiveTab(t.id)}>
+                  {t.label}
+                </button>
+              </Tooltip>
             ))}
           </div>
 

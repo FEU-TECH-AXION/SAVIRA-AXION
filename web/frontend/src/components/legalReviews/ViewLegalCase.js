@@ -18,6 +18,7 @@ import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransit
 import StatusDetailsSection from "../cases/StatusDetailsSection";
 import DetailAccordion from "../cases/DetailAccordion";
 import PendingStatusApproval from "../cases/PendingStatusApproval";
+import Tooltip from "@/components/ui/Tooltip";
 import {
   Modal,
   FormGroup,
@@ -1204,26 +1205,26 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Actions</h2>
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
-          <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>
-            Paralegal Support
-          </button>
+          <Tooltip text="Assign or update paralegal support for this case.">
+            <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>Paralegal Support</button>
+          </Tooltip>
 
-          <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>
-            Endorse
-          </button>
+          <Tooltip text="Endorse the case to another legal service or organization.">
+            <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>Endorse</button>
+          </Tooltip>
 
-          <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>
-            Monitor
-          </button>
+          <Tooltip text="Record a monitoring update for the legal case.">
+            <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>Monitor</button>
+          </Tooltip>
 
-          <button onClick={() => document.getElementById("legal-case-calendar")?.scrollIntoView({ behavior: "smooth", block: "start" })} style={btnStyle("#037F81")}>
-            Case Calendar
-          </button>
+          <Tooltip text="Jump to this case's hearings, deadlines, and legal events.">
+            <button onClick={() => document.getElementById("legal-case-calendar")?.scrollIntoView({ behavior: "smooth", block: "start" })} style={btnStyle("#037F81")}>Case Calendar</button>
+          </Tooltip>
 
           {canOpenStatusModal && !caseData.pendingApproval && (
-            <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>
-              Update Status
-            </button>
+            <Tooltip text="Move the case to an available legal-review status.">
+              <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>Update Status</button>
+            </Tooltip>
           )}
         </div>
       </section>
@@ -1232,8 +1233,8 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         <h2 className={styles.sectionHeadingText}>Current Legal Assignment</h2>
         <div className={styles.detailGrid}>
           {[
-            ["Lawyer(s)",          (caseData.assignedLegal || []).filter((person) => person.assignment_role === "lawyer").map((person) => person.name).filter(Boolean).join(", ") || "—"],
-            ["Paralegal(s)",       (caseData.assignedLegal || []).filter((person) => person.assignment_role === "paralegal").map((person) => person.name).filter(Boolean).join(", ") || "—"],
+            ["Lawyer(s)",          (caseData.assignedLegal || []).filter((person) => person.assignment_role === "lawyer").map((person) => person.name).filter(Boolean).join(", ") || "Not assigned"],
+            ["Paralegal(s)",       (caseData.assignedLegal || []).filter((person) => person.assignment_role === "paralegal").map((person) => person.name).filter(Boolean).join(", ") || "Not assigned"],
             ["Endorsed To",        caseData.endorsedTo || caseData.endorsementStatus || "Not endorsed"],
             ["Status",             <StatusBadge status={caseData.status} />],
           ].map(([k, v]) => (
@@ -1489,7 +1490,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1507,7 +1508,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1518,7 +1519,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
         <div style={{ marginTop: "1rem" }}>
           <p className={styles.detailKey}>Requested Action / Outcome</p>
           <p className={styles.descriptionVal}>
-            {requestedOutcomes.length ? requestedOutcomes.join(", ") : "—"}
+            {requestedOutcomes.length ? requestedOutcomes.join(", ") : "No requested outcome provided."}
           </p>
         </div>
       </section>
@@ -1546,19 +1547,26 @@ function CaseDetailsTab({ caseData, isStaff }) {
       </section>
 
       {/* Perpetrator Information */}
-      {caseData.perpetratorKnown && (
+      {(
         <section className={styles.section}>
           <h2 className={styles.sectionHeadingText}>Perpetrator Information</h2>
           <div className={styles.detailGrid}>
             {[
-              ["Name",                         caseData.perpetratorName],
-              ["Gender",                       caseData.perpetratorGender],
-              ["Occupation",                   caseData.perpetratorOccupation],
-              ["Relationship to Complainant",  caseData.perpetratorRelationship],
+              ["Known to Complainant?", caseData.perpetratorKnown ? "Yes" : "No"],
+              ...(caseData.perpetratorKnown ? [
+                ["Name", caseData.perpetratorName],
+                ["Gender of Perpetrator (as perceived)", caseData.perpetratorGender],
+                ["Occupation", caseData.perpetratorOccupation],
+                ["Relationship to Complainant", caseData.perpetratorRelationship],
+              ] : []),
+              ...(!caseData.perpetratorKnown ? [
+                ["Gender of Perpetrator (as perceived)", caseData.perpetratorUnknownGender],
+                ["Appearance or identifying details", caseData.perpetratorUnknownAppearance],
+              ] : []),
             ].map(([k, v]) => (
               <div key={k} className={styles.detailItem}>
                 <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v || "—"}</p>
+                <p className={styles.detailVal}>{v || "Not provided"}</p>
               </div>
             ))}
           </div>
@@ -1566,18 +1574,21 @@ function CaseDetailsTab({ caseData, isStaff }) {
       )}
 
       {/* Witness Information */}
-      {caseData.hasWitnesses && (
+      {(
         <section className={styles.section}>
           <h2 className={styles.sectionHeadingText}>Witness Information</h2>
           <div className={styles.detailGrid}>
             {[
-              ["Witness Name",                 caseData.witnessName],
-              ["Contact",                      caseData.witnessContact],
-              ["Relationship to Complainant",  caseData.witnessRelationship],
+              ["Are there witnesses?", caseData.hasWitnesses ? "Yes" : "No"],
+              ...(caseData.hasWitnesses ? [
+                ["Witness Name", caseData.witnessName],
+                ["Contact", caseData.witnessContact],
+                ["Relationship to Complainant", caseData.witnessRelationship],
+              ] : []),
             ].map(([k, v]) => (
               <div key={k} className={styles.detailItem}>
                 <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v || "—"}</p>
+                <p className={styles.detailVal}>{v || "Not provided"}</p>
               </div>
             ))}
           </div>
@@ -1596,7 +1607,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1618,16 +1629,16 @@ function CaseDetailsTab({ caseData, isStaff }) {
               })()
             ],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
-            ["Referral Body",     caseData.referralBody || "—"],
-            ["Assigned Officer",  caseData.assignedOfficer || "—"],
+            ["Referral Body",     caseData.referralBody || "Not assigned"],
+            ["Assigned Officer",  caseData.assignedOfficer || "Not assigned"],
             ...(caseData.status === "Verified - True" || caseData.assignedParalegal || assignedParalegals
               ? [["Assigned Paralegal", assignedParalegals || caseData.assignedParalegal || "Pending assignment"]]
               : []),
-            ["Endorsement",       caseData.endorsementStatus || "—"],
+            ["Endorsement",       caseData.endorsementStatus || "Not endorsed"],
           ].map(([k, v]) => (
             <div key={k} className={styles.detailItem}>
               <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "—"}</p>
+              <p className={styles.detailVal}>{v || "Not provided"}</p>
             </div>
           ))}
         </div>
@@ -1732,11 +1743,11 @@ export default function ViewCase() {
           id:                   data.case_report_id,
           caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
           reporterId:           String(data.complainant_id),
-          region:               data.incident_province || data.incident_city || "—",
+          region:               data.incident_province || data.incident_city || "Not provided",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",
           assignedOfficer:      data.assigned_officer || null,
           dateSubmitted:        new Date(data.created_at).toLocaleDateString("en-PH"),
-          description:          data.incident_description || "—",
+          description:          data.incident_description || "No incident description provided.",
           requestedOutcome:     data.action_requested || [],
           evidences:            data.evidences || [],
           incidentLocationType: data.incident_location_type || null,
@@ -1744,12 +1755,14 @@ export default function ViewCase() {
           incidentLocation:     data.incident_location,
           incidentLocationDisplay: data.incident_location_type === "Online"
             ? data.incident_location || "Online"
-            : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "—",
+            : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "Not provided",
           incidentDate:            data.incident_date,
           incidentTime:            data.incident_time,
           perpetratorKnown:        data.is_perpetrator_known,
           perpetratorName:         data.perpetrator_name,
           perpetratorGender:       data.perpetrator_gender,
+          perpetratorUnknownGender: data.perpetrator_unknown_gender,
+          perpetratorUnknownAppearance: data.perpetrator_unknown_appearance,
           perpetratorOccupation:   data.perpetrator_occupation,
           perpetratorRelationship: data.perpetrator_relationship,
           hasWitnesses:            data.has_witnesses,
@@ -1889,10 +1902,10 @@ export default function ViewCase() {
 
   // Tab definitions — staff gets 3 tabs, complainant gets 1
   const tabs = [
-    { id: "details", label: "Case Details", staffOnly: false },
+    { id: "details", label: "Case Details", tooltip: "View the submitted report and case information.", staffOnly: false },
     ...(isStaff ? [
-      { id: "management", label: "Legal Review", staffOnly: true },
-      { id: "nlp",        label: "AI / NLP Analysis", staffOnly: true },
+      { id: "management", label: "Legal Review", tooltip: "Manage assignments, endorsements, monitoring, and legal status.", staffOnly: true },
+      { id: "nlp", label: "AI / NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true },
     ] : []),
   ];
 
@@ -1945,9 +1958,11 @@ export default function ViewCase() {
             gap: 0,
           }}>
             {tabs.map((t) => (
-              <button key={t.id} style={tabStyle(t.id)} onClick={() => setActiveTab(t.id)}>
-                {t.label}
-              </button>
+              <Tooltip key={t.id} text={t.tooltip} position="bottom">
+                <button style={tabStyle(t.id)} onClick={() => setActiveTab(t.id)}>
+                  {t.label}
+                </button>
+              </Tooltip>
             ))}
           </div>
 

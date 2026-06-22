@@ -64,7 +64,11 @@ function buildPayload(complainantId, organizationId, complainant, incident, evid
     is_anonymous:             evidence.anonymous            ?? false,
 
     perpetrator_name:         incident.perpetratorKnown === "Yes" ? incident.perpetratorName         || null : null,
-    perpetrator_gender:       incident.perpetratorKnown === "Yes" ? incident.perpetratorGender       || null : null,
+    perpetrator_gender:       incident.perpetratorKnown === "Yes" ? incident.perpetratorGender || null : null,
+    perpetrator_unknown_gender:
+      incident.perpetratorKnown === "No" ? incident.perpetratorUnknownGender || null : null,
+    perpetrator_unknown_appearance:
+      incident.perpetratorKnown === "No" ? incident.perpetratorUnknownAppearance || null : null,
     perpetrator_occupation:   incident.perpetratorKnown === "Yes" ? incident.perpetratorOccupation   || null : null,
     perpetrator_relationship: incident.perpetratorKnown === "Yes" ? incident.perpetratorRelationship || null : null,
 

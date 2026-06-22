@@ -2,7 +2,7 @@
 .checkOption { align-items: flex-start; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 9px; color: #374151; cursor: pointer; display: flex; font-size: .82rem; gap: .55rem; padding: .7rem; }
 .checkOption input { accent-color: #037f81; margin-top: .12rem; }
 .editorGrid { display: grid; gap: .2rem 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.textarea { border: 1px solid #d1d5db; border-radius: 8px; font: inherit; min-height: 125px; padding: .75rem; resize: vertical; width: 100%; }
+.textarea { border: 1px solid #d1d5db; border-radius: 8px; font: inherit; font-size: .85rem; min-height: 125px; padding: .75rem; resize: vertical; width: 100%; }
 .textarea:focus { border-color: #037f81; box-shadow: 0 0 0 3px rgba(3,127,129,.12); outline: none; }
 .outcomeGrid { display: grid; gap: .45rem; }
 .outcomeGrid label { align-items: flex-start; display: flex; font-size: .82rem; gap: .5rem; }

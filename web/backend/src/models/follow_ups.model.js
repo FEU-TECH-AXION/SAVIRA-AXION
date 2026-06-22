@@ -201,6 +201,18 @@ async function getRequest(id) {
   return data
 }
 
+async function getActiveRequest(caseId, type) {
+  const { data, error } = await supabase
+    .from('follow_up_requests')
+    .select('id, status')
+    .eq('case_id', caseId)
+    .eq('type', type)
+    .in('status', ACTIVE_STATUSES)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 async function addMessage(payload, awaitingRole) {
   const { data, error } = await supabase
     .from('follow_up_messages')
@@ -251,6 +263,48 @@ async function updateStatus(id, status, resolvedByUserId) {
   return data
 }
 
+async function updateStatusWithMessage(id, status, resolvedByUserId, message, awaitingRole = null) {
+  const { data: messageRecord, error: messageError } = await supabase
+    .from('follow_up_messages')
+    .insert([{
+      follow_up_request_id: id,
+      sender_user_id: resolvedByUserId,
+      message,
+    }])
+    .select()
+    .single()
+  if (messageError) throw messageError
+
+  try {
+    if (status === 'open') {
+      const { data, error } = await supabase
+        .from('follow_up_requests')
+        .update({
+          status: 'open',
+          awaiting_role: awaitingRole,
+          resolved_at: null,
+          resolved_by_user_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    }
+    return await updateStatus(id, status, resolvedByUserId)
+  } catch (error) {
+    const { error: cleanupError } = await supabase
+      .from('follow_up_messages')
+      .delete()
+      .eq('id', messageRecord.id)
+    if (cleanupError) {
+      console.error('[updateStatusWithMessage] Failed to remove resolution message:', cleanupError.message)
+    }
+    throw error
+  }
+}
+
 module.exports = {
   ACTIVE_STATUSES,
   getCaseAccess,
@@ -259,7 +313,9 @@ module.exports = {
   applyFieldChanges,
   listByCase,
   getRequest,
+  getActiveRequest,
   addMessage,
   addMessageRecord,
   updateStatus,
+  updateStatusWithMessage,
 }

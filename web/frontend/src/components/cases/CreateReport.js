@@ -150,21 +150,43 @@ async function searchPoliceStations(query) {
   return res.json();
 }
 
-async function searchLocations(query) {
+async function searchLocations(query, sessionToken) {
   if (!MAPBOX_TOKEN) return { features: [] };
   const search = new URLSearchParams({
+    q: query,
+    session_token: sessionToken,
     access_token: MAPBOX_TOKEN,
     country: "PH",
-    limit: "6",
+    limit: "10",
     proximity: "121.0244,14.5547",
-    autocomplete: "true",
-    types: "poi,address,place,locality,neighborhood",
+    language: "en",
   });
   const res = await fetch(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${search}`
+    `https://api.mapbox.com/search/searchbox/v1/suggest?${search}`
   );
   if (!res.ok) throw new Error("Location search failed.");
   return res.json();
+}
+
+function normalizeLocationSuggestion(feature) {
+  const properties = feature.properties || feature;
+  const name = properties.name_preferred || properties.name || feature.text;
+  if (!name) return null;
+
+  const address =
+    properties.full_address ||
+    properties.place_formatted ||
+    properties.address ||
+    feature.place_name ||
+    "";
+  const addressIncludesName = address.toLowerCase().includes(name.toLowerCase());
+
+  return {
+    id: properties.mapbox_id || feature.id || `${name}-${address}`,
+    text: name,
+    place_name: address,
+    value: address && !addressIncludesName ? `${name}, ${address}` : address || name,
+  };
 }
 
 // ── Cookie ───────────────────────────────────────────────────────
@@ -294,7 +316,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * Accepts:  09XXXXXXXXX  |  9XXXXXXXXX  |  +639XXXXXXXXX  (with/without separators)
  * Returns the cleaned string (may be partial — caller decides validity).
  */
-function normalisePhone(raw) {
+export function normalisePhone(raw) {
   // Strip everything except digits and a leading +
   let digits = raw.replace(/[^\d]/g, "");
 
@@ -899,7 +921,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
 }
 
 // ── Page 2 — Incident Details ─────────────────────────────────────────────────
-function PoliceStationTypeahead({ value, onChange }) {
+export function PoliceStationTypeahead({ value, onChange }) {
   const [suggestions, setSuggestions] = useState([]);
   const [status, setStatus] = useState("idle");
   const [isTyping, setIsTyping] = useState(false);
@@ -1062,11 +1084,12 @@ function PoliceStationTypeahead({ value, onChange }) {
   );
 }
 
-function IncidentLocationTypeahead({ value, onChange, city }) {
+export function IncidentLocationTypeahead({ value, onChange, city }) {
   const [suggestions, setSuggestions] = useState([]);
   const [status, setStatus] = useState("idle");
   const [isTyping, setIsTyping] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const sessionTokenRef = useRef(null);
 
   useEffect(() => {
     const trimmed = value.trim();
@@ -1083,13 +1106,27 @@ function IncidentLocationTypeahead({ value, onChange, city }) {
     const timer = setTimeout(async () => {
       setStatus("loading");
       try {
+        if (!sessionTokenRef.current) {
+          sessionTokenRef.current =
+            globalThis.crypto?.randomUUID?.() ||
+            `location-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
         const data = await searchLocations(
-          [trimmed, city, "Metro Manila"].filter(Boolean).join(", ")
+          [trimmed, city, "Metro Manila"].filter(Boolean).join(", "),
+          sessionTokenRef.current
         );
         if (cancelled) return;
-        setSuggestions(data.features || []);
+        const nextSuggestions = (data.suggestions || data.features || [])
+          .map(normalizeLocationSuggestion)
+          .filter(Boolean)
+          .filter(
+            (item, index, list) =>
+              index === list.findIndex((candidate) => candidate.value === item.value)
+          )
+          .slice(0, 8);
+        setSuggestions(nextSuggestions);
         setActiveIndex(-1);
-        setStatus(data.features?.length ? "idle" : "empty");
+        setStatus(nextSuggestions.length ? "idle" : "empty");
       } catch (_) {
         if (!cancelled) {
           setSuggestions([]);
@@ -1105,11 +1142,12 @@ function IncidentLocationTypeahead({ value, onChange, city }) {
   }, [city, isTyping, value]);
 
   const selectSuggestion = (feature) => {
-    onChange(feature.place_name || feature.text || "");
+    onChange(feature.value || feature.place_name || feature.text || "");
     setSuggestions([]);
     setStatus("idle");
     setIsTyping(false);
     setActiveIndex(-1);
+    sessionTokenRef.current = null;
   };
 
   const handleKeyDown = (event) => {
@@ -1142,7 +1180,10 @@ function IncidentLocationTypeahead({ value, onChange, city }) {
           onChange(event.target.value);
         }}
         onKeyDown={handleKeyDown}
-        onBlur={() => setIsTyping(false)}
+        onBlur={() => {
+          setIsTyping(false);
+          sessionTokenRef.current = null;
+        }}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={isTyping && suggestions.length > 0}
@@ -1381,7 +1422,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
       <div className={styles.formDivider} />
       {data.perpetratorKnown === "No" && (
         <div className={styles.formGrid}>
-          <Field label="Perceived Gender" hint="Optional. Share only what you remember or feel comfortable noting.">
+          <Field label="Gender of Perpetrator (as you perceive it)" hint="Optional. Share only what you remember or feel comfortable noting.">
             <Select value={data.perpetratorUnknownGender || ""} onChange={set("perpetratorUnknownGender")}>
               <option value="">Select if remembered</option>
               <option>Male</option>

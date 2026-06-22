@@ -98,7 +98,7 @@ export default function PendingStatusApproval({
           <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="pending-status-title">
             <div className={styles.header}>
               <h2 id="pending-status-title">Review Pending Status Change</h2>
-              <button type="button" className={styles.closeButton} onClick={closeModal} aria-label="Close" disabled={saving}>
+              <button type="button" className={styles.closeButton} onClick={closeModal} aria-label="Close approval dialog" disabled={saving}>
                 <FiX />
               </button>
             </div>

@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiCheck, FiEdit3, FiMessageCircle, FiPaperclip, FiSend, FiX } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import Tooltip from "@/components/ui/Tooltip";
 import FollowUpFieldEditor, {
   AMENDMENT_GROUPS,
   buildAmendmentValues,
   buildFieldChanges,
-  FIELD_LABELS,
   FollowUpFieldChecklist,
+  getFieldLabel,
   validateAmendmentFields,
 } from "./FollowUpFieldEditor";
 import styles from "./FollowUps.module.css";
@@ -195,22 +196,32 @@ export function FollowUpComposer({
     setSubmitting(true);
     setError("");
     try {
+      const changes = !isStaff
+        ? buildFieldChanges(
+            fieldsRequested,
+            buildAmendmentValues(reportData),
+            editedValues
+          )
+        : [];
+      const submittedFields = isStaff
+        ? fieldsRequested
+        : [
+            ...new Set([
+              ...changes.map((change) => change.field_key),
+              ...(evidenceSelected ? ["evidence.files"] : []),
+            ]),
+          ];
       const form = new FormData();
       form.append("type", isStaff ? "officer_clarification_request" : "user_change_request");
       if (!isStaff) form.append("reason_category", reason);
       form.append("message", message);
-      form.append("fields_requested", JSON.stringify(fieldsRequested));
+      form.append("fields_requested", JSON.stringify(submittedFields));
       if (isStaff) form.append("blocks_processing", String(blocksProcessing));
       if (!isStaff && fieldsRequested.length > 0) {
         const validationErrors = validateAmendmentFields(fieldsRequested, editedValues);
         if (Object.keys(validationErrors).length) {
           throw new Error(Object.values(validationErrors)[0]);
         }
-        const changes = buildFieldChanges(
-          fieldsRequested,
-          buildAmendmentValues(reportData),
-          editedValues
-        );
         if (!changes.length && !evidenceSelected) {
           throw new Error("Change at least one selected field before submitting.");
         }
@@ -255,9 +266,11 @@ export function FollowUpComposer({
                 : "Tell the case team what you need to correct or add."}
             </p>
           </div>
-          <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close">
-            <FiX />
-          </button>
+          <Tooltip text="Close follow-up form">
+            <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close follow-up form">
+              <FiX />
+            </button>
+          </Tooltip>
         </div>
 
         {activeFollowUp && (
@@ -447,6 +460,7 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
+  const [closeStatus, setCloseStatus] = useState(null);
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [editorError, setEditorError] = useState("");
   const isOpen = ["open", "responded"].includes(request.status);
@@ -459,6 +473,20 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
     requestedFields.length > 0;
   const evidenceRequested = requestedFields.includes("evidence.files");
   const editableFields = requestedFields.filter((field) => field !== "evidence.files");
+  const reportLocationType = buildAmendmentValues(request.report_data).incident.locationType;
+  const submittedLocationType = (request.field_changes || []).reduce(
+    (locationType, change) =>
+      change.field_key === "incident.locationType" ? change.new_value : locationType,
+    reportLocationType
+  );
+  const displayedFields = request.type === "user_change_request" && (request.field_changes || []).length
+    ? [
+        ...new Set([
+          ...(request.field_changes || []).map((change) => change.field_key),
+          ...(requestedFields.includes("evidence.files") ? ["evidence.files"] : []),
+        ]),
+      ]
+    : requestedFields;
 
   async function submitCorrection(changes) {
     setBusy(true);
@@ -526,6 +554,7 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Failed to update follow-up.");
+      setCloseStatus(null);
       onChanged();
     } catch (closeError) {
       setError(closeError.message);
@@ -582,10 +611,12 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
         })}
       </div>
 
-      {requestedFields.length > 0 && (
+      {displayedFields.length > 0 && (
         <div className={styles.requestedFields}>
-          <strong>Fields requested</strong>
-          <div>{requestedFields.map((field) => <span key={field}>{FIELD_LABELS[field] || field}</span>)}</div>
+          <strong>{request.type === "user_change_request" ? "Fields changed" : "Fields requested"}</strong>
+          <div>{displayedFields.map((field) => (
+            <span key={field}>{getFieldLabel(field, submittedLocationType)}</span>
+          ))}</div>
         </div>
       )}
 
@@ -594,7 +625,7 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
           <h4>Submitted corrections</h4>
           {(request.field_changes || []).map((change) => (
             <div className={styles.changeCard} key={change.id || `${change.field_key}-${change.changed_at}`}>
-              <strong>{FIELD_LABELS[change.field_key] || change.field_key}</strong>
+              <strong>{getFieldLabel(change.field_key, submittedLocationType)}</strong>
               <div><span>Was</span><p>{formatChangeValue(change.previous_value)}</p></div>
               <div><span>Now</span><p>{formatChangeValue(change.new_value)}</p></div>
             </div>
@@ -613,7 +644,7 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
         </div>
       )}
 
-      {isOpen && !canSubmitCorrection && (
+      {!canSubmitCorrection && (
         <form className={styles.replyForm} onSubmit={sendReply}>
           <textarea
             required
@@ -628,7 +659,13 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
                 <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </label>
             )}
-            {!reply.trim() && <span className={styles.replyGuidance}>Write a reply to enable sending.</span>}
+            {!reply.trim() && (
+              <span className={styles.replyGuidance}>
+                {isOpen
+                  ? "Write a reply to enable sending."
+                  : "This follow-up is closed, but your reply will remain in its audit trail."}
+              </span>
+            )}
             <button className={styles.primaryButton} disabled={busy || !reply.trim()}>
               <FiSend /> {busy ? "Sending…" : "Reply"}
             </button>
@@ -638,14 +675,54 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
       {error && <div className={styles.error}>{error}</div>}
       {isStaff && isOpen && (
         <div className={styles.resolveActions}>
-          <button type="button" disabled={busy} className={styles.rejectButton} onClick={() => closeThread("rejected")}>
-            Reject
-          </button>
-          <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => closeThread("resolved")}>
-            <FiCheck /> Mark Resolved
-          </button>
+          <Tooltip text="Close this follow-up because the requested action cannot be approved.">
+            <button type="button" disabled={busy} className={styles.rejectButton} onClick={() => setCloseStatus("rejected")}>
+              Reject
+            </button>
+          </Tooltip>
+          <Tooltip text="Confirm that the necessary follow-up action has been completed.">
+            <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("resolved")}>
+              <FiCheck /> Mark Resolved
+            </button>
+          </Tooltip>
         </div>
       )}
+      {isStaff && !isOpen && (
+        <div className={styles.resolveActions}>
+          <Tooltip text="Reopen this follow-up so staff can review it and update its final status again.">
+            <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("open")}>
+              Reopen Follow-up
+            </button>
+          </Tooltip>
+        </div>
+      )}
+      <ConfirmDialog
+        open={Boolean(closeStatus)}
+        title={closeStatus === "open"
+          ? "Reopen this follow-up?"
+          : closeStatus === "resolved"
+            ? "Resolve this follow-up?"
+            : "Reject this follow-up?"}
+        description={closeStatus === "open"
+          ? "This will reopen the thread and notify the complainant that the case team is reviewing it again."
+          : closeStatus === "resolved"
+            ? "This will close the follow-up and send the complainant the default resolution message."
+            : "This will close the follow-up and send the complainant the default rejection message."}
+        detail={closeStatus === "open"
+          ? "Staff can reply, reject, or mark the follow-up as resolved after reopening it."
+          : closeStatus === "resolved"
+            ? "The follow-up has been reviewed and the necessary action has been completed."
+            : "The requested action could not be approved after review."}
+        confirmLabel={closeStatus === "open"
+          ? "Reopen Follow-up"
+          : closeStatus === "resolved"
+            ? "Mark Resolved"
+            : "Reject Follow-up"}
+        tone={closeStatus === "rejected" ? "danger" : "default"}
+        busy={busy}
+        onConfirm={() => closeThread(closeStatus)}
+        onCancel={() => !busy && setCloseStatus(null)}
+      />
       {editorOpen && (
         <div className={styles.overlay} onMouseDown={() => !busy && setEditorOpen(false)}>
           <div className={`${styles.modal} ${styles.editorModal}`} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
@@ -654,7 +731,9 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
                 <h2>Update requested information</h2>
                 <p>Only the fields tagged by the case officer are shown.</p>
               </div>
-              <button type="button" className={styles.iconButton} onClick={() => setEditorOpen(false)} aria-label="Close"><FiX /></button>
+              <Tooltip text="Close correction form">
+                <button type="button" className={styles.iconButton} onClick={() => setEditorOpen(false)} aria-label="Close correction form"><FiX /></button>
+              </Tooltip>
             </div>
             {evidenceRequested && (
               <label className={styles.fileField}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FiX } from "react-icons/fi";
+import Tooltip from "@/components/ui/Tooltip";
 import styles from "./LegalReviewModals.module.css";
 
 export const ENDORSEMENT_BODIES = [
@@ -35,7 +36,9 @@ export function Modal({ open, onClose, title, children, wide }) {
       <div className={styles.modalBox} style={wide ? { maxWidth: 700 } : undefined} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{title}</h2>
-          <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close"><FiX /></button>
+          <Tooltip text="Close dialog">
+            <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close dialog"><FiX /></button>
+          </Tooltip>
         </div>
         <div className={styles.modalBody}>{children}</div>
       </div>
