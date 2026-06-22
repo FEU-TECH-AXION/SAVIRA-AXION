@@ -144,6 +144,7 @@
   border-radius: 8px;
   display: flex;
   flex: 0 0 48px;
+  font-size: 1.1rem;
   height: 48px;
   justify-content: center;
   overflow: hidden;
@@ -155,16 +156,48 @@
   width: 100%;
 }
 
-.eventItem h3 {
+.eventInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.eventInfo h3 {
   color: var(--sasha-text);
   font-size: 0.84rem;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.eventItem p {
+.eventInfo p {
+  align-items: center;
   color: var(--sasha-muted);
+  display: flex;
   font-size: 0.74rem;
+  gap: 0.35rem;
   margin: 0.2rem 0 0;
+}
+
+.eventStatus {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.eventStatus.active,
+.eventStatus.ongoing {
+  background: #e7f6ec;
+  color: #1a7f37;
+}
+
+.eventStatus.upcoming {
+  background: var(--sasha-teal-light);
+  color: var(--sasha-teal);
 }
 
 .calendar {
@@ -195,6 +228,11 @@
   font-size: 0.72rem;
   padding: 0.55rem 0.2rem;
   position: relative;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.calendar :global(.react-calendar__tile:enabled:hover) {
+  background: var(--sasha-teal-light);
 }
 
 .calendar :global(.react-calendar__tile--active) {
@@ -202,9 +240,35 @@
   color: white;
 }
 
+.calendar :global(.react-calendar__tile--active:enabled:hover) {
+  background: var(--sasha-orange);
+}
+
 .calendar :global(.react-calendar__tile--now) {
   background: var(--sasha-teal-light);
   color: var(--sasha-teal);
+  font-weight: 700;
+}
+
+.calendar :global(.react-calendar__tile--now.react-calendar__tile--active) {
+  background: var(--sasha-orange);
+  color: white;
+}
+
+.calendar :global(.react-calendar__month-view__weekdays) {
+  margin-bottom: 0.15rem;
+}
+
+.calendar :global(.react-calendar__month-view__weekdays__weekday) {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--sasha-muted);
+  text-transform: uppercase;
+}
+
+.calendar :global(.react-calendar__month-view__weekdays__weekday abbr) {
+  text-decoration: none !important;
+  cursor: default;
 }
 
 .eventDot {
@@ -223,8 +287,69 @@
   padding-top: 0.75rem;
 }
 
-.selectedEvents > h3 {
+.selectedEventsHead {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.selectedEventsHead h3 {
+  align-items: center;
   color: var(--sasha-teal);
+  display: flex;
   font-size: 0.8rem;
-  margin: 0 0 0.5rem;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.eventCount {
+  background: var(--sasha-teal-light);
+  border-radius: 999px;
+  color: var(--sasha-teal);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.45rem;
+}
+
+.clearDate {
+  background: none;
+  border: 0;
+  color: var(--sasha-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.2rem;
+  text-decoration: underline;
+}
+
+.clearDate:hover {
+  color: var(--sasha-teal);
+}
+
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.emptyState {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 0.5rem;
+  text-align: center;
+}
+
+.emptyState span {
+  font-size: 1.4rem;
+}
+
+.emptyState p {
+  color: var(--sasha-muted);
+  font-size: 0.8rem;
+  margin: 0;
 }

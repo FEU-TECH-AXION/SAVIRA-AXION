@@ -56,9 +56,9 @@ export default function DashboardEventsCard() {
     loadEvents();
   }, []);
 
-  const currentEvents = useMemo(() => {
+  const eligibleEvents = useMemo(() => {
     const now = new Date();
-    const publicEvents = events
+    return events
       .filter((event) =>
         (!event.visibility || event.visibility === "public") &&
         (!event.approvalStatus || event.approvalStatus === "approved")
@@ -72,18 +72,27 @@ export default function DashboardEventsCard() {
         const aDate = a.date ? new Date(a.date) : now;
         const bDate = b.date ? new Date(b.date) : now;
         return aDate - bDate;
-      })
-    return publicEvents.slice(0, 3);
+      });
   }, [events]);
 
+  const currentEvents = useMemo(() => eligibleEvents.slice(0, 3), [eligibleEvents]);
+
   const selectedEvents = useMemo(
-    () => currentEvents.filter((event) => {
+    () => eligibleEvents.filter((event) => {
       if (!selectedDate || !event.date) return false;
       const eventDate = new Date(`${event.date}T00:00:00`);
       return eventDate.toDateString() === selectedDate.toDateString();
     }),
-    [currentEvents, selectedDate]
+    [eligibleEvents, selectedDate]
   );
+
+  function handleDateClick(date) {
+    if (selectedDate && date.toDateString() === selectedDate.toDateString()) {
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(date);
+    }
+  }
 
   const upcomingEvent = useMemo(() => {
     const today = new Date();
@@ -106,10 +115,10 @@ export default function DashboardEventsCard() {
     : "Upcoming Event";
 
   const eventDateKeys = useMemo(
-    () => new Set(currentEvents
+    () => new Set(eligibleEvents
       .filter((event) => event.date)
       .map((event) => new Date(`${event.date}T00:00:00`).toDateString())),
-    [currentEvents]
+    [eligibleEvents]
   );
 
   return (
@@ -123,12 +132,9 @@ export default function DashboardEventsCard() {
         {error && <p className={styles.error}>{error}</p>}
         {!loading && !error && (
           <>
-            <div
-              className={styles.calendar}
-              onMouseLeave={() => setSelectedDate(null)}
-            >
+            <div className={styles.calendar}>
               <Calendar
-                onChange={setSelectedDate}
+                onChange={handleDateClick}
                 value={selectedDate}
                 locale="en-US"
                 tileContent={({ date, view }) =>
@@ -139,24 +145,54 @@ export default function DashboardEventsCard() {
               />
             </div>
             <div className={styles.selectedEvents}>
-              <h3>{displayedHeading}</h3>
+              <div className={styles.selectedEventsHead}>
+                <h3>
+                  {displayedHeading}
+                  {displayedEvents.length > 0 && (
+                    <span className={styles.eventCount}>{displayedEvents.length}</span>
+                  )}
+                </h3>
+                {selectedDate && (
+                  <button
+                    type="button"
+                    className={styles.clearDate}
+                    onClick={() => setSelectedDate(null)}
+                  >
+                    Back to upcoming
+                  </button>
+                )}
+              </div>
               {displayedEvents.length === 0 ? (
-                <p className={styles.state}>
-                  {selectedDate
-                    ? "No event scheduled for this date."
-                    : "No public events available."}
-                </p>
-              ) : displayedEvents.map((event) => (
-                <article className={styles.eventItem} key={event.id}>
-                  <div className={styles.eventThumb}>
-                    {event.image ? <img src={event.image} alt="" /> : <span>📅</span>}
-                  </div>
-                  <div>
-                    <h3>{event.title}</h3>
-                    <p>{formatDate(event.date)}</p>
-                  </div>
-                </article>
-              ))}
+                <div className={styles.emptyState}>
+                  <span>{selectedDate ? "🗓️" : "📭"}</span>
+                  <p>
+                    {selectedDate
+                      ? "No event scheduled for this date."
+                      : "No public events available right now."}
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.eventList}>
+                  {displayedEvents.map((event) => (
+                    <article className={styles.eventItem} key={event.id}>
+                      <div className={styles.eventThumb}>
+                        {event.image ? <img src={event.image} alt="" /> : <span>📅</span>}
+                      </div>
+                      <div className={styles.eventInfo}>
+                        <h3>{event.title}</h3>
+                        <p>
+                          {formatDate(event.date)}
+                          {event.status && (
+                            <span className={`${styles.eventStatus} ${styles[event.status] || ""}`}>
+                              {event.status}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
