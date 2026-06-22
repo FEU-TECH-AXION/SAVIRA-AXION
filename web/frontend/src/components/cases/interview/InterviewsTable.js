@@ -5,6 +5,7 @@ import styles from "./InterviewsTable.module.css";
 
 const INTERVIEW_STATUS_COLORS = {
   Invited: { bg: "#dbeafe", color: "#1e40af" },
+  "Awaiting New Slots": { bg: "#fff7ed", color: "#9a3412" },
   Scheduled: { bg: "#fef9c3", color: "#854d0e" },
   Confirmed: { bg: "#dcfce7", color: "#166534" },
   Completed: { bg: "#d1fae5", color: "#065f46" },
@@ -90,6 +91,7 @@ export default function InterviewsTable({
   onViewDetails,
   onMarkComplete,
   onAddMeetingLink,
+  onOfferNewSlots,
   loading = false,
   pageSize = 10,
 }) {
@@ -243,6 +245,15 @@ useEffect(() => {
                     <div style={{ marginTop: 4, color: "#92400e", fontSize: "0.72rem", lineHeight: 1.35 }}>
                       <strong>New slots requested:</strong>{" "}
                       {interview.availabilityRequest}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); onOfferNewSlots(interview); }}
+                          style={{ marginTop: 5, padding: 0, border: 0, background: "transparent", color: "#037F81", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Offer new slots
+                        </button>
+                      </div>
                     </div>
                   )}
                 </td>

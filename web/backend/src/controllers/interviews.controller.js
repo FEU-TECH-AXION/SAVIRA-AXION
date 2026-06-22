@@ -129,12 +129,7 @@ const reschedule = async (req, res) => {
         }
 
         const previousSlotId = interview.selected_slot_id
-        const updatedInterview = await InterviewModel.reschedule(
-            req.params.id,
-            slot_id,
-            normalizedReason,
-            interview.notes
-        )
+        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id)
 
         await InterviewSlotsModel.markUnavailable(slot_id)
         if (previousSlotId && String(previousSlotId) !== String(slot_id)) {
@@ -159,13 +154,34 @@ const requestNewSlots = async (req, res) => {
         if (!interview) return res.status(404).json({ error: 'Interview not found.' })
 
         const previousSlotId = interview.selected_slot_id
-        const data = await InterviewModel.requestNewSlots(
-            req.params.id,
-            normalizedReason,
-            interview.notes
-        )
+        const data = await InterviewModel.requestNewSlots(req.params.id, normalizedReason)
         if (previousSlotId) await InterviewSlotsModel.markAvailable(previousSlotId)
 
+        res.json({ data })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+// PATCH /api/interviews/:id/reopen-selection
+const reopenSelection = async (req, res) => {
+    try {
+        const interview = await InterviewModel.getById(req.params.id)
+        if (!interview) return res.status(404).json({ error: 'Interview not found.' })
+
+        const slotIds = Array.isArray(req.body.slot_ids) ? req.body.slot_ids : []
+        if (slotIds.length === 0) {
+            return res.status(400).json({ error: 'Select or create at least one available slot.' })
+        }
+
+        const slots = await Promise.all(slotIds.map((slotId) => InterviewSlotsModel.getById(slotId)))
+        if (slots.some((slot) => !slot || !slot.is_available)) {
+            return res.status(409).json({ error: 'One or more selected slots are no longer available.' })
+        }
+
+        const expiryDays = Math.min(Math.max(Number(req.body.expiry_days) || 7, 1), 30)
+        const slotExpiresAt = new Date(Date.now() + expiryDays * 86400000).toISOString()
+        const data = await InterviewModel.reopenSelection(req.params.id, slotExpiresAt)
         res.json({ data })
     } catch (err) {
         res.status(500).json({ error: err.message })
@@ -234,6 +250,7 @@ module.exports = {
     selectSlot,
     reschedule,
     requestNewSlots,
+    reopenSelection,
     confirm,
     complete,
     cancel,
