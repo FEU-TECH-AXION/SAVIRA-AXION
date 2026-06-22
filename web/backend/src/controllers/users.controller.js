@@ -3,6 +3,25 @@ const supabase = require('../config/supabase')
 const bcrypt = require('bcrypt')
 const { v4: uuidv4 } = require('uuid')
 
+const USER_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: false,
+  sameSite: 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  domain: 'localhost',
+}
+
+const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
+
+function toSafeUser(user) {
+  if (!user) return user
+  const { password, roles, ...safeUser } = user
+  return {
+    ...safeUser,
+    role_name: roles?.role_name || user.role_name || null,
+  }
+}
+
 const getItems = async (req, res) => {
   try {
     const data = await UserModel.getAll()
@@ -46,6 +65,10 @@ const createItem = async (req, res) => {
 const updateItem = async (req, res) => {
   try {
     const { id } = req.params
+    if (String(req.user.id) !== String(id) && parseInt(req.user.role_id) !== 3) {
+      return res.status(403).json({ error: 'You are not allowed to update this profile.' })
+    }
+
     const { password, role_id, committee_id, legal_personnel_type, ...rest } = req.body
     if (parseInt(role_id) === 2 && !committee_id) {
       return res.status(400).json({ error: 'committee_id is required for Staff role.' })
@@ -60,8 +83,13 @@ const updateItem = async (req, res) => {
       'last_name',
       'extension_name',
       'user_name',
+      'email',
       'contact_number',
+      'city',
+      'province',
       'profile_img',
+      'birthday',
+      'gender_identity',
       'is_active',
       'deactivated_at',
     ]
@@ -69,6 +97,37 @@ const updateItem = async (req, res) => {
     const payload = Object.fromEntries(
       Object.entries(rest).filter(([key]) => allowed.includes(key))
     )
+
+    if (payload.birthday === '') payload.birthday = null
+    if (payload.gender_identity === '') payload.gender_identity = null
+
+    if (payload.gender_identity && !ALLOWED_GENDER_IDENTITIES.includes(payload.gender_identity)) {
+      return res.status(400).json({
+        error: `gender_identity must be one of: ${ALLOWED_GENDER_IDENTITIES.join(', ')}.`,
+      })
+    }
+
+    if (payload.birthday) {
+      const birthday = new Date(`${payload.birthday}T00:00:00`)
+      const today = new Date()
+      let age = today.getFullYear() - birthday.getFullYear()
+      const monthDifference = today.getMonth() - birthday.getMonth()
+      if (
+        monthDifference < 0 ||
+        (monthDifference === 0 && today.getDate() < birthday.getDate())
+      ) {
+        age -= 1
+      }
+      if (Number.isNaN(birthday.getTime()) || birthday > today) {
+        return res.status(400).json({ error: 'Birthday must be a valid date that is not in the future.' })
+      }
+      if (age < 13) {
+        return res.status(400).json({ error: 'You must be at least 13 years old.' })
+      }
+      if (age > 120) {
+        return res.status(400).json({ error: 'Birthday must be within the last 120 years.' })
+      }
+    }
 
     if (role_id !== undefined) payload.role_id = role_id
     if (password) payload.password = await bcrypt.hash(password, 10)
@@ -88,12 +147,61 @@ const updateItem = async (req, res) => {
 
     const staff = await getStaffByUserId(id)
     const legal_personnel = await getLegalPersonnelByUserId(id)
-    res.status(200).json({
+    const responseUser = {
       ...data,
       role_name: data.roles?.role_name || null,
       staff,
       legal_personnel,
-    })
+    }
+    const safeUser = toSafeUser(responseUser)
+
+    if (String(req.user.id) === String(id)) {
+      res.cookie('user', JSON.stringify(safeUser), USER_COOKIE_OPTIONS)
+    }
+
+    res.status(200).json(safeUser)
+  } catch (err) {
+    const status = err.code === '23505' ? 409 : 500
+    res.status(status).json({ error: err.code === '23505' ? 'Email or username is already in use.' : err.message })
+  }
+}
+
+const uploadAvatar = async (req, res) => {
+  try {
+    const { id } = req.params
+    if (String(req.user.id) !== String(id) && parseInt(req.user.role_id) !== 3) {
+      return res.status(403).json({ error: 'You are not allowed to update this profile photo.' })
+    }
+    if (!req.file?.buffer) {
+      return res.status(400).json({ error: 'Please select an image to upload.' })
+    }
+
+    const extension = (req.file.originalname.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '')
+    const path = `profiles/${id}-${Date.now()}.${extension}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      })
+    if (uploadError) throw uploadError
+
+    const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    const profile_img = publicUrlData.publicUrl
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ profile_img })
+      .eq('user_id', id)
+      .select('*, roles(role_name)')
+      .single()
+    if (error) throw error
+
+    const safeUser = toSafeUser(data)
+    if (String(req.user.id) === String(id)) {
+      res.cookie('user', JSON.stringify(safeUser), USER_COOKIE_OPTIONS)
+    }
+    res.status(200).json({ profile_img, user: safeUser })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -270,4 +378,4 @@ async function syncUserSubTable(userId, roleId, options = {}) {
   }
 }
 
-module.exports = { getItems, createItem, updateItem, loginUser, syncRole }
+module.exports = { getItems, createItem, updateItem, uploadAvatar, loginUser, syncRole }

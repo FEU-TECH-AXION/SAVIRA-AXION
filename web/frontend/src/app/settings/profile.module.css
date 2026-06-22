@@ -197,6 +197,12 @@
   border-bottom: 1px solid #e8ecf0;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {

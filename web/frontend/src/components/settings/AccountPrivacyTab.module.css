@@ -23,9 +23,16 @@
   border-right: 1px solid #edf2f7;
   background: #fafbfc;
   gap: 0.2rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.subNav::-webkit-scrollbar {
+  display: none;
 }
 
 .subNavItem {
+  width: 100%;
   text-align: left;
   padding: 0.6rem 0.75rem;
   border: none;
@@ -43,6 +50,49 @@
 .subNavItemActive {
   background: #e6f9f5;
   color: #037F81;
+  font-weight: 600;
+}
+
+.policySubNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0.2rem 0 0.35rem 0.75rem;
+  padding-left: 0.65rem;
+  border-left: 1px solid #dfe8e8;
+}
+
+.policySubNavItem {
+  padding: 0.45rem 0.55rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #777;
+  font-size: 0.76rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.policySubNavItem:hover,
+.policySubNavItemActive {
+  color: #037F81;
+  background: #eef6f6;
+}
+
+.policySubNavItemActive { font-weight: 600; }
+
+.navDivider {
+  height: 1px;
+  margin: 0.85rem 0.25rem;
+  background: #dfe4e8;
+}
+
+.deactivateNavItem { color: #b83a2f; }
+
+.deactivateNavItem:hover,
+.deactivateNavItemActive {
+  color: #b83a2f;
+  background: #fff0ef;
   font-weight: 600;
 }
 
@@ -65,6 +115,45 @@
   color: #666;
   margin: 0 0 1.25rem;
   line-height: 1.5;
+}
+
+.policyTitle {
+  margin: 0 0 0.5rem;
+  color: #222;
+  font-size: 1.15rem;
+}
+
+.policyPlaceholder {
+  padding: 1.25rem;
+  border: 1px solid #e7ebee;
+  border-radius: 10px;
+  background: #fafbfc;
+  color: #777;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.dangerTitle { color: #b83a2f; }
+
+.dangerPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.1rem;
+  border: 1px solid #f5c6c2;
+  border-radius: 10px;
+  background: #fff8f7;
+}
+
+.dangerPanelTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.25rem;
+  color: #b83a2f;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 /* ── Grid / field (password section) ──────────────────────────── */
@@ -320,4 +409,7 @@
   .subNavItem { white-space: nowrap; }
   .content { padding: 1.25rem 1rem; }
   .privacyRow { flex-direction: column; align-items: flex-start; gap: 0.65rem; }
+  .policySubNav { display: none; }
+  .navDivider { width: 1px; height: auto; margin: 0.35rem 0.5rem; flex-shrink: 0; }
+  .dangerPanel { flex-direction: column; align-items: flex-start; }
 }

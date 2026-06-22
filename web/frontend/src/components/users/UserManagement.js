@@ -86,6 +86,10 @@ function normalizeUser(raw) {
     user_name:      raw.user_name      ?? "",
     contact_number: raw.contact_number ?? "",
     profile_img:    raw.profile_img    ?? "",
+    birthday:       raw.birthday       ?? "",
+    gender_identity: raw.gender_identity ?? "",
+    city:           raw.city           ?? "",
+    province:       raw.province       ?? "",
     role_id: raw.role_id ?? raw.roles?.id ?? ROLE_NAME_TO_ID[role] ?? null,
     is_active:      raw.is_active      ?? true,
     staff_id:       staffRow?.staff_id ?? raw.staff_id ?? null,
@@ -487,6 +491,26 @@ function ViewUserModal({ open, onClose, user }) {
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Phone</span>
           <span className={styles.viewVal}>{user.phone || "—"}</span>
+        </div>
+        <div className={styles.viewRow}>
+          <span className={styles.viewKey}>Username</span>
+          <span className={styles.viewVal}>{user.user_name || "—"}</span>
+        </div>
+        <div className={styles.viewRow}>
+          <span className={styles.viewKey}>Birthday</span>
+          <span className={styles.viewVal}>{user.birthday ? formatDate(user.birthday) : "—"}</span>
+        </div>
+        <div className={styles.viewRow}>
+          <span className={styles.viewKey}>Gender Identity</span>
+          <span className={styles.viewVal}>{user.gender_identity || "—"}</span>
+        </div>
+        <div className={styles.viewRow}>
+          <span className={styles.viewKey}>City</span>
+          <span className={styles.viewVal}>{user.city || "—"}</span>
+        </div>
+        <div className={styles.viewRow}>
+          <span className={styles.viewKey}>Province</span>
+          <span className={styles.viewVal}>{user.province || "—"}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Role</span>

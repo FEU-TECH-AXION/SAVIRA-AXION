@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FiCheck, FiAlertCircle } from "react-icons/fi";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import styles from "./ProfileTab.module.css";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
@@ -12,8 +13,7 @@ const NCR_CITIES = [
 ];
 
 const GENDER_IDENTITIES = [
-  "Woman", "Man", "Non-binary", "Transgender Woman", "Transgender Man",
-  "Genderqueer", "Prefer to self-describe", "Prefer not to say",
+  "Male", "Female", "Non-binary", "Prefer not to say",
 ];
 
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
@@ -26,8 +26,54 @@ function normalisePhone(raw) {
   return digits ? `+63${digits}` : "";
 }
 
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getAge(birthday) {
+  if (!birthday) return null;
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1;
+  }
+  return age;
+}
+
+function birthdayForAge(age) {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - age);
+  return formatDateInput(date);
+}
+
 function validateProfile(data) {
   const errors = {};
+  if (!data.first_name?.trim()) errors.first_name = "First name is required.";
+  if (!data.last_name?.trim()) errors.last_name = "Last name is required.";
+  if (!data.user_name?.trim()) errors.user_name = "Username is required.";
+  if (!data.email?.trim()) errors.email = "Email is required.";
+  if (data.gender_identity && !GENDER_IDENTITIES.includes(data.gender_identity)) {
+    errors.gender_identity = "Select a valid gender identity.";
+  }
+  if (data.birthday) {
+    const age = getAge(data.birthday);
+    if (age === null) {
+      errors.birthday = "Enter a valid birthday.";
+    } else if (age < 13) {
+      errors.birthday = "You must be at least 13 years old.";
+    } else if (age > 120) {
+      errors.birthday = "Enter a valid birthday within the last 120 years.";
+    }
+  }
   if (!data.contact_number) {
     errors.contact_number = "Contact number is required.";
   } else if (!PHONE_REGEX.test(data.contact_number)) {
@@ -51,6 +97,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
   const [formErrors, setFormErrors] = useState({});
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [underageDialogOpen, setUnderageDialogOpen] = useState(false);
 
   const flash = (type, msg) => {
     if (type === "success") { setSuccess(msg); setError(""); }
@@ -64,6 +111,13 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
 
     if (name === "contact_number") {
       setForm((p) => ({ ...p, [name]: normalisePhone(value) }));
+    } else if (name === "birthday") {
+      const age = getAge(value);
+      setForm((p) => ({ ...p, birthday: value }));
+      if (value && age !== null && age < 13) {
+        setFormErrors((p) => ({ ...p, birthday: "You must be at least 13 years old." }));
+        setUnderageDialogOpen(true);
+      }
     } else if (name === "province") {
       if (value === "" || value === "National Capital Region (NCR)") {
         setForm((p) => ({ ...p, [name]: value }));
@@ -83,18 +137,18 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
     setFormErrors({});
     setSaving(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/users/${user.user_id}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/users/${user.user_id}`, {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Update failed.");
-      if (setUser) setUser((prev) => ({ ...prev, ...data.user }));
+      if (setUser) setUser(data);
       flash("success", "Profile updated successfully!");
     } catch (err) {
       flash("error", err.message);
@@ -104,6 +158,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
   };
 
   return (
+    <>
     <form className={styles.formCard} onSubmit={handleSave}>
       {success && (
         <div className={styles.flashSuccess}><FiCheck size={16} /> {success}</div>
@@ -115,7 +170,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
       <div className={styles.sectionTitle}>Personal Information</div>
 
       <div className={styles.grid3}>
-        <Field label="First Name" required>
+        <Field label="First Name" required error={formErrors.first_name}>
           <input name="first_name" value={form.first_name}
             onChange={handleChange} placeholder="First Name" required />
         </Field>
@@ -123,7 +178,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
           <input name="middle_name" value={form.middle_name}
             onChange={handleChange} placeholder="Middle Name" />
         </Field>
-        <Field label="Last Name" required>
+        <Field label="Last Name" required error={formErrors.last_name}>
           <input name="last_name" value={form.last_name}
             onChange={handleChange} placeholder="Last Name" required />
         </Field>
@@ -138,7 +193,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
             ))}
           </select>
         </Field>
-        <Field label="Username" required hint="Must be unique across Savira.">
+        <Field label="Username" required hint="Must be unique across Savira." error={formErrors.user_name}>
           <input name="user_name" value={form.user_name}
             onChange={handleChange} placeholder="@username" required />
         </Field>
@@ -149,11 +204,13 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
       </div>
 
       <div className={styles.grid2}>
-        <Field label="Birthday" badge="Optional" hint="Helps us confirm age-appropriate access where required.">
+        <Field label="Birthday" badge="Optional" hint="Helps us confirm age-appropriate access where required." error={formErrors.birthday}>
           <input name="birthday" type="date" value={form.birthday}
-            onChange={handleChange} max={new Date().toISOString().split("T")[0]} />
+            onChange={handleChange}
+            min={formatDateInput(new Date(new Date().setFullYear(new Date().getFullYear() - 120)))}
+            max={birthdayForAge(13)} />
         </Field>
-        <Field label="Gender Identity" badge="Optional" hint="Visible only to you and authorized SASHA personnel.">
+        <Field label="Gender Identity" badge="Optional" hint="Visible only to you and authorized SASHA personnel." error={formErrors.gender_identity}>
           <select name="gender_identity" value={form.gender_identity} onChange={handleChange}>
             <option value="">Select…</option>
             {GENDER_IDENTITIES.map((g) => (
@@ -173,6 +230,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
           required
           hint={user.is_email_verified ? "Verified" : "Not yet verified — check your inbox."}
           hintColor={user.is_email_verified ? "var(--sasha-teal)" : "#e53e3e"}
+          error={formErrors.email}
         >
           <input name="email" type="email" value={form.email}
             onChange={handleChange} placeholder="you@example.com" required />
@@ -210,6 +268,22 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
         </button>
       </div>
     </form>
+    <ConfirmDialog
+      open={underageDialogOpen}
+      title="Minimum age requirement"
+      description="Savira accounts are available only to users who are at least 13 years old."
+      detail="Please choose a birthday that confirms you are 13 or older."
+      confirmLabel="Choose another birthday"
+      tone="danger"
+      hideCancel
+      dismissible={false}
+      onConfirm={() => {
+        setUnderageDialogOpen(false);
+        setForm((current) => ({ ...current, birthday: "" }));
+      }}
+      onCancel={() => setUnderageDialogOpen(false)}
+    />
+    </>
   );
 }
 

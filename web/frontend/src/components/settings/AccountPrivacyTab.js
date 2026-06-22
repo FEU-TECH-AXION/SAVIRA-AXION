@@ -3,20 +3,19 @@
 import { useState } from "react";
 import {
   FiCheck, FiAlertCircle, FiEye, FiEyeOff, FiMail, FiPhone,
-  FiUser, FiShield, FiBell, FiDownload, FiTrash2, FiSmartphone,
+  FiUser, FiTrash2,
 } from "react-icons/fi";
-import styles from "./SettingsPrivacyTab.module.css";
+import styles from "./AccountPrivacyTab.module.css";
 
 const SECTIONS = [
-  { id: "password",      label: "Password" },
-  { id: "twoFactor",      label: "Two-Factor Authentication" },
-  { id: "sessions",       label: "Active Sessions" },
-  { id: "notifications",  label: "Notifications" },
-  { id: "dataPrivacy",    label: "Data & Privacy" },
+  { id: "password", label: "Password" },
+  { id: "notifications", label: "Notifications" },
+  { id: "policies", label: "Policies" },
 ];
 
-export default function SettingsPrivacyTab({ user }) {
+export default function AccountPrivacyTab({ user }) {
   const [section, setSection] = useState("password");
+  const [policy, setPolicy] = useState("terms");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -29,8 +28,6 @@ export default function SettingsPrivacyTab({ user }) {
   const [pwErrors, setPwErrors] = useState({});
 
   // ── Two-factor state ──────────────────────────────────────
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(!!user?.two_factor_enabled);
-
   // ── Notification prefs ────────────────────────────────────
   const [notifPrefs, setNotifPrefs] = useState({
     email_updates: true,
@@ -91,50 +88,6 @@ export default function SettingsPrivacyTab({ user }) {
     }
   };
 
-  const handleToggleTwoFactor = async () => {
-    const next = !twoFactorEnabled;
-    setSaving(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/users/${user.user_id}/two-factor`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ enabled: next }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not update two-factor authentication.");
-      setTwoFactorEnabled(next);
-      flash("success", next ? "Two-factor authentication enabled." : "Two-factor authentication disabled.");
-    } catch (err) {
-      flash("error", err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRequestDataExport = async () => {
-    setSaving(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/users/${user.user_id}/export`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Could not request data export.");
-      }
-      flash("success", "Your data export has been requested. We'll email you when it's ready.");
-    } catch (err) {
-      flash("error", err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const pwStrength = (() => {
     const pw = pwForm.new_password;
     if (!pw) return null;
@@ -157,15 +110,42 @@ export default function SettingsPrivacyTab({ user }) {
         {/* ── Sub-navigation ──────────────────────────── */}
         <nav className={styles.subNav}>
           {SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={`${styles.subNavItem} ${section === s.id ? styles.subNavItemActive : ""}`}
-              onClick={() => setSection(s.id)}
-            >
-              {s.label}
-            </button>
+            <div key={s.id}>
+              <button
+                type="button"
+                className={`${styles.subNavItem} ${section === s.id ? styles.subNavItemActive : ""}`}
+                onClick={() => setSection(s.id)}
+              >
+                {s.label}
+              </button>
+              {s.id === "policies" && section === "policies" && (
+                <div className={styles.policySubNav}>
+                  <button
+                    type="button"
+                    className={`${styles.policySubNavItem} ${policy === "terms" ? styles.policySubNavItemActive : ""}`}
+                    onClick={() => setPolicy("terms")}
+                  >
+                    Terms of Service
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.policySubNavItem} ${policy === "privacy" ? styles.policySubNavItemActive : ""}`}
+                    onClick={() => setPolicy("privacy")}
+                  >
+                    Privacy Policy
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
+          <div className={styles.navDivider} />
+          <button
+            type="button"
+            className={`${styles.subNavItem} ${styles.deactivateNavItem} ${section === "deactivate" ? styles.deactivateNavItemActive : ""}`}
+            onClick={() => setSection("deactivate")}
+          >
+            Deactivate Account
+          </button>
         </nav>
 
         {/* ── Content ──────────────────────────────────── */}
@@ -283,64 +263,6 @@ export default function SettingsPrivacyTab({ user }) {
             </form>
           )}
 
-          {section === "twoFactor" && (
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>Two-Factor Authentication</div>
-              <p className={styles.cardDesc}>
-                Add an extra layer of security. When enabled, you'll need a one-time code
-                sent to your verified contact number or email each time you sign in from a new device.
-              </p>
-
-              <label className={styles.toggleRow}>
-                <div>
-                  <p className={styles.toggleRowLabel}>
-                    <FiShield size={15} style={{ marginRight: "0.4rem", verticalAlign: "-2px" }} />
-                    Two-factor authentication
-                  </p>
-                  <p className={styles.toggleRowDesc}>
-                    {twoFactorEnabled ? "Enabled — your account has extra protection." : "Disabled — turn on for stronger account security."}
-                  </p>
-                </div>
-                <div
-                  className={`${styles.toggle} ${twoFactorEnabled ? styles.toggleOn : ""}`}
-                  onClick={handleToggleTwoFactor}
-                >
-                  <div className={styles.toggleKnob} />
-                </div>
-              </label>
-
-              {!user.is_contact_number_verified && !user.is_email_verified && (
-                <p className={styles.warnNote}>
-                  Verify your email or contact number first so we have somewhere to send your codes.
-                </p>
-              )}
-            </div>
-          )}
-
-          {section === "sessions" && (
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>Active Sessions</div>
-              <p className={styles.cardDesc}>
-                Devices currently signed in to your Savira account. If you don't recognize a session, sign it out immediately.
-              </p>
-
-              <div className={styles.sessionList}>
-                <div className={styles.sessionRow}>
-                  <FiSmartphone size={18} />
-                  <div className={styles.sessionMeta}>
-                    <p className={styles.sessionDevice}>This device</p>
-                    <p className={styles.sessionDetail}>Current session</p>
-                  </div>
-                  <span className={styles.sessionBadge}>Active now</span>
-                </div>
-              </div>
-
-              <p className={styles.placeholderNote}>
-                Full session history (device, location, last active) connects once the sessions endpoint is available on the backend.
-              </p>
-            </div>
-          )}
-
           {section === "notifications" && (
             <div className={styles.card}>
               <div className={styles.cardTitle}>Notification Preferences</div>
@@ -378,44 +300,43 @@ export default function SettingsPrivacyTab({ user }) {
             </div>
           )}
 
-          {section === "dataPrivacy" && (
+          {section === "policies" && (
             <div className={styles.card}>
-              <div className={styles.cardTitle}>Data &amp; Privacy</div>
+              <div className={styles.cardTitle}>Policies</div>
+              <h2 className={styles.policyTitle}>
+                {policy === "terms" ? "Terms of Service" : "Privacy Policy"}
+              </h2>
               <p className={styles.cardDesc}>
-                Manage how your information is stored and used within Savira.
+                {policy === "terms"
+                  ? "Review the terms that govern your access to and use of Savira."
+                  : "Learn how Savira collects, uses, stores, and protects your personal information."}
               </p>
-
-              <div className={styles.privacyRow}>
-                <div>
-                  <p className={styles.privacyLabel}><FiDownload size={15} style={{ marginRight: "0.4rem", verticalAlign: "-2px" }} />Export your data</p>
-                  <p className={styles.privacyDesc}>Download a copy of your profile, case, and activity data.</p>
-                </div>
-                <button type="button" className={styles.btnSecondary} onClick={handleRequestDataExport} disabled={saving}>
-                  Request Export
-                </button>
+              <div className={styles.policyPlaceholder}>
+                {policy === "terms"
+                  ? "Terms of Service content will appear here."
+                  : "Privacy Policy content will appear here."}
               </div>
+            </div>
+          )}
 
-              <div className={styles.privacyRow}>
+          {section === "deactivate" && (
+            <div className={styles.card}>
+              <div className={`${styles.cardTitle} ${styles.dangerTitle}`}>Deactivate Account</div>
+              <p className={styles.cardDesc}>
+                Temporarily disable your account. You can reactivate it by signing back in.
+              </p>
+              <div className={styles.dangerPanel}>
                 <div>
-                  <p className={styles.privacyLabel}>Profile visibility</p>
-                  <p className={styles.privacyDesc}>Control whether your name appears to other volunteers and staff in shared case views.</p>
-                </div>
-                <select className={styles.inlineSelect} defaultValue="staff_only">
-                  <option value="staff_only">Staff &amp; case officers only</option>
-                  <option value="org_wide">Visible org-wide</option>
-                </select>
-              </div>
-
-              <div className={`${styles.privacyRow} ${styles.privacyRowDanger}`}>
-                <div>
-                  <p className={styles.privacyLabel} style={{ color: "#c0392b" }}>
-                    <FiTrash2 size={15} style={{ marginRight: "0.4rem", verticalAlign: "-2px" }} />
-                    Deactivate account
+                  <p className={styles.dangerPanelTitle}>
+                    <FiTrash2 size={16} />
+                    Deactivate your Savira account
                   </p>
-                  <p className={styles.privacyDesc}>Temporarily disable your account. You can reactivate by signing back in.</p>
+                  <p className={styles.privacyDesc}>
+                    Your profile will no longer be accessible until you reactivate your account.
+                  </p>
                 </div>
                 <button type="button" className={styles.btnDanger}>
-                  Deactivate
+                  Deactivate Account
                 </button>
               </div>
             </div>

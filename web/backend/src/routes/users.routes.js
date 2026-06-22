@@ -1,16 +1,29 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const express = require('express')
+const multer = require('multer')
 const router = express.Router()
 const supabase = require('../config/supabase')
-const { getItems, createItem, updateItem, loginUser, syncRole } = require('../controllers/users.controller')
+const { getItems, createItem, updateItem, uploadAvatar, loginUser, syncRole } = require('../controllers/users.controller')
 const sendEmail = require('../config/mailer');
 const { sendResetPasswordEmail } = require('../config/mailer')
 const { verifyToken } = require('../middleware/auth.middleware')
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, callback) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return callback(new Error('Only image files are allowed.'))
+    }
+    callback(null, true)
+  },
+})
 
 router.get('/', getItems)
 router.post('/', createItem)
 router.put('/:id', verifyToken, updateItem)
+router.patch('/:id', verifyToken, updateItem)
+router.post('/:id/avatar', verifyToken, avatarUpload.single('profile_img'), uploadAvatar)
 router.post('/login', loginUser)
 router.post('/:userId/sync-role', verifyToken, syncRole)
 

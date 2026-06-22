@@ -13,13 +13,15 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   tone = "default",
   busy = false,
+  hideCancel = false,
+  dismissible = true,
   onConfirm,
   onCancel,
 }) {
   if (!open) return null;
 
   return (
-    <div className={styles.overlay} onMouseDown={onCancel}>
+    <div className={styles.overlay} onMouseDown={dismissible ? onCancel : undefined}>
       <section
         className={styles.dialog}
         role="dialog"
@@ -27,10 +29,12 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <button className={styles.closeButton} type="button" onClick={onCancel}>
-          <FiX />
-          <span className={styles.srOnly}>Close</span>
-        </button>
+        {dismissible && (
+          <button className={styles.closeButton} type="button" onClick={onCancel}>
+            <FiX />
+            <span className={styles.srOnly}>Close</span>
+          </button>
+        )}
         <div className={`${styles.dialogIcon} ${styles[tone]}`}>
           {tone === "danger" ? <FiAlertTriangle /> : <FiInfo />}
         </div>
@@ -38,9 +42,11 @@ export function ConfirmDialog({
         <p>{description}</p>
         {detail && <div className={styles.detail}>{detail}</div>}
         <div className={styles.actions}>
-          <button type="button" className={styles.secondaryButton} onClick={onCancel}>
-            {cancelLabel}
-          </button>
+          {!hideCancel && (
+            <button type="button" className={styles.secondaryButton} onClick={onCancel}>
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             className={tone === "danger" ? styles.dangerButton : styles.primaryButton}

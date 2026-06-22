@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { FiCamera, FiUser, FiSettings, FiHelpCircle, FiSliders, FiFlag } from "react-icons/fi";
+import { FiCamera, FiUser, FiLock, FiHelpCircle, FiSliders, FiFlag } from "react-icons/fi";
 import styles from "./profile.module.css";
 
 import ProfileTab from "@/components/settings/ProfileTab";
-import SettingsPrivacyTab from "@/components/settings/SettingsPrivacyTab";
+import AccountPrivacyTab from "@/components/settings/AccountPrivacyTab";
 import HelpCenterTab from "@/components/settings/HelpCenterTab";
 import DisplayAccessibilityTab from "@/components/settings/DisplayAccessibilityTab";
 import ReportProblemTab from "@/components/settings/ReportProblemTab";
@@ -15,7 +15,7 @@ import ReportProblemTab from "@/components/settings/ReportProblemTab";
 // ── Tabs ─────────────────────────────────────────────────────
 const TABS = [
   { id: "profile",  label: "Profile",                icon: FiUser },
-  { id: "security", label: "Settings & Privacy",      icon: FiSettings },
+  { id: "lock", label: "Account & Privacy",      icon: FiLock },
   { id: "help",     label: "Help Center",              icon: FiHelpCircle },
   { id: "display",  label: "Display & Accessibility", icon: FiSliders },
   { id: "report",   label: "Report a Problem",         icon: FiFlag },
@@ -108,15 +108,15 @@ export default function ProfilePage() {
     const formData = new FormData();
     formData.append("profile_img", file);
     try {
-      const token = localStorage.getItem("token");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const res   = await fetch(
-        `http://localhost:5000/api/users/${user.user_id}/avatar`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData }
+        `${API_URL}/api/users/${user.user_id}/avatar`,
+        { method: "POST", credentials: "include", body: formData }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed.");
       setForm((p) => ({ ...p, profile_img: data.profile_img }));
-      if (setUser) setUser((prev) => ({ ...prev, profile_img: data.profile_img }));
+      if (setUser) setUser(data.user);
     } catch (err) {
       // Avatar upload errors surface locally; the hero has no flash banner
       // of its own, so this is intentionally quiet beyond a console trace.
@@ -217,8 +217,8 @@ export default function ProfilePage() {
         {activeTab === "profile" && (
           <ProfileTab user={user} setUser={setUser} form={form} setForm={setForm} />
         )}
-        {activeTab === "security" && (
-          <SettingsPrivacyTab user={user} />
+        {activeTab === "lock" && (
+          <AccountPrivacyTab user={user} />
         )}
         {activeTab === "help" && (
           <HelpCenterTab user={user} />
