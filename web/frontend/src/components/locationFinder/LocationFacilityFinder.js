@@ -19,9 +19,10 @@ const SERVICE_COPY = {
     prompt: "Please enter location to find hospitals in that area",
     searchPlaceholder: "Enter city, barangay, landmark, or address",
     // Comma-separated category slugs — Search Box supports multi-category
-    categories: ["hospital", "emergency_room_and_urgent_care_facility"],
+    categories: ["hospital", "clinic", "emergency_room_and_urgent_care_facility"],
+    keyword: "hospital",
     empty: "Search for a location to see nearby hospitals.",
-    color: "#037F81",
+    color: "#E8663A", // Orange for the facility, Teal for the user's location
   },
   police: {
     icon: <RiPoliceBadgeFill />,
@@ -29,7 +30,8 @@ const SERVICE_COPY = {
     title: "Find Police Stations",
     prompt: "Please enter location to find police stations in that area",
     searchPlaceholder: "Enter city, barangay, landmark, or address",
-    categories: ["police_station"],
+    categories: ["police_station", "police"],
+    keyword: "PNP",
     empty: "Search for a location to see nearby police stations.",
     color: "#E8663A",
   },
@@ -93,7 +95,7 @@ async function searchBoxCategory(categorySlug, proximity, bbox) {
   return res.json();
 }
 
-function buildBbox(center, radius = 0.45) {
+function buildBbox(center, radius = 0.05) {
   const [lng, lat] = center;
   return [lng - radius, lat - radius, lng + radius, lat + radius].join(",");
 }
@@ -129,6 +131,7 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
   const [facilities, setFacilities] = useState([]);
   const [status, setStatus] = useState(MAPBOX_TOKEN ? "idle" : "missingToken");
   const [error, setError] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
 
   const sortedFacilities = useMemo(() => {
     if (!searchedLocation) return facilities;
@@ -236,26 +239,37 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     const bbox = buildBbox(location.center);
 
     // Fetch all category slugs in parallel
-    const results = await Promise.all(
-      copy.categories.map((slug) =>
-        searchBoxCategory(slug, proximity, bbox).catch(() => ({ features: [] }))
-      )
+    const categoryPromises = copy.categories.map((slug) =>
+      searchBoxCategory(slug, proximity, bbox).catch(() => ({ features: [] }))
     );
+
+    // Supplementary text search via Geocoding API to catch un-categorized POIs
+    const textPromise = copy.keyword
+      ? geocodeSearch(copy.keyword, {
+          proximity: proximity.join(","),
+          bbox,
+          types: "poi",
+          limit: "10",
+        }).catch(() => ({ features: [] }))
+      : Promise.resolve({ features: [] });
+
+    const results = await Promise.all([...categoryPromises, textPromise]);
 
     const seen = new Set();
     return results
       .flatMap((data) => data.features || [])
-      .filter((f) => f.geometry?.coordinates?.length === 2)
+      .filter((f) => f.geometry?.coordinates?.length === 2 || f.center?.length === 2)
       .map((f) => {
-        const coords = f.geometry.coordinates;
+        const coords = f.geometry?.coordinates || f.center;
         return {
-          // Search Box uses feature.properties for metadata
-          id: f.properties?.mapbox_id || `${f.properties?.name}-${coords.join(",")}`,
-          name: f.properties?.name || "Unknown",
+          // Geocoding API returns id directly, Search Box returns properties.mapbox_id
+          id: f.id || f.properties?.mapbox_id || `${f.properties?.name || f.text}-${coords.join(",")}`,
+          name: f.properties?.name || f.text || "Unknown",
           address:
             f.properties?.full_address ||
             f.properties?.place_formatted ||
             f.properties?.address ||
+            f.place_name ||
             "Address unavailable",
           center: coords,
           distance: distanceKm(proximity, coords),
@@ -342,6 +356,32 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
     }
   }
 
+  // Auto-locate on mount
+  useEffect(() => {
+    if (!MAPBOX_TOKEN) return;
+    if ("geolocation" in navigator) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setIsLocating(false);
+          const locationFeature = {
+            place_name: "Your Current Location",
+            text: "Your Current Location",
+            center: [position.coords.longitude, position.coords.latitude],
+          };
+          setQuery("Your Current Location");
+          runSearch(locationFeature);
+        },
+        (err) => {
+          setIsLocating(false);
+          console.warn("Geolocation error:", err.message);
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // JSX is identical to your original — no UI changes needed
   return (
     <section className={styles.finder}>
@@ -390,9 +430,9 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
               }
               autoComplete="off"
             />
-            <button className={styles.searchButton} type="submit" disabled={status === "loading"}>
+            <button className={styles.searchButton} type="submit" disabled={status === "loading" || isLocating}>
               <FiSearch />
-              {status === "loading" ? "Searching" : "Search"}
+              {status === "loading" || isLocating ? "Searching" : "Search"}
             </button>
           </div>
           {(suggestions.length > 0 || suggestStatus === "loading") && (
@@ -434,7 +474,11 @@ export default function LocationFacilityFinder({ service = "hospital" }) {
         {error && <div className={styles.error}>{error}</div>}
 
         <div className={styles.resultsHeader}>
-          <span>{searchedLocation ? `Results near ${searchedLocation.name}` : copy.empty}</span>
+          {isLocating ? (
+            <span>Locating you...</span>
+          ) : (
+            <span>{searchedLocation ? `Results near ${searchedLocation.name}` : copy.empty}</span>
+          )}
           {sortedFacilities.length > 0 && <strong>{sortedFacilities.length} found</strong>}
         </div>
 
