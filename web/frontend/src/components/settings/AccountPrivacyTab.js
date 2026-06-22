@@ -304,17 +304,43 @@ export default function AccountPrivacyTab({ user }) {
             <div className={styles.card}>
               <div className={styles.cardTitle}>Policies</div>
               <h2 className={styles.policyTitle}>
-                {policy === "terms" ? "Terms of Service" : "Privacy Policy"}
+                {policy === "terms" ? "Terms & Conditions" : "Privacy Policy"}
               </h2>
               <p className={styles.cardDesc}>
-                {policy === "terms"
-                  ? "Review the terms that govern your access to and use of Savira."
-                  : "Learn how Savira collects, uses, stores, and protects your personal information."}
+                Effective June 22, 2026
               </p>
-              <div className={styles.policyPlaceholder}>
-                {policy === "terms"
-                  ? "Terms of Service content will appear here."
-                  : "Privacy Policy content will appear here."}
+              <div className={styles.policyContent}>
+                {policy === "terms" ? (
+                  <>
+                    <PolicySection title="Using Savira">
+                      Use Savira lawfully, provide accurate information, protect your account, and respect the safety and confidentiality of others.
+                    </PolicySection>
+                    <PolicySection title="Reports and interviews">
+                      Submit only relevant information you are authorized to provide. Interview schedules remain subject to availability and confirmation by authorized personnel.
+                    </PolicySection>
+                    <PolicySection title="Acceptable conduct">
+                      Do not misuse accounts, submit malicious reports, access restricted records, disrupt the service, or disclose confidential information improperly.
+                    </PolicySection>
+                    <PolicySection title="Availability and enforcement">
+                      Savira may be updated, interrupted, restricted, or suspended when required for maintenance, safety, security, or legal compliance.
+                    </PolicySection>
+                  </>
+                ) : (
+                  <>
+                    <PolicySection title="Information collected">
+                      Savira may collect account details, case reports, attachments, interview information, volunteer applications, preferences, and security logs.
+                    </PolicySection>
+                    <PolicySection title="How information is used">
+                      Information supports case services, interviews, volunteering, communications, safeguarding, platform security, and legal obligations.
+                    </PolicySection>
+                    <PolicySection title="Sharing and protection">
+                      Access is limited to authorized personnel and service providers with a legitimate purpose. Sensitive case information is not ordinary public content.
+                    </PolicySection>
+                    <PolicySection title="Your privacy rights">
+                      Subject to applicable law, you may request access, correction, deletion or blocking, object to processing, or withdraw consent.
+                    </PolicySection>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -356,5 +382,14 @@ function Field({ label, error, children }) {
       {children}
       {error && <p className={styles.fieldError}>{error}</p>}
     </div>
+  );
+}
+
+function PolicySection({ title, children }) {
+  return (
+    <section className={styles.policySection}>
+      <h3>{title}</h3>
+      <p>{children}</p>
+    </section>
   );
 }

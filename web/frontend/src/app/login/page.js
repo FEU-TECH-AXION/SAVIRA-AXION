@@ -62,7 +62,7 @@ export default function Login() {
         <div className={styles.formBox}>
           <h1 className={styles.title}>Welcome Back!</h1>
           <p className={styles.loginLink}>
-            Don't have an account yet?&nbsp;
+            Don&apos;t have an account yet?&nbsp;
             <a href="/signup">Sign Up</a>
           </p>
 
@@ -132,7 +132,9 @@ export default function Login() {
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
-                Recognize this device for 30 days
+                <span className={styles.checkboxText}>
+                  Recognize this device for 30 days
+                </span>
               </label>
               <a href="/forgotPassword" className={styles.forgotPassword}>
                 Forgot Password?

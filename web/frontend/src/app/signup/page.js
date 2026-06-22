@@ -3,6 +3,7 @@
 import { useState } from "react";
 import styles from "./signup.module.css";
 import { FiEye, FiEyeOff, FiCheck, FiX } from "react-icons/fi";
+import PolicyModal from "@/components/policies/PolicyModal";
 
 // ── Password strength check ───────────────────────────────────
 const PW_RULES = [
@@ -36,6 +37,7 @@ export default function SignUp() {
   const [errors, setErrors]       = useState([]); // server errors
   const [loading, setLoading]     = useState(false);
   const [pwFocused, setPwFocused] = useState(false); // controls checklist popover
+  const [openPolicy, setOpenPolicy] = useState(null);
 
   // ── Client-side field validation ─────────────────────────────
   const validate = (field, value) => {
@@ -330,8 +332,16 @@ export default function SignUp() {
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
-                I agree to the <a href="/terms">Terms &amp; Conditions</a> and{" "}
-                <a href="/privacy">Privacy Policy</a>
+                <span className={styles.checkboxText}>
+                  I agree to the{" "}
+                  <button type="button" className={styles.policyButton} onClick={() => setOpenPolicy("terms")}>
+                    Terms &amp; Conditions
+                  </button>{" "}
+                  and{" "}
+                  <button type="button" className={styles.policyButton} onClick={() => setOpenPolicy("privacy")}>
+                    Privacy Policy
+                  </button>
+                </span>
               </label>
               {getServerError("agreed") && (
                 <p className={styles.fieldError}>{getServerError("agreed")}</p>
@@ -349,6 +359,7 @@ export default function SignUp() {
           </form>
         </div>
       </div>
+      <PolicyModal open={Boolean(openPolicy)} policy={openPolicy} onClose={() => setOpenPolicy(null)} />
     </div>
   );
 }

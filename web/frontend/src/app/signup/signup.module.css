@@ -120,6 +120,7 @@
 
 .termsGroup {
   margin-bottom: 1.5rem;
+  width: 100%;
 }
 
 /* ── Inputs ── */
@@ -318,23 +319,46 @@
   font-size: 0.93rem;
   color: #444;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
   cursor: pointer;
+  width: 100%;
+  min-width: 0;
+  line-height: 1.5;
 }
 
 .checkbox {
   width: 20px;
   height: 20px;
+  margin-top: 0.1rem;
   accent-color: #037F81;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.checkboxText {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .checkboxLabel a {
   color: #037F81;
   font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.policyButton {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #037F81;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 /* ── Submit button ── */
@@ -395,10 +419,24 @@
   .pwRules {
     grid-template-columns: 1fr;
   }
+
+  .termsGroup {
+    margin-bottom: 1.25rem;
+  }
 }
 
 @media (max-width: 400px) {
   .title {
     font-size: 1.6rem;
+  }
+
+  .checkboxLabel {
+    gap: 0.5rem;
+    font-size: 0.86rem;
+  }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
   }
 }
