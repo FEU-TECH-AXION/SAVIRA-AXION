@@ -101,23 +101,26 @@ const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
 function UpdateStatusModal({ open, onClose, appData, onSave }) {
   const [status, setStatus] = useState("Pending");
   const [notes, setNotes]   = useState("");
+  const [errorMsg, setErrorMsg] = useState("");  // ← add this
 
   useEffect(() => {
     if (appData) {
       setStatus(appData.applicationStatus || "Pending");
       setNotes(appData.reviewNotes || "");
+      setErrorMsg("");  // ← reset on open
     }
   }, [appData]);
 
   if (!appData) return null;
 
   async function handleSubmit() {
+    setErrorMsg("");
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications/${appData.id}`,
         {
-          method: "PUT",
-          headers: { "Content-Type": "application/json"},
+          method:  "PUT",
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             application_status: status.toLowerCase().replace(" ", "_"),
@@ -125,11 +128,18 @@ function UpdateStatusModal({ open, onClose, appData, onSave }) {
           }),
         }
       );
-      if (!res.ok) throw new Error("Failed to update status.");
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(result.error || "Failed to update status.");  // ← inline error
+        return;
+      }
+
       onSave({ ...appData, applicationStatus: status, reviewNotes: notes });
       onClose();
     } catch (err) {
-      alert("Something went wrong: " + err.message);
+      setErrorMsg("Something went wrong: " + err.message);
     }
   }
 
@@ -167,6 +177,24 @@ function UpdateStatusModal({ open, onClose, appData, onSave }) {
             onChange={e => setNotes(e.target.value)}
           />
         </div>
+
+        {/* ← error banner */}
+        {errorMsg && (
+          <div style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "8px",
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            borderRadius: "8px",
+            padding: "10px 14px",
+            color: "#991b1b",
+            fontSize: "0.875rem",
+          }}>
+            <FiAlertCircle style={{ marginTop: "2px", flexShrink: 0 }} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
       </div>
       <div className={styles.modalFooter}>
         <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>

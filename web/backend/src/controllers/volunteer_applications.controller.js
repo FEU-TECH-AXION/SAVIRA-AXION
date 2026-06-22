@@ -488,6 +488,41 @@ const updateItem = async (req, res) => {
         const { application_status, notes } = req.body
         const changedBy = req.user?.id || null
 
+        // ── Validation: approved requires completed evaluation ──
+        if (application_status === 'approved') {
+            const { data: evaluation, error: evalError } = await supabase
+                .from('volunteer_application_evaluations')
+                .select('alignment, maturity, commitment, clarity, experience, interview_score')
+                .eq('volunteer_application_id', parseInt(id))
+                .maybeSingle()
+
+            if (evalError) throw evalError
+
+            // Check if evaluation row exists
+            if (!evaluation) {
+                return res.status(400).json({
+                    error: 'Cannot approve. Essay rubric and interview score have not been completed yet.'
+                })
+            }
+
+            // Check if all essay criteria are scored
+            const essayFields = ['alignment', 'maturity', 'commitment', 'clarity', 'experience']
+            const missingEssay = essayFields.some(f => !evaluation[f] || evaluation[f] === 0)
+
+            if (missingEssay) {
+                return res.status(400).json({
+                    error: 'Cannot approve. Essay rubric is incomplete. All 5 criteria must be scored.'
+                })
+            }
+
+            // Check if interview score exists
+            if (!evaluation.interview_score || evaluation.interview_score === 0) {
+                return res.status(400).json({
+                    error: 'Cannot approve. Interview score has not been submitted yet.'
+                })
+            }
+        }
+
         const updatePayload = {
             application_status,
             updated_at: new Date(),
@@ -497,10 +532,8 @@ const updateItem = async (req, res) => {
             updatePayload.resolved_at = new Date()
         }
 
-        // Update application
         const updated = await VolunteerApplicationsModel.update(id, updatePayload)
 
-        // Write history inline — no separate model needed
         await supabase
             .from('volunteer_application_status_history')
             .insert({
@@ -513,6 +546,7 @@ const updateItem = async (req, res) => {
         res.status(200).json(updated)
 
     } catch (error) {
+        console.log('updateItem error:', error.message)
         res.status(500).json({ error: error.message })
     }
 }
