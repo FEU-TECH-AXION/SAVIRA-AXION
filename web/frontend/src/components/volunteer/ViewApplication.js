@@ -117,10 +117,8 @@ function UpdateStatusModal({ open, onClose, appData, onSave }) {
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications/${appData.id}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getCookie("token")}`,
-          },
+          headers: { "Content-Type": "application/json"},
+          credentials: "include",
           body: JSON.stringify({
             application_status: status.toLowerCase().replace(" ", "_"),
             notes,

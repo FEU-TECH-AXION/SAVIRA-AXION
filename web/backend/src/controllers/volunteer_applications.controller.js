@@ -486,13 +486,32 @@ const updateItem = async (req, res) => {
     try {
         const { id } = req.params
         const { application_status, notes } = req.body
+        const changedBy = req.user?.id || null
 
-        const updated = await VolunteerApplicationsModel.update(id, {
+        const updatePayload = {
             application_status,
             updated_at: new Date(),
-        })
+        }
+
+        if (application_status === 'rejected' || application_status === 'approved') {
+            updatePayload.resolved_at = new Date()
+        }
+
+        // Update application
+        const updated = await VolunteerApplicationsModel.update(id, updatePayload)
+
+        // Write history inline — no separate model needed
+        await supabase
+            .from('volunteer_application_status_history')
+            .insert({
+                volunteer_application_id: parseInt(id),
+                status:     application_status,
+                notes:      notes || null,
+                changed_by: changedBy,
+            })
 
         res.status(200).json(updated)
+
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
