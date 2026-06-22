@@ -615,9 +615,35 @@ function AddMeetingLinkModal({
     }
   }, [open, interview]);
 
+  const ALLOWED_DOMAINS = [
+    "meet.google.com",
+    "zoom.us",
+    "teams.microsoft.com",
+    "teams.live.com", // Teams personal links use this
+  ];
+
+  function validateMeetingLink(url) {
+    try {
+      const { protocol, hostname } = new URL(url.trim());
+      if (!["https:", "http:"].includes(protocol)) return false;
+      return ALLOWED_DOMAINS.some(
+        (d) => hostname === d || hostname.endsWith(`.${d}`)
+      );
+    } catch {
+      return false;
+    }
+  }
+
   async function handleSave() {
     if (!meetingLink.trim()) {
       showToast?.("Meeting link is required.", "error");
+      return;
+    }
+    if (!validateMeetingLink(meetingLink)) {
+      showToast?.(
+        "Only Google Meet, Zoom, or Microsoft Teams links are allowed.",
+        "error"
+      );
       return;
     }
 
@@ -645,7 +671,7 @@ function AddMeetingLinkModal({
       <FormGroup
         label="Meeting Link"
         required
-        hint="Google Meet, Zoom, Microsoft Teams, etc."
+        hint="Accepted: Google Meet, Zoom, or Microsoft Teams"
       >
         <input
           type="url"
