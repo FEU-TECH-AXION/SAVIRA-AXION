@@ -1212,8 +1212,6 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
         if (!res.ok) throw new Error("Failed to load interviews");
         const json = await res.json();
 
-        console.log("interviews from API:", JSON.stringify(json.data?.[0], null, 2));
-
         setInterviews(
           (json.data || []).map((iv) => {
             const parsedNotes = parseInterviewNotes(iv.notes);

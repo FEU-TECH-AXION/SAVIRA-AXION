@@ -60,36 +60,42 @@ const selectSlot = async (id, slot_id, notes = null) => {
     const payload = {
         selected_slot_id: slot_id,
         status: 'scheduled',
+        availability_requested: false,
+        availability_request_reason: null,
     }
     if (notes !== null) payload.notes = notes
     return updateById(id, payload)
 }
 
-const reschedule = async (id, slot_id, reason, existingNotes = null) => {
-    const rescheduleNote = `Reschedule reason: ${reason}`
-    const notes = existingNotes
-        ? `${existingNotes}\n\n${rescheduleNote}`
-        : rescheduleNote
-
+const reschedule = async (id, slot_id) => {
     return updateById(id, {
         selected_slot_id: slot_id,
         meeting_link: null,
         status: 'scheduled',
-        notes,
+        availability_requested: false,
+        availability_request_reason: null,
     })
 }
 
-const requestNewSlots = async (id, reason, existingNotes = null) => {
-    const requestNote = `Availability request: ${reason}`
-    const notes = existingNotes
-        ? `${existingNotes}\n\n${requestNote}`
-        : requestNote
+const requestNewSlots = async (id, reason) => {
+    return updateById(id, {
+        selected_slot_id: null,
+        meeting_link: null,
+        status: 'awaiting_new_slots',
+        availability_requested: true,
+        availability_request_reason: reason,
+    })
+}
 
+const reopenSelection = async (id, slotExpiresAt) => {
     return updateById(id, {
         selected_slot_id: null,
         meeting_link: null,
         status: 'invited',
-        notes,
+        invited_at: new Date().toISOString(),
+        slot_expires_at: slotExpiresAt,
+        availability_requested: false,
+        availability_request_reason: null,
     })
 }
 
@@ -142,6 +148,7 @@ module.exports = {
     selectSlot,
     reschedule,
     requestNewSlots,
+    reopenSelection,
     confirm,
     complete,
     cancel,

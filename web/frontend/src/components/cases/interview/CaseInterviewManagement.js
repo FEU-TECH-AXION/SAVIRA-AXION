@@ -17,8 +17,11 @@ const SLOT_STATUS = {
   disabled:   { label: "Disabled",         bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" },
 };
 
-function getAvailabilityRequest(notes) {
-  return String(notes || "").match(/^Availability request:\s*([\s\S]+)$/im)?.[1]?.trim() || "";
+function formatInterviewStatus(status) {
+  return String(status || "")
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
 }
 
 function Modal({ open, onClose, title, children, wide }) {
@@ -431,12 +434,13 @@ export default function CaseInterviewManagement() {
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "—",
-            interviewStatus: iv.status.charAt(0).toUpperCase() + iv.status.slice(1),
+            interviewStatus: formatInterviewStatus(iv.status),
             scheduledDate: iv.slot?.slot_date || null,
             scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
             duration: `${iv.slot?.duration_minutes || 60} minutes`,
             meetingLink: iv.meeting_link || null,
-            availabilityRequest: getAvailabilityRequest(iv.notes),
+            availabilityRequest: iv.availability_request_reason || null,
+            availabilityRequested: Boolean(iv.availability_requested),
           }))
         );
       } catch (err) {
@@ -672,10 +676,10 @@ export default function CaseInterviewManagement() {
           <div style={{ margin: "1rem auto", width: "min(1200px, calc(100% - 2rem))", padding: "1rem 1.1rem", borderRadius: 10, border: "1px solid #f5c26b", background: "#fff8e6", color: "#7c4a03", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div>
               <strong>{interviews.filter((interview) => interview.availabilityRequest).length} interviewee availability request(s)</strong>
-              <div style={{ marginTop: 3, fontSize: "0.82rem" }}>Review the highlighted interview records, then create additional interview slots.</div>
+              <div style={{ marginTop: 3, fontSize: "0.82rem" }}>Open a highlighted record to review the request and offer new slots.</div>
             </div>
-            <button className={styles.primaryBtn} onClick={() => handleOpenCreateSlot("")}>
-              <FiPlus /> Create Interview Slot
+            <button className={styles.primaryBtn} onClick={() => handleViewDetails(interviews.find((interview) => interview.availabilityRequest))}>
+              Review Requests
             </button>
           </div>
         )}
@@ -725,6 +729,7 @@ export default function CaseInterviewManagement() {
                   onViewDetails={handleViewDetails}
                   onMarkComplete={handleMarkComplete}
                   onAddMeetingLink={handleAddMeetingLink}
+                  onOfferNewSlots={handleViewDetails}
                   loading={loadingData}
                   pageSize={PAGE_SIZE}
                 />

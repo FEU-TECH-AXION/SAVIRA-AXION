@@ -40,7 +40,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/register`, {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

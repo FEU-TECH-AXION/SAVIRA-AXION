@@ -12,6 +12,7 @@ const DEFAULT_FILTERS = [
     options: [
       "All",
       "Invited",
+      "Awaiting New Slots",
       "Scheduled",
       "Confirmed",
       "Completed",

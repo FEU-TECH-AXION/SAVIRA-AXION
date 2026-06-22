@@ -35,9 +35,18 @@ const INTERVIEW_STATUS_COLORS = {
   Completed:  { bg: "#d1fae5", color: "#065f46" },
   Cancelled:  { bg: "#fee2e2", color: "#991b1b" },
   Invited:    { bg: "#fef3c7", color: "#92400e" },
+  "Awaiting New Slots": { bg: "#fff7ed", color: "#9a3412" },
   Expired:    { bg: "#f1f5f9", color: "#475569" },
   Pending:    { bg: "#fef3c7", color: "#92400e" },
 };
+
+function formatInterviewStatus(status) {
+  if (!status) return "Scheduled";
+  return String(status)
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
 
 function InterviewStatusBadge({ status }) {
   const s = INTERVIEW_STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
@@ -140,7 +149,7 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 //            (3) confirm  → summary card with Back / Confirm buttons
 //
 
-function SlotPickerCalendar({ slots, onSelectSlot }) {
+function SlotPickerCalendar({ slots, onSelectSlot, compact = false }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -293,9 +302,12 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
   }
 
   return (
-    <div className={styles.slotPickerLayout}>
+    <div
+      className={styles.slotPickerLayout}
+      style={compact ? { gridTemplateColumns: "1fr", gap: 0 } : undefined}
+    >
       {/* ── LEFT: compact month calendar ── */}
-      <div className={styles.calPanel}>
+      <div className={styles.calPanel} style={compact ? { borderRight: 0 } : undefined}>
         {/* Month navigation */}
         <div className={styles.calPanelHeader}>
           <Tooltip text="Previous month">
@@ -354,12 +366,42 @@ function SlotPickerCalendar({ slots, onSelectSlot }) {
             Selected
           </span>
         </div>
+
+        {compact && selectedDate && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #e5e7eb" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 700, color: "#374151" }}>
+              Available times for {formatDateShort(selectedDate)}
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {slotsForSelected.map((slot) => (
+                <button
+                  key={slot.id}
+                  type="button"
+                  className={styles.rpSlotBtn}
+                  onClick={() => {
+                    setPendingSlot(slot);
+                    onSelectSlot(slot);
+                  }}
+                  style={{
+                    width: "auto",
+                    background: pendingSlot?.id === slot.id ? "#037F81" : undefined,
+                    color: pendingSlot?.id === slot.id ? "#fff" : undefined,
+                  }}
+                >
+                  <span className={styles.rpSlotTime}>{formatTime(slot.time)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── RIGHT: dynamic panel ── */}
-      <div className={styles.rightPanel}>
-        {rightPanel}
-      </div>
+      {!compact && (
+        <div className={styles.rightPanel}>
+          {rightPanel}
+        </div>
+      )}
     </div>
   );
 }
@@ -425,12 +467,10 @@ function composeInterviewNotes(location, notes) {
 function parseInterviewNotes(raw) {
   const text = raw || "";
   const venueMatch = text.match(/^Venue:\s*(.+)$/im);
-  const notesMatch = text.match(/^Notes:\s*([\s\S]+?)(?=\n\nAvailability request:|\n\nReschedule reason:|$)/im);
-  const availabilityMatch = text.match(/^Availability request:\s*([\s\S]+)$/im);
+  const notesMatch = text.match(/^Notes:\s*([\s\S]+)$/im);
   return {
     venue: venueMatch?.[1]?.trim() || "",
-    notes: notesMatch?.[1]?.trim() || (!venueMatch && !availabilityMatch ? text.trim() : ""),
-    availabilityRequest: availabilityMatch?.[1]?.trim() || "",
+    notes: notesMatch?.[1]?.trim() || (!venueMatch ? text.trim() : ""),
   };
 }
 
@@ -686,14 +726,62 @@ function AddMeetingLinkModal({
 
 // ─── Complainant: Invited view (Select a Slot) ────────────────────────────────
 
-function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityRequested, showToast, rescheduleReason = "" }) {
+function AvailabilityRequestModal({ open, onClose, onSubmit, scheduled = false }) {
+  const defaultReason = scheduled
+    ? "I am no longer available at the selected date and time. My preferred availability is: "
+    : "I am unavailable during the displayed dates and times. My preferred availability is: ";
+  const [reason, setReason] = useState(defaultReason);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    const normalized = reason.trim();
+    if (!normalized || normalized === defaultReason.trim()) {
+      setError("Please add your preferred days or times.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit(normalized);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to send availability request.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={() => !submitting && onClose()} title={scheduled ? "Request a Different Interview Time" : "Request Different Interview Slots"}>
+      <p style={{ margin: "0 0 1rem", color: "#6b7280", fontSize: "0.875rem" }}>
+        Explain what does not work and include the days or times when you are available.
+      </p>
+      <FormGroup label="Availability and reason" required error={error}>
+        <FTextarea
+          value={reason}
+          onChange={(event) => { setReason(event.target.value); setError(""); }}
+          rows={5}
+          maxLength={700}
+          error={error}
+        />
+      </FormGroup>
+      <div className={styles.modalFooter}>
+        <button type="button" className={styles.btnSecondary} disabled={submitting} onClick={onClose}>
+          {scheduled ? "Keep Current Slot" : "Cancel"}
+        </button>
+        <button type="button" className={styles.btnPrimary} disabled={submitting} onClick={handleSubmit}>
+          {submitting ? "Sending..." : "Send Request"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityRequested, showToast }) {
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
-  const [requestReason, setRequestReason] = useState("I am unavailable during the displayed dates and times. My preferred availability is: ");
-  const [requestError, setRequestError] = useState("");
-  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     const fetchSlots = async () => {
@@ -726,15 +814,11 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
     setConfirming(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const endpoint = rescheduleReason ? "reschedule" : "select-slot";
-      const res = await fetch(`${API_URL}/api/interviews/${interview.id}/${endpoint}`, {
+      const res = await fetch(`${API_URL}/api/interviews/${interview.id}/select-slot`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slot_id: slot.id,
-          ...(rescheduleReason ? { reason: rescheduleReason } : {}),
-        }),
+        body: JSON.stringify({ slot_id: slot.id }),
       });
 
       if (!res.ok) {
@@ -742,11 +826,7 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
         throw new Error(body.error || "Failed to confirm slot.");
       }
 
-      showToast?.(
-        rescheduleReason
-          ? "Interview rescheduled. Your case officer will confirm the new slot shortly."
-          : "Slot selected! Your case officer will confirm shortly."
-      );
+      showToast?.("Slot selected! Your case officer will confirm shortly.");
       onSlotSelected?.({ ...interview, interviewStatus: "Scheduled", slot });
     } catch (err) {
       showToast?.(err.message || "Failed to confirm slot.", "error");
@@ -756,31 +836,18 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
   }
 
   async function handleRequestNewSlots() {
-    const reason = requestReason.trim();
-    if (!reason || reason.endsWith("is:")) {
-      setRequestError("Please add your preferred days or times.");
-      return;
-    }
-    setRequesting(true);
-    setRequestError("");
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || "Failed to send availability request.");
-      setRequestOpen(false);
-      onAvailabilityRequested?.(reason);
-      showToast?.("Your availability request was sent to your case officer.");
-    } catch (err) {
-      setRequestError(err.message || "Failed to send availability request.");
-    } finally {
-      setRequesting(false);
-    }
+    const reason = arguments[0];
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Failed to send availability request.");
+    onAvailabilityRequested?.(reason);
+    showToast?.("Your availability request was sent to your case officer.");
   }
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
@@ -824,16 +891,9 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
         />
       )}
 
-      {interview.availabilityRequest ? (
-        <div style={{ padding: "12px 16px", borderRadius: 8, background: "#ecfeff", border: "1px solid #a5f3fc", color: "#155e75", fontSize: "0.875rem" }}>
-          <strong>New slots requested.</strong>
-          <div style={{ marginTop: 4 }}>{interview.availabilityRequest}</div>
-        </div>
-      ) : (
-        <button type="button" className={styles.rescheduleBtn} onClick={() => setRequestOpen(true)} style={{ alignSelf: "flex-start" }}>
-          None of these slots work
-        </button>
-      )}
+      <button type="button" className={styles.rescheduleBtn} onClick={() => setRequestOpen(true)} style={{ alignSelf: "flex-start" }}>
+        None of these slots work
+      </button>
 
       {confirming && (
         <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center" }}>
@@ -841,29 +901,11 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
         </p>
       )}
 
-      <Modal open={requestOpen} onClose={() => !requesting && setRequestOpen(false)} title="Request Different Interview Slots">
-        <p style={{ margin: "0 0 1rem", color: "#6b7280", fontSize: "0.875rem" }}>
-          Explain why the listed schedules do not work and include your preferred days or times.
-        </p>
-        <FormGroup label="Availability and reason" required error={requestError}>
-          <FTextarea
-            value={requestReason}
-            onChange={(event) => {
-              setRequestReason(event.target.value);
-              setRequestError("");
-            }}
-            rows={5}
-            maxLength={700}
-            error={requestError}
-          />
-        </FormGroup>
-        <div className={styles.modalFooter}>
-          <button type="button" className={styles.btnSecondary} disabled={requesting} onClick={() => setRequestOpen(false)}>Cancel</button>
-          <button type="button" className={styles.btnPrimary} disabled={requesting} onClick={handleRequestNewSlots}>
-            {requesting ? "Sending..." : "Send Request"}
-          </button>
-        </div>
-      </Modal>
+      <AvailabilityRequestModal
+        open={requestOpen}
+        onClose={() => setRequestOpen(false)}
+        onSubmit={handleRequestNewSlots}
+      />
     </div>
   );
 }
@@ -1072,7 +1114,7 @@ function ConfirmedView({ interview, onReschedule }) {
 // Pre-fills current date/time/location and lets them pick a new one.
 //
 
-function RescheduleModal({ interview, onClose, onConfirm }) {
+function LegacyRescheduleModal({ interview, onClose, onConfirm }) {
   const formatDateInput = (dateStr) => dateStr || "";
   const formatTimeInput = (timeStr) => timeStr || "";
 
@@ -1193,6 +1235,115 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
   );
 }
 
+function RescheduleModal({ interview, mode, userId, onClose, onConfirm }) {
+  const [slots, setSlots] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [newSlot, setNewSlot] = useState({ date: "", time: "09:00", duration: "60" });
+
+  useEffect(() => {
+    const loadSlots = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/interview_slots?slot_type=case_report&is_available=true&created_by=${userId}`, { credentials: "include" });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || "Failed to load available slots.");
+        setSlots((body.data || []).map((slot) => ({
+          ...slot,
+          id: slot.slot_id,
+          date: slot.slot_date,
+          time: slot.slot_time,
+          status: "free",
+        })));
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    loadSlots();
+  }, [userId]);
+
+  async function createSlot() {
+    if (!newSlot.date || !newSlot.time) {
+      setError("Choose a date and time for the new slot.");
+      return;
+    }
+    setCreating(true);
+    setError("");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/interview_slots`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot_type: "case_report",
+          created_by: userId,
+          slot_date: newSlot.date,
+          slot_time: newSlot.time,
+          duration_minutes: Number(newSlot.duration),
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to create slot.");
+      const slot = { ...body.data, id: body.data.slot_id, date: body.data.slot_date, time: body.data.slot_time, status: "free" };
+      setSlots((current) => [...current, slot]);
+      setSelectedSlot(slot);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleConfirm() {
+    if (!selectedSlot) {
+      setError("Select or create an available slot first.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onConfirm(interview, selectedSlot, mode);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={mode === "reopen-selection" ? "Offer New Interview Slots" : "Reschedule Interview"}>
+      {mode === "reopen-selection" && (
+        <div style={{ padding: "0.8rem 0.9rem", marginBottom: "1rem", borderRadius: 8, border: "1px solid #f5c26b", background: "#fff8e6", color: "#7c4a03" }}>
+          <strong>Interviewee availability</strong>
+          <div style={{ marginTop: 4, fontSize: "0.86rem" }}>{interview.availabilityRequest}</div>
+        </div>
+      )}
+      <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
+        Select an existing free slot or create a new one below.
+      </p>
+      {error && <div style={{ marginBottom: 12, color: "#991b1b", fontSize: "0.84rem" }}>{error}</div>}
+      {slots.length > 0 && <SlotPickerCalendar slots={slots} onSelectSlot={setSelectedSlot} compact />}
+      {selectedSlot && (
+        <div style={{ marginTop: 12, color: "#065f46", fontSize: "0.85rem", fontWeight: 700 }}>
+          Selected: {selectedSlot.date} at {selectedSlot.time?.slice(0, 5)}
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.7fr auto", gap: 8, marginTop: 16, alignItems: "end" }}>
+        <FormGroup label="New slot date"><input className={styles.formInput} type="date" min={new Date().toISOString().split("T")[0]} value={newSlot.date} onChange={(e) => setNewSlot((value) => ({ ...value, date: e.target.value }))} /></FormGroup>
+        <FormGroup label="Time"><input className={styles.formInput} type="time" value={newSlot.time} onChange={(e) => setNewSlot((value) => ({ ...value, time: e.target.value }))} /></FormGroup>
+        <FormGroup label="Minutes"><input className={styles.formInput} type="number" min="15" max="180" value={newSlot.duration} onChange={(e) => setNewSlot((value) => ({ ...value, duration: e.target.value }))} /></FormGroup>
+        <button type="button" className={styles.btnSecondary} onClick={createSlot} disabled={creating}>{creating ? "Creating..." : "Create"}</button>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose} disabled={submitting}>Cancel</button>
+        <button className={styles.btnPrimary} onClick={handleConfirm} disabled={submitting}>
+          {submitting ? "Saving..." : mode === "reopen-selection" ? "Send New Invitation" : "Confirm Reschedule"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function CancelInterviewModal({ interview, onClose, onConfirm }) {
   const defaultReason = "The interview is being cancelled because ";
   const [reason, setReason] = useState(defaultReason);
@@ -1236,9 +1387,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rescheduleId, setRescheduleId] = useState(null);
-  const [complainantRescheduling, setComplainantRescheduling] = useState(false);
   const [complainantReschedulePrompt, setComplainantReschedulePrompt] = useState(false);
-  const [complainantRescheduleReason, setComplainantRescheduleReason] = useState("");
   const [form, setForm] = useState({
     interviewDate: "",
     interviewTime: "",
@@ -1289,22 +1438,21 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         if (!res.ok) throw new Error("Failed to load interviews");
         const json = await res.json();
 
-        console.log("interviews from API:", JSON.stringify(json.data?.[0], null, 2));
-
         setInterviews(
           (json.data || []).map((iv) => {
             const parsedNotes = parseInterviewNotes(iv.notes);
             return {
               ...iv,
               id: iv.interview_id,
-              interviewStatus: iv.status.charAt(0).toUpperCase() + iv.status.slice(1),
+              interviewStatus: formatInterviewStatus(iv.status),
               scheduledDate: iv.slot?.slot_date || null,
               scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
               interview_date: iv.slot?.slot_date || null,
               interview_time: iv.slot?.slot_time?.slice(0, 5) || null,
               location: parsedNotes.venue || null,
               notes: parsedNotes.notes || null,
-              availabilityRequest: parsedNotes.availabilityRequest || null,
+              availabilityRequest: iv.availability_request_reason || null,
+              availabilityRequested: Boolean(iv.availability_requested),
               rawNotes: iv.notes || null,
               meetingLink: iv.meeting_link || iv.meetingLink || null,
             };
@@ -1470,36 +1618,19 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     }
   }
 
-  async function handleStaffRescheduleConfirm(updated) {
+  async function handleStaffRescheduleConfirm(interview, slot, mode) {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-      // Step 1: Create new slot
-      const slotRes = await fetch(`${API_URL}/api/interview_slots`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slot_type: "case_report",
-          created_by: userId,
-          slot_date: updated.scheduledDate,
-          slot_time: updated.scheduledTime,
-          duration_minutes: 60,
-        }),
-      });
-
-      const slotBody = await slotRes.json();
-      if (!slotRes.ok) throw new Error(slotBody.error || "Failed to create slot.");
-
-      const slot = slotBody.data;
-      const composedNotes = composeInterviewNotes(updated.location, updated.notes);
-
-      // Step 2: Select new slot on interview
-      const selectRes = await fetch(`${API_URL}/api/interviews/${updated.id}/select-slot`, {
+      const endpoint = mode === "reopen-selection" ? "reopen-selection" : "reschedule";
+      const selectRes = await fetch(`${API_URL}/api/interviews/${interview.id}/${endpoint}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: slot.slot_id, notes: composedNotes }),
+        body: JSON.stringify(
+          mode === "reopen-selection"
+            ? { slot_ids: [slot.id], expiry_days: 7 }
+            : { slot_id: slot.id, reason: "Staff selected a new interview slot." }
+        ),
       });
 
       const selectBody = await selectRes.json();
@@ -1507,16 +1638,58 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
       setInterviews((prev) =>
         prev.map((iv) =>
-          iv.id === updated.id
-            ? { ...updated, notes: updated.notes || null, rawNotes: composedNotes }
+          iv.id === interview.id
+            ? mode === "reopen-selection"
+              ? {
+                  ...iv,
+                  interviewStatus: "Invited",
+                  status: "Invited",
+                  availabilityRequest: null,
+                  availabilityRequested: false,
+                  expiresAt: selectBody.data?.slot_expires_at,
+                }
+              : {
+                  ...iv,
+                  interviewStatus: "Scheduled",
+                  status: "Scheduled",
+                  scheduledDate: slot.date,
+                  scheduledTime: slot.time?.slice(0, 5),
+                  interview_date: slot.date,
+                  interview_time: slot.time?.slice(0, 5),
+                  availabilityRequest: null,
+                  availabilityRequested: false,
+                }
             : iv
         )
       );
       setRescheduleId(null);
-      showToast?.("Interview rescheduled successfully.");
+      showToast?.(mode === "reopen-selection" ? "New slots offered and the complainant was re-invited." : "Interview rescheduled successfully.");
     } catch (err) {
       showToast?.(err.message || "Failed to reschedule interview.", "error");
+      throw err;
     }
+  }
+
+  async function requestAvailabilityChange(interview, reason) {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Failed to send availability request.");
+    setInterviews((prev) => prev.map((iv) => iv.id === interview.id ? {
+      ...iv,
+      interviewStatus: "Awaiting New Slots",
+      status: "Awaiting New Slots",
+      availabilityRequest: reason,
+      availabilityRequested: true,
+      scheduledDate: null,
+      scheduledTime: null,
+    } : iv));
+    showToast?.("Your availability request was sent to your case officer.");
   }
 
   const inputStyle = (hasErr) => ({
@@ -1547,58 +1720,55 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     const status = activeInterview.interviewStatus || activeInterview.status;
 
     // Complainant requested a reschedule → show slot picker again with a banner
-    if (complainantRescheduling || status === "Invited") {
+    if (status === "Awaiting New Slots") {
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {complainantRescheduling && (
-            <div style={{
-              background: "#fef9c3", border: "1px solid #fde68a", borderRadius: 8,
-              padding: "10px 14px", fontSize: "0.875rem", color: "#92400e",
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-            }}>
-              <span><strong>Rescheduling:</strong> Please select a new slot below.</span>
-              <button
-                onClick={() => {
-                  setComplainantRescheduling(false);
-                  setComplainantRescheduleReason("");
-                }}
-                style={{ background: "none", border: "none", fontSize: "0.8rem", color: "#92400e", cursor: "pointer", fontWeight: 600 }}
-              >
-                Keep original
-              </button>
+        <div style={{ padding: "1.25rem", borderRadius: 10, background: "#fff8e6", border: "1px solid #f5c26b", color: "#7c4a03" }}>
+          <h2 className={styles.statusTitle}>Waiting for New Interview Times</h2>
+          <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem", lineHeight: 1.5 }}>
+            Your request was sent to your case officer. The slot picker will return after new times are offered.
+          </p>
+          {activeInterview.availabilityRequest && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f5c26b", fontSize: "0.85rem" }}>
+              <strong>Your request:</strong> {activeInterview.availabilityRequest}
             </div>
           )}
-          <InvitedView
-            caseData={caseData}
-            interview={{ ...activeInterview, interviewStatus: "Invited", status: "Invited" }}
-            rescheduleReason={complainantRescheduling ? complainantRescheduleReason : ""}
-            onSlotSelected={(updated) => {
-              setInterviews((prev) =>
-                prev.map((iv) =>
-                  iv.id === updated.id
-                    ? {
-                        ...iv,
-                        interviewStatus: "Scheduled",
-                        status: "Scheduled",
-                        scheduledDate: updated.slot?.date || iv.scheduledDate,
-                        scheduledTime: updated.slot?.time || iv.scheduledTime,
-                        interview_date: updated.slot?.date || iv.interview_date,
-                        interview_time: updated.slot?.time || iv.interview_time,
-                      }
-                    : iv
-                )
-              );
-              setComplainantRescheduling(false);
-              setComplainantRescheduleReason("");
-            }}
-            onAvailabilityRequested={(reason) => {
-              setInterviews((prev) =>
-                prev.map((iv) => iv.id === activeInterview.id ? { ...iv, availabilityRequest: reason } : iv)
-              );
-            }}
-            showToast={showToast}
-          />
         </div>
+      );
+    }
+
+    if (status === "Invited") {
+      return (
+        <InvitedView
+          caseData={caseData}
+          interview={activeInterview}
+          onSlotSelected={(updated) => {
+            setInterviews((prev) =>
+              prev.map((iv) =>
+                iv.id === updated.id
+                  ? {
+                      ...iv,
+                      interviewStatus: "Scheduled",
+                      status: "Scheduled",
+                      scheduledDate: updated.slot?.date || iv.scheduledDate,
+                      scheduledTime: updated.slot?.time || iv.scheduledTime,
+                      interview_date: updated.slot?.date || iv.interview_date,
+                      interview_time: updated.slot?.time || iv.interview_time,
+                    }
+                  : iv
+              )
+            );
+          }}
+          onAvailabilityRequested={(reason) => {
+            setInterviews((prev) => prev.map((iv) => iv.id === activeInterview.id ? {
+              ...iv,
+              interviewStatus: "Awaiting New Slots",
+              status: "Awaiting New Slots",
+              availabilityRequest: reason,
+              availabilityRequested: true,
+            } : iv));
+          }}
+          showToast={showToast}
+        />
       );
     }
 
@@ -1609,14 +1779,11 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             interview={activeInterview}
             onReschedule={() => setComplainantReschedulePrompt(true)}
           />
-          <RescheduleReasonModal
+          <AvailabilityRequestModal
             open={complainantReschedulePrompt}
             onClose={() => setComplainantReschedulePrompt(false)}
-            onContinue={(reason) => {
-              setComplainantRescheduleReason(reason);
-              setComplainantReschedulePrompt(false);
-              setComplainantRescheduling(true);
-            }}
+            scheduled
+            onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
           />
         </>
       );
@@ -1629,14 +1796,11 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             interview={activeInterview}
             onReschedule={() => setComplainantReschedulePrompt(true)}
           />
-          <RescheduleReasonModal
+          <AvailabilityRequestModal
             open={complainantReschedulePrompt}
             onClose={() => setComplainantReschedulePrompt(false)}
-            onContinue={(reason) => {
-              setComplainantRescheduleReason(reason);
-              setComplainantReschedulePrompt(false);
-              setComplainantRescheduling(true);
-            }}
+            scheduled
+            onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
           />
         </>
       );
@@ -1784,6 +1948,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             );
             const scheduledLabel = formatStaffDateTime(iv);
             const isInvited = status === "Invited";
+            const isAwaitingNewSlots = status === "Awaiting New Slots";
             const isConfirmed = status === "Confirmed";
             const isCancelled = status === "Cancelled";
             const isCompleted = status === "Completed";
@@ -1810,12 +1975,16 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                 <div>
                   <strong style={{ display: "block", fontSize: "0.98rem", color: "#111827" }}>
-                    {isInvited
+                    {isAwaitingNewSlots
+                      ? "New interview times requested"
+                      : isInvited
                       ? "Interview invitation sent"
                       : scheduledLabel || "Interview schedule pending"}
                   </strong>
                   <span style={{ display: "block", marginTop: 3, fontSize: "0.82rem", color: "#6b7280" }}>
-                    {isInvited
+                    {isAwaitingNewSlots
+                      ? "Waiting for staff to offer new interview times."
+                      : isInvited
                       ? "Waiting for the complainant to select an available slot."
                       : isCancelled
                       ? "This interview was cancelled."
@@ -1829,7 +1998,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                 <InterviewStatusBadge status={status} />
               </div>
 
-              {!isInvited && (
+              {!isInvited && !isAwaitingNewSlots && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", padding: "0.75rem", background: "#f9fafb", borderRadius: 8, border: "1px solid #eef2f7" }}>
                   {iv.meetingLink ? (
                     <div>
@@ -1868,7 +2037,15 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
               {canManageActive && (
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 2, flexWrap: "wrap" }}>
-                  {!isInvited && (
+                  {isAwaitingNewSlots && (
+                    <button
+                      onClick={() => setRescheduleId(iv.id)}
+                      style={{ padding: "5px 14px", background: "#037F81", color: "#fff", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Offer New Slots
+                    </button>
+                  )}
+                  {!isInvited && !isAwaitingNewSlots && (
                     <>
                       <button
                         onClick={() => setMeetingLinkInterview(iv)}
@@ -1965,6 +2142,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
         return iv ? (
           <RescheduleModal
             interview={iv}
+            mode={(iv.interviewStatus || iv.status) === "Awaiting New Slots" ? "reopen-selection" : "reschedule"}
+            userId={userId}
             onClose={() => setRescheduleId(null)}
             onConfirm={handleStaffRescheduleConfirm}
           />
