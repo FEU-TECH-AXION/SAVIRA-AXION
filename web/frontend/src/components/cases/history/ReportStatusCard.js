@@ -73,7 +73,15 @@ function StatusStepper({ statusName }) {
   );
 }
 
-export default function ReportStatusCard({ report, reportNumber, onWithdraw, onFollowUp }) {
+export default function ReportStatusCard({
+  report,
+  reportNumber,
+  onWithdraw,
+  onFollowUp,
+  showManagementActions = true,
+  headerLabel,
+  viewFrom = "history",
+}) {
   const router = useRouter();
   const assigned = report.assignedPersonnel || "Unassigned";
   const updatedAgo = timeAgo(report.updatedAt);
@@ -104,38 +112,42 @@ export default function ReportStatusCard({ report, reportNumber, onWithdraw, onF
   return (
     <div className={styles.statusCard}>
       <div className={styles.statusCardHeader}>
-        <span>Report {reportNumber}</span>
+        <span>{headerLabel || `Report ${reportNumber}`}</span>
         <div className={styles.headerActions}>
-          <Tooltip text={followUpTooltip}>
-            <button
-              type="button"
-              className={styles.headerFollowUpBtn}
-              disabled={!followUpAllowed || followUpActive}
-              onClick={onFollowUp}
-            >
-              Follow Up
-            </button>
-          </Tooltip>
-          {withdrawalCopy.actionType !== WITHDRAWAL_ACTION.BLOCK && (
-            <Tooltip text={withdrawTooltip}>
-              <button
-                type="button"
-                className={styles.headerWithdrawBtn}
-                disabled={!canWithdraw}
-                aria-label={`Withdraw ${report.caseId}`}
-                onClick={onWithdraw}
-              >
-                {report.withdrawalRequest?.status === "pending"
-                  ? "Withdrawal Pending"
-                  : withdrawalCopy.buttonLabel}
-              </button>
-            </Tooltip>
+          {showManagementActions && (
+            <>
+              <Tooltip text={followUpTooltip}>
+                <button
+                  type="button"
+                  className={styles.headerFollowUpBtn}
+                  disabled={!followUpAllowed || followUpActive}
+                  onClick={onFollowUp}
+                >
+                  Follow Up
+                </button>
+              </Tooltip>
+              {withdrawalCopy.actionType !== WITHDRAWAL_ACTION.BLOCK && (
+                <Tooltip text={withdrawTooltip}>
+                  <button
+                    type="button"
+                    className={styles.headerWithdrawBtn}
+                    disabled={!canWithdraw}
+                    aria-label={`Withdraw ${report.caseId}`}
+                    onClick={onWithdraw}
+                  >
+                    {report.withdrawalRequest?.status === "pending"
+                      ? "Withdrawal Pending"
+                      : withdrawalCopy.buttonLabel}
+                  </button>
+                </Tooltip>
+              )}
+            </>
           )}
           <Tooltip text={`View details for ${report.caseId}`}>
             <button
               type="button"
               className={styles.headerViewBtn}
-              onClick={() => router.push(`/cases/view?caseId=${report.id}&from=history`)}
+              onClick={() => router.push(`/cases/view?caseId=${report.id}&from=${viewFrom}`)}
             >
               View &rarr;
             </button>

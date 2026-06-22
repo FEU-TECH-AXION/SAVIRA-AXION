@@ -1,0 +1,160 @@
+.statusCard {
+  background: var(--sasha-white);
+  border: 1px solid var(--sasha-border);
+  border-radius: var(--sasha-card-radius);
+  overflow: hidden;
+}
+
+.statusCardHeader {
+  align-items: center;
+  background: var(--sasha-teal);
+  color: var(--sasha-white);
+  display: flex;
+  font-size: 0.88rem;
+  font-weight: 700;
+  justify-content: space-between;
+  padding: 0.55rem 1rem;
+  gap: 0.75rem;
+}
+
+.headerActions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.headerViewBtn {
+  background: var(--sasha-white);
+  border: 0;
+  border-radius: 999px;
+  color: var(--sasha-teal);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 14px;
+}
+
+.statusCardBody {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.cardTopRow {
+  margin-bottom: 0.85rem;
+}
+
+.cardApplicationId {
+  color: var(--sasha-teal);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.cardMetaGrid {
+  border-bottom: 1px solid var(--sasha-border);
+  display: grid;
+  gap: 0.5rem 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+}
+
+.cardMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cardMetaLabel {
+  color: var(--sasha-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cardMetaValue {
+  color: var(--sasha-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.cardMetaUnassigned {
+  color: var(--sasha-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.stepper {
+  align-items: flex-start;
+  display: flex;
+  margin-top: 1.25rem;
+}
+
+.stepItem {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  position: relative;
+}
+
+.stepLine {
+  background: var(--sasha-border);
+  height: 2px;
+  left: -50%;
+  position: absolute;
+  top: 10px;
+  width: 100%;
+}
+
+.stepLineDone {
+  background: var(--sasha-teal);
+}
+
+.stepDot {
+  background: var(--sasha-border);
+  border: 2px solid var(--sasha-border);
+  border-radius: 50%;
+  height: 20px;
+  width: 20px;
+  z-index: 1;
+}
+
+.stepDotDone {
+  background: var(--sasha-teal);
+  border-color: var(--sasha-teal);
+}
+
+.stepDotActive {
+  background: var(--sasha-orange);
+  border-color: var(--sasha-orange);
+  box-shadow: 0 0 0 3px rgba(232, 102, 58, 0.2);
+}
+
+.stepLabel {
+  color: var(--sasha-muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  margin-top: 0.4rem;
+  text-align: center;
+}
+
+.stepLabelActive {
+  color: var(--sasha-text);
+  font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+  .statusCardHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerActions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .cardMetaGrid {
+    grid-template-columns: 1fr;
+  }
+}
