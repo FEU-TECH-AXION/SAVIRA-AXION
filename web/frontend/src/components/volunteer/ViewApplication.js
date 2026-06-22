@@ -492,6 +492,19 @@ function ApplicationDetailsTab({ appData, isStaff }) {
           ["Reviewer Notes",     appData.reviewNotes || "No notes yet."],
         ]} />
       </Section>
+      
+      {/* Status History */}
+      {!isStaff ? (
+        <section className={styles.section}>
+          <h2 className={styles.sectionHeadingText}>Your Application History</h2>
+          <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1rem", lineHeight: 1.6 }}>
+            Below is a timeline of your application's progress.
+          </p>
+          <VolunteerStatusHistorySection applicationId={appData.id} isStaff={false} />
+        </section>
+      ) : (
+        <VolunteerStatusHistorySection applicationId={appData.id} isStaff={true} />
+      )}
     </div>
   );
 }
@@ -1148,6 +1161,106 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
       </div>
 
     </div>
+  );
+}
+
+function VolunteerStatusHistorySection({ applicationId, isStaff }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await window.fetch(
+          `${API_URL}/api/volunteer_applications/${applicationId}/status-history`,
+          { credentials: "include" }
+        );
+        if (!res.ok) throw new Error("Failed to load history");
+        const json = await res.json();
+        setHistory(json.data || []);
+      } catch {
+        setHistory([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [applicationId]);
+
+  const STATUS_COLORS = {
+    pending:     { bg: "#fef3c7", color: "#92400e" },
+    reviewing:   { bg: "#dbeafe", color: "#1e40af" },
+    interviewed: { bg: "#e0f2fe", color: "#0369a1" },
+    accepted:    { bg: "#d1fae5", color: "#065f46" },
+    rejected:    { bg: "#fee2e2", color: "#991b1b" },
+    withdrawn:   { bg: "#f1f5f9", color: "#475569" },
+  };
+
+  function StatusBadge({ status }) {
+    const s = STATUS_COLORS[status?.toLowerCase()] || { bg: "#f3f4f6", color: "#374151" };
+    return (
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "3px 10px", borderRadius: 999,
+        fontSize: "0.78rem", fontWeight: 700,
+        background: s.bg, color: s.color,
+      }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
+        {status}
+      </span>
+    );
+  }
+
+  if (loading) return <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Loading history…</p>;
+
+  return (
+    <section>
+      <button
+        onClick={() => setShowHistory((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: "none", border: "none", cursor: "pointer",
+          fontSize: "0.875rem", fontWeight: 600, color: "#374151", padding: 0,
+        }}
+      >
+        {showHistory ? <FiChevronUp /> : <FiChevronDown />}
+        {showHistory ? "Hide" : "Show"} Status History ({history.length} {history.length === 1 ? "entry" : "entries"})
+      </button>
+
+      {showHistory && (
+        <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: 0 }}>
+          {history.length === 0 ? (
+            <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>No status history yet.</p>
+          ) : (
+            [...history].reverse().map((h, i, arr) => (
+              <div key={h.history_id} style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#037F81", flexShrink: 0 }} />
+                  {i < arr.length - 1 && (
+                    <div style={{ width: 2, height: 40, background: "#e5e7eb" }} />
+                  )}
+                </div>
+                <div style={{ paddingBottom: "1.25rem" }}>
+                  <StatusBadge status={capitalizeStatus(h.status)} />
+                  <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "#6b7280" }}>
+                    {new Date(h.created_at).toLocaleDateString("en-PH", {
+                      month: "numeric", day: "numeric", year: "numeric",
+                    })} · {h.changed_by_name || "System"}
+                  </p>
+                  {h.notes && (
+                    <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#374151", lineHeight: 1.5 }}>
+                      {h.notes}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
