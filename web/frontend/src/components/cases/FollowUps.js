@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FiCheck, FiEdit3, FiMessageCircle, FiPaperclip, FiSend, FiX } from "react-icons/fi";
+import {
+  FiCheck,
+  FiChevronDown,
+  FiChevronRight,
+  FiClock,
+  FiEdit3,
+  FiLayers,
+  FiList,
+  FiMessageCircle,
+  FiPaperclip,
+  FiSend,
+  FiX,
+} from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
 import FollowUpFieldEditor, {
@@ -97,8 +109,15 @@ export function getFollowUpDisplay(summary) {
     : { label: "Follow-up Pending", tone: "pending" };
 }
 
-export function FollowUpBadge({ summary }) {
-  const display = getFollowUpDisplay(summary);
+export function FollowUpBadge({ summary, always = false }) {
+  const display = getFollowUpDisplay(summary) || (
+    always && ["resolved", "rejected"].includes(summary?.status)
+      ? {
+          label: summary.status === "resolved" ? "Resolved" : "Rejected",
+          tone: summary.status,
+        }
+      : null
+  );
   if (!display) return null;
   return (
     <span className={`${styles.badge} ${styles[`badge_${display.tone}`]}`}>
@@ -454,6 +473,48 @@ function PersonName({ user, fallback }) {
   return name || fallback;
 }
 
+function getPersonName(user, fallback) {
+  const name = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
+  return name || fallback;
+}
+
+function getRequestTitle(request) {
+  return request.type === "officer_clarification_request"
+    ? "Clarification Request"
+    : "Change Request";
+}
+
+function getRequestStatusLabel(status) {
+  if (status === "resolved") return "Resolved";
+  if (status === "rejected") return "Rejected";
+  if (status === "responded") return "Responded";
+  return "Open";
+}
+
+function relativeDate(value) {
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "";
+  const elapsed = Date.now() - timestamp;
+  const future = elapsed < 0;
+  const absolute = Math.abs(elapsed);
+  const units = [
+    ["year", 365 * 86400000],
+    ["month", 30 * 86400000],
+    ["week", 7 * 86400000],
+    ["day", 86400000],
+    ["hour", 3600000],
+    ["minute", 60000],
+  ];
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  for (const [unit, milliseconds] of units) {
+    if (absolute >= milliseconds) {
+      const amount = Math.max(1, Math.round(absolute / milliseconds));
+      return formatter.format(future ? amount : -amount, unit);
+    }
+  }
+  return "just now";
+}
+
 function Thread({ request, currentUserId, isStaff, onChanged }) {
   const [reply, setReply] = useState("");
   const [file, setFile] = useState(null);
@@ -575,20 +636,69 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
     },
     ...(request.follow_up_messages || []),
   ];
+  const latestEntry = entries[entries.length - 1];
+  const closePreview = (request.field_changes || []).length > 0
+    ? (
+        <div className={styles.confirmPreview}>
+          {(request.field_changes || []).map((change) => (
+            <div key={change.id || `${change.field_key}-${change.changed_at}`}>
+              <strong>{getFieldLabel(change.field_key, submittedLocationType)}</strong>
+              <p>
+                <span>{formatChangeValue(change.previous_value)}</span>
+                <b aria-hidden="true">→</b>
+                <span>{formatChangeValue(change.new_value)}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      )
+    : (
+        <div className={styles.confirmPreview}>
+          <div>
+            <strong>Latest message</strong>
+            <p className={styles.previewMessage}>{latestEntry?.message || "No message provided."}</p>
+          </div>
+        </div>
+      );
 
   return (
     <article className={styles.thread}>
       <div className={styles.threadHeader}>
-        <div>
+        <div className={styles.threadHeading}>
           <div className={styles.threadTitleRow}>
-            <h3>{request.type === "officer_clarification_request" ? "Clarification Request" : "Change Request"}</h3>
-            <FollowUpBadge summary={request} />
+            <h3>{getRequestTitle(request)}</h3>
+            <FollowUpBadge summary={request} always />
           </div>
           <p>
             {request.reason_category || (request.blocks_processing ? "Case processing paused" : "Case processing continues")}
           </p>
         </div>
-        <time>{new Date(request.created_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}</time>
+        <div className={styles.threadHeaderAside}>
+          <time>{new Date(request.created_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}</time>
+          {isStaff && isOpen && (
+            <div className={styles.headerActions}>
+              <Tooltip text="Close this follow-up because the requested action cannot be approved.">
+                <button type="button" disabled={busy} className={styles.rejectButton} onClick={() => setCloseStatus("rejected")}>
+                  Reject
+                </button>
+              </Tooltip>
+              <Tooltip text="Confirm that the necessary follow-up action has been completed.">
+                <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("resolved")}>
+                  <FiCheck /> Mark Resolved
+                </button>
+              </Tooltip>
+            </div>
+          )}
+          {isStaff && !isOpen && (
+            <div className={styles.headerActions}>
+              <Tooltip text="Reopen this follow-up so staff can review it and update its final status again.">
+                <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("open")}>
+                  Reopen
+                </button>
+              </Tooltip>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.messages}>
@@ -673,29 +783,6 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
         </form>
       )}
       {error && <div className={styles.error}>{error}</div>}
-      {isStaff && isOpen && (
-        <div className={styles.resolveActions}>
-          <Tooltip text="Close this follow-up because the requested action cannot be approved.">
-            <button type="button" disabled={busy} className={styles.rejectButton} onClick={() => setCloseStatus("rejected")}>
-              Reject
-            </button>
-          </Tooltip>
-          <Tooltip text="Confirm that the necessary follow-up action has been completed.">
-            <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("resolved")}>
-              <FiCheck /> Mark Resolved
-            </button>
-          </Tooltip>
-        </div>
-      )}
-      {isStaff && !isOpen && (
-        <div className={styles.resolveActions}>
-          <Tooltip text="Reopen this follow-up so staff can review it and update its final status again.">
-            <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("open")}>
-              Reopen Follow-up
-            </button>
-          </Tooltip>
-        </div>
-      )}
       <ConfirmDialog
         open={Boolean(closeStatus)}
         title={closeStatus === "open"
@@ -710,9 +797,7 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
             : "This will close the follow-up and send the complainant the default rejection message."}
         detail={closeStatus === "open"
           ? "Staff can reply, reject, or mark the follow-up as resolved after reopening it."
-          : closeStatus === "resolved"
-            ? "The follow-up has been reviewed and the necessary action has been completed."
-            : "The requested action could not be approved after review."}
+          : closePreview}
         confirmLabel={closeStatus === "open"
           ? "Reopen Follow-up"
           : closeStatus === "resolved"
@@ -788,6 +873,125 @@ function formatChangeValue(value) {
   return String(value);
 }
 
+function HistoryThreadRow({ request, expanded, onToggle, children }) {
+  const initiator = getPersonName(
+    request.initiator,
+    request.type === "officer_clarification_request" ? "Case officer" : "Complainant"
+  );
+  const preview = String(request.message || "No message provided.").replace(/\s+/g, " ").trim();
+
+  return (
+    <div className={styles.historyItem}>
+      <button
+        type="button"
+        className={styles.historyRow}
+        aria-expanded={expanded}
+        onClick={onToggle}
+      >
+        <span className={styles.historyChevron}>
+          {expanded ? <FiChevronDown /> : <FiChevronRight />}
+        </span>
+        <span className={styles.historyTypeIcon}>
+          {request.type === "officer_clarification_request" ? <FiMessageCircle /> : <FiEdit3 />}
+        </span>
+        <span className={`${styles.statusDot} ${styles[`statusDot_${request.status}`]}`} />
+        <span className={styles.historyMain}>
+          <span className={styles.historyMeta}>
+            <strong>{getRequestTitle(request)}</strong>
+            <span>{initiator}</span>
+            <span className={styles.historyStatus}>{getRequestStatusLabel(request.status)}</span>
+          </span>
+          <span className={styles.historyPreview}>{preview}</span>
+        </span>
+        <span className={styles.historyDate}>{relativeDate(request.updated_at || request.created_at)}</span>
+      </button>
+      {expanded && <div className={styles.expandedHistoryThread}>{children}</div>}
+    </div>
+  );
+}
+
+function FieldHistoryGroup({
+  fieldKey,
+  changes,
+  requestsById,
+  expandedRequestIds,
+  onToggleRequest,
+  currentUserId,
+  canManage,
+  onChanged,
+}) {
+  const [open, setOpen] = useState(false);
+  const orderedChanges = [...changes].sort(
+    (a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
+  );
+  const values = orderedChanges.length
+    ? [
+        formatChangeValue(orderedChanges[0].previous_value),
+        ...orderedChanges.map((change) => formatChangeValue(change.new_value)),
+      ]
+    : [];
+
+  return (
+    <div className={styles.fieldHistoryGroup}>
+      <button
+        type="button"
+        className={styles.fieldHistoryHeader}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span>{open ? <FiChevronDown /> : <FiChevronRight />}</span>
+        <span className={styles.fieldHistoryHeading}>
+          <strong>{getFieldLabel(fieldKey)}</strong>
+          <span className={styles.valueTrail}>
+            {values.map((value, index) => (
+              <span key={`${value}-${index}`}>
+                {index > 0 && <b aria-hidden="true">→</b>}
+                <span>{value}</span>
+              </span>
+            ))}
+          </span>
+        </span>
+        <span className={styles.changeCount}>
+          {orderedChanges.length} {orderedChanges.length === 1 ? "change" : "changes"}
+        </span>
+      </button>
+      {open && (
+        <div className={styles.fieldTimeline}>
+          {orderedChanges.map((change) => {
+            const request = requestsById.get(change.follow_up_request_id);
+            if (!request) return null;
+            const expanded = expandedRequestIds.has(request.id);
+            return (
+              <div className={styles.fieldTimelineItem} key={change.id || `${change.follow_up_request_id}-${change.changed_at}`}>
+                <button type="button" onClick={() => onToggleRequest(request.id)}>
+                  <span>
+                    <strong>{formatChangeValue(change.new_value)}</strong>
+                    <small>from {formatChangeValue(change.previous_value)}</small>
+                  </span>
+                  <span>
+                    {getRequestStatusLabel(request.status)} · {relativeDate(change.changed_at || request.created_at)}
+                    {expanded ? <FiChevronDown /> : <FiChevronRight />}
+                  </span>
+                </button>
+                {expanded && (
+                  <div className={styles.expandedHistoryThread}>
+                    <Thread
+                      request={request}
+                      currentUserId={currentUserId}
+                      isStaff={canManage}
+                      onChanged={onChanged}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FollowUpsPanel({
   caseId,
   caseStatus,
@@ -802,6 +1006,9 @@ export default function FollowUpsPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyMode, setHistoryMode] = useState("status");
+  const [expandedRequestIds, setExpandedRequestIds] = useState(() => new Set());
 
   const requestType = isStaff ? "officer_clarification_request" : "user_change_request";
   const activeFollowUp = useMemo(
@@ -809,6 +1016,49 @@ export default function FollowUpsPanel({
     [requests, requestType]
   );
   const allowed = !CLOSED_CASE_STATUSES.has(caseStatus);
+  const activeRequests = useMemo(
+    () => requests.filter((item) => ["open", "responded"].includes(item.status)),
+    [requests]
+  );
+  const historicalRequests = useMemo(
+    () => requests.filter((item) => ["resolved", "rejected"].includes(item.status)),
+    [requests]
+  );
+  const requestsById = useMemo(
+    () => new Map(requests.map((request) => [request.id, request])),
+    [requests]
+  );
+  const fieldHistory = useMemo(() => {
+    const grouped = new Map();
+    historicalRequests.forEach((request) => {
+      (request.field_changes || []).forEach((change) => {
+        const current = grouped.get(change.field_key) || [];
+        current.push({ ...change, follow_up_request_id: request.id });
+        grouped.set(change.field_key, current);
+      });
+    });
+    return [...grouped.entries()].sort(([fieldA], [fieldB]) =>
+      getFieldLabel(fieldA).localeCompare(getFieldLabel(fieldB))
+    );
+  }, [historicalRequests]);
+  const messageOnlyHistory = useMemo(
+    () => historicalRequests.filter((request) => !(request.field_changes || []).length),
+    [historicalRequests]
+  );
+
+  function toggleRequest(requestId) {
+    setExpandedRequestIds((current) => {
+      const next = new Set(current);
+      if (next.has(requestId)) next.delete(requestId);
+      else next.add(requestId);
+      return next;
+    });
+  }
+
+  function refreshAfterChange() {
+    load();
+    onCaseChanged?.();
+  }
 
   async function load() {
     setLoading(true);
@@ -867,20 +1117,141 @@ export default function FollowUpsPanel({
       {!loading && !error && requests.length === 0 && (
         <p className={styles.empty}>No follow-up requests yet.</p>
       )}
-      <div className={styles.threadList}>
-        {requests.map((request) => (
+      {!loading && !error && activeRequests.length > 0 && (
+        <section className={styles.feedSection}>
+          <div className={styles.sectionHeading}>
+            <div>
+              <h3>Needs attention</h3>
+              <p>Open follow-ups are kept expanded so the next action is easy to find.</p>
+            </div>
+            <span>{activeRequests.length}</span>
+          </div>
+          <div className={styles.threadList}>
+            {activeRequests.map((request) => (
+              <Thread
+                key={request.id}
+                request={request}
+                currentUserId={currentUserId}
+                isStaff={canManage}
+                onChanged={refreshAfterChange}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+      {!loading && !error && historicalRequests.length > 0 && (
+        <section className={styles.feedSection}>
+          <button
+            type="button"
+            className={styles.historyToggle}
+            aria-expanded={historyOpen}
+            onClick={() => setHistoryOpen((value) => !value)}
+          >
+            <span>{historyOpen ? <FiChevronDown /> : <FiChevronRight />}</span>
+            <span>
+              <strong>View past follow-ups ({historicalRequests.length})</strong>
+              <small>Resolved and rejected requests</small>
+            </span>
+          </button>
+          {historyOpen && (
+            <div className={styles.historyContent}>
+              <div className={styles.historyToolbar} aria-label="History view">
+                <button
+                  type="button"
+                  className={historyMode === "status" ? styles.activeMode : ""}
+                  onClick={() => setHistoryMode("status")}
+                >
+                  <FiList /> By follow-up
+                </button>
+                <button
+                  type="button"
+                  className={historyMode === "field" ? styles.activeMode : ""}
+                  onClick={() => setHistoryMode("field")}
+                >
+                  <FiLayers /> Group by field
+                </button>
+              </div>
+              {historyMode === "status" ? (
+                <div className={styles.historyList}>
+                  {historicalRequests.map((request) => (
+                    <HistoryThreadRow
+                      key={request.id}
+                      request={request}
+                      expanded={expandedRequestIds.has(request.id)}
+                      onToggle={() => toggleRequest(request.id)}
+                    >
+                      <Thread
+                        request={request}
+                        currentUserId={currentUserId}
+                        isStaff={canManage}
+                        onChanged={refreshAfterChange}
+                      />
+                    </HistoryThreadRow>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.fieldHistory}>
+                  {fieldHistory.length === 0 && (
+                    <p className={styles.empty}>No field changes are recorded in past follow-ups.</p>
+                  )}
+                  {fieldHistory.map(([fieldKey, changes]) => (
+                    <FieldHistoryGroup
+                      key={fieldKey}
+                      fieldKey={fieldKey}
+                      changes={changes}
+                      requestsById={requestsById}
+                      expandedRequestIds={expandedRequestIds}
+                      onToggleRequest={toggleRequest}
+                      currentUserId={currentUserId}
+                      canManage={canManage}
+                      onChanged={refreshAfterChange}
+                    />
+                  ))}
+                  {messageOnlyHistory.length > 0 && (
+                    <div className={styles.messageOnlyHistory}>
+                      <div className={styles.messageOnlyHeading}>
+                        <FiClock />
+                        <div>
+                          <strong>Other follow-ups</strong>
+                          <span>Requests without a recorded field change</span>
+                        </div>
+                      </div>
+                      {messageOnlyHistory.map((request) => (
+                        <HistoryThreadRow
+                          key={request.id}
+                          request={request}
+                          expanded={expandedRequestIds.has(request.id)}
+                          onToggle={() => toggleRequest(request.id)}
+                        >
+                          <Thread
+                            request={request}
+                            currentUserId={currentUserId}
+                            isStaff={canManage}
+                            onChanged={refreshAfterChange}
+                          />
+                        </HistoryThreadRow>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+      {!loading && !error && requests.length > 0 && activeRequests.length === 0 && historicalRequests.length === 0 && (
+        <div className={styles.threadList}>
+          {requests.map((request) => (
           <Thread
             key={request.id}
             request={request}
             currentUserId={currentUserId}
             isStaff={canManage}
-            onChanged={() => {
-              load();
-              onCaseChanged?.();
-            }}
+            onChanged={refreshAfterChange}
           />
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       <FollowUpComposer
         open={composerOpen}
         onClose={() => setComposerOpen(false)}
