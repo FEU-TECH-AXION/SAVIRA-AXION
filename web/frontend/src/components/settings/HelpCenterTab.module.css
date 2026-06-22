@@ -1,0 +1,185 @@
+/* ============================================================
+   HelpCenterTab.module.css
+   Brand: --sasha-teal #037F81 | --sasha-orange #E06030
+   ============================================================ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.75rem 2rem 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+}
+
+.wrap > .card:first-child { border-radius: 0 0 14px 14px; }
+
+.cardTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #037F81;
+  margin-bottom: 1rem;
+}
+
+.cardDesc {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+/* ── Search ─────────────────────────────────────────────────── */
+.searchInput {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid #dde3ea;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #fafafa;
+  outline: none;
+  margin-bottom: 1.25rem;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.searchInput:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  background: #fff;
+}
+
+/* ── FAQ accordion ──────────────────────────────────────────── */
+.faqList { display: flex; flex-direction: column; }
+
+.faqItem { border-bottom: 1px solid #f0f0f0; }
+.faqItem:last-child { border-bottom: none; }
+
+.faqQuestion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 0;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #222;
+  cursor: pointer;
+}
+
+.faqQuestion:hover { color: #037F81; }
+
+.faqChevron { transition: transform 0.2s; color: #888; flex-shrink: 0; }
+.faqChevronOpen { transform: rotate(180deg); color: #037F81; }
+
+.faqAnswer {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #555;
+  margin: 0 0 1rem;
+  padding-right: 1.5rem;
+}
+
+.emptyNote {
+  font-size: 0.85rem;
+  color: #888;
+  padding: 1rem 0;
+}
+
+/* ── Contact form ──────────────────────────────────────────── */
+.contactForm { display: flex; flex-direction: column; gap: 1.1rem; }
+
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
+.fieldLabel { font-size: 0.8rem; font-weight: 600; color: #444; }
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid #dde3ea;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #222;
+  background: #fafafa;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  background: #fff;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.emailLink {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #037F81;
+  text-decoration: none;
+  font-weight: 500;
+}
+.emailLink:hover { text-decoration: underline; }
+
+.btnPrimary {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 1.5rem;
+  background: #037F81;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.btnPrimary:hover:not(:disabled) { background: #025f61; transform: translateY(-1px); }
+.btnPrimary:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.flashSuccess {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0 0 1rem;
+  background: #e6f9f5;
+  color: #037F81;
+  border: 1px solid #a7e9d8;
+  animation: slideDown 0.25s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .card { padding: 1.25rem 1rem; }
+  .formActions { flex-direction: column; align-items: stretch; }
+  .btnPrimary { justify-content: center; }
+}

@@ -1,0 +1,144 @@
+/* ============================================================
+   ProfileTab.module.css
+   Brand: --sasha-teal #037F81 | --sasha-orange #E06030
+   ============================================================ */
+
+.formCard {
+  background: #fff;
+  border-radius: 0 0 14px 14px;
+  padding: 1.75rem 2rem 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+}
+
+.sectionTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #037F81;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+/* ── Grid layouts ───────────────────────────────────────────── */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; margin-bottom: 1.1rem; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.1rem; margin-bottom: 1.1rem; }
+
+@media (max-width: 640px) {
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+}
+
+/* ── Field ──────────────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.required { color: #E06030; }
+
+.badge {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #888;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid #dde3ea;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #222;
+  background: #fafafa;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  background: #fff;
+}
+
+.fieldHint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.fieldError {
+  font-size: 0.75rem;
+  color: #c0392b;
+  margin: 0;
+}
+
+/* ── Form actions ───────────────────────────────────────────── */
+.formActions {
+  margin-top: 1.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btnPrimary {
+  padding: 0.65rem 2rem;
+  background: #037F81;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #025f61;
+  transform: translateY(-1px);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Flash messages ─────────────────────────────────────────── */
+.flashSuccess,
+.flashError {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0 0 1rem;
+  animation: slideDown 0.25s ease;
+}
+
+.flashSuccess { background: #e6f9f5; color: #037F81; border: 1px solid #a7e9d8; }
+.flashError   { background: #fff0ef; color: #c0392b; border: 1px solid #f5c6c2; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .formCard { padding: 1.25rem 1rem; }
+}

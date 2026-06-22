@@ -242,14 +242,14 @@ function UserMenu({ user, logout }) {
           <hr className={styles.dropdownDivider} />
 
           <Link
-            href="/profile"
+            href="/settings?tab=profile"
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >
             My Profile
           </Link>
           <Link
-            href="/profile?tab=security"
+            href="/settings?tab=security"
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >

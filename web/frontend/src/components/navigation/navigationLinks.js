@@ -187,10 +187,10 @@ export const SIDEBAR_LINKS = {
 };
 
 export const SIDEBAR_FOOTER_LINKS = [
-  { href: "/profile?tab=security", label: "Settings & Privacy", icon: "settings" },
-  { href: "/help", label: "Help Center", icon: "help" },
-  { href: "/display", label: "Display & Accessibility", icon: "accessibility" },
-  { href: "/report", label: "Report a Problem", icon: "flag" },
+  { href: "/settings?tab=security", label: "Settings & Privacy", icon: "settings" },
+  { href: "/settings?tab=help", label: "Help Center", icon: "help" },
+  { href: "/settings?tab=display", label: "Display & Accessibility", icon: "accessibility" },
+  { href: "/settings?tab=report", label: "Report a Problem", icon: "flag" },
 ];
 
 export function normalizeRole(roleName) {
