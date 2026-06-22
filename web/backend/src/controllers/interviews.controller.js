@@ -106,6 +106,72 @@ const selectSlot = async (req, res) => {
     }
 }
 
+// PATCH /api/interviews/:id/reschedule
+const reschedule = async (req, res) => {
+    try {
+        const { slot_id, reason } = req.body
+        const normalizedReason = String(reason || '').trim()
+
+        if (!slot_id) return res.status(400).json({ error: 'slot_id is required.' })
+        if (!normalizedReason) {
+            return res.status(400).json({ error: 'A reason is required to reschedule an interview.' })
+        }
+
+        const [interview, slot] = await Promise.all([
+            InterviewModel.getById(req.params.id),
+            InterviewSlotsModel.getById(slot_id),
+        ])
+
+        if (!interview) return res.status(404).json({ error: 'Interview not found.' })
+        if (!slot) return res.status(404).json({ error: 'Slot not found.' })
+        if (!slot.is_available) {
+            return res.status(409).json({ error: 'This slot has already been taken.' })
+        }
+
+        const previousSlotId = interview.selected_slot_id
+        const updatedInterview = await InterviewModel.reschedule(
+            req.params.id,
+            slot_id,
+            normalizedReason,
+            interview.notes
+        )
+
+        await InterviewSlotsModel.markUnavailable(slot_id)
+        if (previousSlotId && String(previousSlotId) !== String(slot_id)) {
+            await InterviewSlotsModel.markAvailable(previousSlotId)
+        }
+
+        res.json({ data: updatedInterview })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+// PATCH /api/interviews/:id/request-new-slots
+const requestNewSlots = async (req, res) => {
+    try {
+        const normalizedReason = String(req.body.reason || '').trim()
+        if (!normalizedReason) {
+            return res.status(400).json({ error: 'A reason or availability note is required.' })
+        }
+
+        const interview = await InterviewModel.getById(req.params.id)
+        if (!interview) return res.status(404).json({ error: 'Interview not found.' })
+
+        const previousSlotId = interview.selected_slot_id
+        const data = await InterviewModel.requestNewSlots(
+            req.params.id,
+            normalizedReason,
+            interview.notes
+        )
+        if (previousSlotId) await InterviewSlotsModel.markAvailable(previousSlotId)
+
+        res.json({ data })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
 // PATCH /api/interviews/:id/confirm
 const confirm = async (req, res) => {
     try {
@@ -166,6 +232,8 @@ module.exports = {
     getItem,
     createItem,
     selectSlot,
+    reschedule,
+    requestNewSlots,
     confirm,
     complete,
     cancel,

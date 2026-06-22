@@ -14,6 +14,7 @@ import {
   FiInfo,
 } from "react-icons/fi";
 import { FaTimesCircle } from "react-icons/fa";
+import { IoIosWarning } from "react-icons/io";
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
 //
@@ -437,11 +438,12 @@ function formatStaffDateTime(interview) {
 function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, userId, userRole, applicantUserId, onCreated }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const [expiryDays, setExpiryDays] = useState("7");
-  const [notes, setNotes]           = useState("");
+  const defaultInviteNote = "Please select an available interview slot at your earliest convenience. If none of the schedules work, contact your application officer.";
+  const [notes, setNotes]           = useState(defaultInviteNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState(null);
 
-  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); setError(null); } }, [open]);
+  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(defaultInviteNote); setError(null); } }, [open]);
 
   async function handleSaveMeetingLink(interviewId, meetingLink) {
   // API call later
@@ -949,7 +951,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
     interviewDate: formatDateInput(interview.interview_date || interview.scheduledDate),
     interviewTime: formatTimeInput(interview.interview_time || interview.scheduledTime),
     location:      interview.location || "",
-    notes:         interview.notes   || "",
+    notes:         interview.notes   || "The interview needs to be moved because ",
   });
   const [errors, setErrors]       = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -1063,7 +1065,7 @@ function RescheduleModal({ interview, onClose, onConfirm }) {
 }
 
 function CancelInterviewModal({ interview, onClose, onConfirm }) {
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("The interview is being cancelled because ");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 

@@ -60,6 +60,16 @@ const markUnavailable = async (id) => {
     return data[0]
 }
 
+const markAvailable = async (id) => {
+    const { data, error } = await supabase
+        .from('interview_slots')
+        .update({ is_available: true })
+        .eq('slot_id', id)
+        .select()
+    if (error) throw error
+    return data[0]
+}
+
 const deleteById = async (id) => {
     const { error } = await supabase
         .from('interview_slots')
@@ -75,5 +85,6 @@ module.exports = {
     create,
     createMany,
     markUnavailable,
+    markAvailable,
     deleteById,
 }
