@@ -97,6 +97,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
 }
 
 /* ── Inputs ── */
@@ -153,17 +155,26 @@
   font-size: 0.93rem;
   color: #444;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
   cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.45;
 }
 
 .checkbox {
   width: 20px;
   height: 20px;
+  margin-top: 0.05rem;
   accent-color: #037F81;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.checkboxText {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .checkboxLabel a {
@@ -202,6 +213,8 @@
   font-weight: 700;
   text-decoration: none;
   font-size: .93rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .forgotPassword:hover {
   color: var(--sasha-teal-dark);
@@ -233,10 +246,47 @@
     flex-direction: column;
     gap: 0.75rem;
   }
+
+  .auxiliaryGroup {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .checkboxLabel {
+    width: 100%;
+    gap: 0.5rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+  }
+
+  .forgotPassword {
+    align-self: flex-end;
+    font-size: 0.86rem;
+  }
 }
 
 @media (max-width: 400px) {
   .title {
     font-size: 1.6rem;
+  }
+
+  .checkboxLabel {
+    font-size: 0.8rem;
+  }
+
+  .checkbox {
+    width: 17px;
+    height: 17px;
+  }
+
+  .forgotPassword {
+    font-size: 0.82rem;
   }
 }

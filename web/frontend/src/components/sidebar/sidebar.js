@@ -158,7 +158,7 @@ function SidebarHeader({ user, onClose }) {
         </div>
       ) : (
         <Link href="/" className={styles.sidebarLogo} onClick={onClose}>
-          <img src="/sasha-logo.png" alt="SASHA" />
+          <img src="/sasha-logo-teal.png" alt="SASHA" />
         </Link>
       )}
       <button className={styles.closeBtn} onClick={onClose} aria-label="Close sidebar">

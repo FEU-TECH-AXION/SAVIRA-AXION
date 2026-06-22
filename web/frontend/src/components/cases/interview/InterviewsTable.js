@@ -237,7 +237,15 @@ useEffect(() => {
                 <td className={styles.colCaseId}>
                   <span className={styles.caseIdBadge}>{interview.caseId}</span>
                 </td>
-                <td className={styles.colInterviewee}>{interview.intervieweeName}</td>
+                <td className={styles.colInterviewee}>
+                  {interview.intervieweeName}
+                  {interview.availabilityRequest && (
+                    <div style={{ marginTop: 4, color: "#92400e", fontSize: "0.72rem", lineHeight: 1.35 }}>
+                      <strong>New slots requested:</strong>{" "}
+                      {interview.availabilityRequest}
+                    </div>
+                  )}
+                </td>
                 <td className={styles.colType}>{interview.interviewType || "Initial"}</td>
                 <td className={styles.colDateTime}>
                   {interview.scheduledDate && interview.scheduledTime

@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
 import { useAuth } from "@/lib/AuthContext";
+import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
+import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 
 // TODO: Nav links for Legal Personnel are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -19,15 +19,6 @@ function OverviewCard({ category, label, count, showView = false }) {
         <p className={styles.overviewCount}>{count}</p>
         {showView && <button className={styles.viewBtn}>View &rarr;</button>}
       </div>
-    </div>
-  );
-}
-
-function HeatmapPreview() {
-  // TODO: Replace with real Mapbox heatmap component
-  return (
-    <div style={{ height: "200px", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px", color: "#666" }}>
-      Heatmap Visualization (Coming Soon)
     </div>
   );
 }
@@ -47,7 +38,6 @@ function DeadlineItem({ emoji, title, date }) {
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function LegalPersonnelDashboard() {
-  const [calDate, setCalDate] = useState(new Date());
   const { user: authUser } = useAuth();
   const [cases, setCases] = useState([]);
 
@@ -148,21 +138,13 @@ export default function LegalPersonnelDashboard() {
               </div>
             </div>
             <div className="col-12 col-lg-4">
-              <div className={styles.calendarCard}>
-                <div className={styles.calendarCardHeader}><span>Your Events</span></div>
-                <div className={styles.calendarBody}>
-                  <Calendar onChange={setCalDate} value={calDate} locale="en-US" />
-                </div>
-              </div>
+              <DashboardEventsCard />
             </div>
           </div>
 
           <div className="row g-3 mt-1">
             <div className="col-12 col-lg-8">
-              <div className={styles.heatmapCard}>
-                <h3 className={styles.heatmapTitle}>Heatmap Preview</h3>
-                <div className={styles.heatmapPreview}><HeatmapPreview /></div>
-              </div>
+              <DashboardHeatmapCard />
             </div>
             <div className="col-12 col-lg-4">
               <div className={styles.deadlinesCard}>

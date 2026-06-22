@@ -7,6 +7,7 @@ import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-ico
 import styles from "./ViewApplication.module.css";
 import InterviewTab from "../volunteerInterviews/InterviewTab";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1370,6 +1371,7 @@ export default function ViewApplication() {
   const [user,        setUser]        = useState({ role: null });
   const [userLoaded,  setUserLoaded]  = useState(false);
   const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
+  const [withdrawing, setWithdrawing] = useState(false);
 
   // ── Read user from cookie ─────────────────────────────────────────────────
 
@@ -1526,12 +1528,36 @@ export default function ViewApplication() {
     setTimeout(() => setToast(null), 3500);
   }
 
+  async function handleWithdrawApplication() {
+    setWithdrawing(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}/withdraw`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to withdraw application.");
+
+      setAppData((current) => ({ ...current, applicationStatus: "Withdrawn" }));
+      setModal(null);
+      showToast("Application withdrawn successfully.");
+    } catch (err) {
+      showToast(err.message || "Failed to withdraw application.", "danger");
+    } finally {
+      setWithdrawing(false);
+    }
+  }
+
   const isAdmin       = user.role?.toLowerCase() === "admin";
   const isApplicationOfficer = user.role?.toLowerCase()?.includes("officer");
   const isStaff       = isAdmin || isApplicationOfficer || user.role?.toLowerCase() === "staff";
   const isAssignedEvaluator = (appData?.assignedEvaluatorIds || [])
     .some((id) => String(id) === String(user.id));
   const canManageVolunteerApplication = isAdmin || isAssignedEvaluator;
+  const canWithdrawApplication =
+    !isStaff &&
+    ["Pending", "Reviewing"].includes(appData?.applicationStatus);
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -1607,7 +1633,18 @@ export default function ViewApplication() {
                 Date Applied: {appData.dateApplied}
               </p>
             </div>
-            <StatusBadge status={appData.applicationStatus} />
+            <div className={styles.headerActions}>
+              {canWithdrawApplication && (
+                <button
+                  type="button"
+                  className={styles.withdrawBtn}
+                  onClick={() => setModal("withdraw")}
+                >
+                  Withdraw Application
+                </button>
+              )}
+              <StatusBadge status={appData.applicationStatus} />
+            </div>
           </div>
 
           {appData.reviewNotes && (
@@ -1683,6 +1720,21 @@ export default function ViewApplication() {
           showToast(`Status updated to ${updated.applicationStatus}.`);
           setModal(null);
         }}
+      />
+      <ConfirmDialog
+        open={modal === "withdraw"}
+        title="Withdraw Application"
+        description="Are you sure you want to withdraw this volunteer application?"
+        detail={`Application ${appData.appRefId}. You can restore it later from your application history.`}
+        confirmLabel="Withdraw Application"
+        cancelLabel="Keep Application"
+        tone="danger"
+        busy={withdrawing}
+        dismissible={!withdrawing}
+        onCancel={() => {
+          if (!withdrawing) setModal(null);
+        }}
+        onConfirm={handleWithdrawApplication}
       />
     </div>
   );
