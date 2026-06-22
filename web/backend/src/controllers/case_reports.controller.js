@@ -5,6 +5,10 @@ const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 const { randomUUID } = require('crypto');
 
+const IMMEDIATE_WITHDRAWAL_STATUSES = new Set([2, 3, 4, 6]);
+const APPROVAL_WITHDRAWAL_STATUSES = new Set([7, 8]);
+const AFFIDAVIT_REQUIRED_STATUS = 7;
+
 const getItems = async (req, res) => {
     try {
         const data = await CaseReports.getAll()
@@ -277,6 +281,14 @@ const withdrawCase = async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = require('../config/supabase');
+    const reason = String(req.body?.reason || '').trim();
+
+    if (!reason) {
+      return res.status(400).json({ error: 'A reason for withdrawal is required.' });
+    }
+    if (reason.length > 4000) {
+      return res.status(400).json({ error: 'The withdrawal reason is too long.' });
+    }
     
     // 1. Get the case report
     const { data: caseReport, error: fetchErr } = await supabase
@@ -292,38 +304,82 @@ const withdrawCase = async (req, res) => {
       return res.status(403).json({ error: 'You can only withdraw your own case report.' });
     }
 
-    if (![2, 3].includes(Number(caseReport.case_status_id))) {
+    const currentStatusId = Number(caseReport.case_status_id);
+    if (
+      !IMMEDIATE_WITHDRAWAL_STATUSES.has(currentStatusId) &&
+      !APPROVAL_WITHDRAWAL_STATUSES.has(currentStatusId)
+    ) {
       return res.status(409).json({
-        error: 'This report can only be withdrawn during verification or review.',
+        error: 'This case cannot be withdrawn in its current status.',
       });
     }
-    
-    // 2. Insert into case_status_history
-    const { error: histErr } = await supabase
-      .from('case_status_history')
-      .insert([{
-        case_report_id: id,
-        case_status_id: 13, // Withdrawn
-        changed_by_id: req.user?.id || req.user?.user_id,
-        changed_by_role: 'complainant',
-        notes: 'Complainant withdrew the case',
-        approval_status: 'approved',
-        approved_at: new Date().toISOString()
-      }]);
-      
-    if (histErr) throw histErr;
-    
-    // 3. Update case_reports
-    const { data: updatedCase, error: updateErr } = await supabase
-      .from('case_reports')
-      .update({ case_status_id: 13 })
+
+    const { data: pendingWithdrawal, error: pendingError } = await supabase
+      .from('case_withdrawal_requests')
+      .select('id')
       .eq('case_report_id', id)
-      .select()
-      .single();
-      
-    if (updateErr) throw updateErr;
-    
-    res.json({ message: 'Case withdrawn successfully', data: updatedCase });
+      .eq('status', 'pending')
+      .maybeSingle();
+    if (pendingError) throw pendingError;
+    if (pendingWithdrawal) {
+      return res.status(409).json({
+        error: 'A withdrawal request is already awaiting approval.',
+      });
+    }
+
+    if (currentStatusId === AFFIDAVIT_REQUIRED_STATUS && !req.file) {
+      return res.status(400).json({
+        error: 'An Affidavit of Desistance or official withdrawal document is required.',
+      });
+    }
+    if (
+      req.file &&
+      ![
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ].includes(req.file.mimetype) &&
+      !req.file.mimetype.startsWith('image/')
+    ) {
+      return res.status(400).json({
+        error: 'Withdrawal documents must be a PDF, Word document, or image.',
+      });
+    }
+
+    let affidavitPath = null;
+    if (req.file) {
+      const extension = req.file.originalname.includes('.')
+        ? `.${req.file.originalname.split('.').pop()}`
+        : '';
+      affidavitPath = `${id}/withdrawals/${randomUUID()}${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from(EVIDENCE_BUCKET)
+        .upload(affidavitPath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+    }
+
+    const { data, error } = await supabase.rpc('request_case_withdrawal', {
+      p_case_id: Number(id),
+      p_requested_by_user_id: req.user?.id || req.user?.user_id,
+      p_reason: reason,
+      p_affidavit_path: affidavitPath,
+      p_origin_ip: req.ip || req.socket?.remoteAddress || null,
+    });
+    if (error) throw error;
+
+    const result = Array.isArray(data) ? data[0] : data;
+    const pending = result?.action_type === 'REQUIRE_APPROVAL';
+    return res.status(pending ? 202 : 200).json({
+      message: pending
+        ? 'Withdrawal request submitted for approval.'
+        : 'Case withdrawn successfully.',
+      action_type: result?.action_type,
+      data: result?.case_report || result,
+      withdrawal_request: result?.withdrawal_request || null,
+    });
   } catch (err) {
     console.error('[withdrawCase]', err.message);
     res.status(500).json({ error: err.message });
@@ -331,64 +387,9 @@ const withdrawCase = async (req, res) => {
 };
 
 const undoWithdrawCase = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const supabase = require('../config/supabase');
-    
-    // 1. Find the latest status history before it was withdrawn
-    const { data: historyList, error: histErr } = await supabase
-      .from('case_status_history')
-      .select('*')
-      .eq('case_report_id', id)
-      .order('created_at', { ascending: false });
-      
-    if (histErr) throw histErr;
-
-    const { data: caseReport, error: caseErr } = await supabase
-      .from('case_reports')
-      .select('complainant_id, case_status_id')
-      .eq('case_report_id', id)
-      .single();
-
-    if (caseErr || !caseReport) throw new Error('Case report not found');
-
-    const complainantId = await getComplainantId(req.user?.id);
-    if (caseReport.complainant_id !== complainantId) {
-      return res.status(403).json({ error: 'You can only restore your own case report.' });
-    }
-
-    if (Number(caseReport.case_status_id) !== 13) {
-      return res.status(409).json({ error: 'This report is not currently withdrawn.' });
-    }
-    
-    // Find the latest non-Withdrawn status
-    const previousStatusRow = historyList.find(h => h.case_status_id !== 13);
-    const prevStatusId = previousStatusRow ? previousStatusRow.case_status_id : 2; // default to 'For Verification' if none found
-    
-    // 2. Delete the withdrawn history rows
-    const withdrawnRows = historyList.filter(h => h.case_status_id === 13).map(h => h.history_id);
-    if (withdrawnRows.length > 0) {
-      await supabase
-        .from('case_status_history')
-        .delete()
-        .in('history_id', withdrawnRows);
-    }
-    
-    // 3. Revert case_reports status
-    const { data: updatedCase, error: updateErr } = await supabase
-      .from('case_reports')
-      .update({ case_status_id: prevStatusId })
-      .eq('case_report_id', id)
-      .select()
-      .single();
-      
-    if (updateErr) throw updateErr;
-    
-    res.json({ message: 'Withdrawal undone successfully', data: updatedCase });
-  } catch (err) {
-    console.error('[undoWithdrawCase]', err.message);
-    res.status(500).json({ error: err.message });
-  }
+  return res.status(409).json({
+    error: 'Withdrawn cases are archived records and cannot be restored by the complainant.',
+  });
 };
 
 const EVIDENCE_BUCKET = 'case-evidence';

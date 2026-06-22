@@ -158,7 +158,15 @@ const approveStatusChange = async (req, res) => {
     if (approverError) throw approverError
     if (!approver) return res.status(400).json({ error: 'Approving user was not found.' })
 
-    const historyRow = await CaseStatusHistory.approve(Number(historyId), approver.user_id)
+    const pendingHistory = await CaseStatusHistory.getById(Number(historyId))
+    const historyRow = pendingHistory?.form_data?.withdrawal_request_id
+      ? await CaseStatusHistory.reviewWithdrawal({
+          historyId: Number(historyId),
+          approvedById: approver.user_id,
+          decision: 'approved',
+          originIp: req.ip || req.socket?.remoteAddress || null,
+        })
+      : await CaseStatusHistory.approve(Number(historyId), approver.user_id)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'approved')
     res.json({ message: 'Status change approved and case updated.', historyRow })
   } catch (err) {
@@ -181,7 +189,16 @@ const rejectStatusChange = async (req, res) => {
     if (approverError) throw approverError
     if (!approver) return res.status(400).json({ error: 'Approving user was not found.' })
 
-    const historyRow = await CaseStatusHistory.reject(Number(historyId), approver.user_id, rejection_reason)
+    const pendingHistory = await CaseStatusHistory.getById(Number(historyId))
+    const historyRow = pendingHistory?.form_data?.withdrawal_request_id
+      ? await CaseStatusHistory.reviewWithdrawal({
+          historyId: Number(historyId),
+          approvedById: approver.user_id,
+          decision: 'rejected',
+          rejectionReason: rejection_reason,
+          originIp: req.ip || req.socket?.remoteAddress || null,
+        })
+      : await CaseStatusHistory.reject(Number(historyId), approver.user_id, rejection_reason)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'rejected')
     res.json({ message: 'Status change rejected.', historyRow })
   } catch (err) {

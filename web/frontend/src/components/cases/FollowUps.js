@@ -100,7 +100,10 @@ export function getFollowUpDisplay(summary) {
   if (["resolved", "rejected"].includes(summary.status)) {
     const changedAt = new Date(summary.updated_at || summary.created_at).getTime();
     if (!Number.isNaN(changedAt) && Date.now() - changedAt < 3 * 86400000) {
-      return { label: summary.status === "resolved" ? "Resolved" : "Closed", tone: "resolved" };
+      return {
+        label: summary.status === "resolved" ? "Follow-up Resolved" : "Follow-up Closed",
+        tone: "resolved",
+      };
     }
     return null;
   }
@@ -113,7 +116,7 @@ export function FollowUpBadge({ summary, always = false }) {
   const display = getFollowUpDisplay(summary) || (
     always && ["resolved", "rejected"].includes(summary?.status)
       ? {
-          label: summary.status === "resolved" ? "Resolved" : "Rejected",
+          label: summary.status === "resolved" ? "Follow-up Resolved" : "Follow-up Rejected",
           tone: summary.status,
         }
       : null
@@ -121,8 +124,45 @@ export function FollowUpBadge({ summary, always = false }) {
   if (!display) return null;
   return (
     <span className={`${styles.badge} ${styles[`badge_${display.tone}`]}`}>
+      <span className={styles.badgeDot} aria-hidden="true" />
       {display.label}
     </span>
+  );
+}
+
+export function FollowUpCaseHistory({ requests = [] }) {
+  if (!requests.length) {
+    return <p className={styles.caseHistoryEmpty}>No follow-up activity recorded.</p>;
+  }
+
+  return (
+    <div className={styles.caseHistoryList}>
+      {requests.map((request) => {
+        const entries = request.follow_up_messages || [];
+        const latestEntry = entries[entries.length - 1];
+        const updatedAt = request.updated_at || latestEntry?.created_at || request.created_at;
+        return (
+          <article key={request.id} className={styles.caseHistoryItem}>
+            <div className={styles.caseHistoryHeader}>
+              <div>
+                <strong>{getRequestTitle(request)}</strong>
+                <span>{request.reason_category || "Follow-up request"}</span>
+              </div>
+              <FollowUpBadge summary={request} always />
+            </div>
+            <p className={styles.caseHistoryMessage}>
+              {latestEntry?.message || request.message || "No message provided."}
+            </p>
+            <time dateTime={updatedAt}>
+              Updated {new Date(updatedAt).toLocaleString("en-PH", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </time>
+          </article>
+        );
+      })}
+    </div>
   );
 }
 

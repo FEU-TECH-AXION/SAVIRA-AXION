@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase')
+const { buildApprovedFieldUpdate } = require('./case_field_changes')
 
 const ACTIVE_STATUSES = ['open', 'responded']
 
@@ -68,7 +69,7 @@ async function createRequest(payload) {
 }
 
 async function createRequestWithChanges(payload, changes) {
-  const { data, error } = await supabase.rpc('create_follow_up_with_field_changes', {
+  const { data, error } = await supabase.rpc('create_follow_up_with_pending_field_changes_v2', {
     p_request: payload,
     p_changes: changes,
   })
@@ -77,7 +78,7 @@ async function createRequestWithChanges(payload, changes) {
 }
 
 async function applyFieldChanges(requestId, caseId, userId, changes, message) {
-  const { data, error } = await supabase.rpc('apply_case_field_changes', {
+  const { data, error } = await supabase.rpc('record_case_field_changes_v2', {
     p_follow_up_request_id: requestId,
     p_case_id: caseId,
     p_changed_by_user_id: userId,
@@ -263,6 +264,38 @@ async function updateStatus(id, status, resolvedByUserId) {
   return data
 }
 
+async function reconcileResolvedFieldChanges(requestId) {
+  const request = await getRequest(requestId)
+  if (!request) throw new Error('Follow-up not found.')
+
+  const { data: report, error: reportError } = await supabase
+    .from('case_reports')
+    .select('*')
+    .eq('case_report_id', request.case_id)
+    .maybeSingle()
+  if (reportError) throw reportError
+  if (!report) throw new Error('Case report not found.')
+
+  const { data: changes, error: changesError } = await supabase
+    .from('field_changes')
+    .select('field_key, new_value, changed_at')
+    .eq('follow_up_request_id', requestId)
+    .order('changed_at', { ascending: true })
+  if (changesError) throw changesError
+
+  const update = buildApprovedFieldUpdate(changes || [], report)
+  if (Object.keys(update).length === 0) return null
+
+  const { data, error } = await supabase
+    .from('case_reports')
+    .update(update)
+    .eq('case_report_id', request.case_id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 async function updateStatusWithMessage(id, status, resolvedByUserId, message, awaitingRole = null) {
   const { data: messageRecord, error: messageError } = await supabase
     .from('follow_up_messages')
@@ -292,6 +325,26 @@ async function updateStatusWithMessage(id, status, resolvedByUserId, message, aw
       if (error) throw error
       return data
     }
+    if (status === 'resolved') {
+      const { data, error } = await supabase.rpc('resolve_follow_up_field_changes', {
+        p_follow_up_request_id: id,
+        p_resolved_by_user_id: resolvedByUserId,
+      })
+      if (error) throw error
+      try {
+        await reconcileResolvedFieldChanges(id)
+      } catch (reconcileError) {
+        // The RPC remains the transactional source of truth. This second pass
+        // repairs older/reopened requests whose audited values were not copied
+        // to the current case row, but must not turn a committed resolution
+        // into an apparent failure for the reviewer.
+        console.warn(
+          '[updateStatusWithMessage] Resolved field reconciliation unavailable:',
+          reconcileError.message
+        )
+      }
+      return Array.isArray(data) ? data[0] : data
+    }
     return await updateStatus(id, status, resolvedByUserId)
   } catch (error) {
     const { error: cleanupError } = await supabase
@@ -317,5 +370,6 @@ module.exports = {
   addMessage,
   addMessageRecord,
   updateStatus,
+  reconcileResolvedFieldChanges,
   updateStatusWithMessage,
 }

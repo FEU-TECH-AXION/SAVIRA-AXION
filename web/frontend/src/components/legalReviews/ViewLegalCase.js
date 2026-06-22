@@ -19,6 +19,8 @@ import StatusDetailsSection from "../cases/StatusDetailsSection";
 import DetailAccordion from "../cases/DetailAccordion";
 import PendingStatusApproval from "../cases/PendingStatusApproval";
 import Tooltip from "@/components/ui/Tooltip";
+import EvidenceGallery from "../cases/EvidenceGallery";
+import { FollowUpCaseHistory } from "../cases/FollowUps";
 import {
   Modal,
   FormGroup,
@@ -1455,6 +1457,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
     ? caseData.requestedOutcome
     : caseData.requestedOutcome ? [caseData.requestedOutcome] : [];
   const evidences = Array.isArray(caseData.evidences) ? caseData.evidences : [];
+  const followUps = Array.isArray(caseData.followUps) ? caseData.followUps : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -1526,24 +1529,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Supporting Evidence</h2>
-        {evidences.length === 0 ? (
-          <p className={styles.descriptionVal}>No evidence files submitted.</p>
-        ) : (
-          <div className={styles.detailGrid}>
-            {evidences.map((evidence, index) => (
-              <div key={evidence.id || evidence.evidence_id || evidence.file_path || index} className={styles.detailItem}>
-                <p className={styles.detailKey}>{evidence.evidence_type || "File"}</p>
-                {evidence.url ? (
-                  <a href={evidence.url} target="_blank" rel="noreferrer" className={styles.detailVal}>
-                    {evidence.original_name || "View evidence"}
-                  </a>
-                ) : (
-                  <p className={styles.detailVal}>{evidence.original_name || "Evidence file"}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <EvidenceGallery evidences={evidences} />
       </section>
 
       {/* Perpetrator Information */}
@@ -1761,7 +1747,9 @@ export default function ViewCase() {
           perpetratorKnown:        data.is_perpetrator_known,
           perpetratorName:         data.perpetrator_name,
           perpetratorGender:       data.perpetrator_gender,
-          perpetratorUnknownGender: data.perpetrator_unknown_gender,
+          perpetratorUnknownGender:
+            data.perpetrator_unknown_gender ||
+            (!data.is_perpetrator_known ? data.perpetrator_gender : null),
           perpetratorUnknownAppearance: data.perpetrator_unknown_appearance,
           perpetratorOccupation:   data.perpetrator_occupation,
           perpetratorRelationship: data.perpetrator_relationship,
@@ -1794,6 +1782,8 @@ export default function ViewCase() {
           })),
           endorsementStatus:       data.endorsement_status || null,
           internalNotes:           data.internal_notes || null,
+          followUpSummary:         data.follow_up_summary || null,
+          followUps:               [],
           pendingApproval:         null,
           statusHistory: [
             {
@@ -1869,6 +1859,18 @@ export default function ViewCase() {
               ],
             }));
           }
+        }
+
+        const followUpsRes = await fetch(
+          `${API_URL}/api/case_reports/${caseId}/follow-ups`,
+          { credentials: "include", cache: "no-store" }
+        );
+        if (followUpsRes.ok) {
+          const followUpsPayload = await followUpsRes.json().catch(() => ({}));
+          setCaseData((previous) => ({
+            ...previous,
+            followUps: followUpsPayload.data || [],
+          }));
         }
       } catch (err) {
         setError(err.message);

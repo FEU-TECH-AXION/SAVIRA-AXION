@@ -24,8 +24,18 @@ import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals
 import StatusDetailsSection from "./StatusDetailsSection";
 import DetailAccordion from "./DetailAccordion";
 import PendingStatusApproval from "./PendingStatusApproval";
-import FollowUpsPanel, { FollowUpBadge, FollowUpComposer } from "./FollowUps";
+import FollowUpsPanel, {
+  FollowUpBadge,
+  FollowUpCaseHistory,
+  FollowUpComposer,
+} from "./FollowUps";
+import EvidenceGallery from "./EvidenceGallery";
 import Tooltip from "@/components/ui/Tooltip";
+import {
+  getWithdrawalActionType,
+  getWithdrawalCopy,
+  WITHDRAWAL_ACTION,
+} from "@/lib/caseWithdrawal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1260,6 +1270,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
     ? caseData.requestedOutcome
     : caseData.requestedOutcome ? [caseData.requestedOutcome] : [];
   const evidences = Array.isArray(caseData.evidences) ? caseData.evidences : [];
+  const followUps = Array.isArray(caseData.followUps) ? caseData.followUps : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -1331,24 +1342,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Supporting Evidence</h2>
-        {evidences.length === 0 ? (
-          <p className={styles.descriptionVal}>No evidence files submitted.</p>
-        ) : (
-          <div className={styles.detailGrid}>
-            {evidences.map((evidence, index) => (
-              <div key={evidence.id || evidence.evidence_id || evidence.file_path || index} className={styles.detailItem}>
-                <p className={styles.detailKey}>{evidence.evidence_type || "File"}</p>
-                {evidence.url ? (
-                  <a href={evidence.url} target="_blank" rel="noreferrer" className={styles.detailVal}>
-                    {evidence.original_name || "View evidence"}
-                  </a>
-                ) : (
-                  <p className={styles.detailVal}>{evidence.original_name || "Evidence file"}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <EvidenceGallery evidences={evidences} />
       </section>
 
       {/* Perpetrator Information */}
@@ -1494,7 +1488,9 @@ export default function ViewCase() {
   const [toast, setToast]       = useState(null);
   
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [undoWithdrawModalOpen, setUndoWithdrawModalOpen] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [withdrawAffidavit, setWithdrawAffidavit] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [followUpComposerOpen, setFollowUpComposerOpen] = useState(false);
   const [caseRefreshKey, setCaseRefreshKey] = useState(0);
 
@@ -1519,32 +1515,32 @@ export default function ViewCase() {
   }
 
   const handleWithdraw = async (id) => {
+    if (!withdrawReason.trim()) {
+      showToast("Enter a reason for withdrawal.", "error");
+      return;
+    }
     try {
+      setWithdrawing(true);
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const form = new FormData();
+      form.append("reason", withdrawReason.trim());
+      if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);
       const res = await fetch(`${API_URL}/api/case_reports/${id}/withdraw`, {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
+        body: form,
       });
-      if (!res.ok) throw new Error("Failed to withdraw case.");
-      showToast("Case withdrawn successfully.");
-      window.location.reload();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to withdraw case.");
+      showToast(body.message || "Withdrawal submitted.");
+      setWithdrawModalOpen(false);
+      setWithdrawReason("");
+      setWithdrawAffidavit(null);
+      setCaseRefreshKey((current) => current + 1);
     } catch (err) {
       showToast(err.message, "error");
-    }
-  };
-
-  const handleUndoWithdraw = async (id) => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const res = await fetch(`${API_URL}/api/case_reports/${id}/undo_withdraw`, {
-        method: "POST",
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error("Failed to undo withdrawal.");
-      showToast("Withdrawal undone successfully.");
-      window.location.reload();
-    } catch (err) {
-      showToast(err.message, "error");
+    } finally {
+      setWithdrawing(false);
     }
   };
 
@@ -1616,7 +1612,9 @@ export default function ViewCase() {
           perpetratorKnown:        data.is_perpetrator_known,
           perpetratorName:         data.perpetrator_name,
           perpetratorGender:       data.perpetrator_gender,
-          perpetratorUnknownGender: data.perpetrator_unknown_gender,
+          perpetratorUnknownGender:
+            data.perpetrator_unknown_gender ||
+            (!data.is_perpetrator_known ? data.perpetrator_gender : null),
           perpetratorUnknownAppearance: data.perpetrator_unknown_appearance,
           perpetratorOccupation:   data.perpetrator_occupation,
           perpetratorRelationship: data.perpetrator_relationship,
@@ -1648,6 +1646,8 @@ export default function ViewCase() {
           internalNotes:           data.internal_notes || null,
           pendingApproval:         null,
           followUpSummary:         data.follow_up_summary || null,
+          followUps:               [],
+          withdrawalRequest:       data.withdrawal_request || null,
           statusHistory: [
             {
               status: STATUS_STEP[data.case_status_id] || "For Verification",
@@ -1711,6 +1711,18 @@ export default function ViewCase() {
             }));
           }
         }
+
+        const followUpsRes = await fetch(
+          `${API_URL}/api/case_reports/${data.case_report_id}/follow-ups`,
+          { credentials: "include", cache: "no-store" }
+        );
+        if (followUpsRes.ok) {
+          const followUpsJson = await followUpsRes.json().catch(() => ({}));
+          setCaseData((prev) => ({
+            ...prev,
+            followUps: followUpsJson.data || [],
+          }));
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1756,6 +1768,8 @@ export default function ViewCase() {
     (isStaff || (interviewsChecked && hasInterviewRecord));
   const displayedActiveTab =
     activeTab === "interview" && !showInterviewTab ? "details" : activeTab;
+  const withdrawalCopy = getWithdrawalCopy(caseData?.status);
+  const withdrawalPending = caseData?.withdrawalRequest?.status === "pending";
 
   if (loading) {
     return (
@@ -1851,20 +1865,14 @@ export default function ViewCase() {
                   </button>
                 </Tooltip>
               )}
-              {!isStaff && (caseData.status === "For Verification" || caseData.status === "Undergoing Review") && (
+              {!isStaff &&
+                getWithdrawalActionType(caseData.status) !== WITHDRAWAL_ACTION.BLOCK && (
                 <button
                   style={{ background: "#6b7280", padding: "6px 14px", color: "white", border: "none", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}
+                  disabled={withdrawalPending}
                   onClick={() => setWithdrawModalOpen(true)}
                 >
-                  Withdraw
-                </button>
-              )}
-              {!isStaff && caseData.status === "Withdrawn" && (
-                <button
-                  style={{ background: "#10b981", padding: "6px 14px", color: "white", border: "none", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => setUndoWithdrawModalOpen(true)}
-                >
-                  Undo Withdraw
+                  {withdrawalPending ? "Withdrawal Pending" : withdrawalCopy.buttonLabel}
                 </button>
               )}
             </div>
@@ -1942,23 +1950,44 @@ export default function ViewCase() {
         </div>
         
         {/* Withdraw Modals */}
-        <Modal open={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} title="Withdraw Case Report">
+        <Modal open={withdrawModalOpen} onClose={() => !withdrawing && setWithdrawModalOpen(false)} title={withdrawalCopy.title}>
           <p className={styles.formDesc}>
-            Are you sure you want to withdraw this case report? This action will stop the current progress, but it can be undone later if needed.
+            {withdrawalCopy.description}
           </p>
+          <FormGroup label="Reason for withdrawal" required>
+            <FTextarea
+              value={withdrawReason}
+              onChange={(event) => setWithdrawReason(event.target.value)}
+              placeholder="Explain why you want to withdraw this case."
+            />
+          </FormGroup>
+          {withdrawalCopy.requiresAffidavit && (
+            <FormGroup label="Affidavit of Desistance or official withdrawal document" required>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,image/*"
+                onChange={(event) => setWithdrawAffidavit(event.target.files?.[0] || null)}
+              />
+            </FormGroup>
+          )}
           <div className={styles.modalFooter}>
-            <button className={styles.btnSecondary} onClick={() => setWithdrawModalOpen(false)}>Cancel</button>
-            <button className={styles.btnPrimary} style={{ background: "#dc2626", borderColor: "#dc2626" }} onClick={() => { setWithdrawModalOpen(false); handleWithdraw(caseData.id); }}>Confirm Withdraw</button>
-          </div>
-        </Modal>
-
-        <Modal open={undoWithdrawModalOpen} onClose={() => setUndoWithdrawModalOpen(false)} title="Undo Withdrawal">
-          <p className={styles.formDesc}>
-            Are you sure you want to undo the withdrawal of this case report? Your report will return to its previous status.
-          </p>
-          <div className={styles.modalFooter}>
-            <button className={styles.btnSecondary} onClick={() => setUndoWithdrawModalOpen(false)}>Cancel</button>
-            <button className={styles.btnPrimary} onClick={() => { setUndoWithdrawModalOpen(false); handleUndoWithdraw(caseData.id); }}>Confirm Undo</button>
+            <button className={styles.btnSecondary} disabled={withdrawing} onClick={() => setWithdrawModalOpen(false)}>Cancel</button>
+            <button
+              className={styles.btnPrimary}
+              style={{ background: "#dc2626", borderColor: "#dc2626" }}
+              disabled={
+                withdrawing ||
+                !withdrawReason.trim() ||
+                (withdrawalCopy.requiresAffidavit && !withdrawAffidavit)
+              }
+              onClick={() => handleWithdraw(caseData.id)}
+            >
+              {withdrawing
+                ? "Submitting..."
+                : withdrawalCopy.actionType === WITHDRAWAL_ACTION.REQUIRE_APPROVAL
+                  ? "Submit Request"
+                  : "Confirm Withdrawal"}
+            </button>
           </div>
         </Modal>
 

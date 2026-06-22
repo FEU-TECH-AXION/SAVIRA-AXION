@@ -316,6 +316,26 @@
   margin: 0 0 1.25rem;
 }
 
+.modalField {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1rem 0;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.modalField textarea,
+.modalField input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  color: #111827;
+  font: inherit;
+  font-weight: 400;
+}
+
 .modalActions {
   display: flex;
   gap: 0.65rem;

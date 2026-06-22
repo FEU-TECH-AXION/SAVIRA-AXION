@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase')
+const { mergeApprovedFieldChanges } = require('./case_field_changes')
 
 const ALLOWED_FIELDS = [
   'case_type',
@@ -67,7 +68,37 @@ async function getCaseById(caseReportId) {
     .maybeSingle()
   if (error) throw error
   if (!report) return null
-  const normalizedReport = await normalizeSubmittedReportStatus(report)
+  let normalizedReport = await normalizeSubmittedReportStatus(report)
+
+  const { data: resolvedFollowUps, error: resolvedFollowUpsError } = await supabase
+    .from('follow_up_requests')
+    .select('id, resolved_at')
+    .eq('case_id', caseReportId)
+    .eq('status', 'resolved')
+    .order('resolved_at', { ascending: true })
+  if (resolvedFollowUpsError) {
+    console.warn('[getCaseById] Approved follow-up metadata unavailable:', resolvedFollowUpsError.message)
+  } else if (resolvedFollowUps?.length) {
+    const requestOrder = new Map(
+      resolvedFollowUps.map((request, index) => [request.id, index])
+    )
+    const { data: approvedChanges, error: approvedChangesError } = await supabase
+      .from('field_changes')
+      .select('follow_up_request_id, field_key, previous_value, new_value, changed_at')
+      .in('follow_up_request_id', resolvedFollowUps.map((request) => request.id))
+      .order('changed_at', { ascending: true })
+    if (approvedChangesError) {
+      console.warn('[getCaseById] Approved field changes unavailable:', approvedChangesError.message)
+    } else {
+      const orderedChanges = [...(approvedChanges || [])].sort((a, b) => {
+        const requestDifference =
+          requestOrder.get(a.follow_up_request_id) - requestOrder.get(b.follow_up_request_id)
+        if (requestDifference !== 0) return requestDifference
+        return new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
+      })
+      normalizedReport = mergeApprovedFieldChanges(normalizedReport, orderedChanges)
+    }
+  }
 
   // Step 2: Get the complainant's user_id
   const { data: complainant, error: complainantError } = await supabase
@@ -162,6 +193,16 @@ async function getCaseById(caseReportId) {
   }
 
   const followUpSummary = await getFollowUpSummary([caseReportId])
+  const { data: withdrawalRequest, error: withdrawalError } = await supabase
+    .from('case_withdrawal_requests')
+    .select('id, status, requested_at, reviewed_at')
+    .eq('case_report_id', caseReportId)
+    .order('requested_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (withdrawalError && withdrawalError.code !== '42P01') {
+    console.warn('[getCaseById] Withdrawal metadata unavailable:', withdrawalError.message)
+  }
 
   return {
     ...normalizedReport,
@@ -169,6 +210,7 @@ async function getCaseById(caseReportId) {
     assigned_officer:    officerName,
     evidences,
     follow_up_summary:    followUpSummary[caseReportId] || null,
+    withdrawal_request:   withdrawalRequest || null,
     ...merged,
   }
 }
@@ -228,7 +270,7 @@ async function getFollowUpSummary(caseIds) {
     .from('follow_up_requests')
     .select('id, case_id, type, status, awaiting_role, updated_at, created_at')
     .in('case_id', caseIds)
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
   if (error) {
     // Follow-up metadata is optional. A missing or partially applied migration
     // must never prevent the main case list/detail endpoints from loading.

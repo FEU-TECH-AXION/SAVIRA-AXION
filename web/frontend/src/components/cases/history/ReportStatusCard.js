@@ -1,6 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import {
+  getWithdrawalActionType,
+  getWithdrawalCopy,
+  WITHDRAWAL_ACTION,
+} from "@/lib/caseWithdrawal";
 import Tooltip from "@/components/ui/Tooltip";
 import { FollowUpBadge } from "@/components/cases/FollowUps";
 import { STATUS_DISPLAY } from "./reportHistoryData";
@@ -72,14 +77,19 @@ export default function ReportStatusCard({ report, reportNumber, onWithdraw, onF
   const router = useRouter();
   const assigned = report.assignedPersonnel || "Unassigned";
   const updatedAgo = timeAgo(report.updatedAt);
+  const withdrawalCopy = getWithdrawalCopy(report.statusName);
   const canWithdraw =
-    report.statusName === "For Verification" ||
-    report.statusName === "Undergoing Review";
+    getWithdrawalActionType(report.statusName) !== WITHDRAWAL_ACTION.BLOCK &&
+    report.withdrawalRequest?.status !== "pending";
   const withdrawTooltip = canWithdraw
-    ? "Withdraw this report and stop its current progress"
-    : report.statusName === "Withdrawn"
+    ? withdrawalCopy.actionType === WITHDRAWAL_ACTION.REQUIRE_APPROVAL
+      ? "Request withdrawal approval"
+      : "Withdraw this report and archive its current progress"
+    : report.withdrawalRequest?.status === "pending"
+      ? "This withdrawal request is awaiting approval"
+      : report.statusName === "Withdrawn"
       ? "This report has already been withdrawn"
-      : "Reports can only be withdrawn during verification or review";
+      : "This case cannot be withdrawn in its current status";
   const followUpAllowed = !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"]
     .includes(report.statusName);
   const followUpActive =
@@ -106,17 +116,21 @@ export default function ReportStatusCard({ report, reportNumber, onWithdraw, onF
               Follow Up
             </button>
           </Tooltip>
-          <Tooltip text={withdrawTooltip}>
-            <button
-              type="button"
-              className={styles.headerWithdrawBtn}
-              disabled={!canWithdraw}
-              aria-label={`Withdraw ${report.caseId}`}
-              onClick={onWithdraw}
-            >
-              Withdraw
-            </button>
-          </Tooltip>
+          {withdrawalCopy.actionType !== WITHDRAWAL_ACTION.BLOCK && (
+            <Tooltip text={withdrawTooltip}>
+              <button
+                type="button"
+                className={styles.headerWithdrawBtn}
+                disabled={!canWithdraw}
+                aria-label={`Withdraw ${report.caseId}`}
+                onClick={onWithdraw}
+              >
+                {report.withdrawalRequest?.status === "pending"
+                  ? "Withdrawal Pending"
+                  : withdrawalCopy.buttonLabel}
+              </button>
+            </Tooltip>
+          )}
           <Tooltip text={`View details for ${report.caseId}`}>
             <button
               type="button"

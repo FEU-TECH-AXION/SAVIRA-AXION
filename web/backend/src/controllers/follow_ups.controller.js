@@ -1,38 +1,13 @@
 const { randomUUID } = require('crypto')
 const supabase = require('../config/supabase')
 const FollowUps = require('../models/follow_ups.model')
+const { FIELD_TO_COLUMN } = require('../models/case_field_changes')
 
 const TERMINAL_CASE_STATUSES = new Set([10, 11, 12, 13])
 const ALLOWED_TYPES = new Set(['user_change_request', 'officer_clarification_request'])
 const ALLOWED_REASONS = new Set(['Correction needed', 'Additional info', 'Other'])
 const ALLOWED_STATUS_UPDATES = new Set(['open', 'resolved', 'rejected'])
 const ATTACHMENT_BUCKET = 'case-evidence'
-const FIELD_TO_COLUMN = new Map([
-  ['complainant.contactNumber', 'contact_number'],
-  ['complainant.email', 'email'],
-  ['incident.date', 'incident_date'],
-  ['incident.time', 'incident_time'],
-  ['incident.locationType', 'incident_location_type'],
-  ['incident.incidentCity', 'incident_city'],
-  ['incident.incidentVenue', 'incident_location'],
-  ['incident.description', 'incident_description'],
-  ['incident.outcome', 'action_requested'],
-  ['incident.perpetratorKnown', 'is_perpetrator_known'],
-  ['incident.perpetratorName', 'perpetrator_name'],
-  ['incident.perpetratorOccupation', 'perpetrator_occupation'],
-  ['incident.perpetratorRelationship', 'perpetrator_relationship'],
-  ['incident.perpetratorGender', 'perpetrator_gender'],
-  ['incident.perpetratorUnknownGender', 'perpetrator_unknown_gender'],
-  ['incident.perpetratorUnknownAppearance', 'perpetrator_unknown_appearance'],
-  ['incident.witnesses', 'has_witnesses'],
-  ['incident.witnessName', 'witness_name'],
-  ['incident.witnessContact', 'witness_contact'],
-  ['incident.witnessRelationship', 'witness_relationship'],
-  ['incident.toldAnyone', 'reported_to_others'],
-  ['incident.toldAnyoneWho', 'told_anyone_who'],
-  ['incident.toldPolice', 'reported_to_police'],
-  ['incident.policeStation', 'police_station'],
-])
 const EVIDENCE_FIELD = 'evidence.files'
 const RESOLUTION_MESSAGES = {
   open: 'This follow-up has been reopened by the case team. You may continue the conversation in this thread.',
@@ -378,7 +353,8 @@ async function replyToFollowUp(req, res) {
     const id = Number(req.params.id)
     const request = await FollowUps.getRequest(id)
     if (!request) return res.status(404).json({ error: 'Follow-up not found.' })
-    if (!FollowUps.ACTIVE_STATUSES.includes(request.status)) {
+    const isActive = FollowUps.ACTIVE_STATUSES.includes(request.status)
+    if (!isActive) {
       return res.status(409).json({ error: 'This follow-up is already closed.' })
     }
     const access = await FollowUps.getCaseAccess(request.case_id, actorId(req))

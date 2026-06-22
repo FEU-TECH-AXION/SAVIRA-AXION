@@ -10,6 +10,10 @@ import {
   normalizeReport,
 } from "@/components/cases/history/reportHistoryData";
 import styles from "./ReportHistory.module.css";
+import {
+  getWithdrawalCopy,
+  WITHDRAWAL_ACTION,
+} from "@/lib/caseWithdrawal";
 
 const INITIAL_FILTERS = {
   status: "",
@@ -82,6 +86,8 @@ export default function ReportHistoryPage() {
   const [error, setError] = useState("");
   const [withdrawReport, setWithdrawReport] = useState(null);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [withdrawAffidavit, setWithdrawAffidavit] = useState(null);
   const [actionError, setActionError] = useState("");
   const [followUpReport, setFollowUpReport] = useState(null);
 
@@ -142,30 +148,51 @@ export default function ReportHistoryPage() {
 
   async function handleWithdraw() {
     if (!withdrawReport?.id) return;
+    const withdrawalCopy = getWithdrawalCopy(withdrawReport.statusName);
+    if (!withdrawReason.trim()) {
+      setActionError("Enter a reason for withdrawal.");
+      return;
+    }
+    if (withdrawalCopy.requiresAffidavit && !withdrawAffidavit) {
+      setActionError("Attach an Affidavit of Desistance or official withdrawal document.");
+      return;
+    }
 
     setWithdrawing(true);
     setActionError("");
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const form = new FormData();
+      form.append("reason", withdrawReason.trim());
+      if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);
       const res = await fetch(`${API_URL}/api/case_reports/${withdrawReport.id}/withdraw`, {
         method: "POST",
         credentials: "include",
+        body: form,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to withdraw case.");
 
       setReports((current) =>
         current.map((report) =>
-          report.id === withdrawReport.id
+          report.id === withdrawReport.id && body.action_type === WITHDRAWAL_ACTION.ALLOW
             ? {
                 ...report,
                 statusName: "Withdrawn",
+                withdrawalRequest: body.withdrawal_request || null,
                 updatedAt: body.data?.updated_at || new Date().toISOString(),
               }
+            : report.id === withdrawReport.id
+              ? {
+                  ...report,
+                  withdrawalRequest: body.withdrawal_request || { status: "pending" },
+                }
             : report
         )
       );
       setWithdrawReport(null);
+      setWithdrawReason("");
+      setWithdrawAffidavit(null);
     } catch (err) {
       setActionError(err.message || "Failed to withdraw case.");
     } finally {
@@ -241,7 +268,13 @@ export default function ReportHistoryPage() {
       {withdrawReport && (
         <div
           className={styles.modalOverlay}
-          onMouseDown={() => !withdrawing && setWithdrawReport(null)}
+          onMouseDown={() => {
+            if (!withdrawing) {
+              setWithdrawReport(null);
+              setWithdrawReason("");
+              setWithdrawAffidavit(null);
+            }
+          }}
         >
           <div
             className={styles.modalBox}
@@ -251,30 +284,61 @@ export default function ReportHistoryPage() {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <h2 id="withdraw-case-title" className={styles.modalTitle}>
-              Withdraw Case Report
+              {getWithdrawalCopy(withdrawReport.statusName).title}
             </h2>
             <p className={styles.modalText}>
-              Withdraw <strong>{withdrawReport.caseId}</strong>? This will stop
-              its current progress. You can undo the withdrawal later from the
-              report details page.
+              <strong>{withdrawReport.caseId}</strong>:{" "}
+              {getWithdrawalCopy(withdrawReport.statusName).description}
             </p>
+            <label className={styles.modalField}>
+              <span>Reason for withdrawal</span>
+              <textarea
+                required
+                rows={4}
+                value={withdrawReason}
+                onChange={(event) => setWithdrawReason(event.target.value)}
+                placeholder="Explain why you want to withdraw this case."
+              />
+            </label>
+            {getWithdrawalCopy(withdrawReport.statusName).requiresAffidavit && (
+              <label className={styles.modalField}>
+                <span>Affidavit of Desistance or official withdrawal document</span>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,image/*"
+                  onChange={(event) => setWithdrawAffidavit(event.target.files?.[0] || null)}
+                />
+              </label>
+            )}
             {actionError && <div className={styles.errorAlert}>{actionError}</div>}
             <div className={styles.modalActions}>
               <button
                 type="button"
                 className={styles.modalCancel}
                 disabled={withdrawing}
-                onClick={() => setWithdrawReport(null)}
+                onClick={() => {
+                  setWithdrawReport(null);
+                  setWithdrawReason("");
+                  setWithdrawAffidavit(null);
+                }}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className={styles.modalDanger}
-                disabled={withdrawing}
+                disabled={
+                  withdrawing ||
+                  !withdrawReason.trim() ||
+                  (getWithdrawalCopy(withdrawReport.statusName).requiresAffidavit && !withdrawAffidavit)
+                }
                 onClick={handleWithdraw}
               >
-                {withdrawing ? "Withdrawing..." : "Confirm Withdraw"}
+                {withdrawing
+                  ? "Submitting..."
+                  : getWithdrawalCopy(withdrawReport.statusName).actionType === WITHDRAWAL_ACTION.REQUIRE_APPROVAL
+                    ? "Submit Request"
+                    : "Confirm Withdrawal"}
               </button>
             </div>
           </div>

@@ -166,12 +166,42 @@ const getPending = async (caseReportId) => {
   return data
 }
 
+const getById = async (historyId) => {
+  const { data, error } = await supabase
+    .from('case_status_history')
+    .select('*')
+    .eq('history_id', historyId)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+const reviewWithdrawal = async ({
+  historyId,
+  approvedById,
+  decision,
+  rejectionReason = null,
+  originIp = null,
+}) => {
+  const { data, error } = await supabase.rpc('review_case_withdrawal', {
+    p_history_id: historyId,
+    p_reviewed_by_user_id: approvedById,
+    p_decision: decision,
+    p_rejection_reason: rejectionReason,
+    p_origin_ip: originIp,
+  })
+  if (error) throw error
+  return Array.isArray(data) ? data[0] : data
+}
+
 module.exports = {
   getByCaseReport,
+  getById,
   create,
   approve,
   reject,
   getPending,
+  reviewWithdrawal,
   STATUS_ID_MAP,
   APPROVAL_REQUIRED_STATUSES,
 }

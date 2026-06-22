@@ -200,7 +200,9 @@ export function buildAmendmentValues(reportData = {}) {
       perpetratorUnknownGender: firstValue(reportData, [
         "perpetrator_unknown_gender",
         "perpetratorUnknownGender",
-      ]),
+      ], firstValue(reportData, ["is_perpetrator_known", "perpetratorKnown"], null) === false
+        ? firstValue(reportData, ["perpetrator_gender", "perpetratorGender"])
+        : ""),
       perpetratorUnknownAppearance: firstValue(reportData, [
         "perpetrator_unknown_appearance",
         "perpetratorUnknownAppearance",

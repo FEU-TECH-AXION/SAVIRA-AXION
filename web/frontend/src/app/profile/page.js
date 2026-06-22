@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   FiUser, FiMail, FiPhone, FiCamera,
   FiCheck, FiAlertCircle, FiShield,
-  FiEye, FiEyeOff, FiBell
+  FiEye, FiEyeOff, FiBell,
+  FiCalendar, FiUsers, FiSmartphone,
+  FiMonitor, FiTrash2, FiLogOut, FiLock
 } from "react-icons/fi";
 import styles from "./profile.module.css";
 
@@ -29,6 +31,16 @@ const NCR_CITIES = [
   "San Juan",
   "Taguig",
   "Valenzuela",
+];
+
+// ── Gender identity options ─────────────────────────────────────────────────
+const GENDER_OPTIONS = [
+  "Woman",
+  "Man",
+  "Non-binary",
+  "Transgender",
+  "Prefer to self-describe",
+  "Prefer not to say",
 ];
 
 // ── Validation helpers ────────────────────────────────────────────────────────
@@ -76,19 +88,32 @@ function validateProfile(data) {
     errors.province = "Province must be National Capital Region (NCR).";
   }
 
+  if (data.birthday) {
+    const today = new Date();
+    const bday  = new Date(data.birthday);
+    if (bday > today) {
+      errors.birthday = "Birthday can't be in the future.";
+    } else {
+      const age = today.getFullYear() - bday.getFullYear();
+      if (age > 120) errors.birthday = "Please enter a valid birthday.";
+    }
+  }
+
   return errors;
 }
 
 // ── Completion helpers ────────────────────────────────────────
 function getCompletionFields(user) {
   return [
-    { key: "middle_name",    label: "Middle Name",    optional: true  },
-    { key: "extension_name", label: "Extension Name", optional: true  },
-    { key: "user_name",      label: "Username",       optional: false },
-    { key: "contact_number", label: "Contact Number", optional: false },
-    { key: "city",           label: "City",           optional: false },
-    { key: "province",       label: "Province",       optional: false },
-    { key: "profile_img",    label: "Profile Photo",  optional: true  },
+    { key: "middle_name",     label: "Middle Name",      optional: true  },
+    { key: "extension_name",  label: "Extension Name",   optional: true  },
+    { key: "user_name",       label: "Username",         optional: false },
+    { key: "contact_number",  label: "Contact Number",   optional: false },
+    { key: "city",            label: "City",             optional: false },
+    { key: "province",        label: "Province",         optional: false },
+    { key: "profile_img",     label: "Profile Photo",    optional: true  },
+    { key: "birthday",        label: "Birthday",         optional: true  },
+    { key: "gender_identity", label: "Gender Identity",  optional: true  },
   ].map((f) => ({ ...f, filled: !!(user?.[f.key]) }));
 }
 
@@ -120,16 +145,19 @@ export default function ProfilePage() {
 
   // ── Profile form ──────────────────────────────────────────
   const [form, setForm] = useState({
-    first_name:     "",
-    middle_name:    "",
-    last_name:      "",
-    extension_name: "",
-    user_name:      "",
-    email:          "",
-    contact_number: "",
-    city:           "",
-    province:       "",
-    profile_img:    "",
+    first_name:      "",
+    middle_name:     "",
+    last_name:       "",
+    extension_name:  "",
+    user_name:       "",
+    email:           "",
+    contact_number:  "",
+    birthday:        "",
+    gender_identity: "",
+    gender_custom:   "",
+    city:            "",
+    province:        "",
+    profile_img:     "",
   });
 
   // ── Security form ─────────────────────────────────────────
@@ -140,6 +168,14 @@ export default function ProfilePage() {
   });
   const [showPw, setShowPw]   = useState({ current: false, new: false, confirm: false });
   const [pwErrors, setPwErrors] = useState({});
+
+  // ── Two-factor & sessions (Security tab) ───────────────────
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const MOCK_SESSIONS = [
+    { id: 1, device: "Chrome on Windows", location: "Quezon City, PH", current: true,  lastActive: "Active now" },
+    { id: 2, device: "Safari on iPhone",  location: "Quezon City, PH", current: false, lastActive: "2 days ago" },
+  ];
 
   // ── Notification prefs ────────────────────────────────────
   const [notifPrefs, setNotifPrefs] = useState({
@@ -153,16 +189,19 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) { router.push("/login"); return; }
     setForm({
-      first_name:     user.first_name     || "",
-      middle_name:    user.middle_name    || "",
-      last_name:      user.last_name      || "",
-      extension_name: user.extension_name || "",
-      user_name:      user.user_name      || "",
-      email:          user.email          || "",
-      contact_number: user.contact_number || "",
-      city:           user.city           || "",
-      province:       user.province       || "National Capital Region (NCR)",
-      profile_img:    user.profile_img    || "",
+      first_name:      user.first_name      || "",
+      middle_name:     user.middle_name     || "",
+      last_name:       user.last_name       || "",
+      extension_name:  user.extension_name  || "",
+      user_name:       user.user_name       || "",
+      email:           user.email           || "",
+      contact_number:  user.contact_number  || "",
+      birthday:        user.birthday        || "",
+      gender_identity: user.gender_identity || "",
+      gender_custom:   user.gender_custom   || "",
+      city:            user.city            || "",
+      province:        user.province        || "National Capital Region (NCR)",
+      profile_img:     user.profile_img     || "",
     });
   }, [user]);
 
@@ -178,12 +217,13 @@ export default function ProfilePage() {
   const completion   = calcCompletion(user);
   const missingFields = getCompletionFields(user).filter((f) => !f.filled && !f.optional);
   const initials = `${user?.first_name?.[0] || ""}${user?.last_name?.[0] || ""}`.toUpperCase() || "?";
+  const todayISO = new Date().toISOString().split("T")[0];
 
   // ── Handlers ──────────────────────────────────────────────
   const handleChange   = (e) => {
     const { name, value } = e.target;
     setFormErrors((p) => ({ ...p, [name]: "" }));
-    
+
     if (name === "contact_number") {
       const formatted = normalisePhone(value);
       setForm((p) => ({ ...p, [name]: formatted }));
@@ -192,6 +232,13 @@ export default function ProfilePage() {
       if (value === "" || value === "National Capital Region (NCR)") {
         setForm((p) => ({ ...p, [name]: value }));
       }
+    } else if (name === "gender_identity") {
+      // Clear the free-text field unless self-describing
+      setForm((p) => ({
+        ...p,
+        gender_identity: value,
+        gender_custom: value === "Prefer to self-describe" ? p.gender_custom : "",
+      }));
     } else {
       setForm((p) => ({ ...p, [name]: value }));
     }
@@ -460,6 +507,36 @@ export default function ProfilePage() {
               </Field>
             </div>
 
+            <div className={styles.grid2}>
+              <Field label="Birthday" badge="Optional" error={formErrors.birthday}>
+                <input
+                  name="birthday"
+                  type="date"
+                  value={form.birthday}
+                  onChange={handleChange}
+                  max={todayISO}
+                />
+              </Field>
+              <Field label="Gender Identity" badge="Optional">
+                <select name="gender_identity" value={form.gender_identity}
+                  onChange={handleChange}>
+                  <option value="">Prefer not to specify</option>
+                  {GENDER_OPTIONS.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                {form.gender_identity === "Prefer to self-describe" && (
+                  <input
+                    name="gender_custom"
+                    value={form.gender_custom}
+                    onChange={handleChange}
+                    placeholder="Describe in your own words"
+                    style={{ marginTop: "0.5rem" }}
+                  />
+                )}
+              </Field>
+            </div>
+
             <div className={styles.sectionTitle} style={{ marginTop: "1.5rem" }}>
               Contact &amp; Location
             </div>
@@ -512,128 +589,230 @@ export default function ProfilePage() {
 
         {/* ── SECURITY TAB ────────────────────────── */}
         {activeTab === "security" && (
-          <form className={styles.formCard} onSubmit={handlePasswordSave}>
-            <div className={styles.sectionTitle}>Change Password</div>
-            <p className={styles.sectionDesc}>
-              Use a strong password — at least 8 characters, one uppercase letter, and one number.
-            </p>
+          <div className={styles.securityStack}>
 
-            <div className={styles.grid1}>
-              <Field label="Current Password" error={pwErrors.current_password}>
-                <div className={styles.pwWrap}>
-                  <input
-                    name="current_password"
-                    type={showPw.current ? "text" : "password"}
-                    value={pwForm.current_password}
-                    onChange={handlePwChange}
-                    placeholder="Current password"
-                  />
-                  <button
-                    type="button"
-                    className={styles.eyeBtn}
-                    onClick={() => setShowPw((p) => ({ ...p, current: !p.current }))}
-                  >
-                    {showPw.current ? <FiEye size={17} /> : <FiEyeOff size={17} />}
-                  </button>
-                </div>
-              </Field>
+            {/* Password */}
+            <form className={styles.formCard} onSubmit={handlePasswordSave}>
+              <div className={styles.sectionTitle}>
+                <FiLock size={13} style={{ marginRight: "0.35rem", verticalAlign: "-2px" }} />
+                Password
+              </div>
+              <p className={styles.sectionDesc}>
+                Use a strong password — at least 8 characters, one uppercase letter, and one number.
+              </p>
 
-              <Field label="New Password" error={pwErrors.new_password}>
-                <div className={styles.pwWrap}>
-                  <input
-                    name="new_password"
-                    type={showPw.new ? "text" : "password"}
-                    value={pwForm.new_password}
-                    onChange={handlePwChange}
-                    placeholder="New password"
-                  />
-                  <button
-                    type="button"
-                    className={styles.eyeBtn}
-                    onClick={() => setShowPw((p) => ({ ...p, new: !p.new }))}
-                  >
-                    {showPw.new ? <FiEye size={17} /> : <FiEyeOff size={17} />}
-                  </button>
-                </div>
-                {pwStrength && (
-                  <div className={styles.strengthRow}>
-                    <div className={styles.strengthBars}>
-                      {[1, 2, 3, 4].map((n) => (
-                        <div
-                          key={n}
-                          className={styles.strengthBar}
-                          style={{ background: n <= pwStrength.score ? pwStrength.color : "#e2e8f0" }}
-                        />
-                      ))}
+              <div className={styles.grid1}>
+                <Field label="Current Password" error={pwErrors.current_password}>
+                  <div className={styles.pwWrap}>
+                    <input
+                      name="current_password"
+                      type={showPw.current ? "text" : "password"}
+                      value={pwForm.current_password}
+                      onChange={handlePwChange}
+                      placeholder="Current password"
+                    />
+                    <button
+                      type="button"
+                      className={styles.eyeBtn}
+                      onClick={() => setShowPw((p) => ({ ...p, current: !p.current }))}
+                    >
+                      {showPw.current ? <FiEye size={17} /> : <FiEyeOff size={17} />}
+                    </button>
+                  </div>
+                </Field>
+
+                <Field label="New Password" error={pwErrors.new_password}>
+                  <div className={styles.pwWrap}>
+                    <input
+                      name="new_password"
+                      type={showPw.new ? "text" : "password"}
+                      value={pwForm.new_password}
+                      onChange={handlePwChange}
+                      placeholder="New password"
+                    />
+                    <button
+                      type="button"
+                      className={styles.eyeBtn}
+                      onClick={() => setShowPw((p) => ({ ...p, new: !p.new }))}
+                    >
+                      {showPw.new ? <FiEye size={17} /> : <FiEyeOff size={17} />}
+                    </button>
+                  </div>
+                  {pwStrength && (
+                    <div className={styles.strengthRow}>
+                      <div className={styles.strengthBars}>
+                        {[1, 2, 3, 4].map((n) => (
+                          <div
+                            key={n}
+                            className={styles.strengthBar}
+                            style={{ background: n <= pwStrength.score ? pwStrength.color : "#e2e8f0" }}
+                          />
+                        ))}
+                      </div>
+                      <span style={{ color: pwStrength.color, fontSize: "12px", fontWeight: 600 }}>
+                        {pwStrength.label}
+                      </span>
                     </div>
-                    <span style={{ color: pwStrength.color, fontSize: "12px", fontWeight: 600 }}>
-                      {pwStrength.label}
-                    </span>
+                  )}
+                </Field>
+
+                <Field label="Confirm New Password" error={pwErrors.confirm_password}>
+                  <div className={styles.pwWrap}>
+                    <input
+                      name="confirm_password"
+                      type={showPw.confirm ? "text" : "password"}
+                      value={pwForm.confirm_password}
+                      onChange={handlePwChange}
+                      placeholder="Confirm new password"
+                    />
+                    <button
+                      type="button"
+                      className={styles.eyeBtn}
+                      onClick={() => setShowPw((p) => ({ ...p, confirm: !p.confirm }))}
+                    >
+                      {showPw.confirm ? <FiEye size={17} /> : <FiEyeOff size={17} />}
+                    </button>
+                  </div>
+                </Field>
+              </div>
+
+              <div className={styles.formActions}>
+                <button type="submit" className={styles.btnPrimary} disabled={saving}>
+                  {saving ? "Updating…" : "Update Password"}
+                </button>
+              </div>
+            </form>
+
+            {/* Two-factor authentication */}
+            <div className={styles.formCard}>
+              <div className={styles.sectionTitle}>
+                <FiSmartphone size={13} style={{ marginRight: "0.35rem", verticalAlign: "-2px" }} />
+                Two-Factor Authentication
+              </div>
+              <p className={styles.sectionDesc}>
+                Add an extra layer of protection by requiring a one-time code at sign-in.
+              </p>
+              <label className={styles.notifRow} style={{ paddingTop: 0 }}>
+                <div>
+                  <p className={styles.notifLabel}>SMS authentication</p>
+                  <p className={styles.notifDesc}>
+                    {twoFAEnabled
+                      ? `We'll text a code to ${form.contact_number || "your registered number"} when you sign in.`
+                      : "Currently turned off. Your account relies on password only."}
+                  </p>
+                </div>
+                <div
+                  className={`${styles.toggle} ${twoFAEnabled ? styles.toggleOn : ""}`}
+                  onClick={() => setTwoFAEnabled((v) => !v)}
+                >
+                  <div className={styles.toggleKnob} />
+                </div>
+              </label>
+            </div>
+
+            {/* Active sessions */}
+            <div className={styles.formCard}>
+              <div className={styles.sectionTitle}>
+                <FiMonitor size={13} style={{ marginRight: "0.35rem", verticalAlign: "-2px" }} />
+                Active Sessions
+              </div>
+              <p className={styles.sectionDesc}>
+                Devices currently signed in to your Savira account.
+              </p>
+              <div className={styles.sessionList}>
+                {MOCK_SESSIONS.map((s) => (
+                  <div key={s.id} className={styles.sessionRow}>
+                    <FiMonitor size={18} className={styles.sessionIcon} />
+                    <div className={styles.sessionInfo}>
+                      <p className={styles.notifLabel}>
+                        {s.device}{" "}
+                        {s.current && <span className={styles.sessionBadge}>This device</span>}
+                      </p>
+                      <p className={styles.notifDesc}>{s.location} · {s.lastActive}</p>
+                    </div>
+                    {!s.current && (
+                      <button type="button" className={styles.sessionRevoke}>
+                        <FiLogOut size={14} /> Sign out
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Account verification */}
+            <div className={styles.formCard}>
+              <div className={styles.sectionTitle}>Account Verification</div>
+              <div className={styles.infoGrid} style={{ marginTop: 0, paddingTop: 0, borderTop: "none" }}>
+                <div className={styles.infoItem}>
+                  <FiMail size={16} />
+                  <div>
+                    <p className={styles.infoLabel}>Email verified</p>
+                    <p className={styles.infoValue} style={{ color: user.is_email_verified ? "var(--sasha-teal)" : "#e53e3e" }}>
+                      {user.is_email_verified ? "Yes" : "No — please verify your email"}
+                    </p>
+                  </div>
+                </div>
+                <div className={styles.infoItem}>
+                  <FiPhone size={16} />
+                  <div>
+                    <p className={styles.infoLabel}>Contact verified</p>
+                    <p className={styles.infoValue} style={{ color: user.is_contact_number_verified ? "var(--sasha-teal)" : "#888" }}>
+                      {user.is_contact_number_verified ? "Yes" : "Not yet verified"}
+                    </p>
+                  </div>
+                </div>
+                <div className={styles.infoItem}>
+                  <FiUser size={16} />
+                  <div>
+                    <p className={styles.infoLabel}>Member since</p>
+                    <p className={styles.infoValue}>
+                      {user.created_at
+                        ? new Date(user.created_at).toLocaleDateString("en-PH", {
+                            year: "numeric", month: "long", day: "numeric",
+                          })
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Danger zone */}
+            <div className={styles.dangerCard}>
+              <div className={styles.sectionTitle} style={{ color: "#c0392b" }}>
+                <FiTrash2 size={13} style={{ marginRight: "0.35rem", verticalAlign: "-2px" }} />
+                Danger Zone
+              </div>
+              <p className={styles.sectionDesc}>
+                Deactivating hides your profile and pauses your account; deleting removes your data permanently.
+                This cannot be undone for deletion.
+              </p>
+              <div className={styles.dangerActions}>
+                <button type="button" className={styles.btnGhostDanger}>
+                  Deactivate account
+                </button>
+                {!confirmDeactivate ? (
+                  <button
+                    type="button"
+                    className={styles.btnDanger}
+                    onClick={() => setConfirmDeactivate(true)}
+                  >
+                    Delete account
+                  </button>
+                ) : (
+                  <div className={styles.dangerConfirm}>
+                    <span>Are you sure? This is permanent.</span>
+                    <button type="button" className={styles.btnDanger}>Yes, delete</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => setConfirmDeactivate(false)}>
+                      Cancel
+                    </button>
                   </div>
                 )}
-              </Field>
-
-              <Field label="Confirm New Password" error={pwErrors.confirm_password}>
-                <div className={styles.pwWrap}>
-                  <input
-                    name="confirm_password"
-                    type={showPw.confirm ? "text" : "password"}
-                    value={pwForm.confirm_password}
-                    onChange={handlePwChange}
-                    placeholder="Confirm new password"
-                  />
-                  <button
-                    type="button"
-                    className={styles.eyeBtn}
-                    onClick={() => setShowPw((p) => ({ ...p, confirm: !p.confirm }))}
-                  >
-                    {showPw.confirm ? <FiEye size={17} /> : <FiEyeOff size={17} />}
-                  </button>
-                </div>
-              </Field>
-            </div>
-
-            <div className={styles.formActions}>
-              <button type="submit" className={styles.btnPrimary} disabled={saving}>
-                {saving ? "Updating…" : "Update Password"}
-              </button>
-            </div>
-
-            {/* Account status info */}
-            <div className={styles.infoGrid}>
-              <div className={styles.infoItem}>
-                <FiMail size={16} />
-                <div>
-                  <p className={styles.infoLabel}>Email verified</p>
-                  <p className={styles.infoValue} style={{ color: user.is_email_verified ? "var(--sasha-teal)" : "#e53e3e" }}>
-                    {user.is_email_verified ? "Yes" : "No — please verify your email"}
-                  </p>
-                </div>
-              </div>
-              <div className={styles.infoItem}>
-                <FiPhone size={16} />
-                <div>
-                  <p className={styles.infoLabel}>Contact verified</p>
-                  <p className={styles.infoValue} style={{ color: user.is_contact_number_verified ? "var(--sasha-teal)" : "#888" }}>
-                    {user.is_contact_number_verified ? "Yes" : "Not yet verified"}
-                  </p>
-                </div>
-              </div>
-              <div className={styles.infoItem}>
-                <FiUser size={16} />
-                <div>
-                  <p className={styles.infoLabel}>Member since</p>
-                  <p className={styles.infoValue}>
-                    {user.created_at
-                      ? new Date(user.created_at).toLocaleDateString("en-PH", {
-                          year: "numeric", month: "long", day: "numeric",
-                        })
-                      : "—"}
-                  </p>
-                </div>
               </div>
             </div>
-          </form>
+
+          </div>
         )}
 
         {/* ── NOTIFICATIONS TAB ───────────────────── */}
