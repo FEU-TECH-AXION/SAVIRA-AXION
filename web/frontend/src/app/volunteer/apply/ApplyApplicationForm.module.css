@@ -688,14 +688,18 @@
 .reviewLabel {
   color: var(--sasha-muted);
   min-width: 160px;
+  max-width: 42%;
   font-weight: 600;
   flex-shrink: 0;
+  overflow-wrap: anywhere;
 }
 
 .reviewValue {
   color: var(--sasha-text);
   flex: 1;
+  min-width: 0;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .reviewEmpty {
@@ -1128,5 +1132,25 @@
   .wizardStepper  { padding: 1rem 0.5rem 0.25rem; }
   .wizardLabel    { font-size: 0.62rem; max-width: 60px; }
   .wizardDot      { width: 28px; height: 28px; font-size: 0.72rem; }
-  .reviewLabel    { min-width: 110px; }
+  .reviewSection  { overflow: hidden; }
+  .reviewSectionTitle { overflow-wrap: anywhere; }
+  .reviewRow {
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+  }
+  .reviewLabel {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    color: var(--sasha-teal);
+  }
+  .reviewValue {
+    width: 100%;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .reviewSectionTitle { padding: 0.6rem 0.75rem; }
+  .reviewRow { font-size: 0.8rem; }
 }

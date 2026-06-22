@@ -319,6 +319,36 @@ const createItem = async (req, res) => {
         const userId = req.user?.id
         if (!userId) return res.status(401).json({ error: 'Authentication required.' })
 
+        const birthday = applicant?.birthday
+          ? new Date(`${applicant.birthday}T00:00:00`)
+          : null
+        if (!birthday || Number.isNaN(birthday.getTime())) {
+            return res.status(400).json({ error: 'A valid birthday is required.' })
+        }
+
+        const today = new Date()
+        let applicantAge = today.getFullYear() - birthday.getFullYear()
+        const monthDifference = today.getMonth() - birthday.getMonth()
+        if (
+            monthDifference < 0 ||
+            (monthDifference === 0 && today.getDate() < birthday.getDate())
+        ) {
+            applicantAge -= 1
+        }
+
+        if (birthday > today) {
+            return res.status(400).json({ error: 'Birthday cannot be in the future.' })
+        }
+        if (applicantAge < 13) {
+            return res.status(400).json({ error: 'Applicants must be at least 13 years old.' })
+        }
+        if (applicantAge > 120) {
+            return res.status(400).json({ error: 'Birthday must be within the last 120 years.' })
+        }
+        if (!essay?.description?.trim()) {
+            return res.status(400).json({ error: 'Essay response is required.' })
+        }
+
         // ── 1. Get volunteer_applicant_id from logged in user ──
         const { data: existingApplicant } = await supabase
     .from('volunteer_applicants')
@@ -433,7 +463,7 @@ const createItem = async (req, res) => {
             essay_response:            essay.description,
             contact_number:            applicant.contactNumber    || null,
             name:                      applicant.name             || null,
-            age:                       parseInt(applicant.age)    || null,
+            age:                       applicantAge,
             gender_identity:           applicant.gender           || null,
             pronouns:                  applicant.pronouns         || null,
             email:                     applicant.email            || null,
@@ -447,7 +477,7 @@ const createItem = async (req, res) => {
             negotiable_score:          negotiableScore,
             application_status:        nonNegotiablePassed ? 'pending' : 'rejected',
             interview_required:        nonNegotiablePassed ? true : false,
-            birthday:                   applicant.birthday ? new Date(applicant.birthday) : null,
+            birthday,
             fields_with_background: screeningQuestions.withBackground   || [],
             fields_of_interest:     screeningQuestions.interestedFields || [],
             hours_per_week:         screeningQuestions.hoursPerWeek     || null,
@@ -566,7 +596,20 @@ const getMyApplications = async (req, res) => {
 
         const { data, error } = await supabase
             .from('volunteer_applications')
-            .select('*')
+            .select(`
+                *,
+                volunteer_application_assignments (
+                    assignment_id,
+                    assessor_id,
+                    is_active,
+                    users!volunteer_application_assignments_assessor_id_fkey (
+                        user_id,
+                        first_name,
+                        last_name,
+                        email
+                    )
+                )
+            `)
             .eq('volunteer_applicant_id', volunteerApplicant.volunteer_applicant_id)
             .order('created_at', { ascending: false })
 

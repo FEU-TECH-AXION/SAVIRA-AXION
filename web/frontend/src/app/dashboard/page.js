@@ -3,62 +3,63 @@
 // TODO: Move role checking to middleware for better security
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import AdminDashboard from "@/components/dashboard/admin/AdminDashboard";
 import StaffDashboard from "@/components/dashboard/staff/StaffDashboard";
 import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficerDashboard";
 import LegalPersonnelDashboard from "@/components/dashboard/legalPersonnel/LegalPersonnelDashboard";
 import ComplainantDashboard from "@/components/dashboard/complainant/ComplainantDashboard";
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-  return null;
-}
+import { useAuth } from "@/lib/AuthContext";
 
 export default function DashboardPage() {
-  const [role, setRole] = useState(null);
   const [userReports, setUserReports] = useState([]);
-  const [reportsLoading, setReportsLoading] = useState(true);
-  const router = useRouter();
+  const [latestApplication, setLatestApplication] = useState(null);
+  const { user, loading } = useAuth();
+  const role = user?.role_name?.toLowerCase();
 
   useEffect(() => {
-    const userCookie = getCookie('user');
-    if (!userCookie) { router.push('/'); return; }
-    const user = JSON.parse(userCookie);
-    setRole(user.role_name?.toLowerCase());
-  }, []);
+    if (role !== "user") return;
 
-  useEffect(() => {
-    if (role === "user") {
-      fetchUserReports();
+    async function fetchLatestRecords() {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const [reportsResult, applicationsResult] = await Promise.allSettled([
+        fetch(`${API_URL}/api/case_reports/my-reports`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/volunteer_applications/my_applications`, { credentials: 'include' }),
+      ]);
+
+      if (reportsResult.status === "fulfilled" && reportsResult.value.ok) {
+        const body = await reportsResult.value.json();
+        const reports = Array.isArray(body) ? body : body.data || [];
+        reports.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        setUserReports(reports.slice(0, 1));
+      } else {
+        setUserReports([]);
+      }
+
+      if (applicationsResult.status === "fulfilled" && applicationsResult.value.ok) {
+        const body = await applicationsResult.value.json();
+        const applications = Array.isArray(body) ? body : body.data || [];
+        applications.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        setLatestApplication(applications[0] || null);
+      } else {
+        setLatestApplication(null);
+      }
     }
+
+    fetchLatestRecords();
   }, [role]);
 
-  const fetchUserReports = async () => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch reports');
-      const { data } = await res.json();
-      setUserReports(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error fetching user reports:', err);
-      setUserReports([]);
-    } finally {
-      setReportsLoading(false);
-    }
-  };
-
-  if (!role) return <p>Loading...</p>;
+  if (loading) return <p>Loading...</p>;
+  if (!role) return <p>Unauthorized</p>;
   if (role === "admin")           return <AdminDashboard />;
   if (role === "staff")           return <StaffDashboard />;
   if (role === "case officer")    return <CaseOfficerDashboard />;
   if (role === "legal personnel") return <LegalPersonnelDashboard />;
-  if (role === "user")            return <ComplainantDashboard userReports={userReports} />;
+  if (role === "user")            return (
+    <ComplainantDashboard
+      userReports={userReports}
+      applicationData={latestApplication}
+    />
+  );
 
   return <p>Unauthorized</p>;
 }

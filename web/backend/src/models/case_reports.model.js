@@ -250,16 +250,48 @@ async function getReportsByUserId(complainantId) {
       incident_description,
       incident_city,
       incident_date,
-      case_status_id
+      case_status_id,
+      created_at
     `)
     .eq('complainant_id', complainantId)
     .eq('is_current', true)
     .order('created_at', { ascending: false })
   if (error) throw error
   const normalized = await normalizeSubmittedReportStatuses(data)
+  const reportIds = normalized.map((report) => report.case_report_id)
+  const assignedOfficerByReport = {}
+
+  if (reportIds.length > 0) {
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('case_assignments')
+      .select(`
+        case_report_id,
+        is_active,
+        case_officers (
+          users (
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .in('case_report_id', reportIds)
+      .eq('is_active', true)
+
+    if (assignmentError) {
+      console.warn('[getReportsByUserId] Assignment metadata unavailable:', assignmentError.message)
+    } else {
+      for (const assignment of assignments || []) {
+        const user = assignment.case_officers?.users
+        const name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim()
+        if (name) assignedOfficerByReport[assignment.case_report_id] = name
+      }
+    }
+  }
+
   const followUpSummary = await getFollowUpSummary(normalized.map((report) => report.case_report_id))
   return normalized.map((report) => ({
     ...report,
+    assigned_officer: assignedOfficerByReport[report.case_report_id] || null,
     follow_up_summary: followUpSummary[report.case_report_id] || null,
   }))
 }

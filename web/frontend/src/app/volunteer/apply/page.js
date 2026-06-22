@@ -168,12 +168,25 @@ function normalisePhone(raw) {
 function calcAgeFromBirthday(birthday) {
   if (!birthday) return null;
   const today = new Date();
-  const dob = new Date(birthday);
-  if (isNaN(dob)) return null;
+  const dob = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(dob.getTime())) return null;
   let age = today.getFullYear() - dob.getFullYear();
   const m = today.getMonth() - dob.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
   return age;
+}
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function birthdayForAge(age) {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - age);
+  return formatDateInput(date);
 }
 
 function validateStep0(data) {
@@ -184,9 +197,15 @@ function validateStep0(data) {
     errors.birthday = "Birthday is required.";
   } else {
     const computedAge = calcAgeFromBirthday(data.birthday);
-    if (computedAge !== null && computedAge < 13) {
+    if (computedAge === null) {
+      errors.birthday = "Enter a valid birthday.";
+    } else if (computedAge < 0) {
+      errors.birthday = "Birthday cannot be in the future.";
+    } else if (computedAge < 13) {
       errors.birthday =
         "Applicants must be at least 13 years old. Those below 13 are not eligible to apply at this time.";
+    } else if (computedAge > 120) {
+      errors.birthday = "Enter a valid birthday within the last 120 years.";
     }
   }
 
@@ -299,7 +318,8 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             value={data.birthday}
             onChange={handleBirthdayChange}
             error={errors.birthday}
-            max={new Date().toISOString().split("T")[0]}
+            min={birthdayForAge(120)}
+            max={birthdayForAge(13)}
           />
         </Field>
         <Field
@@ -705,9 +725,11 @@ function StepScreeningQuestions({
 }
 
 // ── Page 3 — Essay ─────────────────────────────────────────────────
-function StepEssay({ data, onChange }) {
-  const set = (key) => (e) => onChange({ ...data, [key]: e.target.value });
-  const setRadio = (key) => (v) => onChange({ ...data, [key]: v });
+function StepEssay({ data, onChange, errors, clearError }) {
+  const set = (key) => (e) => {
+    clearError(key);
+    onChange({ ...data, [key]: e.target.value });
+  };
 
   return (
     <div>
@@ -721,13 +743,19 @@ function StepEssay({ data, onChange }) {
 
       <div className={styles.formGrid}>
         <div>
-          <Field label="In a two to four paragraph essay, please tell us why do you want to join us and why you should be accepted?" required>
+          <Field
+            label="In a two to four paragraph essay, please tell us why do you want to join us and why you should be accepted?"
+            required
+            error={errors.description}
+          >
             <textarea
-              className={styles.textarea}
+              className={`${styles.textarea} ${errors.description ? styles.inputError : ""}`}
+              data-error={errors.description ? "true" : "false"}
               placeholder="Answer here..."
               value={data.description}
               onChange={set("description")}
               rows={5}
+              required
             />
           </Field>
           <p className={styles.fieldHint}>Please provide factual and clear information.</p>
@@ -1285,6 +1313,9 @@ export default function CreateApplication({
         });
       }
     }
+    if (step === 2 && !essay.description.trim()) {
+      errors.description = "Essay response is required.";
+    }
 
     if (Object.keys(errors).length > 0) {
       setStepErrors(errors);
@@ -1440,7 +1471,14 @@ export default function CreateApplication({
                   errors={stepErrors}
                 />
               )}
-              {step === 2 && <StepEssay data={essay} onChange={setEssay} />}
+              {step === 2 && (
+                <StepEssay
+                  data={essay}
+                  onChange={setEssay}
+                  errors={stepErrors}
+                  clearError={clearError}
+                />
+              )}
               {/* {step === 3 && <StepCredentials        data={credentials}    onChange={setCredentials}    />} */}
               {step === 3 && (
                 <StepReview

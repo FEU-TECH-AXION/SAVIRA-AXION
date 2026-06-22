@@ -190,13 +190,6 @@ function normalizeLocationSuggestion(feature) {
 }
 
 // ── Cookie ───────────────────────────────────────────────────────
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-  return null;
-}
-
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
 function WizardStepper({ current }) {
   return (
@@ -332,6 +325,43 @@ export function normalisePhone(raw) {
   return digits ? `+63${digits}` : "";
 }
 
+function calculateAge(birthday) {
+  if (!birthday) return "";
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return "";
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1;
+  }
+  return age >= 0 ? String(age) : "";
+}
+
+function getSelfReportFields(user) {
+  if (!user) {
+    return {
+      name: "",
+      age: "",
+      gender: "",
+      contactNumber: "",
+      email: "",
+    };
+  }
+  return {
+    name: [user.first_name, user.middle_name, user.last_name, user.extension_name]
+      .filter(Boolean)
+      .join(" "),
+    age: calculateAge(user.birthday),
+    gender: user.gender_identity || "",
+    contactNumber: user.contact_number || "",
+    email: user.email || "",
+  };
+}
+
 function validateConsentStep(data, consents) {
   const errors = {};
 
@@ -348,6 +378,7 @@ function validateConsentStep(data, consents) {
 export function validateStep0(data) {
   const errors = {};
 
+  if (!data.reporteeType) errors.reporteeType = "Please select who this report is about.";
   if (!data.age)           errors.age           = "Age is required.";
   if (!data.gender)        errors.gender        = "Gender identity is required.";
 
@@ -571,7 +602,7 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
   );
 }
 
-function StepComplainantInfo({ data, onChange, errors, clearError }) {
+function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUser }) {
   const set = (key) => (e) => {
     clearError(key);
     onChange({ ...data, [key]: e.target.value });
@@ -587,28 +618,6 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
     data.organization === "Girl Scouts of the Philippines (GSP)";
 
   // ── Autofill from logged-in user ──────────────────────────
-  const [selfReport, setSelfReport] = useState(false);
-
-  const loggedInName = (() => {
-    try {
-      const userCookie = getCookie('user');
-      if (!userCookie) return null;
-      const u = JSON.parse(userCookie);
-      return [u.first_name, u.last_name].filter(Boolean).join(' ') || null;
-    } catch {
-      return null;
-    }
-  })();
-
-  const handleSelfReport = (checked) => {
-    setSelfReport(checked);
-    clearError('name');
-    onChange({
-      ...data,
-      name: checked ? (loggedInName ?? '') : '',
-    });
-  };
-
   return (
     <div>
       <h2 className={styles.stepTitle}>
@@ -624,14 +633,22 @@ function StepComplainantInfo({ data, onChange, errors, clearError }) {
             name="reporteeType"
             options={["Me (Myself)", "Someone else"]}
             value={data.reporteeType || ""}
-            onChange={(v) => {
+            onChange={async (v) => {
               clearError("reporteeType");
               const isMe = v === "Me (Myself)";
-              setSelfReport(isMe);
+              const currentUser = isMe ? await getCurrentUser() : null;
               onChange({
                 ...data,
                 reporteeType: v,
-                name: isMe ? (loggedInName ?? '') : '',
+                ...(isMe
+                  ? getSelfReportFields(currentUser)
+                  : {
+                      name: "",
+                      age: "",
+                      gender: "",
+                      contactNumber: "",
+                      email: "",
+                    }),
               });
             }}
           />
@@ -1897,6 +1914,21 @@ export default function CreateReport({
 
   const totalSteps = STEPS.length;
 
+  const getCurrentUser = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${API_URL}/api/auth/me`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) return null;
+      const body = await response.json();
+      return body.user || null;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem("savira_case_report_draft");
@@ -2135,6 +2167,7 @@ export default function CreateReport({
                     onChange={setComplainant}
                     errors={stepErrors}
                     clearError={clearError}
+                    getCurrentUser={getCurrentUser}
                   />
                 )}
                 {step === 2 && (

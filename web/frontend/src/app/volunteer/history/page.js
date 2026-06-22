@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 // ── Uses its own dedicated stylesheet ─────────────────────────────────────────
 import styles from "./VolunteerHistory.module.css";
 import { IoIosInformationCircle, IoIosWarning } from "react-icons/io";
+import VolunteerApplicationStatusCard from "@/components/volunteer/VolunteerApplicationStatusCard";
 
 // ── Status badge colors ───────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -252,30 +253,16 @@ export default function ApplicationHistoryPage() {
 
               return (
                 <div className="col-12" key={app.volunteer_application_id}>
-                  <HistoryCard
-                    title={`Application #${index + 1}`}
-                    status={status}
-                    date={`Submitted: ${formatDate(app.created_at)}`}
-                    description={app.essay_response || "Submitted volunteer application."}
-                    action={
-                      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                        <button
-                          className={styles.submitBtn}
-                          onClick={() =>
-                            router.push(
-                              `/volunteer/view?id=${app.volunteer_application_id}`
-                            )
-                          }
-                        >
-                          View Application
-                        </button>
-
-                        {/* Show Withdraw only for active applications */}
+                  <VolunteerApplicationStatusCard
+                    application={app}
+                    title={`Application ${index + 1}`}
+                    headerActions={
+                      <>
                         {(status.toLowerCase() === "pending" ||
                           status.toLowerCase() === "reviewing") && (
                           <button
-                            className={styles.submitBtn}
-                            style={{ background: "#6b7280" }}
+                            type="button"
+                            className={styles.headerActionBtn}
                             onClick={() => {
                               setSelectedAppId(app.volunteer_application_id);
                               setWithdrawModalOpen(true);
@@ -284,11 +271,10 @@ export default function ApplicationHistoryPage() {
                             Withdraw
                           </button>
                         )}
-                        {/* Show Undo Withdraw for withdrawn applications */}
                         {status.toLowerCase() === "withdrawn" && (
                           <button
-                            className={styles.submitBtn}
-                            style={{ background: "#10b981", color: "white" }}
+                            type="button"
+                            className={styles.headerActionBtn}
                             onClick={() => {
                               setSelectedAppId(app.volunteer_application_id);
                               setUndoWithdrawModalOpen(true);
@@ -297,7 +283,7 @@ export default function ApplicationHistoryPage() {
                             Undo Withdraw
                           </button>
                         )}
-                      </div>
+                      </>
                     }
                   />
                 </div>
