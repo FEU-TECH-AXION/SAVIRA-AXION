@@ -546,7 +546,6 @@ const updateItem = async (req, res) => {
         res.status(200).json(updated)
 
     } catch (error) {
-        console.log('updateItem error:', error.message)
         res.status(500).json({ error: error.message })
     }
 }

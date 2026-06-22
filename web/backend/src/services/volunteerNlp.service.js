@@ -9,30 +9,24 @@ const NLP_URL = process.env.NLP_SERVICE_URL || 'http://localhost:8000';
 async function runVolunteerEssayAnalysis(application) {
     const { volunteer_application_id, essay_response } = application;
 
-    if (!essay_response || essay_response.trim().length < 20) return;
+    if (!essay_response || essay_response.trim().length < 20) {
+        return;
+    }
 
-    // Sanitize essay text before sending to NLP
     const sanitizedEssay = essay_response
         .replace(/[\u0000-\u001F\u007F]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 
-    // Step 1 — Insert a pending row
-    await createAnalysis({
-        volunteer_application_id,
-        status: 'pending',
-    });
+    await createAnalysis({ volunteer_application_id, status: 'pending' });
 
     try {
-        // Step 2 — Call Python NLP service
         const response = await fetch(`${NLP_URL}/analyze/essay`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                volunteer_application_id,
-                essay_response: sanitizedEssay,
-            }),
+            body: JSON.stringify({ volunteer_application_id, essay_response: sanitizedEssay }),
         });
+
 
         if (!response.ok) {
             const err = await response.json().catch(() => null);
@@ -41,10 +35,6 @@ async function runVolunteerEssayAnalysis(application) {
 
         const result = await response.json();
 
-        
-
-        // Step 3 — Map flat NLP response directly to DB columns
-        // NOTE: NLP returns a flat object, NOT nested under result.scores/result.notes
         await updateAnalysisByApplicationId(volunteer_application_id, {
             // ── Essay dimension scores (numeric 1–10) ──────────────────────
             mission_alignment_score:   result.mission_alignment_score   ?? null,
@@ -67,7 +57,7 @@ async function runVolunteerEssayAnalysis(application) {
             // ── Recommendation ─────────────────────────────────────────────
             recommendation:            result.recommendation            || null,
             // Treat empty string "" as null — NLP returns "" when no notes
-            recommendation_notes:      result.recommendation_notes?.trim() || null,
+            // recommendation_notes:      result.recommendation_notes?.trim() || null,
             threshold_passed:          result.threshold_passed          ?? null,
 
             // ── Metadata ───────────────────────────────────────────────────

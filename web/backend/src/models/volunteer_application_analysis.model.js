@@ -22,6 +22,7 @@ async function createAnalysis(data) {
 }
 
 async function updateAnalysisByApplicationId(volunteerApplicationId, updates) {
+    
     const { data, error } = await supabase
         .from('volunteer_application_analysis')
         .update(updates)
