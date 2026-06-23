@@ -10,14 +10,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax',
+  sameSite: 'none',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
 const USER_COOKIE_OPTIONS = {
   httpOnly: false, // Allow client-side access to user data
   secure: isProduction,
-  sameSite: 'lax',
+  sameSite: 'none',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
