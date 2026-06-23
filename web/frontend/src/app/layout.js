@@ -10,6 +10,7 @@ import './globals.css';import Navbar from '@/components/navbar/navbar';
 import NavbarClient from '@/components/navbar/NavbarClient';
 import Footer from '@/components/footer/footer';
 import {AuthProvider } from "@/lib/AuthContext";
+import NotificationsInit from '@/components/notification/notificationsInit';
 // import NavbarWrapper from '@/components/navbar/NavbarWrapper';
 
 export const metadata = {
@@ -18,6 +19,8 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  <NotificationsInit />;
+
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body>

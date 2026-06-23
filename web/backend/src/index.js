@@ -41,6 +41,11 @@ if (require.main === module) {
 const authRouter = require('./routes/auth.routes')
 app.use('/api/auth', authRouter)
 
+// ── SERVICE ROUTES ────────────────────────────────────────────────
+
+const notificationsRouter = require('./routes/notifications.routes');
+app.use('/api/notifications', notificationsRouter);
+
 // ── ROUTES FOR USER RELATED TABLES ────────────────────────────────────────────────
 
 // Route for users tbl
