@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/FEU-TECH-AXION/SAVIRA#readme",
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.3"
   },
   "dependencies": {
     "expo": "^55.0.23",

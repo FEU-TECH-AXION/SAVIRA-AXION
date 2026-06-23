@@ -10,14 +10,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'none',
+  sameSite: isProduction ? 'none' : 'lax',  // 'lax' works over HTTP in dev
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
 const USER_COOKIE_OPTIONS = {
   httpOnly: false, // Allow client-side access to user data
   secure: isProduction,
-  sameSite: 'none',
+  sameSite: isProduction ? 'none' : 'lax',  // 'lax' works over HTTP in dev
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -116,11 +116,7 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
 
     // 3. Generate JWT
-    const token = jwt.sign(
-      { id: user.user_id, role_id: user.role_id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = jwt.sign({ id: user.user_id, role: user.roles?.role_name }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     // 4. Flatten and return safe user
     const { password: _, ...safeUser } = user;
