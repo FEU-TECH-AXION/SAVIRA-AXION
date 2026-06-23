@@ -230,7 +230,7 @@ function PeopleList({
                 <option
                   key={person.user_id}
                   value={person.name}
-                  label={person.committee ? `${person.committee} · ${person.email}` : person.email}
+                  label={`${person.availability || "Available"} · ${person.activeProjects || 0}/${person.maxProjects || 5} projects${person.committee ? ` · ${person.committee}` : ""}`}
                 />
               ))}
             </datalist>
@@ -298,11 +298,15 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
         }
 
         const suggestions = (Array.isArray(body) ? body : [])
+          .filter((staffMember) => !["On Leave", "Out of Office"].includes(staffMember.availability_status))
           .map((staffMember) => ({
             user_id: staffMember.user_id || staffMember.users?.user_id,
             name: `${staffMember.users?.first_name || ""} ${staffMember.users?.last_name || ""}`.trim(),
             email: staffMember.users?.email || "",
             committee: staffMember.committees?.committee_name || "",
+            availability: staffMember.availability_status || "Available",
+            activeProjects: staffMember.active_projects || 0,
+            maxProjects: staffMember.max_project_assignments || 5,
           }))
           .filter((person) => person.user_id && person.name)
           .sort((a, b) => a.name.localeCompare(b.name));

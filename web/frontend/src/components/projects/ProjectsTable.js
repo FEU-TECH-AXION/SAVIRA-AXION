@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiEye, FiTrash2 } from "react-icons/fi";
 import styles from "./ProjectsTable.module.css";
 import { MdPublic, MdPublicOff } from "react-icons/md";
 
@@ -146,6 +146,7 @@ export default function ProjectsTable({
   onRowDoubleClick,
   onDeleteSelected,
   onEdit,
+  onView,
   onDelete,
   sortField,
   sortDir,
@@ -331,6 +332,16 @@ export default function ProjectsTable({
 
                     <td className={`${styles.td} ${styles.actionsTd}`} onClick={e => e.stopPropagation()}>
                       <div className={styles.rowActions}>
+                        {onView && (
+                          <button
+                            className={styles.rowBtn}
+                            title="View project and tasks"
+                            onClick={() => onView(p)}
+                            aria-label={`View project ${p.id}`}
+                          >
+                            <FiEye />
+                          </button>
+                        )}
                         {onEdit && (
                           <button
                             className={styles.rowBtn}

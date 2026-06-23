@@ -43,6 +43,8 @@ app.use('/api/users', usersRouter)
 // Route for staff tbl
 const staffRouter = require('./routes/staff.routes')
 app.use('/api/staff', staffRouter)
+const availabilityRouter = require('./routes/availability.routes')
+app.use('/api/availability', availabilityRouter)
 
 // Route for case_officers tbl
 const caseOfficersRouter = require('./routes/case_officers.routes')
@@ -78,6 +80,8 @@ app.use('/api/organizations', organizationsRouter)
 // Route for projects tbl
 const projectsRouter = require('./routes/projects.routes')
 app.use('/api/projects', projectsRouter)
+const projectTasksRouter = require('./routes/project_tasks.routes')
+app.use('/api/project-tasks', projectTasksRouter)
 
 
 // Route for chapter building tbls

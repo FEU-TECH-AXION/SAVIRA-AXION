@@ -1648,6 +1648,7 @@ export default function ViewCase() {
           followUpSummary:         data.follow_up_summary || null,
           followUps:               [],
           withdrawalRequest:       data.withdrawal_request || null,
+          possibleDuplicates:      data.possible_duplicates || [],
           statusHistory: [
             {
               status: STATUS_STEP[data.case_status_id] || "For Verification",
@@ -1878,6 +1879,50 @@ export default function ViewCase() {
             </div>
           </div>
         </div>
+
+        {isStaff && caseData.possibleDuplicates?.length > 0 && (
+          <div style={{
+            background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 12,
+            padding: "1rem 1.2rem", marginBottom: "1rem", color: "#9a3412",
+          }}>
+            <strong>Possible duplicate report{caseData.possibleDuplicates.length > 1 ? "s" : ""}</strong>
+            <p style={{ margin: ".35rem 0 .75rem" }}>
+              Review these matches before proceeding. This is a warning only and does not block the case.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+              {caseData.possibleDuplicates.map((match) => (
+                <div key={match.duplicate_match_id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: ".6rem" }}>
+                  <a href={`/cases/view?caseId=${match.matched_case_report_id}`} style={{ color: "#9a3412", fontWeight: 800 }}>
+                    Case #{match.matched_case_report_id}
+                  </a>
+                  <span>{Number(match.similarity_score)}% match</span>
+                  <span>({(match.matched_fields || []).join(", ")})</span>
+                  <button
+                    style={{ marginLeft: "auto", border: "1px solid #fdba74", background: "#fff", color: "#9a3412", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}
+                    onClick={async () => {
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+                      const response = await fetch(
+                        `${API_URL}/api/case_reports/${caseData.id}/duplicates/${match.duplicate_match_id}/dismiss`,
+                        { method: "PATCH", credentials: "include" }
+                      );
+                      if (response.ok) {
+                        setCaseData((current) => ({
+                          ...current,
+                          possibleDuplicates: current.possibleDuplicates.filter(
+                            (item) => item.duplicate_match_id !== match.duplicate_match_id
+                          ),
+                        }));
+                        showToast("Duplicate warning dismissed.");
+                      }
+                    }}
+                  >
+                    Not a duplicate
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Content card with tabs */}
         <div className={styles.contentCard}>

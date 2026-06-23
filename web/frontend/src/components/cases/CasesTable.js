@@ -301,6 +301,7 @@ export default function CasesTable({
               </th>
               <SortableTh field="caseId">Case ID</SortableTh>
               <SortableTh field="status">Case Status</SortableTh>
+              <th className={styles.th}>Duplicate Check</th>
               <th className={styles.th}>Case Type</th>
               <SortableTh field="reporterId">Reporter ID</SortableTh>
               <th className={styles.th}>Case Officer</th>
@@ -318,7 +319,7 @@ export default function CasesTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8 + (showPrimaryCategory ? 1 : 0) + (showCity ? 1 : 0)} className={styles.emptyState}>
+                <td colSpan={9 + (showPrimaryCategory ? 1 : 0) + (showCity ? 1 : 0)} className={styles.emptyState}>
                   No cases found.
                 </td>
               </tr>
@@ -368,6 +369,19 @@ export default function CasesTable({
                         <div style={{ marginTop: 3 }}>
                           <PendingBadge />
                         </div>
+                      )}
+                    </td>
+
+                    <td className={styles.td}>
+                      {c.possibleDuplicates?.length ? (
+                        <span title={`${c.possibleDuplicates.length} possible duplicate match(es)`} style={{
+                          display: "inline-flex", borderRadius: 999, padding: "4px 9px",
+                          background: "#fff7ed", color: "#9a3412", fontSize: "0.72rem", fontWeight: 800,
+                        }}>
+                          Possible duplicate · {Math.max(...c.possibleDuplicates.map((item) => Number(item.similarity_score) || 0))}%
+                        </span>
+                      ) : (
+                        <span className={styles.muted}>No match</span>
                       )}
                     </td>
 

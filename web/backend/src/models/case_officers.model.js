@@ -14,13 +14,29 @@ const getAll = async () => {
                 first_name,
                 last_name,
                 email,
-                user_name
+                user_name,
+                availability_status,
+                availability_note,
+                max_active_cases
             )
         `)
 
     // Supabase returns error as a value, not an exception — we throw it
     // manually so controllers can handle it in a uniform try/catch
     if (error) throw error
+
+    const officerIds = (data || []).map((officer) => officer.case_officer_id)
+    const { data: assignments, error: assignmentError } = officerIds.length
+      ? await supabase.from('case_assignments')
+        .select('case_officer_id')
+        .in('case_officer_id', officerIds)
+        .eq('is_active', true)
+      : { data: [], error: null }
+    if (assignmentError) throw assignmentError
+    const activeLoads = {}
+    for (const assignment of assignments || []) {
+        activeLoads[assignment.case_officer_id] = (activeLoads[assignment.case_officer_id] || 0) + 1
+    }
 
     // Map the nested users data to a flatter structure with full name
     return data.map(officer => ({
@@ -34,6 +50,10 @@ const getAll = async () => {
         last_name: officer.users.last_name,
         email: officer.users.email,
         user_name: officer.users.user_name,
+        availability_status: officer.users.availability_status || (officer.is_available ? 'Available' : 'Busy'),
+        availability_note: officer.users.availability_note || null,
+        active_case_count: activeLoads[officer.case_officer_id] || 0,
+        max_active_cases: officer.users.max_active_cases || 10,
     }))
 }
 

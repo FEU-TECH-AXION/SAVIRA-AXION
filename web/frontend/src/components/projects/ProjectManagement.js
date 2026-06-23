@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/navbar/navbar";
 import CreateEditProject from "@/components/projects/CreateEditProject";
 import ProjectsTable from "@/components/projects/ProjectsTable";
@@ -195,6 +196,7 @@ function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defau
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function ProjectManagement() {
+  const router = useRouter();
   const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
 
   // ── State ──────────────────────────────────────────────────────
@@ -563,6 +565,7 @@ export default function ProjectManagement() {
                   onPageChange={setPage}
                   onRowDoubleClick={openEdit}
                   onEdit={openEdit}
+                  onView={(project) => router.push(`/projects/view?projectId=${project.id}`)}
                   onDelete={openDelete}
                   onDeleteSelected={handleBulkDelete}
                   sortField={sortField}

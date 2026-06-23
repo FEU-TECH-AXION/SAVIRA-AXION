@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase } = require('../controllers/case_reports.controller')
+const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
 const { amendCaseFields, createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
 const multer = require('multer');
@@ -22,6 +22,7 @@ router.post('/:id/follow-ups', verifyToken, upload.single('file'), createFollowU
 router.patch('/:id/fields', verifyToken, upload.single('file'), amendCaseFields);
 router.post('/:id/withdraw', verifyToken, withdrawalUpload.single('affidavit'), withdrawCase);
 router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
+router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, dismissDuplicate);
 router.get('/:id/nlp', verifyToken, getNLPAnalysis); 
 router.get('/:id',     getCaseById);
 router.get('/',        getItems);

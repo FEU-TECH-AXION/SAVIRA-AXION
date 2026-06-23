@@ -71,6 +71,7 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/cases", label: "Cases" },
     { href: "/legalReviews", label: "Legal Review" },
     { href: "/projects", label: "Projects" },
+    { href: "/staffAvailability", label: "Staff Availability" },
     { href: "/volunteer", label: "Volunteers" },
     { href: "/heatmap", label: "Heatmap" },
     { href: "/reportGenerator", label: "Report Generator" },
@@ -152,6 +153,7 @@ export const SIDEBAR_LINKS = {
   admin: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
     { href: "/users", label: "Users", icon: "people" },
+    { href: "/staffAvailability", label: "Staff Availability", icon: "calendar" },
     {
       label: "Cases",
       icon: "folder",
@@ -179,7 +181,9 @@ export const SIDEBAR_LINKS = {
     {
       label: "Projects",
       icon: "folder",
-      children: [{ href: "/projects", label: "All Projects" }],
+      children: [
+        { href: "/projects", label: "All Projects" },
+      ],
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
     { href: "/reportGenerator", label: "Report Generator", icon: "assessment" },

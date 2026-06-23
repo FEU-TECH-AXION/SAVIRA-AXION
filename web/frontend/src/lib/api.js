@@ -121,6 +121,92 @@ export async function deleteProjects(ids) {
   return data;
 }
 
+export async function fetchProject(id) {
+  const res = await fetch(`${API_URL}/api/projects/${id}`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch project');
+  return data;
+}
+
+export async function fetchProjectTasks(projectId) {
+  const res = await fetch(`${API_URL}/api/project-tasks/project/${projectId}`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch project tasks');
+  return data.data || [];
+}
+
+export async function createProjectTask(projectId, payload) {
+  const res = await fetch(`${API_URL}/api/project-tasks/project/${projectId}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to create task');
+  return data.data;
+}
+
+export async function updateProjectTask(taskId, payload) {
+  const res = await fetch(`${API_URL}/api/project-tasks/${taskId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to update task');
+  return data.data;
+}
+
+export async function cancelProjectTask(taskId) {
+  const res = await fetch(`${API_URL}/api/project-tasks/${taskId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to cancel task');
+  return data.data;
+}
+
+export async function fetchTaskActivity(taskId) {
+  const res = await fetch(`${API_URL}/api/project-tasks/${taskId}/activity`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch task activity');
+  return data.data || [];
+}
+
+export async function fetchStaffAvailability() {
+  const res = await fetch(`${API_URL}/api/availability`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ([]));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch staff availability');
+  return Array.isArray(data) ? data : data.data || [];
+}
+
+export async function updateStaffAvailability(staffId, payload) {
+  const res = await fetch(`${API_URL}/api/availability/${staffId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to update availability');
+  return data.data;
+}
+
 export async function fetchChapters() {
   const res = await fetch(`${API_URL}/api/chapters`, {
     credentials: 'include',

@@ -51,6 +51,7 @@ const ICONS = {
   event: <MdEvent />,
   phone: <MdPhone />,
   handsHelping: <FaHandsHelping />,
+  calendar: <MdEvent />,
 };
 
 function withIcons(items) {

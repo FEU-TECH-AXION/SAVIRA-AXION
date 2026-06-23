@@ -10,6 +10,7 @@ import Link from "next/link";
 import { IoIosWarning } from "react-icons/io";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
+import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -228,7 +229,9 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
     alreadyAssignedIds.forEach((id) => unavailableStaffIds.add(String(id)))
   }
   const availableStaff = staff.filter(
-    (staffMember) => !unavailableStaffIds.has(String(staffMember.user_id))
+    (staffMember) =>
+      !unavailableStaffIds.has(String(staffMember.user_id)) &&
+      !["On Leave", "Out of Office"].includes(staffMember.availability_status)
   )
   const noAvailableStaff = availableStaff.length === 0
 
@@ -521,11 +524,15 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
                     <span style={{ fontWeight: 500 }}>
                       {`${s.first_name} ${s.last_name}`.trim()}
                     </span>
-                    <span style={{
-                      fontSize: "0.75rem", color: "#6b7280",
-                      background: "#f3f4f6", padding: "2px 8px", borderRadius: 999,
-                    }}>
-                      Membership Committee
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>Membership Committee</span>
+                      <AvailabilityBadge
+                        compact
+                        status={s.availability_status}
+                        currentLoad={s.active_reviews}
+                        maxLoad={s.max_volunteer_reviews}
+                        loadLabel="reviews"
+                      />
                     </span>
                   </button>
                 ))}

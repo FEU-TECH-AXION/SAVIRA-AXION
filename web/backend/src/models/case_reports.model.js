@@ -147,7 +147,7 @@ async function getCaseById(caseReportId) {
   }
 
   // Step 4: Get active case officer assignment
-  const { data: assignment, error: assignmentError } = await supabase
+  const { data: assignments, error: assignmentError } = await supabase
     .from('case_assignments')
     .select(`
       case_officer_id,
@@ -160,12 +160,14 @@ async function getCaseById(caseReportId) {
     `)
     .eq('case_report_id', caseReportId)
     .eq('is_active', true)
-    .maybeSingle()
   if (assignmentError) throw assignmentError
 
-  const officerName = assignment?.case_officers?.users
-    ? `${assignment.case_officers.users.first_name} ${assignment.case_officers.users.last_name}`.trim()
-    : null
+  const officerNames = (assignments || [])
+    .map((assignment) => assignment.case_officers?.users)
+    .filter(Boolean)
+    .map((user) => `${user.first_name || ''} ${user.last_name || ''}`.trim())
+    .filter(Boolean)
+  const officerName = officerNames.length > 0 ? officerNames.join(', ') : null
 
   const { data: evidenceRows, error: evidenceError } = await supabase
     .from('evidences')
@@ -193,6 +195,7 @@ async function getCaseById(caseReportId) {
   }
 
   const followUpSummary = await getFollowUpSummary([caseReportId])
+  const duplicateMatches = await getDuplicateMatches([caseReportId])
   const { data: withdrawalRequest, error: withdrawalError } = await supabase
     .from('case_withdrawal_requests')
     .select('id, status, requested_at, reviewed_at')
@@ -211,6 +214,7 @@ async function getCaseById(caseReportId) {
     evidences,
     follow_up_summary:    followUpSummary[caseReportId] || null,
     withdrawal_request:   withdrawalRequest || null,
+    possible_duplicates:  duplicateMatches[caseReportId] || [],
     ...merged,
   }
 }
@@ -457,6 +461,7 @@ async function getAllReports() {
   }
 
   // Step 3: Merge officer name and legal names into each report
+  const duplicateMatches = await getDuplicateMatches(reportIds)
   return normalizedReports.map(report => {
     let assignedOfficer = null
     let assignedOfficerId = null
@@ -499,11 +504,31 @@ async function getAllReports() {
         assignment_role: assignment.assignment_role === 'legal_officer' ? 'lawyer' : assignment.assignment_role,
         name: legalMap[assignment.legal_personnel_id] || null,
       })),
+      possible_duplicates: duplicateMatches[report.case_report_id] || [],
       ...(assessmentMap[report.case_report_id] || {}),
       case_assignments:       undefined,
       legal_case_assignments: undefined,
     }
   })
+}
+
+async function getDuplicateMatches(caseIds) {
+  if (!caseIds?.length) return {}
+  const { data, error } = await supabase
+    .from('case_duplicate_matches')
+    .select('duplicate_match_id, case_report_id, matched_case_report_id, similarity_score, matched_fields, created_at')
+    .in('case_report_id', caseIds)
+    .is('dismissed_at', null)
+    .order('similarity_score', { ascending: false })
+  if (error) {
+    console.warn('[getDuplicateMatches] duplicate metadata unavailable:', error.message)
+    return {}
+  }
+  return (data || []).reduce((map, item) => {
+    if (!map[item.case_report_id]) map[item.case_report_id] = []
+    map[item.case_report_id].push(item)
+    return map
+  }, {})
 }
 
 const update = async (caseReportId, payload) => {

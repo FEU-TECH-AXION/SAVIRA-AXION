@@ -9,6 +9,7 @@ import UpdateStatusModal from "../cases/UpdateStatusModals";
 import Tooltip from "../ui/Tooltip";
 import { ConfirmDialog } from "../ui/Dialog";
 import { getLegalCaseDeadlines, normalizeLegalList } from "./legalReviewCalendar";
+import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import {
   Modal,
   FormGroup,
@@ -652,7 +653,9 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
       .map(String)
   );
   const availableLegalPersonnels = legalPersonnels.filter(
-    (person) => !currentlyAssignedIds.has(String(person.legal_personnel_id))
+    (person) =>
+      !currentlyAssignedIds.has(String(person.legal_personnel_id)) &&
+      !["On Leave", "Out of Office"].includes(person.availability_status)
   );
   const noAvailableLegalPersonnel = availableLegalPersonnels.length === 0;
 
@@ -948,14 +951,15 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                     <span style={{ fontWeight: 500 }}>
                       {`${p.first_name} ${p.last_name}`.trim()}
                     </span>
-                    <span style={{
-                      fontSize:     "0.75rem",
-                      color:        "#6b7280",
-                      background:   "#f3f4f6",
-                      padding:      "2px 8px",
-                      borderRadius: 999,
-                    }}>
-                      {p.legal_personnel_type}
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>{p.legal_personnel_type}</span>
+                      <AvailabilityBadge
+                        compact
+                        status={p.availability_status}
+                        currentLoad={p.active_legal_assignments}
+                        maxLoad={p.max_legal_assignments}
+                        loadLabel="legal assignments"
+                      />
                     </span>
                   </button>
                 ))}

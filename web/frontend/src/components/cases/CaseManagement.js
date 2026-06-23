@@ -9,6 +9,7 @@ import FilterMenu from "./FilterMenu";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
 import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -712,7 +713,9 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
       .map((officer) => String(officer.case_officer_id))
   );
   const availableOfficers = officersProp.filter(
-    (officer) => !unavailableOfficerIds.has(String(officer.case_officer_id))
+    (officer) =>
+      !unavailableOfficerIds.has(String(officer.case_officer_id)) &&
+      !["On Leave", "Out of Office"].includes(officer.availability_status)
   );
   const noAvailableOfficers = availableOfficers.length === 0;
 
@@ -1054,15 +1057,13 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                       onMouseLeave={e => e.currentTarget.style.background = "none"}
                     >
                       <span style={{ fontWeight: 500 }}>{name}</span>
-                      <span style={{
-                        fontSize:     "0.75rem",
-                        color:        "#6b7280",
-                        background:   "#f3f4f6",
-                        padding:      "2px 8px",
-                        borderRadius: 999,
-                      }}>
-                        Case Officer
-                      </span>
+                      <AvailabilityBadge
+                        compact
+                        status={o.availability_status}
+                        currentLoad={o.active_case_count}
+                        maxLoad={o.max_active_cases}
+                        loadLabel="active cases"
+                      />
                     </button>
                   );
                 })}
@@ -1375,6 +1376,7 @@ useEffect(() => {
         endorsedTo:      null,
         endorsementDetails: null,
         pendingApproval: null,
+        possibleDuplicates: r.possible_duplicates || [],
         statusHistory: [
           {
             status: STATUS_STEP[r.case_status_id] || "For Verification",
@@ -1418,9 +1420,7 @@ useEffect(() => {
       if (res.ok) {
         const data = await res.json();
         // Expect data = [{ case_officer_id, name, user_id, is_available, ... }]
-        const availableOfficers = (Array.isArray(data) ? data : data.data || [])
-          .filter(officer => officer.is_available !== false); // Only include available officers
-        setOfficers(availableOfficers);
+        setOfficers(Array.isArray(data) ? data : data.data || []);
       }
     } catch (e) {
       console.error('[CaseManagement] Failed to fetch case officers:', e);

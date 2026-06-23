@@ -4,6 +4,7 @@ const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getC
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 const { randomUUID } = require('crypto');
+const DuplicateCases = require('../services/duplicateCases.service');
 
 const IMMEDIATE_WITHDRAWAL_STATUSES = new Set([2, 3, 4, 6]);
 const APPROVAL_WITHDRAWAL_STATUSES = new Set([7, 8]);
@@ -35,8 +36,11 @@ async function getCaseById(req, res) {
     if (!report) return res.status(404).json({ error: 'Case not found' });
     return res.json({ data: report });
   } catch (err) {
-    console.error('[getCaseById]', err.message);
-    return res.status(500).json({ error: 'Failed to fetch case.' });
+    console.error('[getCaseById]', err);
+    return res.status(500).json({
+      error: 'Failed to fetch case.',
+      details: err?.message || String(err),
+    });
   }
 }
 
@@ -109,6 +113,13 @@ async function submitReport(req, res) {
 
     const payload   = buildPayload(complainantId, org.organization_id, complainant, incident, evidence);
     const newReport = await createReport(payload);
+
+    try {
+      newReport.possible_duplicates = await DuplicateCases.detectForCase(newReport);
+    } catch (duplicateError) {
+      console.warn('[submitReport] duplicate detection unavailable:', duplicateError.message);
+      newReport.possible_duplicates = [];
+    }
 
     let uploadedFiles = [];
     try {
@@ -392,6 +403,16 @@ const undoWithdrawCase = async (req, res) => {
   });
 };
 
+const dismissDuplicate = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?.user_id;
+    const data = await DuplicateCases.dismiss(req.params.matchId, userId);
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 const EVIDENCE_BUCKET = 'case-evidence';
 
 function getEvidenceType(mimetype) {
@@ -449,4 +470,4 @@ async function uploadEvidenceFiles(caseReportId, files, uploadedById) {
   return uploaded;
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, uploadEvidenceFiles }
+module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate, uploadEvidenceFiles }
