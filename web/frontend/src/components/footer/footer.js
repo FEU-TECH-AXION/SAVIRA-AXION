@@ -28,8 +28,10 @@ export default function Footer() {
             strictly prohibited.
           </p>
           <div className={styles.footerSocials}>
-            <a href="https://www.facebook.com/PHsasha" aria-label="Facebook"><FaFacebook /></a>
-            <a href="https://www.instagram.com/phsasha_official/?g=5" aria-label="Instagram"><FaInstagram /></a>
+            <a href="https://www.facebook.com/PHsasha" target="_blank"
+    rel="noopener noreferrer" aria-label="Facebook"><FaFacebook /></a>
+            <a href="https://www.instagram.com/phsasha_official/?g=5" target="_blank"
+    rel="noopener noreferrer" aria-label="Instagram"><FaInstagram /></a>
             {/* <a href="#" aria-label="YouTube"><FaYoutube /></a>
             <a href="#" aria-label="LinkedIn"><FaLinkedin /></a> */}
           </div>
@@ -38,7 +40,7 @@ export default function Footer() {
         {/* Quick links */}
         <div className={styles.footerCol}>
           <h4 className={styles.footerColTitle}>Quick Links</h4>
-          <ul className={styles.footerList}>
+          <ul className={`${styles.footerList} ${styles.quickLinksGrid}`}>
             {quickLinks.map(({ href, label }) => (
               <li key={href}>
                 <Link
