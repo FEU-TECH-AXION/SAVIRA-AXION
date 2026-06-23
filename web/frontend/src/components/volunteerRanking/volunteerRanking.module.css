@@ -1,70 +1,155 @@
 .pageWrapper {
   min-height: 100vh;
-  padding: 2rem;
-  background: #f7f9fb;
+  background: #f5f7f8;
   margin-top: 64px;
+  display: grid;
+  justify-content: center;
 }
 
-.header {
+.inner {
   max-width: 1200px;
-  margin-inline: auto;
+  margin: 0 auto;
+  padding: 0 max(1rem, 3vw) 3rem;
+}
+
+/* ── Hero Banner ── */
+.heroBanner {
+  position: relative;
   margin-bottom: 2rem;
-  align-items: center;
+  overflow: hidden;
+  max-width: 1200px;
 }
 
-.headerTop {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+.heroContent {
+  background-image: url('/sasha-bg-1.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  border-radius: 0 0 1.5rem 1.5rem;
+  padding: 3.5rem max(1.5rem, 5vw) 4rem;
 }
 
-.title {
-  margin: 0;
-  color: #111827;
-  font-size: 1.8rem;
-  font-weight: 800;
+.heroContent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(3, 127, 129, 0.92) 0%, rgba(3, 127, 129, 0.72) 100%);
+  z-index: -1;
+  border-radius: 0 0 1.5rem 1.5rem;
 }
 
-.subtitle {
-  margin: 0 0 .5rem;
-  color: #6b7280;
-  font-size: 0.95rem;
-}
-
+/* ── Back button (sits inside hero, top-left aligned) ── */
 .backBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: var(--sasha-white);
-  border: 1px solid var(--sasha-border);
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.84rem;
   font-weight: 500;
-  margin-bottom: 1.5rem;
-  color: #374151;
+  color: #ffffff;
   transition: background 0.15s;
+  margin-bottom: 1.75rem;
 }
 
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.heroTitle {
+  color: #ffffff;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin: 0 0 0.75rem;
+  line-height: 1.1;
+}
+
+.heroSubtitle {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1rem;
+  margin: 0 auto 2.5rem;
+  max-width: 560px;
+  line-height: 1.55;
+}
+
+/* ── Stat cards row ── */
+.statsRow {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  padding: 1.75rem 2rem;
+  backdrop-filter: blur(10px);
+  min-width: 180px;
+  position: relative;
+  overflow: visible;
+  flex: 1;
+  max-width: 260px;
+}
+
+.statDot {
+  position: absolute;
+  top: -1.5rem;
+  left: 2rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e8663a;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.statNum {
+  color: #ffffff;
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.statLabel {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0;
+  text-align: left;
+}
+
+/* ── Toolbar (filter bar) ── */
 .toolbar {
-  max-width: 1200px;
-  margin: 0 auto 1rem;
-  align-items: center; gap: 1rem;
-  margin-bottom: 1.5rem; padding: 1rem;
-  background: var(--sasha-white);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: #ffffff;
   border-radius: 10px;
-  border: 1px solid var(--sasha-border);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+/* ── Table container ── */
 .tableWrap {
-  max-width: 1200px;
-  margin: 0 auto;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -81,15 +166,20 @@
 }
 
 .table th {
-  padding: 0.85rem;
+  padding: 0.85rem 1rem;
   text-align: left;
   color: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #f9fafb;
   border-bottom: 2px solid #e5e7eb;
   white-space: nowrap;
 }
 
 .table td {
-  padding: 0.8rem 0.85rem;
+  padding: 0.8rem 1rem;
   border-bottom: 1px solid #f1f3f5;
   color: #292929;
   vertical-align: middle;
@@ -97,6 +187,11 @@
 
 .table tbody tr {
   cursor: pointer;
+  transition: background 0.1s;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .table tbody tr:hover {
@@ -122,17 +217,18 @@
 
 .statusPill {
   display: inline-block;
-  padding: 0.25rem 0.55rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 999px;
   background: #e1f5f5;
   color: #037f81;
   font-weight: 700;
+  font-size: 0.75rem;
   text-transform: capitalize;
 }
 
 .state,
 .error {
-  padding: 2rem;
+  padding: 2.5rem;
   text-align: center;
   color: #6b7280;
 }
@@ -143,11 +239,20 @@
 }
 
 @media (max-width: 720px) {
-  .pageWrapper {
-    padding: 1rem;
+  .heroContent {
+    padding: 2.5rem 1.25rem 3rem;
   }
 
-  .header {
-    flex-direction: column;
+  .statsRow {
+    gap: 1rem;
+  }
+
+  .statCard {
+    min-width: 140px;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .statNum {
+    font-size: 2.5rem;
   }
 }

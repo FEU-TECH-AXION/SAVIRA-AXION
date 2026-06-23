@@ -51,6 +51,12 @@ export default function VolunteerRanking() {
     fetchRankings();
   }, []);
 
+  const stats = useMemo(() => [
+    { num: rows.length,                                                                       label: "Total Applicants" },
+    { num: rows.filter(r => r.application_status === "approved").length,                      label: "Approved" },
+    { num: rows.filter(r => r.application_status === "pending" || r.application_status === "reviewing").length, label: "Pending Review" },
+  ], [rows]);
+
   const filtered = useMemo(() => {
     let list = [...rows];
     if (search.trim()) {
@@ -72,76 +78,97 @@ export default function VolunteerRanking() {
 
   return (
     <main className={styles.pageWrapper}>
-      <section className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}><IoIosArrowBack /> Back to Volunteer Management</button>
-        <div className={styles.headerTop}>
-          <h1 className={styles.title}>Volunteer Applicant Rankings</h1>
-          <p className={styles.subtitle}>Screening, hybrid essay, interview, and priority scores in one comparison table.</p>
+
+      {/* ── Hero Banner ── */}
+      <section className={styles.heroBanner}>
+        <div className={styles.heroContent}>
+          <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
+            <IoIosArrowBack /> Back to Volunteer Management
+          </button>
+          <h1 className={styles.heroTitle}>Applicant Rankings</h1>
+          <p className={styles.heroSubtitle}>
+            Screening, hybrid essay, interview, and priority scores in one comparison table.
+          </p>
+          {!loading && !error && (
+            <div className={styles.statsRow}>
+              {stats.map(({ num, label }) => (
+                <div key={label} className={styles.statCard}>
+                  <div className={styles.statDot} />
+                  <p className={styles.statNum}>{num}</p>
+                  <p className={styles.statLabel}>{label}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      <section className={styles.toolbar}>
-        <FilterMenu
-          activeFilters={filters}
-          onFilterChange={setFilters}
-          onSearch={setSearch}
-          searchValue={search}
-        />
-      </section>
+      <div className={styles.inner}>
+        {/* ── Toolbar (filter bar) ── */}
+        <section className={styles.toolbar}>
+          <FilterMenu
+            activeFilters={filters}
+            onFilterChange={setFilters}
+            onSearch={setSearch}
+            searchValue={search}
+          />
+        </section>
 
-      <section className={styles.tableWrap}>
-        {loading ? (
-          <div className={styles.state}>Loading rankings...</div>
-        ) : error ? (
-          <div className={styles.error}>{error}</div>
-        ) : filtered.length === 0 ? (
-          <div className={styles.state}>No applicants found.</div>
-        ) : (
-          <div className={styles.tableScroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Application</th>
-                  <th>Applicant</th>
-                  <th>Status</th>
-                  <th>Screening</th>
-                  <th>Human Essay</th>
-                  <th>NLP Essay</th>
-                  <th>Hybrid Essay</th>
-                  <th>Interview</th>
-                  <th>Priority</th>
-                  <th>Total</th>
-                  <th>Evaluators</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row) => (
-                  <tr key={row.application_id} onClick={() => router.push(`/volunteer/view?id=${row.application_id}`)}>
-                    <td className={styles.rankCell}>#{row.rank}</td>
-                    <td>APP-{String(row.application_id).padStart(4, "0")}</td>
-                    <td>
-                      <div className={styles.nameStack}>
-                        <strong>{row.name || "—"}</strong>
-                        <span>{row.email || "—"}</span>
-                      </div>
-                    </td>
-                    <td><StatusPill value={row.application_status} /></td>
-                    <td>{formatScore(row.screening_score, "/30")}</td>
-                    <td>{formatScore(row.human_essay_score, "/100")}</td>
-                    <td>{formatScore(row.nlp_essay_score, "/100")}</td>
-                    <td>{formatScore(row.hybrid_essay_score, "/100")}</td>
-                    <td>{formatScore(row.interview_score, "/10")}</td>
-                    <td>{formatScore(row.priority_bonus)}</td>
-                    <td className={styles.totalCell}>{formatScore(row.total_score, "/106")}</td>
-                    <td>{row.evaluator_count || 0}</td>
+        {/* ── Table ── */}
+        <section className={styles.tableWrap}>
+          {loading ? (
+            <div className={styles.state}>Loading rankings...</div>
+          ) : error ? (
+            <div className={styles.error}>{error}</div>
+          ) : filtered.length === 0 ? (
+            <div className={styles.state}>No applicants found.</div>
+          ) : (
+            <div className={styles.tableScroll}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Application</th>
+                    <th>Applicant</th>
+                    <th>Status</th>
+                    <th>Screening</th>
+                    <th>Human Essay</th>
+                    <th>NLP Essay</th>
+                    <th>Hybrid Essay</th>
+                    <th>Interview</th>
+                    <th>Priority</th>
+                    <th>Total</th>
+                    <th>Evaluators</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {filtered.map((row) => (
+                    <tr key={row.application_id} onClick={() => router.push(`/volunteer/view?id=${row.application_id}`)}>
+                      <td className={styles.rankCell}>#{row.rank}</td>
+                      <td>APP-{String(row.application_id).padStart(4, "0")}</td>
+                      <td>
+                        <div className={styles.nameStack}>
+                          <strong>{row.name || "—"}</strong>
+                          <span>{row.email || "—"}</span>
+                        </div>
+                      </td>
+                      <td><StatusPill value={row.application_status} /></td>
+                      <td>{formatScore(row.screening_score, "/30")}</td>
+                      <td>{formatScore(row.human_essay_score, "/100")}</td>
+                      <td>{formatScore(row.nlp_essay_score, "/100")}</td>
+                      <td>{formatScore(row.hybrid_essay_score, "/100")}</td>
+                      <td>{formatScore(row.interview_score, "/10")}</td>
+                      <td>{formatScore(row.priority_bonus)}</td>
+                      <td className={styles.totalCell}>{formatScore(row.total_score, "/106")}</td>
+                      <td>{row.evaluator_count || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
