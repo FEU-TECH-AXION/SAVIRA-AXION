@@ -3,12 +3,13 @@ const supabase = require('../config/supabase')
 const bcrypt = require('bcrypt')
 const { v4: uuidv4 } = require('uuid')
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 const USER_COOKIE_OPTIONS = {
   httpOnly: false,
-  secure: false,
+  secure: isProduction,
   sameSite: 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000,
-  domain: 'localhost',
 }
 
 const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'Non-binary', 'Prefer not to say']

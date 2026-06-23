@@ -5,24 +5,20 @@ const UserModel = require('../models/users.model');
 const supabase = require('../config/supabase');
 const { sendWelcomeEmail } = require('../config/mailer');
 
-// TODO: Fix Login and Logout to set httpOnly cookies and return user data in response
-// TODO: SET SECURE: true IN PRODUCTION AND USE HTTPS TO ENABLE SECURE COOKIES
+const isProduction = process.env.NODE_ENV === 'production';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  // secure: process.env.NODE_ENV === 'production',
-  secure: false, // TODO: Set to true in production when using HTTPS
+  secure: isProduction,
   sameSite: 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  domain: 'localhost', // Allow cross-origin cookie sharing in development
 };
 
 const USER_COOKIE_OPTIONS = {
   httpOnly: false, // Allow client-side access to user data
-  secure: false,
+  secure: isProduction,
   sameSite: 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000,
-  domain: 'localhost',
 };
 
 // ── Signup ───────────────────────────────────────────────────────────────────
@@ -125,9 +121,6 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    console.log('JWT_SECRET:', process.env.JWT_SECRET);
-    console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY);
 
     // 4. Flatten and return safe user
     const { password: _, ...safeUser } = user;
