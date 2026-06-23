@@ -56,6 +56,7 @@ export const FOOTER_QUICK_LINKS = {
   staff: [
     { href: "/dashboard", label: "Home" },
     { href: "/projects", label: "Projects" },
+    { href: "/projectTasks", label: "Project Tasks" },
     { href: "/volunteer", label: "Volunteers" },
     { href: "/events", label: "Events" },
     { href: "/heatmap", label: "Heatmap" },
@@ -71,6 +72,7 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/cases", label: "Cases" },
     { href: "/legalReviews", label: "Legal Review" },
     { href: "/projects", label: "Projects" },
+    { href: "/projectTasks", label: "Project Tasks" },
     { href: "/staffAvailability", label: "Staff Availability" },
     { href: "/volunteer", label: "Volunteers" },
     { href: "/heatmap", label: "Heatmap" },
@@ -128,7 +130,14 @@ export const SIDEBAR_LINKS = {
   // STAFF
   staff: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
-    { href: "/projects", label: "Projects", icon: "folder" },
+    {
+      label: "Projects",
+      icon: "folder",
+      children: [
+        { href: "/projects", label: "All Projects" },
+        { href: "/projectTasks", label: "Project Tasks" },
+      ],
+    },
     {
       href: "/volunteer",
       label: "Volunteers",
@@ -183,6 +192,7 @@ export const SIDEBAR_LINKS = {
       icon: "folder",
       children: [
         { href: "/projects", label: "All Projects" },
+        { href: "/projectTasks", label: "Project Tasks" },
       ],
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },

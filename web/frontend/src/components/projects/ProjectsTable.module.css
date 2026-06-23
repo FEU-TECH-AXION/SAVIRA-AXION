@@ -393,4 +393,18 @@
 .rowBtnDelete:hover {
   background: #fee2e2;
   border-color: #dc2626;
-}
+}
+
+.taskBtn {
+  width: auto;
+  padding: 0 10px;
+  gap: 5px;
+  color: #037F81;
+  background: #e1f5f5;
+  border-color: #b9e4e4;
+}
+
+.taskBtn span {
+  font-size: 0.72rem;
+  font-weight: 700;
+}

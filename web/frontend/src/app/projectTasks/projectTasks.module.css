@@ -1,0 +1,125 @@
+.page {
+  min-height: 100vh;
+  padding: 6.5rem max(1rem, 6vw) 3rem;
+  background: #f5f7f8;
+  color: #292929;
+}
+
+.hero {
+  padding: 2.25rem;
+  border-radius: 18px;
+  color: white;
+  background: linear-gradient(135deg, #037f81, #025f61);
+}
+
+.hero h1 {
+  margin: 0.2rem 0;
+  font-size: clamp(2rem, 5vw, 3.3rem);
+}
+
+.hero p {
+  margin: 0.35rem 0 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.toolbar input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+}
+
+.toolbar button,
+.card button {
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: #037f81;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 15px;
+  background: white;
+}
+
+.cardTop,
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.status {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #e1f5f5;
+  color: #037f81;
+  font-weight: 700;
+}
+
+.card h2 {
+  margin: 1rem 0 0.4rem;
+  color: #037f81;
+}
+
+.card > p {
+  flex: 1;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.card button {
+  align-self: flex-end;
+  margin-top: 1rem;
+  background: #e8663a;
+}
+
+.state,
+.error {
+  padding: 2rem;
+  border-radius: 12px;
+  background: white;
+  text-align: center;
+  color: #6b7280;
+}
+
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 650px) {
+  .toolbar {
+    flex-direction: column;
+  }
+}

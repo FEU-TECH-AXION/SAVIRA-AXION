@@ -334,12 +334,12 @@ export default function ProjectsTable({
                       <div className={styles.rowActions}>
                         {onView && (
                           <button
-                            className={styles.rowBtn}
+                            className={`${styles.rowBtn} ${styles.taskBtn}`}
                             title="View project and tasks"
                             onClick={() => onView(p)}
                             aria-label={`View project ${p.id}`}
                           >
-                            <FiEye />
+                            <FiEye /> <span>Tasks</span>
                           </button>
                         )}
                         {onEdit && (

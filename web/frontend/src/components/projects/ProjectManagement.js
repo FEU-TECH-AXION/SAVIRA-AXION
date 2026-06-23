@@ -7,7 +7,7 @@ import CreateEditProject from "@/components/projects/CreateEditProject";
 import ProjectsTable from "@/components/projects/ProjectsTable";
 import ProjectFilterMenu from "@/components/projects/ProjectFilterMenu";
 import styles from "./ProjectManagement.module.css";
-import { FiAlertTriangle, FiX, FiSearch } from "react-icons/fi";
+import { FiAlertTriangle, FiX, FiSearch, FiCheckSquare } from "react-icons/fi";
 import {
   fetchProjects,
   createProject,
@@ -530,6 +530,14 @@ export default function ProjectManagement() {
                   setPage(1);
                   document.getElementById("projects-table-section")?.scrollIntoView({ behavior: "smooth" });
                 }}
+              />
+            </div>
+            <div className="col-12 col-sm-6">
+              <ActionCard
+                icon={<FiCheckSquare size={34} color="#037F81" />}
+                title="Manage Project Tasks"
+                description="Assign project work, monitor deadlines, update progress, and review overdue tasks."
+                onView={() => router.push("/projectTasks")}
               />
             </div>
           </div>
