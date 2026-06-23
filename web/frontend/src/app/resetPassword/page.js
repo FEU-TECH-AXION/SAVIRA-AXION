@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import styles from "./resetPassword.module.css";
 import { IoIosArrowBack } from "react-icons/io";
 import { FiEye, FiEyeOff, FiCheck, FiX } from "react-icons/fi";
@@ -24,7 +24,7 @@ function getStrength(pw) {
   return              { level: 5, label: "Very Strong", color: "#276749" };
 }
 
-export default function ResetPassword() {
+function ResetPasswordContent() {
   const [show, setShow] = useState({ password: false, confirm: false });
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
   const [touched, setTouched] = useState({});
@@ -250,5 +250,13 @@ export default function ResetPassword() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
