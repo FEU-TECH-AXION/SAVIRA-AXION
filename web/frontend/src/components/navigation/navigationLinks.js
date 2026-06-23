@@ -161,8 +161,12 @@ export const SIDEBAR_LINKS = {
   // ADMIN
   admin: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
-    { href: "/users", label: "Users", icon: "people" },
-    { href: "/staffAvailability", label: "Staff Availability", icon: "calendar" },
+    { href: "/users", label: "Users", icon: "people",
+      children: [
+        { href: "/users", label: "All Users" },
+        { href: "/staffAvailability", label: "Staff Availability" },
+      ],
+    },
     {
       label: "Cases",
       icon: "folder",
