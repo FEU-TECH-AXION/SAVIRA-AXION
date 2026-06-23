@@ -24,6 +24,7 @@ import {
   MdVolunteerActivism,
   MdLocalHospital,
   MdPhone,
+  MdLock,
 } from "react-icons/md";
 import { RiPoliceBadgeFill } from "react-icons/ri";
 import { FaHandsHelping } from "react-icons/fa";
@@ -52,12 +53,15 @@ const ICONS = {
   phone: <MdPhone />,
   handsHelping: <FaHandsHelping />,
   calendar: <MdEvent />,
+  home: <MdDashboard />,
+  info: <MdHelp />,
+  lock: <MdLock />,
 };
 
 function withIcons(items) {
   return items.map((item) => ({
     ...item,
-    icon: ICONS[item.icon],
+    icon: item.icon ? ICONS[item.icon] : null,
   }));
 }
 
@@ -74,7 +78,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
       >
-        <span className={styles.sidebarIcon}>{item.icon}</span>
+        {item.icon && <span className={styles.sidebarIcon}>{item.icon}</span>}
         <span className={styles.sidebarLabel}>{item.label}</span>
         <span className={styles.accordionChevron}>
           {open ? <MdExpandLess /> : <MdExpandMore />}
@@ -111,7 +115,7 @@ function SidebarFooter({ logout }) {
         {withIcons(SIDEBAR_FOOTER_LINKS).map(({ href, label, icon }) => (
           <li key={href}>
             <Link href={href} className={styles.sidebarItem}>
-              <span className={styles.sidebarIcon}>{icon}</span>
+              {icon && <span className={styles.sidebarIcon}>{icon}</span>}
               <span className={styles.sidebarLabel}>{label}</span>
             </Link>
           </li>
@@ -243,7 +247,7 @@ export default function Sidebar({ isOpen, onClose }) {
                       }`}
                       onClick={onClose}
                     >
-                      <span className={styles.sidebarIcon}>{item.icon}</span>
+                      {item.icon && <span className={styles.sidebarIcon}>{item.icon}</span>}
                       <span className={styles.sidebarLabel}>{item.label}</span>
                     </Link>
                   </li>

@@ -83,13 +83,7 @@ export const FOOTER_QUICK_LINKS = {
 export const SIDEBAR_LINKS = {
   public: PUBLIC_LINKS.map((link) => ({
     ...link,
-    icon:
-      link.icon ||
-      (link.href === "/events"
-        ? "event"
-        : link.href === "/heatmap"
-          ? "map"
-          : "folder"),
+    icon: null,
   })),
   // USER
   complainant: [
@@ -205,7 +199,7 @@ export const SIDEBAR_LINKS = {
 };
 
 export const SIDEBAR_FOOTER_LINKS = [
-  { href: "/settings?tab=security", label: "Settings & Privacy", icon: "settings" },
+  { href: "/settings?tab=lock", label: "Account & Privacy", icon: "lock" },
   { href: "/settings?tab=help", label: "Help Center", icon: "help" },
   { href: "/settings?tab=display", label: "Display & Accessibility", icon: "accessibility" },
   { href: "/settings?tab=report", label: "Report a Problem", icon: "flag" },

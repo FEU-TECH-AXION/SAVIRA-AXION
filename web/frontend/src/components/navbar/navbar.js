@@ -249,7 +249,7 @@ function UserMenu({ user, logout }) {
             My Profile
           </Link>
           <Link
-            href="/settings?tab=security"
+            href="/settings?tab=lock"
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >

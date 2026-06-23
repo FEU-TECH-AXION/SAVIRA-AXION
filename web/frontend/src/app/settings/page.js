@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FiCamera, FiUser, FiLock, FiHelpCircle, FiSliders, FiFlag } from "react-icons/fi";
 import styles from "./profile.module.css";
 
@@ -45,11 +45,15 @@ function calcCompletion(user) {
   return Math.round((done / total) * 100);
 }
 
-export default function ProfilePage() {
+function SettingsPageContent() {
   const { user, setUser } = useAuth();
   const router  = useRouter();
-  const [activeTab, setActiveTab] = useState("profile");
+  const searchParams = useSearchParams();
   const fileRef = useRef(null);
+  const requestedTab = searchParams.get("tab");
+  const activeTab = TABS.some((tab) => tab.id === requestedTab)
+    ? requestedTab
+    : "profile";
 
   // ── Profile form (lives here so the hero avatar can read profile_img too) ──
   const [form, setForm] = useState({
@@ -86,14 +90,6 @@ export default function ProfilePage() {
     });
   }, [user]);
 
-  // ── Set active tab from query parameter ───────────────────
-  useEffect(() => {
-    const tab = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
-    if (tab && TABS.some((t) => t.id === tab)) {
-      setActiveTab(tab);
-    }
-  }, []);
-
   // ── Derived ───────────────────────────────────────────────
   const completion    = calcCompletion(user);
   const missingFields  = getCompletionFields(user).filter((f) => !f.filled && !f.optional);
@@ -126,12 +122,7 @@ export default function ProfilePage() {
 
   // Update the URL's ?tab= param without a full navigation/reload
   const handleTabChange = (id) => {
-    setActiveTab(id);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("tab", id);
-      window.history.replaceState({}, "", url);
-    }
+    router.replace(`/settings?tab=${id}`, { scroll: false });
   };
 
   if (!user) return null;
@@ -232,5 +223,13 @@ export default function ProfilePage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }
