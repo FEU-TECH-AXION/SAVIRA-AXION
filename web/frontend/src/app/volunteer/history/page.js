@@ -18,8 +18,8 @@ const STATUS_COLORS = {
   "Draft":     { bg: "#f3f4f6", color: "#374151" },
 };
 
-// 3 months in milliseconds
-const THREE_MONTHS_MS = 3 * 30 * 24 * 60 * 60 * 1000;
+const REAPPLICATION_WAIT_DAYS = 15;
+const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000;
 
 function formatDate(value) {
   if (!value) return "—";
@@ -87,10 +87,12 @@ function getSubmissionEligibility(applications) {
       };
     }
 
-    // Was rejected — check if 3-month cooldown has elapsed
+    // Was rejected — check if the 15-day cooldown has elapsed
     if (status === "rejected") {
-      const rejectedAt = new Date(app.updated_at || app.created_at).getTime();
-      const unlocksAt  = new Date(rejectedAt + THREE_MONTHS_MS);
+      const rejectedAt = new Date(
+        app.resolved_at || app.updated_at || app.created_at
+      ).getTime();
+      const unlocksAt  = new Date(rejectedAt + REAPPLICATION_WAIT_MS);
       if (Date.now() < unlocksAt) {
         return { allowed: false, reason: "cooldown", unlocksAt };
       }
@@ -245,7 +247,7 @@ export default function ApplicationHistoryPage() {
                       year: "numeric", month: "long", day: "numeric",
                     })}
                   </strong>{" "}
-                  (3-month waiting period).
+                  ({REAPPLICATION_WAIT_DAYS}-day waiting period).
                 </span>
               </div>
             )

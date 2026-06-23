@@ -217,4 +217,35 @@ const bulkAssignCase = async (req, res) => {
     }
 }
 
-module.exports = { getItems, createItem, assignCase, bulkAssignCase, getAssignmentsByCase }
+const removeAssignment = async (req, res) => {
+    const { caseReportId, legalPersonnelId } = req.params
+    const role = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    const performedBy = req.user?.id || req.user?.user_id || null
+
+    if (role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can remove legal personnel assignments.' })
+    }
+
+    try {
+        const alreadyAssigned = await LegalCaseAssignmentsModel.isAlreadyAssigned(caseReportId, legalPersonnelId)
+        if (!alreadyAssigned) {
+            return res.status(404).json({ error: 'Active legal personnel assignment not found.' })
+        }
+
+        await LegalCaseAssignmentsModel.deactivateOne(caseReportId, legalPersonnelId)
+        await supabase.from('case_report_logs').insert([{
+            case_report_id: caseReportId,
+            action_type: 'legal_personnel_unassigned',
+            remarks: `Legal personnel #${legalPersonnelId} removed from the case.`,
+            performed_by_user_id: performedBy,
+            performed_at: new Date().toISOString(),
+        }])
+
+        res.json({ message: 'Legal personnel removed successfully.' })
+    } catch (err) {
+        console.error('[removeLegalAssignment]', err)
+        res.status(500).json({ error: err.message || 'Failed to remove legal personnel.' })
+    }
+}
+
+module.exports = { getItems, createItem, assignCase, bulkAssignCase, getAssignmentsByCase, removeAssignment }

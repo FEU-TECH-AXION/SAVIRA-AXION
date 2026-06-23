@@ -87,4 +87,17 @@ const bulkCreate = async (assignments) => {
     return data
 }
 
-module.exports = { assignCaseToOfficer, getAssignmentsByCaseId, getAssignmentsByOfficerId, bulkCreate, isAlreadyAssigned };
+const deactivateOne = async (case_report_id, case_officer_id) => {
+    const { data, error } = await supabase
+        .from('case_assignments')
+        .update({ is_active: false })
+        .eq('case_report_id', case_report_id)
+        .eq('case_officer_id', case_officer_id)
+        .eq('is_active', true)
+        .select('assignment_id')
+
+    if (error) throw error
+    return data || []
+}
+
+module.exports = { assignCaseToOfficer, getAssignmentsByCaseId, getAssignmentsByOfficerId, bulkCreate, isAlreadyAssigned, deactivateOne };

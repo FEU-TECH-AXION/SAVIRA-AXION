@@ -8,6 +8,7 @@ import ApplicationsTable from "./ApplicationsTable";
 import FilterMenu from "./FilterMenu";
 import Link from "next/link";
 import { IoIosWarning } from "react-icons/io";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -173,6 +174,10 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
   const [error, setError]                     = useState("")
   const [saving, setSaving]                   = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(false)
+  const [duplicateDialog, setDuplicateDialog] = useState(null)
+  const [removalTarget, setRemovalTarget] = useState(null)
+  const [removing, setRemoving] = useState(false)
+  const [removedAssignmentKeys, setRemovedAssignmentKeys] = useState([])
 
   const applicants = Array.isArray(applicantsData)
     ? applicantsData
@@ -184,6 +189,10 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
       setSearch("")
       setError("")
       setExistingAssigned([])
+      setDuplicateDialog(null)
+      setLoadingExisting(false)
+      setRemovalTarget(null)
+      setRemovedAssignmentKeys([])
 
       if (applicants.length === 1) {
         setLoadingExisting(true)
@@ -203,14 +212,33 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
 
   const assignedIds          = assigned.map(s => s.user_id)
   const alreadyAssignedIds   = existingAssigned.map(a => a.assessor_id)
+  const unavailableStaffIds = new Set(
+    staff
+      .filter((staffMember) =>
+        applicants.every((applicant) =>
+          (applicant.assignedEvaluatorIds || []).map(String).some(
+            (id) =>
+              id === String(staffMember.user_id) &&
+              !removedAssignmentKeys.includes(`${applicant.id}:${id}`)
+          )
+        )
+      )
+      .map((staffMember) => String(staffMember.user_id))
+  )
+  if (applicants.length === 1) {
+    alreadyAssignedIds.forEach((id) => unavailableStaffIds.add(String(id)))
+  }
+  const availableStaff = staff.filter(
+    (staffMember) => !unavailableStaffIds.has(String(staffMember.user_id))
+  )
+  const noAvailableStaff = availableStaff.length === 0
 
   // ← same pattern as legal modal: show all when no search, filter when typing
-  const searchResults = staff.filter(s => {
+  const searchResults = availableStaff.filter(s => {
     const name          = `${s.first_name || ""} ${s.last_name || ""}`.toLowerCase()
     const notYetPicked  = !assignedIds.includes(s.user_id)
-    const notAssignedDB = !alreadyAssignedIds.includes(s.user_id)
-    if (!search.trim()) return notYetPicked && notAssignedDB
-    return notYetPicked && notAssignedDB && name.includes(search.toLowerCase())
+    if (!search.trim()) return notYetPicked
+    return notYetPicked && name.includes(search.toLowerCase())
   })
 
   function addPerson(s) {
@@ -223,12 +251,49 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
     setAssigned(prev => prev.filter(a => a.user_id !== userId))
   }
 
+  async function confirmRemoval() {
+    if (!removalTarget) return
+    setRemoving(true)
+    setError("")
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const res = await fetch(
+        `${API_URL}/api/volunteer_application_assignments/${removalTarget.applicationId}/${removalTarget.assessorId}`,
+        { method: "DELETE", credentials: "include" }
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || "Failed to remove staff assignment.")
+
+      const key = `${removalTarget.applicationId}:${removalTarget.assessorId}`
+      setRemovedAssignmentKeys((current) => [...current, key])
+      setExistingAssigned((current) =>
+        current.filter((assignment) => String(assignment.assessor_id) !== String(removalTarget.assessorId))
+      )
+      setRemovalTarget(null)
+    } catch (err) {
+      setError(err.message || "Failed to remove staff assignment.")
+    } finally {
+      setRemoving(false)
+    }
+  }
+
   async function handleAssign() {
     if (assigned.length === 0) { setError("Please select at least one staff member."); return; }
     setSaving(true)
     try {
-      await onSave({ applicants, assessor_ids: assigned.map(a => a.user_id) })
-      onClose()
+      const result = await onSave({ applicants, assessor_ids: assigned.map(a => a.user_id) })
+      const duplicateFailures = (result?.failed || []).filter((failure) =>
+        String(failure.reason || "").toLowerCase().includes("already")
+      )
+      if (duplicateFailures.length > 0) {
+        setDuplicateDialog({
+          count: duplicateFailures.length,
+          detail: duplicateFailures
+            .map((failure) => `Application #${failure.volunteer_application_id} · Staff ${failure.assessor_id}`)
+            .join(", "),
+        })
+      }
+      if (!result?.failed?.length) onClose()
     } catch (err) {
       setError(err.message || "Failed to assign staff.")
     } finally {
@@ -237,6 +302,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
   }
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title={`Assign Staff${applicants.length > 1 ? ` (${applicants.length} Applications)` : ""}`}>
       <div className={styles.formGrid}>
 
@@ -255,6 +321,78 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
                   <strong>APP-{String(a.id).padStart(4, "0")}</strong> — {a.name}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {applicants.length > 1 && (
+          <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+            <label className={styles.formLabel}>Currently Assigned</label>
+            <div style={{
+              background: "#f9fafb",
+              borderRadius: 8,
+              border: "1px solid #e5e7eb",
+              padding: "0.5rem 0.75rem",
+              maxHeight: 160,
+              overflowY: "auto",
+            }}>
+              {applicants.map((applicant) => {
+                const currentNames = applicant.assignedEvaluators || applicant.assignedStaff || []
+                const currentIds = (applicant.assignedEvaluatorIds || []).map(String)
+                const currentAssignments = currentNames
+                  .map((name, index) => ({ name, assessorId: currentIds[index] }))
+                  .filter(({ assessorId }) =>
+                    assessorId && !removedAssignmentKeys.includes(`${applicant.id}:${assessorId}`)
+                  )
+                return (
+                  <div key={applicant.id} style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.6rem",
+                    padding: "0.35rem 0",
+                    borderBottom: "1px solid #eef2f7",
+                  }}>
+                    <strong style={{ minWidth: 90, fontSize: "0.8rem", color: "#374151" }}>
+                      APP-{String(applicant.id).padStart(4, "0")}
+                    </strong>
+                    {currentAssignments.length === 0 ? (
+                      <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+                        No staff currently assigned.
+                      </span>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                        {currentAssignments.map(({ name, assessorId }) => (
+                          <span key={`${applicant.id}-${assessorId}`} style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            padding: "0.25rem 0.6rem",
+                            borderRadius: 999,
+                            background: "#d1fae5",
+                            color: "#065f46",
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                          }}>
+                            ✓ {name}
+                            <button
+                              type="button"
+                              onClick={() => setRemovalTarget({
+                                applicationId: applicant.id,
+                                assessorId,
+                                name,
+                              })}
+                              title={`Remove ${name}`}
+                              style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -286,6 +424,18 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
                         fontSize: "0.8rem", fontWeight: 600,
                       }}>
                         ✓ {name}
+                        <button
+                          type="button"
+                          onClick={() => setRemovalTarget({
+                            applicationId: applicants[0].id,
+                            assessorId: a.assessor_id,
+                            name,
+                          })}
+                          title={`Remove ${name}`}
+                          style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                        >
+                          ×
+                        </button>
                       </span>
                     )
                   })}
@@ -337,10 +487,15 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
           <div style={{ position: "relative" }}>
             <input
               className={styles.formInput}
-              placeholder="e.g. Juan, Maria…"
+              placeholder={staff.length === 0
+                ? "No Membership Committee staff are available."
+                : noAvailableStaff
+                ? "All Membership Committee staff are already assigned."
+                : "e.g. Juan, Maria…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
+              disabled={noAvailableStaff}
             />
 
             {/* Always visible dropdown — same as legal modal */}
@@ -399,6 +554,11 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
                 No Membership Committee staff available.
               </div>
             )}
+            {staff.length > 0 && noAvailableStaff && (
+              <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#6b7280" }}>
+                No additional staff can be assigned to the selected {applicants.length > 1 ? "applications" : "application"}.
+              </div>
+            )}
           </div>
         </div>
 
@@ -426,6 +586,30 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
         </button>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={Boolean(duplicateDialog)}
+      title="Staff Already Assigned"
+      description={`${duplicateDialog?.count || 0} selected assignment(s) already exist and were not added again. Refresh the page to display the latest volunteer application assignments.`}
+      detail={duplicateDialog?.detail ? `${duplicateDialog.detail}. Any other valid assignments were still saved.` : "Any other valid assignments were still saved."}
+      confirmLabel="Refresh Page"
+      cancelLabel="Close"
+      onCancel={() => setDuplicateDialog(null)}
+      onConfirm={() => window.location.reload()}
+    />
+    <ConfirmDialog
+      open={Boolean(removalTarget)}
+      title="Remove Assigned Staff"
+      description={`Remove ${removalTarget?.name || "this staff member"} from this volunteer application?`}
+      detail="Their active application assignment will be deactivated immediately."
+      confirmLabel="Remove"
+      cancelLabel="Cancel"
+      tone="danger"
+      busy={removing}
+      dismissible={!removing}
+      onCancel={() => { if (!removing) setRemovalTarget(null) }}
+      onConfirm={confirmRemoval}
+    />
+    </>
   )
 }
 
@@ -973,26 +1157,21 @@ export default function VolunteerManagement() {
         applicantsData={selectedApplicant}
         staff={membershipStaff}
         onSave={async ({ applicants: selectedApps, assessor_ids }) => {
-          try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-            const res = await fetch(`${API_URL}/api/volunteer_application_assignments/assign-bulk`, {
-              method:      "POST",
-              credentials: "include",
-              headers:     { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                application_ids: selectedApps.map(a => a.id),
-                assessor_ids,
-              }),
-            })
-            const body = await res.json().catch(() => ({}))
-            if (!res.ok) throw new Error(body.error || "Failed to assign staff.")
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+          const res = await fetch(`${API_URL}/api/volunteer_application_assignments/assign-bulk`, {
+            method:      "POST",
+            credentials: "include",
+            headers:     { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              application_ids: selectedApps.map(a => a.id),
+              assessor_ids,
+            }),
+          })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok) throw new Error(body.error || "Failed to assign staff.")
 
-            showToast("Staff assigned successfully.")
-            setModal(null)
-            setSelectedApplicant(null)
-          } catch (err) {
-            showToast(err.message || "Failed to assign staff.", "error")
-          }
+          if (body.data?.length > 0) showToast("Staff assigned successfully.")
+          return body
         }}
       />
       <UpdateStatusModal

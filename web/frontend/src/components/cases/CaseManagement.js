@@ -8,6 +8,7 @@ import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -679,21 +680,44 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
   const [assigned, setAssigned] = useState([]); // [{ case_officer_id, first_name, last_name, name }]
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState("");
+  const [duplicateDialog, setDuplicateDialog] = useState(null);
+  const [removalTarget, setRemovalTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
 
   // Support both single case and array of cases
   const casesData = Array.isArray(casesDataProp) ? casesDataProp : (casesDataProp ? [casesDataProp] : []);
 
   useEffect(() => {
-    if (open) { setSearch(""); setAssigned([]); setError(""); setSaving(false); }
+    if (open) {
+      setSearch("");
+      setAssigned([]);
+      setError("");
+      setSaving(false);
+      setDuplicateDialog(null);
+      setRemovalTarget(null);
+    }
   }, [open]);
 
   if (casesData.length === 0) return null;
 
   const isBulk = casesData.length > 1;
   const assignedIds = assigned.map(o => String(o.case_officer_id));
+  const unavailableOfficerIds = new Set(
+    officersProp
+      .filter((officer) =>
+        casesData.every((caseData) =>
+          (caseData.assignedOfficerIds || []).map(String).includes(String(officer.case_officer_id))
+        )
+      )
+      .map((officer) => String(officer.case_officer_id))
+  );
+  const availableOfficers = officersProp.filter(
+    (officer) => !unavailableOfficerIds.has(String(officer.case_officer_id))
+  );
+  const noAvailableOfficers = availableOfficers.length === 0;
 
   // Live-filter: if no query show all not yet added, else filter by name
-  const searchResults = officersProp.filter(o => {
+  const searchResults = availableOfficers.filter(o => {
     const fullName = (o.name || `${o.first_name || ""} ${o.last_name || ""}`).toLowerCase();
     const query    = search.toLowerCase();
     const notAdded = !assignedIds.includes(String(o.case_officer_id));
@@ -709,6 +733,38 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
 
   function removeOfficer(id) {
     setAssigned(prev => prev.filter(o => String(o.case_officer_id) !== String(id)));
+  }
+
+  async function confirmRemoval() {
+    if (!removalTarget) return;
+    setRemoving(true);
+    setError("");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(
+        `${API_URL}/api/case_assignments/${removalTarget.caseId}/${removalTarget.personId}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to remove case officer.");
+
+      const caseData = casesData.find((item) => String(item.id) === String(removalTarget.caseId));
+      if (caseData) {
+        const names = String(caseData.assignedOfficer || "").split(",").map((name) => name.trim()).filter(Boolean);
+        const ids = (caseData.assignedOfficerIds || []).map(String);
+        onSave({
+          ...caseData,
+          assignedOfficer: names.filter((_, index) => ids[index] !== String(removalTarget.personId)).join(", ") || null,
+          assignedOfficerIds: ids.filter((id) => id !== String(removalTarget.personId)),
+        });
+      }
+      if (showToast) showToast(body.message || "Case officer removed.");
+      setRemovalTarget(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRemoving(false);
+    }
   }
 
   async function handleAssign() {
@@ -739,16 +795,39 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
       if (body.failed?.length > 0) {
         const failMsgs = body.failed.map(f => `Officer #${f.case_officer_id}: ${f.reason}`).join(" · ");
         setError(`Some assignments failed — ${failMsgs}`);
+        const duplicateFailures = body.failed.filter((failure) =>
+          String(failure.reason || "").toLowerCase().includes("already")
+        );
+        if (duplicateFailures.length > 0) {
+          setDuplicateDialog({
+            count: duplicateFailures.length,
+            detail: duplicateFailures
+              .map((failure) => `Case #${failure.case_report_id} · Officer #${failure.case_officer_id}`)
+              .join(", "),
+          });
+        }
       }
 
       // Update local state
       if (body.data?.length > 0) {
-        const officerName = assigned.map(o => o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim()).join(", ");
         casesData.forEach(caseData => {
+          const successfulAssignments = body.data.filter(
+            (assignment) => String(assignment.case_report_id) === String(caseData.id)
+          );
+          if (successfulAssignments.length === 0) return;
+          const existingNames = String(caseData.assignedOfficer || "")
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const successfulNames = successfulAssignments.map((assignment) => assignment.name).filter(Boolean);
+          const successfulIds = successfulAssignments.map((assignment) => assignment.case_officer_id);
           onSave({
             ...caseData,
-            assignedOfficer:    officerName,
-            assignedOfficerIds: officerIds,
+            assignedOfficer: [...new Set([...existingNames, ...successfulNames])].join(", "),
+            assignedOfficerIds: [...new Set([
+              ...(caseData.assignedOfficerIds || []).map(String),
+              ...successfulIds.map(String),
+            ])],
           });
         });
         if (showToast) showToast(body.message || "Assigned successfully.");
@@ -763,6 +842,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
   }
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title={isBulk ? `Assign Case Officer — ${casesData.length} Cases` : "Assign Case Officer"} wide>
       <div className={styles.formGrid}>
 
@@ -782,6 +862,81 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
         )}
 
         {/* Chip display — who will be assigned */}
+        <FormGroup label="Currently Assigned">
+          <div style={{
+            background: "#f9fafb",
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            padding: "0.5rem 0.75rem",
+            maxHeight: isBulk ? 150 : undefined,
+            overflowY: isBulk ? "auto" : undefined,
+          }}>
+            {casesData.map((caseData) => {
+              const currentNames = String(caseData.assignedOfficer || "")
+                .split(",")
+                .map((name) => name.trim())
+                .filter(Boolean);
+              const currentIds = (caseData.assignedOfficerIds || []).map(String);
+
+              return (
+                <div
+                  key={caseData.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.6rem",
+                    padding: "0.3rem 0",
+                    borderBottom: isBulk ? "1px solid #eef2f7" : "none",
+                  }}
+                >
+                  {isBulk && (
+                    <strong style={{ minWidth: 90, fontSize: "0.8rem", color: "#374151" }}>
+                      {caseData.caseId}
+                    </strong>
+                  )}
+                  {currentNames.length === 0 ? (
+                    <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+                      No case officer currently assigned.
+                    </span>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                      {currentNames.map((name, index) => (
+                        <span key={`${caseData.id}-${name}`} style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.35rem",
+                          padding: "0.25rem 0.6rem",
+                          borderRadius: 999,
+                          background: "#d1fae5",
+                          color: "#065f46",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                        }}>
+                          ✓ {name}
+                          {currentIds[index] && (
+                            <button
+                              type="button"
+                              onClick={() => setRemovalTarget({
+                                caseId: caseData.id,
+                                personId: currentIds[index],
+                                name,
+                              })}
+                              title={`Remove ${name}`}
+                              style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </FormGroup>
+
         <FormGroup label="Selected Case Officers">
           <div style={{
             display:      "flex",
@@ -849,10 +1004,15 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
         >
           <div style={{ position: "relative" }}>
             <FInput
-              placeholder="e.g. Maria, Juan…"
+              placeholder={officersProp.length === 0
+                ? "No case officers are available."
+                : noAvailableOfficers
+                ? "All case officers are already assigned."
+                : "e.g. Maria, Juan…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
+              disabled={noAvailableOfficers}
             />
 
             {/* Dropdown results */}
@@ -927,6 +1087,11 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                 No case officers found matching &quot;{search}&quot;.
               </div>
             )}
+            {officersProp.length > 0 && noAvailableOfficers && (
+              <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#6b7280" }}>
+                No additional case officers can be assigned to the selected {isBulk ? "cases" : "case"}.
+              </div>
+            )}
           </div>
         </FormGroup>
 
@@ -955,6 +1120,30 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
         </button>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={Boolean(duplicateDialog)}
+      title="Case Officer Already Assigned"
+      description={`${duplicateDialog?.count || 0} selected assignment(s) already exist and were not added again. Refresh the page to display the latest case assignments.`}
+      detail={duplicateDialog?.detail ? `${duplicateDialog.detail}. Any other valid assignments were still saved.` : "Any other valid assignments were still saved."}
+      confirmLabel="Refresh Page"
+      cancelLabel="Close"
+      onCancel={() => setDuplicateDialog(null)}
+      onConfirm={() => window.location.reload()}
+    />
+    <ConfirmDialog
+      open={Boolean(removalTarget)}
+      title="Remove Case Officer"
+      description={`Remove ${removalTarget?.name || "this case officer"} from this case?`}
+      detail="The officer will immediately lose access through this assignment."
+      confirmLabel="Remove"
+      cancelLabel="Cancel"
+      tone="danger"
+      busy={removing}
+      dismissible={!removing}
+      onCancel={() => { if (!removing) setRemovalTarget(null); }}
+      onConfirm={confirmRemoval}
+    />
+    </>
   );
 }
 
@@ -1171,6 +1360,7 @@ useEffect(() => {
         region:          r.incident_province || r.incident_city || "—",
         status:          STATUS_STEP[r.case_status_id] || "For Verification",
         assignedOfficer: r.assigned_officer || null,
+        assignedOfficerIds: r.assigned_officer_id ? [r.assigned_officer_id] : [],
         dateSubmitted:   new Date(r.created_at).toLocaleDateString('en-PH'),
         caseType:        r.case_type || null,
         caseCategory:    r.primary_category || null,

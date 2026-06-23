@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createAssignment, getCaseAssignments, getOfficerAssignments, bulkAssignOfficers } = require('../controllers/case_assignments.controller');
+const { createAssignment, getCaseAssignments, getOfficerAssignments, bulkAssignOfficers, removeAssignment } = require('../controllers/case_assignments.controller');
 const { verifyToken } = require('../middleware/auth.middleware');
 
 // POST — assign a case to an officer (admin only)
@@ -8,6 +8,7 @@ router.post('/', verifyToken, createAssignment);
 
 // POST — bulk assign cases to officers
 router.post('/bulk-assign', verifyToken, bulkAssignOfficers);
+router.delete('/:caseReportId/:caseOfficerId', verifyToken, removeAssignment);
 
 // GET — get assignment history for a specific case
 router.get('/:caseId', verifyToken, getCaseAssignments);

@@ -26,27 +26,34 @@
 }
 
 /* ── Header bar ── */
-.pageHeader {
-  position: sticky;
-  top: 0;
-  z-index: 50;
+.heroWrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 2rem 0;
+}
+
+.hero {
   background: var(--sasha-white);
-  border-bottom: 1px solid var(--sasha-border);
+  border: 1px solid var(--sasha-border);
+  border-radius: var(--sasha-card-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.85rem 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2rem;
 }
 
 .backBtn {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: none;
+  background: var(--sasha-white);
   border: 1px solid var(--sasha-border);
-  border-radius: 999px;
-  padding: 0.35rem 0.9rem;
+  border-radius: 6px;
+  min-height: 38px;
+  padding: 8px 16px;
+  margin-bottom: 1.5rem;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--sasha-muted);
@@ -56,18 +63,32 @@
 }
 .backBtn:hover { border-color: var(--sasha-teal); color: var(--sasha-teal); }
 
-.pageTitle {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--sasha-text);
-  flex: 1;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--sasha-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.headerActions {
+.hero h1 {
+  margin: 0 0 0.5rem;
+  color: #1f2937;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.heroDescription {
+  margin: 0;
+  max-width: 680px;
+  color: var(--sasha-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.heroActions {
   display: flex;
   gap: 0.5rem;
   flex-shrink: 0;
@@ -82,8 +103,11 @@
   color: var(--sasha-error);
   font-size: 0.88rem;
   font-weight: 600;
-  padding: 0.75rem 2rem;
-  border-bottom: 1px solid #fca5a5;
+  max-width: 1136px;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
 }
 
 /* ── Two-column layout ── */
@@ -98,6 +122,15 @@
 }
 
 @media (max-width: 900px) {
+  .hero {
+    flex-direction: column;
+  }
+  .heroActions {
+    width: 100%;
+  }
+  .heroActions button {
+    flex: 1;
+  }
   .layout {
     grid-template-columns: 1fr;
   }

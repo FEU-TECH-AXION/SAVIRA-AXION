@@ -16,6 +16,7 @@ import { useState, useEffect } from "react";
 import styles from "./CreateEditProject.module.css";
 import { FiArrowLeft, FiUpload, FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
 import { MdPublic, MdPublicOff } from "react-icons/md";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -151,8 +152,33 @@ function FormGroup({ label, required, hint, error, children }) {
   );
 }
 
-function PeopleList({ label, hint, values, onChange, placeholder }) {
+function PeopleList({
+  label,
+  hint,
+  values,
+  onChange,
+  placeholder,
+  suggestions = [],
+  suggestionsLoading = false,
+  suggestionsError = "",
+  listId,
+  otherValues = [],
+  onDuplicate,
+}) {
+  const normalizeName = (value) => String(value || "").trim().toLocaleLowerCase();
+
   function update(index, val) {
+    const normalized = normalizeName(val);
+    const usedElsewhere = [
+      ...values.filter((_, valueIndex) => valueIndex !== index),
+      ...otherValues,
+    ].some((value) => normalizeName(value) === normalized);
+
+    if (normalized && usedElsewhere) {
+      onDuplicate?.(val.trim());
+      return;
+    }
+
     const next = [...values];
     next[index] = val;
     onChange(next);
@@ -166,20 +192,69 @@ function PeopleList({ label, hint, values, onChange, placeholder }) {
       {hint && <p className={styles.formHint}>{hint}</p>}
       {values.map((v, i) => (
         <div key={i} className={styles.peopleRow}>
+          {(() => {
+            const selectedElsewhere = new Set(
+              [
+                ...values.filter((_, valueIndex) => valueIndex !== i),
+                ...otherValues,
+              ]
+                .map(normalizeName)
+                .filter(Boolean)
+            );
+            const availableSuggestions = suggestions.filter(
+              (person) =>
+                normalizeName(person.name) === normalizeName(v) ||
+                !selectedElsewhere.has(normalizeName(person.name))
+            );
+
+            return (
+              <>
           <input
             className={styles.formInput}
             type="text"
-            placeholder={placeholder || "Full name"}
+            placeholder={
+              suggestionsLoading
+                ? "Loading personnel…"
+                : suggestions.length === 0
+                  ? "No personnel suggestions available"
+                  : placeholder || "Search or select personnel"
+            }
             value={v ?? ""}
             onChange={(e) => update(i, e.target.value)}
+            list={availableSuggestions.length > 0 ? `${listId}-${i}` : undefined}
+            autoComplete="off"
           />
+          {availableSuggestions.length > 0 && (
+            <datalist id={`${listId}-${i}`}>
+              {availableSuggestions.map((person) => (
+                <option
+                  key={person.user_id}
+                  value={person.name}
+                  label={person.committee ? `${person.committee} · ${person.email}` : person.email}
+                />
+              ))}
+            </datalist>
+          )}
           {values.length > 1 && (
             <button type="button" className={styles.removeBtn} onClick={() => remove(i)}>
               <FiTrash2 size={15} />
             </button>
           )}
+              </>
+            );
+          })()}
         </div>
       ))}
+      {suggestionsError && (
+        <p className={styles.formHint} style={{ color: "#b91c1c" }}>
+          {suggestionsError}
+        </p>
+      )}
+      {!suggestionsLoading && !suggestionsError && suggestions.length === 0 && (
+        <p className={styles.formHint}>
+          No staff records are available for suggestions. Names can still be entered manually.
+        </p>
+      )}
       <button type="button" className={styles.addPersonBtn} onClick={add}>
         <FiPlus size={14} /> Add another
       </button>
@@ -196,11 +271,56 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
     return mode === "edit" && initial ? { ...EMPTY_FORM, ...normalizeInitial(initial) } : EMPTY_FORM;
   });
   const [errors, setErrors] = useState({});
+  const [duplicateAssignments, setDuplicateAssignments] = useState([]);
+  const [personnelSuggestions, setPersonnelSuggestions] = useState([]);
+  const [personnelLoading, setPersonnelLoading] = useState(true);
+  const [personnelError, setPersonnelError] = useState("");
 
   // Sync if initial prop changes (e.g. navigating between projects)
   useEffect(() => {
     if (mode === "edit" && initial) setForm({ ...EMPTY_FORM, ...normalizeInitial(initial) });
   }, [initial, mode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPersonnel() {
+      setPersonnelLoading(true);
+      setPersonnelError("");
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const response = await fetch(`${API_URL}/api/staff`, {
+          credentials: "include",
+        });
+        const body = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(body.error || "Unable to load staff personnel.");
+        }
+
+        const suggestions = (Array.isArray(body) ? body : [])
+          .map((staffMember) => ({
+            user_id: staffMember.user_id || staffMember.users?.user_id,
+            name: `${staffMember.users?.first_name || ""} ${staffMember.users?.last_name || ""}`.trim(),
+            email: staffMember.users?.email || "",
+            committee: staffMember.committees?.committee_name || "",
+          }))
+          .filter((person) => person.user_id && person.name)
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        if (!cancelled) setPersonnelSuggestions(suggestions);
+      } catch (error) {
+        if (!cancelled) {
+          setPersonnelSuggestions([]);
+          setPersonnelError(error.message || "Unable to load staff personnel.");
+        }
+      } finally {
+        if (!cancelled) setPersonnelLoading(false);
+      }
+    }
+
+    loadPersonnel();
+    return () => { cancelled = true; };
+  }, []);
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -229,28 +349,56 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
   function handleSubmit() {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    const assignedNames = [
+      ...(form.projectOfficers || []),
+      ...(form.projectCommitteeMembers || []),
+    ]
+      .map((name) => String(name || "").trim())
+      .filter(Boolean);
+    const counts = assignedNames.reduce((map, name) => {
+      const key = name.toLocaleLowerCase();
+      const current = map.get(key) || { name, count: 0 };
+      map.set(key, { name: current.name, count: current.count + 1 });
+      return map;
+    }, new Map());
+    const duplicates = [...counts.values()]
+      .filter(({ count }) => count > 1)
+      .map(({ name }) => name);
+    if (duplicates.length > 0) {
+      setDuplicateAssignments(duplicates);
+      return;
+    }
     onSave({ ...form, id: initial?.id, createdAt: initial?.createdAt || new Date().toISOString() });
   }
 
   const isPublicRequest = form.visibility === "public";
 
   return (
+    <>
     <div className={styles.pageWrapper}>
       {/* ── Header bar ── */}
-      <header className={styles.pageHeader}>
+      <div className={styles.heroWrap}>
         <button className={styles.backBtn} onClick={onCancel}>
           <FiArrowLeft /> Back
         </button>
-        <h1 className={styles.pageTitle}>
-          {mode === "create" ? "Create a New Project / Event" : "Update Project Information"}
-        </h1>
-        <div className={styles.headerActions}>
-          <button className={styles.btnSecondary} onClick={onCancel}>Discard</button>
-          <button className={styles.btnPrimary} onClick={handleSubmit}>
-            {mode === "create" ? "Create Project" : "Save Changes"}
-          </button>
-        </div>
-      </header>
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.eyebrow}>Project and Event Management</p>
+            <h1>
+              {mode === "create" ? "Create a New Project / Event" : "Update Project Information"}
+            </h1>
+            <p className={styles.heroDescription}>
+              Plan the activity, organize the project team, and manage publication details in one workspace.
+            </p>
+          </div>
+          <div className={styles.heroActions}>
+            <button className={styles.btnSecondary} onClick={onCancel}>Discard</button>
+            <button className={styles.btnPrimary} onClick={handleSubmit}>
+              {mode === "create" ? "Create Project" : "Save Changes"}
+            </button>
+          </div>
+        </section>
+      </div>
 
       {Object.keys(errors).length > 0 && (
         <div className={styles.errorBanner}>
@@ -446,18 +594,30 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
             <PeopleList
               label="Project Officers"
               hint="Officers responsible for leading the project."
-              placeholder="Full name"
+              placeholder="Search staff by name"
               values={form.projectOfficers}
               onChange={(v) => set("projectOfficers", v)}
+              suggestions={personnelSuggestions}
+              suggestionsLoading={personnelLoading}
+              suggestionsError={personnelError}
+              listId="project-officer-suggestions"
+              otherValues={form.projectCommitteeMembers}
+              onDuplicate={(name) => setDuplicateAssignments([name])}
             />
 
             <div style={{ marginTop: "1.5rem" }}>
               <PeopleList
                 label="Project Committee Members"
                 hint="All committee members involved."
-                placeholder="Full name"
+                placeholder="Search staff by name"
                 values={form.projectCommitteeMembers}
                 onChange={(v) => set("projectCommitteeMembers", v)}
+                suggestions={personnelSuggestions}
+                suggestionsLoading={personnelLoading}
+                suggestionsError={personnelError}
+                listId="project-committee-member-suggestions"
+                otherValues={form.projectOfficers}
+                onDuplicate={(name) => setDuplicateAssignments([name])}
               />
             </div>
           </SectionCard>
@@ -549,5 +709,16 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
         </aside>
       </div>
     </div>
+    <ConfirmDialog
+      open={duplicateAssignments.length > 0}
+      title="Project Personnel Already Assigned"
+      description="The same person cannot be assigned to this project more than once."
+      detail={`Already listed: ${duplicateAssignments.join(", ")}`}
+      confirmLabel="OK"
+      hideCancel
+      onCancel={() => setDuplicateAssignments([])}
+      onConfirm={() => setDuplicateAssignments([])}
+    />
+    </>
   );
 }

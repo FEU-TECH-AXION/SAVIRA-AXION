@@ -627,17 +627,36 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
   const [assigned,    setAssigned]    = useState([]); // { legal_personnel_id, first_name, last_name, legal_personnel_type }
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState("");
+  const [duplicateDialog, setDuplicateDialog] = useState(null);
+  const [removalTarget, setRemovalTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
-    if (open) { setSearch(""); setAssigned([]); setError(""); }
+    if (open) {
+      setSearch("");
+      setAssigned([]);
+      setError("");
+      setDuplicateDialog(null);
+      setRemovalTarget(null);
+    }
   }, [open]);
 
   if (!caseData) return null;
 
   // Filter out already-assigned people from the search results
   const assignedIds = assigned.map(p => String(p.legal_personnel_id));
+  const currentlyAssignedIds = new Set(
+    (caseData.assignedLegal || [])
+      .map((person) => person.legal_personnel_id)
+      .filter(Boolean)
+      .map(String)
+  );
+  const availableLegalPersonnels = legalPersonnels.filter(
+    (person) => !currentlyAssignedIds.has(String(person.legal_personnel_id))
+  );
+  const noAvailableLegalPersonnel = availableLegalPersonnels.length === 0;
 
-  const searchResults = legalPersonnels.filter(p => {
+  const searchResults = availableLegalPersonnels.filter(p => {
   const fullName = `${p.first_name || ""} ${p.last_name || ""}`.toLowerCase();
   const type     = (p.legal_personnel_type || "").toLowerCase();
   const query    = search.toLowerCase();
@@ -655,6 +674,34 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
 
   function removePerson(id) {
     setAssigned(prev => prev.filter(p => String(p.legal_personnel_id) !== String(id)));
+  }
+
+  async function confirmRemoval() {
+    if (!removalTarget) return;
+    setRemoving(true);
+    setError("");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(
+        `${API_URL}/api/legal_case_assignments/${caseData.id}/${removalTarget.legal_personnel_id}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to remove legal personnel.");
+
+      onSave({
+        ...caseData,
+        assignedLegal: (caseData.assignedLegal || []).filter(
+          (person) => String(person.legal_personnel_id) !== String(removalTarget.legal_personnel_id)
+        ),
+      });
+      showToast(body.message || "Legal personnel removed.");
+      setRemovalTarget(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRemoving(false);
+    }
   }
 
   async function handleAssign() {
@@ -689,6 +736,17 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                   .map(f => `Personnel #${f.legal_personnel_id}: ${f.reason}`)
                   .join(" · ");
               setError(`Some assignments failed — ${failMsgs}`);
+              const duplicateFailures = body.failed.filter((failure) =>
+                  String(failure.reason || "").toLowerCase().includes("already")
+              );
+              if (duplicateFailures.length > 0) {
+                  setDuplicateDialog({
+                      count: duplicateFailures.length,
+                      detail: duplicateFailures
+                          .map((failure) => `Personnel #${failure.legal_personnel_id}`)
+                          .join(", "),
+                  });
+              }
           }
 
           // Update local state with whoever was successfully assigned
@@ -718,6 +776,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
   }
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title="Assign Legal Team" wide>
       <div className={styles.formGrid}>
 
@@ -727,6 +786,54 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
         </FormGroup>
 
         {/* Chip display — who will be assigned */}
+        <FormGroup label="Currently Assigned">
+          <div style={{
+            background: "#f9fafb",
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            padding: "0.5rem 0.75rem",
+            minHeight: "2.25rem",
+          }}>
+            {(caseData.assignedLegal || []).length === 0 ? (
+              <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+                No legal personnel currently assigned.
+              </span>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {(caseData.assignedLegal || []).map((person) => (
+                  <span
+                    key={person.legal_personnel_id || `${person.assignment_role}-${person.name}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      padding: "0.25rem 0.6rem",
+                      borderRadius: 999,
+                      background: "#d1fae5",
+                      color: "#065f46",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ✓ {person.name || `Personnel #${person.legal_personnel_id}`}
+                    <span style={{ fontSize: "0.7rem", opacity: 0.75 }}>
+                      {person.assignment_role === "lawyer" ? "Lawyer" : "Paralegal"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setRemovalTarget(person)}
+                      title={`Remove ${person.name || "legal personnel"}`}
+                      style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </FormGroup>
+
         <FormGroup label="Selected Personnel">
           <div style={{
             display:      "flex",
@@ -791,10 +898,15 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
         >
           <div style={{ position: "relative" }}>
             <FInput
-              placeholder="e.g. Ryan, paralegal…"
+              placeholder={legalPersonnels.length === 0
+                ? "No legal personnel are available."
+                : noAvailableLegalPersonnel
+                ? "All legal personnel are already assigned."
+                : "e.g. Ryan, paralegal…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
+              disabled={noAvailableLegalPersonnel}
             />
 
             {/* Dropdown results */}
@@ -868,6 +980,11 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                 No personnel found matching "{search}".
               </div>
             )}
+            {legalPersonnels.length > 0 && noAvailableLegalPersonnel && (
+              <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#6b7280" }}>
+                No additional legal personnel can be assigned to this case.
+              </div>
+            )}
           </div>
         </FormGroup>
 
@@ -896,6 +1013,30 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
         </button>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={Boolean(duplicateDialog)}
+      title="Legal Personnel Already Assigned"
+      description={`${duplicateDialog?.count || 0} selected person(s) are already assigned to this legal case. Refresh the page to display the latest legal assignments.`}
+      detail={duplicateDialog?.detail ? `${duplicateDialog.detail}. Any other valid assignments were still saved.` : "Any other valid assignments were still saved."}
+      confirmLabel="Refresh Page"
+      cancelLabel="Close"
+      onCancel={() => setDuplicateDialog(null)}
+      onConfirm={() => window.location.reload()}
+    />
+    <ConfirmDialog
+      open={Boolean(removalTarget)}
+      title="Remove Legal Personnel"
+      description={`Remove ${removalTarget?.name || "this person"} from this legal case?`}
+      detail="Their active legal assignment will be deactivated immediately."
+      confirmLabel="Remove"
+      cancelLabel="Cancel"
+      tone="danger"
+      busy={removing}
+      dismissible={!removing}
+      onCancel={() => { if (!removing) setRemovalTarget(null); }}
+      onConfirm={confirmRemoval}
+    />
+    </>
   );
 }
 

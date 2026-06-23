@@ -138,4 +138,34 @@ const bulkAssignOfficers = async (req, res) => {
     }
 };
 
-module.exports = { createAssignment, getCaseAssignments, getOfficerAssignments, bulkAssignOfficers };
+const removeAssignment = async (req, res) => {
+    try {
+        const { caseReportId, caseOfficerId } = req.params;
+        const role = String(req.user?.role || req.user?.role_name || '').toLowerCase();
+        const performedBy = req.user?.id || req.user?.user_id || null;
+
+        if (role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can remove case officer assignments.' });
+        }
+
+        const removed = await CaseAssignmentsModel.deactivateOne(caseReportId, caseOfficerId);
+        if (removed.length === 0) {
+            return res.status(404).json({ error: 'Active case officer assignment not found.' });
+        }
+
+        await supabase.from('case_report_logs').insert([{
+            case_report_id: caseReportId,
+            action_type: 'case_officer_unassigned',
+            remarks: `Case officer #${caseOfficerId} removed from the case.`,
+            performed_by_user_id: performedBy,
+            performed_at: new Date().toISOString(),
+        }]);
+
+        return res.json({ message: 'Case officer removed successfully.' });
+    } catch (err) {
+        console.error('[removeAssignment]', err);
+        return res.status(500).json({ error: err.message || 'Failed to remove case officer.' });
+    }
+};
+
+module.exports = { createAssignment, getCaseAssignments, getOfficerAssignments, bulkAssignOfficers, removeAssignment };

@@ -111,4 +111,36 @@ const bulkAssignApplication = async (req, res) => {
     }
 }
 
-module.exports = { getItems, getAssignmentsByApplication, bulkAssignApplication }
+const removeAssignment = async (req, res) => {
+    const { applicationId, assessorId } = req.params
+    const role = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+
+    if (role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can remove volunteer staff assignments.' })
+    }
+
+    try {
+        const alreadyAssigned = await VolunteerApplicationAssignmentsModel.isAlreadyAssigned(applicationId, assessorId)
+        if (!alreadyAssigned) {
+            return res.status(404).json({ error: 'Active staff assignment not found.' })
+        }
+
+        await VolunteerApplicationAssignmentsModel.deactivateOne(applicationId, assessorId)
+
+        const remainingAssignments = await VolunteerApplicationAssignmentsModel.getActiveByApplication(applicationId)
+        if (remainingAssignments.length === 0) {
+            await supabase
+                .from('volunteer_applications')
+                .update({ application_status: 'pending', updated_at: new Date().toISOString() })
+                .eq('volunteer_application_id', applicationId)
+                .eq('application_status', 'reviewing')
+        }
+
+        res.json({ message: 'Staff assignment removed successfully.' })
+    } catch (err) {
+        console.error('[removeVolunteerAssignment]', err)
+        res.status(500).json({ error: err.message || 'Failed to remove staff assignment.' })
+    }
+}
+
+module.exports = { getItems, getAssignmentsByApplication, bulkAssignApplication, removeAssignment }

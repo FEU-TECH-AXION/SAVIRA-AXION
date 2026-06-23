@@ -28,6 +28,8 @@ const ANSWER_MAP = {
 }
 
 const MEMBERSHIP_COMMITTEE_ID = 2
+const REAPPLICATION_WAIT_DAYS = 15
+const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000
 
 function average(values) {
     const nums = values.map(Number).filter((n) => Number.isFinite(n))
@@ -445,7 +447,7 @@ const createItem = async (req, res) => {
             .from('volunteer_applications')
             .select('volunteer_application_id, application_status')
             .eq('volunteer_applicant_id', volunteerApplicantId)
-            .in('application_status', ['pending', 'under_review'])
+            .in('application_status', ['pending', 'reviewing', 'under_review'])
             .maybeSingle()
 
         if (existingApplication) {
@@ -455,7 +457,45 @@ const createItem = async (req, res) => {
             })
         }
 
-        // ── 6. Create the application ──
+        // ── 6. Enforce the rejection reapplication cooldown ──
+        const { data: latestRejectedApplication, error: rejectedError } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, resolved_at, updated_at, created_at')
+            .eq('volunteer_applicant_id', volunteerApplicantId)
+            .eq('application_status', 'rejected')
+            .order('resolved_at', { ascending: false, nullsFirst: false })
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        if (rejectedError) throw rejectedError
+
+        if (latestRejectedApplication) {
+            const rejectedAtValue =
+                latestRejectedApplication.resolved_at ||
+                latestRejectedApplication.updated_at ||
+                latestRejectedApplication.created_at
+            const rejectedAt = new Date(rejectedAtValue)
+
+            if (!Number.isNaN(rejectedAt.getTime())) {
+                const eligibleAt = new Date(rejectedAt.getTime() + REAPPLICATION_WAIT_MS)
+                if (Date.now() < eligibleAt.getTime()) {
+                    return res.status(409).json({
+                        error: `You can reapply 15 days after your rejected application, on ${eligibleAt.toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            timeZone: 'Asia/Manila',
+                        })}.`,
+                        code: 'REAPPLICATION_COOLDOWN',
+                        eligible_at: eligibleAt.toISOString(),
+                        wait_days: REAPPLICATION_WAIT_DAYS,
+                    })
+                }
+            }
+        }
+
+        // ── 7. Create the application ──
         const application = await VolunteerApplicationsModel.create({
             volunteer_applicant_id:    volunteerApplicantId,
             organization_id:           org.organization_id,
