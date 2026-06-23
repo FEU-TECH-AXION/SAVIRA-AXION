@@ -3,3 +3,4 @@ node_modules/
 .continue/
 agent/
 .agents/
+savira-firebase-adminsdk.json
