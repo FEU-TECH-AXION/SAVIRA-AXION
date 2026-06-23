@@ -56,17 +56,19 @@
 }
 
 .saveBtn {
-  border-color: var(--sasha-teal);
-  background: var(--sasha-teal);
-  color: var(--sasha-white);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  color: #025f61;
   border-radius: 999px;
   padding-inline: 1.25rem;
   font-weight: 700;
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .saveBtn:hover {
-  background: var(--sasha-teal-dark);
-  border-color: var(--sasha-teal-dark);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 .saveBtn:disabled {
@@ -74,7 +76,6 @@
   cursor: not-allowed;
 }
 
-.hero,
 .panel,
 .memberCard,
 .stat {
@@ -86,34 +87,38 @@
 
 .hero {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 2rem;
+  padding: 2rem 2.25rem;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #026b6d, #039395);
+  box-shadow: 0 8px 24px rgba(3, 127, 129, 0.18);
   margin-bottom: 1.5rem;
 }
 
 .eyebrow {
-  margin: 0 0 0.5rem;
-  color: var(--sasha-muted);
+  margin: 0 0 0.45rem;
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .hero h1 {
   margin: 0 0 0.5rem;
-  color: #1f2937;
-  font-size: 2rem;
+  color: #ffffff;
+  font-size: clamp(1.75rem, 4vw, 2.4rem);
   font-weight: 700;
   line-height: 1.2;
 }
 
 .hero p:not(.eyebrow) {
   margin: 0;
-  max-width: 760px;
-  color: var(--sasha-muted);
+  max-width: 680px;
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.875rem;
   line-height: 1.6;
 }

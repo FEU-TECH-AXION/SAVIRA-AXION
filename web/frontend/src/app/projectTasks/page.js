@@ -39,48 +39,55 @@ export default function ProjectTasksPage() {
 
   return (
     <main className={styles.page}>
-      <section className={styles.hero}>
-        <p className={styles.eyebrow}>Project accountability</p>
-        <h1>Project Tasks</h1>
-        <p>Select a project to create assignments, monitor deadlines, and review progress history.</p>
-      </section>
+      <div className={styles.inner}>
+        <button className={styles.backBtn} onClick={() => router.push("/projects")}>
+          ← Back to Project Management
+        </button>
 
-      <section className={styles.toolbar}>
-        <input
-          type="search"
-          placeholder="Search by project title, category, or ID…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <button onClick={() => router.push("/projects")}>Back to Project Management</button>
-      </section>
-
-      {error && <div className={styles.error}>{error}</div>}
-      {loading ? (
-        <div className={styles.state}>Loading projects…</div>
-      ) : visibleProjects.length === 0 ? (
-        <div className={styles.state}>No projects found.</div>
-      ) : (
-        <section className={styles.grid}>
-          {visibleProjects.map((project) => (
-            <article className={styles.card} key={project.id}>
-              <div className={styles.cardTop}>
-                <span>#{project.id}</span>
-                <span className={styles.status}>{project.status || "Unspecified"}</span>
-              </div>
-              <h2>{project.title}</h2>
-              <p>{project.description || "No project description provided."}</p>
-              <div className={styles.meta}>
-                <span>{project.category || "Uncategorized"}</span>
-                <span>Due: {project.dueDate || "No deadline"}</span>
-              </div>
-              <button onClick={() => router.push(`/projects/view?projectId=${project.id}`)}>
-                View & Manage Tasks →
-              </button>
-            </article>
-          ))}
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.eyebrow}>Project accountability</p>
+            <h1>Project Tasks</h1>
+            <p>Select a project to create assignments, monitor deadlines, and review progress history.</p>
+          </div>
         </section>
-      )}
+
+        <section className={styles.toolbar}>
+          <input
+            type="search"
+            placeholder="Search by project title, category, or ID…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </section>
+
+        {error && <div className={styles.error}>{error}</div>}
+        {loading ? (
+          <div className={styles.state}>Loading projects…</div>
+        ) : visibleProjects.length === 0 ? (
+          <div className={styles.state}>No projects found.</div>
+        ) : (
+          <section className={styles.grid}>
+            {visibleProjects.map((project) => (
+              <article className={styles.card} key={project.id}>
+                <div className={styles.cardTop}>
+                  <span>#{project.id}</span>
+                  <span className={styles.status}>{project.status || "Unspecified"}</span>
+                </div>
+                <h2>{project.title}</h2>
+                <p>{project.description || "No project description provided."}</p>
+                <div className={styles.meta}>
+                  <span>{project.category || "Uncategorized"}</span>
+                  <span>Due: {project.dueDate || "No deadline"}</span>
+                </div>
+                <button onClick={() => router.push(`/projects/view?projectId=${project.id}`)}>
+                  View & Manage Tasks →
+                </button>
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
     </main>
   )
 }

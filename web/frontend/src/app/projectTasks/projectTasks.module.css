@@ -1,24 +1,62 @@
 .page {
   min-height: 100vh;
-  padding: 6.5rem max(1rem, 6vw) 3rem;
+  margin-top: 64px;
+  padding: 2rem max(1rem, 4vw) 3rem;
   background: #f5f7f8;
   color: #292929;
 }
 
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  transition: background 0.15s;
+}
+
+.backBtn:hover {
+  background: #f5f7f8;
+  border-color: #d1d5db;
+}
+
 .hero {
-  padding: 2.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2rem 2.25rem;
   border-radius: 18px;
-  color: white;
-  background: linear-gradient(135deg, #037f81, #025f61);
+  color: #fff;
+  background: linear-gradient(135deg, #026b6d, #039395);
+  margin-bottom: 1.5rem;
 }
 
 .hero h1 {
   margin: 0.2rem 0;
-  font-size: clamp(2rem, 5vw, 3.3rem);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.hero p {
+.hero p:not(.eyebrow) {
   margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  max-width: 560px;
+  line-height: 1.6;
 }
 
 .eyebrow {
@@ -26,48 +64,74 @@
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.08em;
+  opacity: 0.8;
+  margin: 0 0 0.35rem;
 }
 
 .toolbar {
   display: flex;
   gap: 0.75rem;
-  margin: 1.25rem 0;
+  margin-bottom: 1.25rem;
 }
 
 .toolbar input {
   flex: 1;
   min-width: 0;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background: white;
+  font: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.toolbar input:focus {
+  border-color: #037f81;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.1);
 }
 
 .toolbar button,
 .card button {
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 1.2rem;
   border: 0;
   border-radius: 999px;
   background: #037f81;
   color: white;
   font-weight: 700;
+  font-size: 0.875rem;
   cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.toolbar button:hover,
+.card button:hover {
+  background: #025f61;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 1rem;
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  min-height: 250px;
+  min-height: 240px;
   padding: 1.25rem;
   border: 1px solid #e5e7eb;
-  border-radius: 15px;
+  border-radius: 14px;
   background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #d1d5db;
 }
 
 .cardTop,
@@ -88,38 +152,57 @@
 }
 
 .card h2 {
-  margin: 1rem 0 0.4rem;
-  color: #037f81;
+  margin: 0.85rem 0 0.4rem;
+  color: #1f2937;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .card > p {
   flex: 1;
   color: #4b5563;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
+.meta {
+  margin-top: 0.85rem;
+}
+
 .card button {
-  align-self: flex-end;
+  align-self: flex-start;
   margin-top: 1rem;
   background: #e8663a;
 }
 
+.card button:hover {
+  background: #c94f27;
+}
+
 .state,
 .error {
-  padding: 2rem;
+  padding: 2.5rem;
   border-radius: 12px;
   background: white;
   text-align: center;
   color: #6b7280;
+  border: 1px solid #e5e7eb;
 }
 
 .error {
   background: #fee2e2;
   color: #991b1b;
+  border-color: #fca5a5;
 }
 
 @media (max-width: 650px) {
   .toolbar {
     flex-direction: column;
+  }
+
+  .hero {
+    flex-direction: column;
+    padding: 1.5rem;
   }
 }
