@@ -66,7 +66,7 @@ export default function AccountPrivacyTab({ user }) {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/users/${user.user_id}/password`, {
+      const res = await fetch(`/api/users/${user.user_id}/password`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

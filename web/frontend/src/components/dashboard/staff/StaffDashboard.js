@@ -50,7 +50,7 @@ export default function StaffDashboard() {
   useEffect(() => {
     async function fetchVolunteers() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
         const res = await fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();

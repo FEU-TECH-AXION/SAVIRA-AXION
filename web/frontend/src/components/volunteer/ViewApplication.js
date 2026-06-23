@@ -114,7 +114,7 @@ function ApplicantScoresTab({ appData }) {
     if (!appData?.id) return;
     async function fetchScores() {
       try {
-        const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API = process.env.NEXT_PUBLIC_API_URL || "";
         const [essayRes, interviewRes] = await Promise.all([
           fetch(`${API}/api/volunteer_applications/${appData.id}/essay_evaluation`, { credentials: "include" }),
           fetch(`${API}/api/volunteer_applications/${appData.id}/interview_evaluation`, { credentials: "include" }),
@@ -432,7 +432,7 @@ function RatingStars({ value, onChange, disabled }) {
 }
 
 function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -1041,7 +1041,7 @@ function VolunteerStatusHistorySection({ applicationId, isStaff }) {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await window.fetch(
           `${API_URL}/api/volunteer_applications/${applicationId}/status-history`,
           { credentials: "include" }
@@ -1145,7 +1145,7 @@ function NLPEssayTab({ appId, isAdmin }) {
     const fetchNlp = async () => {
       setNlpLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/volunteer_applications/${appId}/nlp`, {
           credentials: "include",
         });
@@ -1375,7 +1375,7 @@ export default function ViewApplication() {
 
     async function fetchApp() {
       try {
-        const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API}/api/volunteer_applications/${appId}`, {
           credentials: "include",
         });
@@ -1513,7 +1513,7 @@ export default function ViewApplication() {
   async function handleWithdrawApplication() {
     setWithdrawing(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}/withdraw`, {
         method: "POST",
         credentials: "include",
@@ -1703,7 +1703,7 @@ export default function ViewApplication() {
             : null
         }
         onSave={async ({ status, notes }) => {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
           const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
             method: "PUT",
             credentials: "include",

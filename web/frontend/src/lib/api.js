@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function fetchUsers() {
     const res = await fetch(`${API_URL}/api/users`, { cache: 'no-store' });
@@ -40,7 +40,7 @@ export async function loginUser(form) {
 }
 
 export async function fetchCommittees() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const response = await fetch(`${API_URL}/api/committees`, {
     credentials: 'include',
     cache: 'no-store',

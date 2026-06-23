@@ -1167,7 +1167,7 @@ export default function ReportGenerator() {
     setLoading(true);
     setError(null);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const [casesRes, volunteersRes, projectsRes, usersRes] = await Promise.allSettled([
         fetch(`${API_URL}/api/case_reports/all`,       { credentials: "include" }),
         fetch(`${API_URL}/api/volunteer_applications`, { credentials: "include" }),

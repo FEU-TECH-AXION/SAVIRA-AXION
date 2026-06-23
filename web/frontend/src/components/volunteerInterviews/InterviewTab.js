@@ -436,7 +436,7 @@ function formatStaffDateTime(interview) {
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, userId, userRole, applicantUserId, onCreated }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
   const [expiryDays, setExpiryDays] = useState("7");
   const defaultInviteNote = "Please select an available interview slot at your earliest convenience. If none of the schedules work, contact your application officer.";
   const [notes, setNotes]           = useState(defaultInviteNote);
@@ -467,7 +467,7 @@ function InviteToInterviewModal({ open, onClose, appData, actorName, showToast, 
     setSubmitting(true);
     setError(null);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
       // Fallback: fetch the applicant's user ID directly if it wasn't
       // already resolved (e.g. effect hadn't finished, or appData was stale).
@@ -709,7 +709,7 @@ function InvitedView({ appData, interview, onSlotSelected, showToast, reschedule
   useEffect(() => {
     const fetchSlots = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
           `${API_URL}/api/interview_slots?slot_type=volunteer&is_available=true`,
           { credentials: "include" }
@@ -741,7 +741,7 @@ function InvitedView({ appData, interview, onSlotSelected, showToast, reschedule
   async function handleConfirmSlot(slot) {
     setConfirming(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interviews/${interview.id}/select-slot`, {
         method: "PATCH",
         credentials: "include",
@@ -1186,7 +1186,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
     }
     const fetchApplicantUserId = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
           credentials: "include",
         });
@@ -1204,7 +1204,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   useEffect(() => {
     const fetchInterviews = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
           `${API_URL}/api/interviews?type=volunteer&volunteer_application_id=${appData.id}`,
           { credentials: "include" }
@@ -1287,7 +1287,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
       // Get applicant UUID from volunteer application
       const appRes = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
@@ -1390,7 +1390,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       return;
     }
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interviews/${interviewId}/cancel`, {
         method: "PATCH",
         credentials: "include",
@@ -1423,7 +1423,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       return;
     }
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
       // Step 1: Create new slot
       const slotRes = await fetch(`${API_URL}/api/interview_slots`, {
@@ -1827,7 +1827,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
           showToast={showToast}
           onClose={() => setMeetingLinkInterview(null)}
           onSave={async (meetingLink) => {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
             const res = await fetch(
               `${API_URL}/api/interviews/${meetingLinkInterview.id}/confirm`,
               {

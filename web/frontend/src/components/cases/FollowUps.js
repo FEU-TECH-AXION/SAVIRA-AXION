@@ -26,7 +26,7 @@ import FollowUpFieldEditor, {
 } from "./FollowUpFieldEditor";
 import styles from "./FollowUps.module.css";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const CLOSED_CASE_STATUSES = new Set([
   "Dismissed",
   "Perpetrator Convicted",

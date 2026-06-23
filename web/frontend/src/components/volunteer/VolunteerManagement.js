@@ -197,7 +197,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
       if (applicants.length === 1) {
         setLoadingExisting(true)
         fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_application_assignments/${applicants[0].id}`,
+          `${process.env.NEXT_PUBLIC_API_URL || ""}/api/volunteer_application_assignments/${applicants[0].id}`,
           { credentials: "include" }
         )
           .then(res => res.ok ? res.json() : { data: [] })
@@ -258,7 +258,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
     setRemoving(true)
     setError("")
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
       const res = await fetch(
         `${API_URL}/api/volunteer_application_assignments/${removalTarget.applicationId}/${removalTarget.assessorId}`,
         { method: "DELETE", credentials: "include" }
@@ -672,7 +672,7 @@ export default function VolunteerManagement() {
           try {
               const token = getCookie("token");
               const res = await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications`,
+                  `${process.env.NEXT_PUBLIC_API_URL || ""}/api/volunteer_applications`,
                   {
                       credentials: "include",
                       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -736,7 +736,7 @@ export default function VolunteerManagement() {
   useEffect(() => {
     async function fetchMembershipStaff() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/staff`, { credentials: "include" });
         if (!res.ok) throw new Error("Failed to load staff.");
         const data = await res.json();
@@ -1068,7 +1068,7 @@ export default function VolunteerManagement() {
         applicantsData={selectedApplicant}
         staff={membershipStaff}
         onSave={async ({ applicants: selectedApps, assessor_ids }) => {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
           const res = await fetch(`${API_URL}/api/volunteer_application_assignments/assign-bulk`, {
             method:      "POST",
             credentials: "include",
@@ -1097,7 +1097,7 @@ export default function VolunteerManagement() {
         applicants={selectedApplicant}
         onSave={async ({ applicants: selectedApps, status, notes }) => {
           const token = getCookie("token");
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
           const updatedApplicants = [];
 
           for (const applicant of selectedApps) {

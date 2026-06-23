@@ -733,7 +733,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
     const fetchNlp = async () => {
       setNlpLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`, { credentials: "include" });
         if (res.status === 404) { setNlpStatus("processing"); return; }
         if (!res.ok) { setNlpStatus("error"); return; }
@@ -1075,7 +1075,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   }
 
   async function saveCase(updated) {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const userData = getUserDataFromCookie();
     const performedByUserId = userData.user_id || userData.id;
 
@@ -1131,7 +1131,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
       // Get user info from cookie for changed_by fields
       const userCookie = getCookie('user')
@@ -1717,7 +1717,7 @@ export default function ViewCase() {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
     const fetchCase = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));

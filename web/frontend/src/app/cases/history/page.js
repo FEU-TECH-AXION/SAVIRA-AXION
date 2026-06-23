@@ -94,7 +94,7 @@ export default function ReportHistoryPage() {
   useEffect(() => {
     async function fetchReports() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
           credentials: "include",
         });
@@ -161,7 +161,7 @@ export default function ReportHistoryPage() {
     setWithdrawing(true);
     setActionError("");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const form = new FormData();
       form.append("reason", withdrawReason.trim());
       if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);

@@ -25,7 +25,7 @@ import { ConfirmDialog, TextInputDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
 import styles from "./ScreeningQuestions.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 const ANSWER_PRESETS = {
   yes_no: ["Yes", "No"],
   in_favor: ["In Favor", "Not in Favor"],

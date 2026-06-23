@@ -401,7 +401,7 @@ export default function CaseInterviewManagement() {
     const fetchAll = async () => {
       setLoadingData(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
 
         const slotsRes = await fetch(
@@ -490,7 +490,7 @@ export default function CaseInterviewManagement() {
 
   const handleCreateSlot = async (formData) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interview_slots`, {
         method: "POST",
         credentials: "include",
@@ -527,7 +527,7 @@ export default function CaseInterviewManagement() {
 
   const handleSaveEditedSlot = async (updatedSlot) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interview_slots/${updatedSlot.id}`, {
         method: "PATCH",
         credentials: "include",
@@ -559,7 +559,7 @@ export default function CaseInterviewManagement() {
 
   const handleConfirmDisableSlot = async (slot) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interview_slots/${slot.id}`, {
         method: "PATCH",
         credentials: "include",
@@ -586,7 +586,7 @@ export default function CaseInterviewManagement() {
   const handleSaveMeetingLink = async (interviewIds, meetingLink) => {
     setLoading(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(
         interviewIds.map((id) =>
           fetch(`${API_URL}/api/interviews/${id}/confirm`, {
@@ -617,7 +617,7 @@ export default function CaseInterviewManagement() {
 
   const handleMarkComplete = async (selectedIds) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(
         selectedIds.map((id) =>
           fetch(`${API_URL}/api/interviews/${id}/complete`, {

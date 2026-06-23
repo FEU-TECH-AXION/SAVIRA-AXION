@@ -53,7 +53,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchDashboardStats() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
         const [projRes, userRes, caseRes, volRes] = await Promise.all([
           fetch(`${API_URL}/api/projects`, { credentials: 'include', cache: 'no-store' }),
           fetch(`${API_URL}/api/users`, { credentials: 'include', cache: 'no-store' }),

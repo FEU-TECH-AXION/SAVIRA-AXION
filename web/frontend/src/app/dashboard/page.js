@@ -20,7 +20,7 @@ export default function DashboardPage() {
     if (role !== "user") return;
 
     async function fetchLatestRecords() {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       const [reportsResult, applicationsResult] = await Promise.allSettled([
         fetch(`${API_URL}/api/case_reports/my-reports`, { credentials: 'include' }),
         fetch(`${API_URL}/api/volunteer_applications/my_applications`, { credentials: 'include' }),

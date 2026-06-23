@@ -51,7 +51,7 @@ export default function ReportProblemTab({ user }) {
       formData.append("page_url", pageUrl || (typeof window !== "undefined" ? window.location.href : ""));
       if (attachment) formData.append("attachment", attachment);
 
-      const res = await fetch("http://localhost:5000/api/support/report", {
+      const res = await fetch("/api/support/report", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

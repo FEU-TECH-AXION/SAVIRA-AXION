@@ -104,7 +104,7 @@ function SettingsPageContent() {
     const formData = new FormData();
     formData.append("profile_img", file);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res   = await fetch(
         `${API_URL}/api/users/${user.user_id}/avatar`,
         { method: "POST", credentials: "include", body: formData }

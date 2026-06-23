@@ -48,7 +48,7 @@ export default function HelpCenterTab({ user }) {
     setSending(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/support/contact", {
+      const res = await fetch("/api/support/contact", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

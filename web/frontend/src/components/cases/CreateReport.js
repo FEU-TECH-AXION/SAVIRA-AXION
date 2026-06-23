@@ -1916,7 +1916,7 @@ export default function CreateReport({
 
   const getCurrentUser = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const response = await fetch(`${API_URL}/api/auth/me`, {
         credentials: "include",
         cache: "no-store",
@@ -2018,7 +2018,7 @@ export default function CreateReport({
       setIsSubmitting(true);
       fetchUserReports();
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
         const formData = new FormData();
         formData.append('complainant', JSON.stringify(complainant));
@@ -2079,7 +2079,7 @@ export default function CreateReport({
 
   const fetchUserReports = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
         credentials: 'include',
       });

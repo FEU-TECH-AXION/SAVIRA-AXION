@@ -7,7 +7,7 @@ import styles from "./heatmap.module.css";
 import { IoIosWarning } from "react-icons/io";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY

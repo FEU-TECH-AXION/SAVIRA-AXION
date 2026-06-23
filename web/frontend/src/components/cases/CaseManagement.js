@@ -317,7 +317,7 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
       setNlpLoading(true);
       setNlpError(null);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_report_analysis/${caseData.id}`, {
           credentials: "include",
         });
@@ -743,7 +743,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
     setRemoving(true);
     setError("");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(
         `${API_URL}/api/case_assignments/${removalTarget.caseId}/${removalTarget.personId}`,
         { method: "DELETE", credentials: "include" }
@@ -776,7 +776,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
     setError("");
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const officerIds = assigned.map(o => o.case_officer_id);
       const caseIds    = casesData.map(c => c.id);
 
@@ -1340,7 +1340,7 @@ const STATUS_STEP = {
 useEffect(() => {
   const fetchCases = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${API_URL}/api/case_reports/all`, {
         credentials: 'include',
       });
@@ -1414,7 +1414,7 @@ useEffect(() => {
 // Fetch case officers from database
 useEffect(() => {
   const loadOfficers = async () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
     try {
       const res = await fetch(`${API_URL}/api/case_officers`, { credentials: 'include' });
       if (res.ok) {

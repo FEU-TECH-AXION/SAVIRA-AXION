@@ -684,7 +684,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
     setRemoving(true);
     setError("");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(
         `${API_URL}/api/legal_case_assignments/${caseData.id}/${removalTarget.legal_personnel_id}`,
         { method: "DELETE", credentials: "include" }
@@ -716,7 +716,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
       setError("");
 
       try {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
           const res = await fetch(`${API_URL}/api/legal_case_assignments/assign-bulk`, {
               method:      "POST",
               headers:     { "Content-Type": "application/json" },
@@ -1171,7 +1171,7 @@ export default function LegalReviewManagement() {
   useEffect(() => {
     const fetchCases = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: "include" });
         if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
         const { data } = await res.json();
@@ -1245,7 +1245,7 @@ export default function LegalReviewManagement() {
   useEffect(() => {
     const fetchPersonnels = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/legal_personnels`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
@@ -1305,7 +1305,7 @@ export default function LegalReviewManagement() {
       return;
     }
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const userData = getUserDataFromCookie();
     const performedByUserId = userData.user_id || userData.id;
 
@@ -1368,7 +1368,7 @@ export default function LegalReviewManagement() {
   }
 
   async function submitForApproval(caseData, proposedStatus, changeDetails) {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const userData = getUserDataFromCookie();
     try {
       const res = await fetch(`${API_URL}/api/case_status_history`, {
@@ -1416,7 +1416,7 @@ export default function LegalReviewManagement() {
 
   async function approveChange(caseData) {
     const pa = caseData.pendingApproval;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const userData = getUserDataFromCookie();
     try {
       const res = await fetch(`${API_URL}/api/case_status_history/${pa.historyId}/approve`, {
@@ -1442,7 +1442,7 @@ export default function LegalReviewManagement() {
 
   async function rejectChange(caseData, reason) {
     const pa = caseData.pendingApproval;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const userData = getUserDataFromCookie();
     try {
       const res = await fetch(`${API_URL}/api/case_status_history/${pa.historyId}/reject`, {

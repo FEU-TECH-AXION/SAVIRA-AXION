@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { FaCheckCircle } from "react-icons/fa";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 function humanizeCategory(value) {
   return String(value || "Screening Questions")

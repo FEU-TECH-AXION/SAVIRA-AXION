@@ -34,7 +34,7 @@ export default function VolunteerRanking() {
   useEffect(() => {
     async function fetchRankings() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/volunteer_applications/rankings/list`, {
           credentials: "include",
           headers: { Authorization: `Bearer ${getCookie("token")}` },

@@ -137,7 +137,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
     setFormErrors({});
     setSaving(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/users/${user.user_id}`, {
         method: "PATCH",
         credentials: "include",

@@ -493,7 +493,7 @@ function isWithinCancellationRescheduleWindow(interview) {
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
   const [expiryDays, setExpiryDays] = useState("7");
   const defaultInviteNote = "Please select an available interview slot at your earliest convenience. If none of the schedules work, send your preferred availability so another slot can be arranged.";
   const [notes, setNotes]           = useState(defaultInviteNote);
@@ -524,7 +524,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
     setSubmitting(true);
     setError(null);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       
       // Validate reporterId exists
       if (!caseData.reporterId) {
@@ -786,7 +786,7 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
   useEffect(() => {
     const fetchSlots = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
           `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true`,
           { credentials: "include" }
@@ -813,7 +813,7 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
   async function handleConfirmSlot(slot) {
     setConfirming(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interviews/${interview.id}/select-slot`, {
         method: "PATCH",
         credentials: "include",
@@ -837,7 +837,7 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
 
   async function handleRequestNewSlots() {
     const reason = arguments[0];
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
       method: "PATCH",
       credentials: "include",
@@ -1246,7 +1246,7 @@ function RescheduleModal({ interview, mode, userId, onClose, onConfirm }) {
   useEffect(() => {
     const loadSlots = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/interview_slots?slot_type=case_report&is_available=true&created_by=${userId}`, { credentials: "include" });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || "Failed to load available slots.");
@@ -1272,7 +1272,7 @@ function RescheduleModal({ interview, mode, userId, onClose, onConfirm }) {
     setCreating(true);
     setError("");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interview_slots`, {
         method: "POST",
         credentials: "include",
@@ -1430,7 +1430,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   useEffect(() => {
     const fetchInterviews = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
           `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
           { credentials: "include" }
@@ -1485,7 +1485,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
       // Get complainant UUID from case report
       const caseRes = await fetch(`${API_URL}/api/case_reports/${caseData.id}`, {
@@ -1585,7 +1585,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
   async function handleCancel(interviewId, cancellationReason) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/interviews/${interviewId}/cancel`, {
         method: "PATCH",
         credentials: "include",
@@ -1620,7 +1620,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
   async function handleStaffRescheduleConfirm(interview, slot, mode) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const endpoint = mode === "reopen-selection" ? "reopen-selection" : "reschedule";
       const selectRes = await fetch(`${API_URL}/api/interviews/${interview.id}/${endpoint}`, {
         method: "PATCH",
@@ -1671,7 +1671,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
   }
 
   async function requestAvailabilityChange(interview, reason) {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
       method: "PATCH",
       credentials: "include",
@@ -2107,7 +2107,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
           showToast={showToast}
           onClose={() => setMeetingLinkInterview(null)}
           onSave={async (meetingLink) => {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
             const res = await fetch(
               `${API_URL}/api/interviews/${meetingLinkInterview.id}/confirm`,
               {

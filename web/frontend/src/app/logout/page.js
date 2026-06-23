@@ -7,7 +7,7 @@ export default function LogoutPage() {
 
   useEffect(() => {
     // Call backend to clear httpOnly cookie
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     }).finally(() => {

@@ -22,7 +22,7 @@ export function useNotifications() {
 
       if (token) {
         // Register the token with your backend
-        await fetch('http://localhost:5000/api/notifications/register-token', {
+        await fetch('/api/notifications/register-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include', // sends your httpOnly JWT cookie

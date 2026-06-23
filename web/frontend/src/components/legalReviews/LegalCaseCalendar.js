@@ -52,7 +52,7 @@ export default function LegalCaseCalendar() {
 
     async function load() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const response = await fetch(`${API_URL}/api/case_reports/all`, { credentials: "include" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || "Failed to load legal cases.");

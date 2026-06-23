@@ -127,7 +127,7 @@ export default function ApplicationHistoryPage() {
 
     async function fetchApplications() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
           `${API_URL}/api/volunteer_applications/my_applications`,
           { credentials: "include" }
@@ -149,7 +149,7 @@ export default function ApplicationHistoryPage() {
     setActionBusy(true);
     setActionError("");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/withdraw`, {
         method: "POST",
         credentials: "include"
@@ -177,7 +177,7 @@ export default function ApplicationHistoryPage() {
     setActionBusy(true);
     setActionError("");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/undo_withdraw`, {
         method: "POST",
         credentials: "include"

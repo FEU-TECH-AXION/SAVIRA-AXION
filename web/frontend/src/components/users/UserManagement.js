@@ -253,7 +253,7 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
     setApiError(null);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       const username = `${form.email.split('@')[0]}${Math.floor(Math.random() * 10000)}`;
 
       // Step 1: Create the user (no committee_id here)
@@ -1015,7 +1015,7 @@ export default function AdminDashboard() {
   async function handleUpdate(updated) {
     const roleId = updated.role_id ? parseInt(updated.role_id) : null;
     const roleName = ROLES_MAP[roleId] || updated.role;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const payload = {
       first_name:     updated.first_name,
       middle_name:    updated.middle_name,

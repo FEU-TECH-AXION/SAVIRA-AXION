@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import styles from "./page.module.css";
 import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);

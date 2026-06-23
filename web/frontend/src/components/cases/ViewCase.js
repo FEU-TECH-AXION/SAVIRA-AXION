@@ -297,7 +297,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
     const fetchNlp = async () => {
       setNlpLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`, { credentials: "include" });
         if (res.status === 404) { setNlpStatus("processing"); return; }
         if (!res.ok) { setNlpStatus("error"); return; }
@@ -601,7 +601,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
   const [expiryDays, setExpiryDays] = useState("7");
   const [notes, setNotes]           = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -614,7 +614,7 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
     setSubmitting(true);
     setError(null);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       
       // Validate reporterId exists
       if (!caseData.reporterId) {
@@ -754,7 +754,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/case_status_history`, {
         method: "POST",
         credentials: "include",
@@ -851,7 +851,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     const fetchNoteLogs = async () => {
       setNotesLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_report_logs/case/${caseData.id}`, { credentials: "include" });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Failed to load notes.");
@@ -876,7 +876,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     const fetchNlpSuggestion = async () => {
       setNlpSuggestionLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`, {
           credentials: "include",
         });
@@ -915,7 +915,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     const trimmed = internalNotes.trim();
     if (!trimmed) return showToast("Please enter a note before saving.", "error");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/case_report_logs`, {
         method: "POST",
         credentials: "include",
@@ -938,7 +938,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     const trimmed = editingNoteText.trim();
     if (!trimmed) return showToast("Note cannot be empty.", "error");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const id = getLogId(log);
       const res = await fetch(`${API_URL}/api/case_report_logs/${id}`, {
         method: "PATCH",
@@ -959,7 +959,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   async function deleteNote(log) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const id = getLogId(log);
       const res = await fetch(`${API_URL}/api/case_report_logs/${id}`, { method: "DELETE", credentials: "include" });
       const body = await res.json().catch(() => ({}));
@@ -975,7 +975,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   async function saveAssessment(payload, onSuccess) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
         method: "PATCH",
         credentials: "include",
@@ -1521,7 +1521,7 @@ export default function ViewCase() {
     }
     try {
       setWithdrawing(true);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const form = new FormData();
       form.append("reason", withdrawReason.trim());
       if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);
@@ -1567,7 +1567,7 @@ export default function ViewCase() {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
     const fetchCase = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -1741,7 +1741,7 @@ export default function ViewCase() {
     const fetchInterviewAccess = async () => {
       setInterviewsChecked(false);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
           `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
           { credentials: "include" }
@@ -1900,7 +1900,7 @@ export default function ViewCase() {
                   <button
                     style={{ marginLeft: "auto", border: "1px solid #fdba74", background: "#fff", color: "#9a3412", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}
                     onClick={async () => {
-                      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
                       const response = await fetch(
                         `${API_URL}/api/case_reports/${caseData.id}/duplicates/${match.duplicate_match_id}/dismiss`,
                         { method: "PATCH", credentials: "include" }
