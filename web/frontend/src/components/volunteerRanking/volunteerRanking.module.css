@@ -1,15 +1,56 @@
+/* ════════════════════════════════════════
+   SASHA Design tokens (mirrors VolunteerManagement.module.css)
+   ════════════════════════════════════════ */
+:root {
+  --sasha-teal:        #037F81;
+  --sasha-orange:      #E8663A;
+  --sasha-white:       #ffffff;
+  --sasha-offwhite:    #f5f7f8;
+  --sasha-text:        #292929;
+  --sasha-muted:       #6b7280;
+  --sasha-border:      #e5e7eb;
+}
+
 .pageWrapper {
+  background: var(--sasha-offwhite);
   min-height: 100vh;
-  background: #f5f7f8;
-  margin-top: 64px;
-  display: grid;
-  justify-content: center;
+  color: var(--sasha-text);
 }
 
 .inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 max(1rem, 3vw) 3rem;
+  padding: 0 1rem 3rem;
+}
+
+/* ── Back button row (Now sitting on the light page background) ── */
+.container {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 6rem 1rem 0;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 999px;
+  color: var(--sasha-teal);
+  background: var(--sasha-white);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.backButton:hover {
+  border-color: var(--sasha-teal);
+  background: #e1f5f5;
+  transform: translateY(-1px);
 }
 
 /* ── Hero Banner ── */
@@ -18,6 +59,8 @@
   margin-bottom: 2rem;
   overflow: hidden;
   max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .heroContent {
@@ -27,8 +70,9 @@
   position: relative;
   z-index: 3;
   text-align: center;
-  border-radius: 0 0 1.5rem 1.5rem;
-  padding: 3.5rem max(1.5rem, 5vw) 4rem;
+  border-radius: 1rem;
+  padding: 5rem;
+  margin-top: 0;
 }
 
 .heroContent::before {
@@ -37,54 +81,26 @@
   inset: 0;
   background: linear-gradient(135deg, rgba(3, 127, 129, 0.92) 0%, rgba(3, 127, 129, 0.72) 100%);
   z-index: -1;
-  border-radius: 0 0 1.5rem 1.5rem;
-}
-
-/* ── Back button (sits inside hero, top-left aligned) ── */
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.84rem;
-  font-weight: 500;
-  color: #ffffff;
-  transition: background 0.15s;
-  margin-bottom: 1.75rem;
-}
-
-.backBtn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  border-radius: 1rem;
 }
 
 .heroTitle {
-  color: #ffffff;
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  color: var(--sasha-white);
+  font-size: clamp(1.75rem, 5vw, 3.5rem);
   font-weight: 800;
   margin: 0 0 0.75rem;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .heroSubtitle {
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 1rem;
-  margin: 0 auto 2.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  margin: 0 auto 2rem;
   max-width: 560px;
   line-height: 1.55;
 }
 
-/* ── Stat cards row ── */
-.statsRow {
-  display: flex;
-  justify-content: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-}
-
+/* ── Stat cards (Bootstrap row/col handles the stacking on small screens) ── */
 .statCard {
   display: flex;
   align-items: center;
@@ -93,29 +109,15 @@
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 24px;
-  padding: 1.75rem 2rem;
+  padding: 2rem 1.75rem;
   backdrop-filter: blur(10px);
-  min-width: 180px;
+  height: 100%;
   position: relative;
   overflow: visible;
-  flex: 1;
-  max-width: 260px;
-}
-
-.statDot {
-  position: absolute;
-  top: -1.5rem;
-  left: 2rem;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #e8663a;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  pointer-events: none;
 }
 
 .statNum {
-  color: #ffffff;
+  color: var(--sasha-white);
   font-size: 3.5rem;
   font-weight: 800;
   line-height: 1;
@@ -124,8 +126,8 @@
 }
 
 .statLabel {
-  color: #ffffff;
-  font-size: 1rem;
+  color: var(--sasha-white);
+  font-size: 1.05rem;
   font-weight: 400;
   line-height: 1.25;
   margin: 0;
@@ -135,20 +137,21 @@
 /* ── Toolbar (filter bar) ── */
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;
-  background: #ffffff;
+  background: var(--sasha-white);
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--sasha-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Table container ── */
 .tableWrap {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--sasha-white);
+  border: 1px solid var(--sasha-border);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -156,11 +159,12 @@
 
 .tableScroll {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 960px;
   border-collapse: collapse;
   font-size: 0.86rem;
 }
@@ -174,14 +178,14 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--sasha-border);
   white-space: nowrap;
 }
 
 .table td {
   padding: 0.8rem 1rem;
   border-bottom: 1px solid #f1f3f5;
-  color: #292929;
+  color: var(--sasha-text);
   vertical-align: middle;
 }
 
@@ -201,7 +205,7 @@
 .rankCell,
 .totalCell {
   font-weight: 800;
-  color: #037f81;
+  color: var(--sasha-teal);
 }
 
 .nameStack {
@@ -211,7 +215,7 @@
 }
 
 .nameStack span {
-  color: #6b7280;
+  color: var(--sasha-muted);
   font-size: 0.76rem;
 }
 
@@ -220,7 +224,7 @@
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
   background: #e1f5f5;
-  color: #037f81;
+  color: var(--sasha-teal);
   font-weight: 700;
   font-size: 0.75rem;
   text-transform: capitalize;
@@ -230,7 +234,7 @@
 .error {
   padding: 2.5rem;
   text-align: center;
-  color: #6b7280;
+  color: var(--sasha-muted);
 }
 
 .error {
@@ -238,21 +242,95 @@
   background: #fef2f2;
 }
 
-@media (max-width: 720px) {
+/* ════════════════════════════════════════
+   RESPONSIVE  (mirrors VolunteerManagement.module.css breakpoints)
+   ════════════════════════════════════════ */
+@media (max-width: 991.98px) {
   .heroContent {
-    padding: 2.5rem 1.25rem 3rem;
+    padding: 2.75rem 1.75rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .container {
+    padding-top: 5rem;
   }
 
-  .statsRow {
-    gap: 1rem;
+  .heroContent {
+    padding: 2.25rem 1.25rem;
+    border-radius: 0.75rem;
+  }
+
+  .heroTop {
+    margin-bottom: 1.25rem;
+  }
+
+  .heroSubtitle {
+    margin-bottom: 1.5rem;
   }
 
   .statCard {
-    min-width: 140px;
     padding: 1.5rem 1.25rem;
+    gap: 1rem;
   }
 
-  .statNum {
-    font-size: 2.5rem;
+  .inner {
+    padding: 0 0.85rem 2.5rem;
+  }
+
+  .toolbar {
+    padding: 0.75rem;
+  }
+
+  .table {
+    min-width: 760px;
+    font-size: 0.8rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.65rem 0.75rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .container {
+    padding-top: 4.5rem;
+  }
+
+  .heroContent {
+    padding: 1.75rem 1rem;
+  }
+
+  .backButton {
+    font-size: 0.76rem;
+    padding: 6px 10px;
+  }
+
+  .heroTitle {
+    margin-bottom: 0.5rem;
+  }
+
+  .heroSubtitle {
+    font-size: 0.82rem;
+  }
+
+  .statCard {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  .statLabel {
+    text-align: left;
+  }
+
+  .inner {
+    padding: 0 0.65rem 2rem;
+  }
+
+  .table {
+    min-width: 640px;
   }
 }

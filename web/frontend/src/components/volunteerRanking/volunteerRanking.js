@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IoIosArrowBack } from "react-icons/io";
 import FilterMenu from "./FilterMenu";
 import styles from "./volunteerRanking.module.css";
+import { FiArrowLeft } from "react-icons/fi";
 
 function getCookie(name) {
   if (typeof document === "undefined") return null;
@@ -80,26 +80,36 @@ export default function VolunteerRanking() {
     <main className={styles.pageWrapper}>
 
       {/* ── Hero Banner ── */}
+
+    <div className={styles.container}>
+        {/* <button
+          type="button"
+          className={styles.backButton}
+          onClick={() => router.push("/volunteer")}
+        >
+          <FiArrowLeft /> Back to Volunteer Management
+        </button> */}
+      
       <section className={styles.heroBanner}>
-        <div className={styles.heroContent}>
-          <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
-            <IoIosArrowBack /> Back to Volunteer Management
-          </button>
-          <h1 className={styles.heroTitle}>Applicant Rankings</h1>
-          <p className={styles.heroSubtitle}>
-            Screening, hybrid essay, interview, and priority scores in one comparison table.
-          </p>
-          {!loading && !error && (
-            <div className={styles.statsRow}>
-              {stats.map(({ num, label }) => (
-                <div key={label} className={styles.statCard}>
-                  <div className={styles.statDot} />
-                  <p className={styles.statNum}>{num}</p>
-                  <p className={styles.statLabel}>{label}</p>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="container-xl">
+          <div className={styles.heroContent}>
+            <h1 className={styles.heroTitle}>Applicant Rankings</h1>
+            <p className={styles.heroSubtitle}>
+              Screening, hybrid essay, interview, and priority scores in one comparison table.
+            </p>
+            {!loading && !error && (
+              <div className="row g-3 justify-content-center">
+                {stats.map(({ num, label }) => (
+                  <div key={label} className="col-12 col-md-4">
+                    <div className={styles.statCard}>
+                      <p className={styles.statNum}>{num}</p>
+                      <p className={styles.statLabel}>{label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -168,6 +178,7 @@ export default function VolunteerRanking() {
             </div>
           )}
         </section>
+      </div>
       </div>
     </main>
   );
