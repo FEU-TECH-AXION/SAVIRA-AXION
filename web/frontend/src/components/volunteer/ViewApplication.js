@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
 import InterviewTab from "../volunteerInterviews/InterviewTab";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import VolunteerStatusDialog from "./VolunteerStatusDialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -70,138 +71,6 @@ function DetailGrid({ rows }) {
         </div>
       ))}
     </div>
-  );
-}
-
-// ─── Modal shell ──────────────────────────────────────────────────────────────
-
-function Modal({ open, onClose, title, children }) {
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>{title}</h2>
-          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
-        </div>
-        <div className={styles.modalBody}>{children}</div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Update Status Modal ──────────────────────────────────────────────────────
-
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
-
-function UpdateStatusModal({ open, onClose, appData, onSave }) {
-  const [status, setStatus] = useState("Pending");
-  const [notes, setNotes]   = useState("");
-  const [errorMsg, setErrorMsg] = useState("");  // ← add this
-
-  useEffect(() => {
-    if (appData) {
-      setStatus(appData.applicationStatus || "Pending");
-      setNotes(appData.reviewNotes || "");
-      setErrorMsg("");  // ← reset on open
-    }
-  }, [appData]);
-
-  if (!appData) return null;
-
-  async function handleSubmit() {
-    setErrorMsg("");
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications/${appData.id}`,
-        {
-          method:  "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            application_status: status.toLowerCase().replace(" ", "_"),
-            notes,
-          }),
-        }
-      );
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(result.error || "Failed to update status.");  // ← inline error
-        return;
-      }
-
-      onSave({ ...appData, applicationStatus: status, reviewNotes: notes });
-      onClose();
-    } catch (err) {
-      setErrorMsg("Something went wrong: " + err.message);
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Update Application Status">
-      <div className={styles.formGrid}>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Applicant</label>
-          <input className={styles.formInput} value={appData.name} disabled />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Status</label>
-          <div className={styles.radioGroup}>
-            {APPLICATION_STATUSES.map(s => (
-              <label key={s} className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name="app-status"
-                  value={s}
-                  checked={status === s}
-                  onChange={() => setStatus(s)}
-                />
-                {s}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Notes</label>
-          <textarea
-            className={styles.formInput}
-            rows={3}
-            placeholder="Optional reviewer notes…"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
-        </div>
-
-        {/* ← error banner */}
-        {errorMsg && (
-          <div style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "8px",
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
-            borderRadius: "8px",
-            padding: "10px 14px",
-            color: "#991b1b",
-            fontSize: "0.875rem",
-          }}>
-            <FiAlertCircle style={{ marginTop: "2px", flexShrink: 0 }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-      </div>
-      <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit}>Save</button>
-      </div>
-    </Modal>
   );
 }
 
@@ -1545,7 +1414,7 @@ export default function ViewApplication() {
           appRefId:              `APP-${String(data.volunteer_application_id).padStart(4, "0")}`,
           applicantUserId:       data.applicant_user_id || data.user_id || null,
           applicationStatus:     capitalizeStatus(data.application_status),
-          reviewNotes:           data.notes || "",
+          reviewNotes:           data.status_notes || data.notes || "",
           assignedEvaluator: (data.volunteer_application_assignments || [])
               .filter((aa) => aa.is_active === true)
               .map((aa) => `${aa.users?.first_name || ""} ${aa.users?.last_name || ""}`.trim())
@@ -1824,13 +1693,35 @@ export default function ViewApplication() {
       </div>
 
       {/* ── Modals ── */}
-      <UpdateStatusModal
+      <VolunteerStatusDialog
+        key={`status-${modal}-${appData?.id || "none"}`}
         open={modal === "updateStatus"}
-        onClose={() => setModal(null)}
-        appData={appData}
-        onSave={(updated) => {
-          setAppData(updated);
-          showToast(`Status updated to ${updated.applicationStatus}.`);
+        onCancel={() => setModal(null)}
+        applicants={
+          appData
+            ? { ...appData, status: appData.applicationStatus, notes: appData.reviewNotes }
+            : null
+        }
+        onSave={async ({ status, notes }) => {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              application_status: status.toLowerCase().replace(" ", "_"),
+              notes,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.error || "Failed to update status.");
+
+          setAppData((current) => ({
+            ...current,
+            applicationStatus: status,
+            reviewNotes: notes,
+          }));
+          showToast(`Status updated to ${status}.`);
           setModal(null);
         }}
       />

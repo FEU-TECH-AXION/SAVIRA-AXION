@@ -9,6 +9,7 @@ import FilterMenu from "./FilterMenu";
 import Link from "next/link";
 import { IoIosWarning } from "react-icons/io";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import VolunteerStatusDialog from "./VolunteerStatusDialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -83,8 +84,6 @@ function isDateInRange(dateString, startDate, endDate) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
-const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
-
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS BADGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -614,92 +613,6 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UPDATE STATUS MODAL
-// ─────────────────────────────────────────────────────────────────────────────
-
-function UpdateStatusModal({ open, onClose, applicant, onSave }) {
-  const [status, setStatus] = useState("Pending");
-  const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    if (applicant) {
-      setStatus(applicant.status);
-      setNotes(applicant.notes || "");
-    }
-  }, [applicant]);
-
-  if (!applicant) return null;
-
-  async function handleSubmit() {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/volunteer_applications/${applicant.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getCookie("token")}`,
-          },
-          body: JSON.stringify({
-            application_status: status.toLowerCase().replace(" ", "_"),
-            notes,
-          }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to update status.");
-      onSave({ ...applicant, status, notes });
-      onClose();
-    } catch (err) {
-      alert("Something went wrong: " + err.message);
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Update Application Status">
-      <div className={styles.formGrid}>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Applicant</label>
-          <input className={styles.formInput} value={applicant.name} disabled />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Status</label>
-          <div className={styles.radioGroup} style={{ flexWrap: "wrap" }}>
-            {APPLICATION_STATUSES.map((s) => (
-              <label key={s} className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name="app-status"
-                  value={s}
-                  checked={status === s}
-                  onChange={() => setStatus(s)}
-                  className={styles.radioInput}
-                />
-                {s}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Notes</label>
-          <textarea
-            className={styles.formInput}
-            rows={3}
-            placeholder="Optional reviewer notes…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            style={{ resize: "vertical" }}
-          />
-        </div>
-      </div>
-      <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={handleSubmit}>Save</button>
-      </div>
-    </Modal>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // MAIN VOLUNTEER MANAGEMENT PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -844,18 +757,6 @@ export default function VolunteerManagement() {
   function showToast(msg, type = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
-  }
-
-  function openUpdate(a) {
-    setSelectedApplicant(a);
-    setModal("update");
-  }
-
-  function handleUpdate(updated) {
-    setApplicants((prev) =>
-      prev.map((a) => (a.id === updated.id ? updated : a))
-    );
-    showToast(`${updated.name}'s application updated to ${updated.status}.`);
   }
 
   // ── Sort ───────────────────────────────────────────────────────────────────
@@ -1135,7 +1036,10 @@ export default function VolunteerManagement() {
                     setError("Only assigned Membership Committee staff can update this application's status.");
                     return;
                   }
-                  if (selected.length >= 1) openUpdate(selected[0]);
+                  if (selected.length >= 1) {
+                    setSelectedApplicant(selected);
+                    setModal("update");
+                  }
                 }}
                 isAdmin={isAdmin}
                 isStaff={isStaff}
@@ -1174,11 +1078,57 @@ export default function VolunteerManagement() {
           return body
         }}
       />
-      <UpdateStatusModal
+      <VolunteerStatusDialog
+        key={`status-${modal}-${Array.isArray(selectedApplicant)
+          ? selectedApplicant.map((item) => item.id).join("-")
+          : selectedApplicant?.id || "none"}`}
         open={modal === "update"}
-        onClose={() => setModal(null)}
-        applicant={selectedApplicant}
-        onSave={handleUpdate}
+        onCancel={() => {
+          setModal(null);
+          setSelectedApplicant(null);
+        }}
+        applicants={selectedApplicant}
+        onSave={async ({ applicants: selectedApps, status, notes }) => {
+          const token = getCookie("token");
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const updatedApplicants = [];
+
+          for (const applicant of selectedApps) {
+            const res = await fetch(`${API_URL}/api/volunteer_applications/${applicant.id}`, {
+              method: "PUT",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({
+                application_status: status.toLowerCase().replace(" ", "_"),
+                notes,
+              }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(
+                body.error || `Failed to update APP-${String(applicant.id).padStart(4, "0")}.`
+              );
+            }
+            updatedApplicants.push({ ...applicant, status, notes });
+          }
+
+          setApplicants((current) =>
+            current.map(
+              (applicant) =>
+                updatedApplicants.find((updated) => updated.id === applicant.id) || applicant
+            )
+          );
+          showToast(
+            updatedApplicants.length === 1
+              ? `${updatedApplicants[0].name}'s application updated to ${status}.`
+              : `${updatedApplicants.length} applications updated to ${status}.`
+          );
+          setModal(null);
+          setSelectedApplicant(null);
+        }}
       />
     </>
   );

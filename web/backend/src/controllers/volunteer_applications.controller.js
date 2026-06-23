@@ -30,6 +30,7 @@ const ANSWER_MAP = {
 const MEMBERSHIP_COMMITTEE_ID = 2
 const REAPPLICATION_WAIT_DAYS = 15
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000
+const APPLICATION_STATUSES = new Set(['pending', 'reviewing', 'approved', 'rejected'])
 
 function average(values) {
     const nums = values.map(Number).filter((n) => Number.isFinite(n))
@@ -155,9 +156,19 @@ const getItem = async (req, res) => {
 
         if (error || !data) return res.status(404).json({ error: 'Application not found.' })
 
+        const { data: latestStatusHistory, error: historyError } = await supabase
+            .from('volunteer_application_status_history')
+            .select('notes')
+            .eq('volunteer_application_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        if (historyError) throw historyError
+
         res.status(200).json({
             ...data,
             applicant_user_id: data.volunteer_applicants?.user_id || null,
+            status_notes: latestStatusHistory?.notes || null,
         })
 
     } catch (error) {
@@ -557,9 +568,21 @@ const updateItem = async (req, res) => {
         const { id } = req.params
         const { application_status, notes } = req.body
         const changedBy = req.user?.id || null
+        const normalizedStatus = String(application_status || '').trim().toLowerCase()
+        const normalizedNotes = String(notes || '').trim()
+
+        if (!APPLICATION_STATUSES.has(normalizedStatus)) {
+            return res.status(400).json({ error: 'A valid application status is required.' })
+        }
+
+        if (normalizedStatus === 'rejected' && !normalizedNotes) {
+            return res.status(400).json({
+                error: 'A rejection reason from the staff evaluator is required.'
+            })
+        }
 
         // ── Validation: approved requires completed evaluation ──
-        if (application_status === 'approved') {
+        if (normalizedStatus === 'approved') {
             const { data: evaluation, error: evalError } = await supabase
                 .from('volunteer_application_evaluations')
                 .select('alignment, maturity, commitment, clarity, experience, interview_score')
@@ -594,24 +617,25 @@ const updateItem = async (req, res) => {
         }
 
         const updatePayload = {
-            application_status,
+            application_status: normalizedStatus,
             updated_at: new Date(),
         }
 
-        if (application_status === 'rejected' || application_status === 'approved') {
+        if (normalizedStatus === 'rejected' || normalizedStatus === 'approved') {
             updatePayload.resolved_at = new Date()
         }
 
         const updated = await VolunteerApplicationsModel.update(id, updatePayload)
 
-        await supabase
+        const { error: historyError } = await supabase
             .from('volunteer_application_status_history')
             .insert({
                 volunteer_application_id: parseInt(id),
-                status:     application_status,
-                notes:      notes || null,
+                status:     normalizedStatus,
+                notes:      normalizedNotes || null,
                 changed_by: changedBy,
             })
+        if (historyError) throw historyError
 
         res.status(200).json(updated)
 
