@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
@@ -8,7 +9,7 @@ import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEve
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 
 // ── Overview stat card ───────────────────────────────────────────────────────
-function OverviewCard({ category, label, count, showView = false }) {
+function OverviewCard({ category, label, count, showView = false, viewHref = "#" }) {
   return (
     <div className={styles.overviewCard}>
       <div className={styles.overviewCardHeader}>
@@ -18,7 +19,9 @@ function OverviewCard({ category, label, count, showView = false }) {
         <p className={styles.overviewLabel}>{label}</p>
         <p className={styles.overviewCount}>{count}</p>
         {showView && (
-          <button className={styles.viewBtn}>View &rarr;</button>
+          <Link className={styles.viewBtn} href={viewHref} aria-label={`View ${label}`}>
+            View &rarr;
+          </Link>
         )}
       </div>
     </div>
@@ -40,6 +43,99 @@ function DeadlineItem({ emoji, title, date }) {
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
+function unwrapList(payload, preferredKey) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== "object") return [];
+
+  if (preferredKey && Array.isArray(payload[preferredKey])) {
+    return payload[preferredKey];
+  }
+
+  const commonKeys = ["data", "items", "records", "results", "projects", "users", "cases", "volunteers"];
+  const listKey = commonKeys.find((key) => Array.isArray(payload[key]));
+  return listKey ? payload[listKey] : [];
+}
+
+async function fetchList(url, preferredKey) {
+  const response = await fetch(url, { credentials: "include", cache: "no-store" });
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    console.error(`[AdminDashboard] Failed to fetch ${url}: ${response.status}`, message);
+    return [];
+  }
+
+  const payload = await response.json().catch(() => null);
+  return unwrapList(payload, preferredKey);
+}
+
+const CASE_STATUS_BY_ID = {
+  1: "Submitted",
+  2: "For Verification",
+  3: "Undergoing Review",
+  4: "Verified - True",
+  5: "Verified - False",
+  6: "Under Case Evaluation",
+  7: "Case Filed",
+  8: "Investigation Ongoing",
+  9: "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn",
+};
+
+function getCaseStatus(caseItem) {
+  const statusId = Number(caseItem?.case_status_id);
+  if (Number.isFinite(statusId) && CASE_STATUS_BY_ID[statusId]) {
+    return CASE_STATUS_BY_ID[statusId];
+  }
+
+  return String(
+    caseItem?.status ||
+      caseItem?.status_name ||
+      caseItem?.case_status_name ||
+      caseItem?.caseStatus ||
+      caseItem?.case_statuses?.case_status_name ||
+      caseItem?.case_statuses?.status_name ||
+      caseItem?.case_status?.status_name ||
+      caseItem?.case_status?.case_status_name ||
+      caseItem?.case_status?.name ||
+      ""
+  ).trim();
+}
+
+function hasAssignedOfficer(caseItem) {
+  return Boolean(
+    caseItem?.assigned_officer ||
+      caseItem?.assignedOfficer ||
+      caseItem?.assigned_case_officer ||
+      caseItem?.assigned_officer_id ||
+      caseItem?.case_officer_id ||
+      caseItem?.caseOfficerId ||
+      caseItem?.case_officer ||
+      (Array.isArray(caseItem?.assignedOfficers) && caseItem.assignedOfficers.length > 0) ||
+      (Array.isArray(caseItem?.assigned_officers) && caseItem.assigned_officers.length > 0) ||
+      (Array.isArray(caseItem?.assignments) && caseItem.assignments.length > 0)
+  );
+}
+
+function getVolunteerStatus(volunteer) {
+  return String(
+    volunteer?.application_status ||
+      volunteer?.applicationStatus ||
+      volunteer?.status ||
+      volunteer?.volunteer_status ||
+      ""
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function getCreatedAt(record) {
+  return record?.created_at || record?.createdAt || record?.date_applied || record?.dateApplied || record?.submitted_at;
+}
+
 export default function AdminDashboard() {
   const { user: authUser } = useAuth();
   const [statsData, setStatsData] = useState(null);
@@ -51,31 +147,34 @@ export default function AdminDashboard() {
   } : { role: "admin", firstName: "Admin", lastName: "User" };
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchDashboardStats() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const [projRes, userRes, caseRes, volRes] = await Promise.all([
-          fetch(`${API_URL}/api/projects`, { credentials: 'include', cache: 'no-store' }),
-          fetch(`${API_URL}/api/users`, { credentials: 'include', cache: 'no-store' }),
-          fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' }),
-          fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' }),
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+        const [projects, users, cases, volunteers] = await Promise.all([
+          fetchList(`${API_URL}/api/projects`, "projects"),
+          fetchList(`${API_URL}/api/users`, "users"),
+          fetchList(`${API_URL}/api/case_reports/all`, "cases"),
+          fetchList(`${API_URL}/api/volunteer_applications`, "volunteers"),
         ]);
 
-        const projects = projRes.ok ? await projRes.json() : [];
-        const users = userRes.ok ? await userRes.json() : [];
-        
-        const caseJson = caseRes.ok ? await caseRes.json() : null;
-        const cases = Array.isArray(caseJson) ? caseJson : caseJson?.data || [];
-        
-        const volJson = volRes.ok ? await volRes.json() : null;
-        const volunteers = Array.isArray(volJson) ? volJson : volJson?.data || [];
-
-        setStatsData({ projects, users, cases, volunteers });
+        if (isMounted) {
+          setStatsData({ projects, users, cases, volunteers });
+        }
       } catch (err) {
         console.error("Failed to fetch dashboard stats:", err);
+        if (isMounted) {
+          setStatsData({ projects: [], users: [], cases: [], volunteers: [] });
+        }
       }
     }
-    fetchDashboardStats();
+
+    const timer = window.setTimeout(fetchDashboardStats, 0);
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   // hasNew drives the orange dot — set to false to hide it
@@ -97,32 +196,44 @@ export default function AdminDashboard() {
   const overviewCards = useMemo(() => {
     if (!statsData) {
       return [
-        { category: "Case",      label: "Unassigned Cases",       count: 0,  showView: true  },
-        { category: "Case",      label: "Under Verification",     count: 0, showView: true  },
+        { category: "Case",      label: "Unassigned Cases",       count: 0, showView: true,  viewHref: "/cases" },
+        { category: "Case",      label: "Under Verification",     count: 0, showView: true,  viewHref: "/cases" },
         { category: "New Applicants", label: "New Applications Today", count: 0,  showView: false },
-        { category: "Volunteer", label: "Review Applications",    count: 0, showView: true  },
+        { category: "Volunteer", label: "Review Applications",    count: 0, showView: true,  viewHref: "/volunteer" },
       ];
     }
 
     const cases = statsData.cases || [];
     const volunteers = statsData.volunteers || [];
 
-    const unassigned = cases.filter(c => !c.assigned_officer).length;
-    const underVerification = cases.filter(c => c.status === "For Verification" || c.status === "Undergoing Review").length;
+    const unassigned = cases.filter((caseItem) => !hasAssignedOfficer(caseItem)).length;
+    const underVerification = cases.filter((caseItem) => {
+      const status = getCaseStatus(caseItem).toLowerCase();
+      return status === "for verification" || status.includes("verification");
+    }).length;
     
     const todayStr = new Date().toDateString();
-    const newAppsToday = volunteers.filter(v => v.created_at && new Date(v.created_at).toDateString() === todayStr).length;
+    const newAppsToday = volunteers.filter((volunteer) => {
+      const createdAt = getCreatedAt(volunteer);
+      return createdAt && new Date(createdAt).toDateString() === todayStr;
+    }).length;
     
-    const reviewApps = volunteers.filter(v => {
-      const status = (v.application_status || "").toLowerCase();
-      return status === "pending" || status === "under_review";
+    const reviewApps = volunteers.filter((volunteer) => {
+      const status = getVolunteerStatus(volunteer);
+      return (
+        status === "pending" ||
+        status === "under_review" ||
+        status === "reviewing" ||
+        status === "for_review" ||
+        status.includes("review")
+      );
     }).length;
 
     return [
-      { category: "Case",      label: "Unassigned Cases",       count: unassigned,        showView: true  },
-      { category: "Case",      label: "Under Verification",     count: underVerification, showView: true  },
+      { category: "Case",      label: "Unassigned Cases",       count: unassigned,        showView: true,  viewHref: "/cases" },
+      { category: "Case",      label: "Under Verification",     count: underVerification, showView: true,  viewHref: "/cases" },
       { category: "New Applicants", label: "New Applications Today", count: newAppsToday,      showView: false },
-      { category: "Volunteer", label: "Review Applications",    count: reviewApps,        showView: true  },
+      { category: "Volunteer", label: "Review Applications",    count: reviewApps,        showView: true,  viewHref: "/volunteer" },
     ];
   }, [statsData]);
 

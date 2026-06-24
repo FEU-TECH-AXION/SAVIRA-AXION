@@ -149,6 +149,8 @@
   border: 1px solid var(--sasha-border);
   overflow: hidden;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .overviewCardHeader {
@@ -160,6 +162,9 @@
 }
 
 .overviewCardBody {
+  position: relative;
+  flex: 1;
+  min-height: 112px;
   padding: 1rem 1.1rem 1.1rem;
 }
 
@@ -178,6 +183,9 @@
 }
 
 .viewBtn {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.8rem;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -189,12 +197,13 @@
   border-radius: 999px;
   border: none;
   cursor: pointer;
-  margin-top: 0.85rem;
+  text-decoration: none;
   transition: background 0.15s, transform 0.1s;
 }
 
 .viewBtn:hover {
   background: var(--sasha-orange-dark);
+  color: var(--sasha-white);
   transform: translateY(-1px);
 }
 

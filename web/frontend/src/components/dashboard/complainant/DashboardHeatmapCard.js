@@ -8,25 +8,106 @@ import styles from "./DashboardDataCards.module.css";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const GEOJSON_URL = "/geojson/ncr-cities.geojson";
+const SOURCE_ID = "dashboard-choropleth-source";
+const FILL_LAYER_ID = "dashboard-choropleth-fill";
+const LINE_LAYER_ID = "dashboard-choropleth-line";
 
-function toFeatureCollection(locations) {
+function normaliseName(value) {
+  return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function joinDensityToGeoJSON(geojson, heatmapData) {
+  const densityMap = new Map();
+  (heatmapData || []).forEach((location) => {
+    densityMap.set(normaliseName(location.name), {
+      density: Number(location.density) || 0,
+      intensity: Number(location.intensity) || 0,
+    });
+  });
+
   return {
-    type: "FeatureCollection",
-    features: locations
-      .filter((location) => location.coordinates)
-      .map((location) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [location.coordinates.lng, location.coordinates.lat],
-        },
+    ...geojson,
+    features: geojson.features.map((feature) => {
+      const match = densityMap.get(normaliseName(feature.properties.name));
+      return {
+        ...feature,
         properties: {
-          name: location.name,
-          density: Number(location.density) || 0,
-          intensity: Number(location.intensity) || 0,
+          ...feature.properties,
+          density: match?.density || 0,
+          intensity: match?.intensity || 0,
         },
-      })),
+      };
+    }),
   };
+}
+
+function computeBounds(geojson) {
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+
+  function processCoords(coords) {
+    if (typeof coords[0] === "number") {
+      const [lng, lat] = coords;
+      minLng = Math.min(minLng, lng);
+      minLat = Math.min(minLat, lat);
+      maxLng = Math.max(maxLng, lng);
+      maxLat = Math.max(maxLat, lat);
+      return;
+    }
+
+    coords.forEach(processCoords);
+  }
+
+  geojson.features.forEach((feature) => {
+    if (feature.geometry?.coordinates) processCoords(feature.geometry.coordinates);
+  });
+
+  if (!Number.isFinite(minLng)) return null;
+  return [
+    [minLng, minLat],
+    [maxLng, maxLat],
+  ];
+}
+
+function addChoroplethLayers(map, geojsonWithDensity) {
+  map.addSource(SOURCE_ID, {
+    type: "geojson",
+    data: geojsonWithDensity,
+  });
+
+  map.addLayer({
+    id: FILL_LAYER_ID,
+    type: "fill",
+    source: SOURCE_ID,
+    paint: {
+      "fill-color": [
+        "interpolate",
+        ["linear"],
+        ["get", "intensity"],
+        0, "rgba(219,234,254,0.55)",
+        0.15, "rgba(34,197,94,0.60)",
+        0.3, "rgba(234,179,8,0.68)",
+        0.5, "rgba(249,115,22,0.75)",
+        0.7, "rgba(239,68,68,0.82)",
+        1.0, "rgba(185,28,28,0.90)",
+      ],
+      "fill-opacity": 1,
+    },
+  });
+
+  map.addLayer({
+    id: LINE_LAYER_ID,
+    type: "line",
+    source: SOURCE_ID,
+    paint: {
+      "line-color": "#ffffff",
+      "line-width": 1.2,
+      "line-opacity": 0.85,
+    },
+  });
 }
 
 export default function DashboardHeatmapCard() {
@@ -72,30 +153,24 @@ export default function DashboardHeatmapCard() {
     });
     mapRef.current = map;
 
-    map.on("load", () => {
-      map.addSource("dashboard-heatmap", {
-        type: "geojson",
-        data: toFeatureCollection(locations),
-      });
-      map.addLayer({
-        id: "dashboard-heatmap-glow",
-        type: "circle",
-        source: "dashboard-heatmap",
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["get", "density"], 0, 3, 12, 30],
-          "circle-color": [
-            "interpolate", ["linear"], ["get", "intensity"],
-            0, "#dbeafe",
-            0.15, "#22c55e",
-            0.3, "#eab308",
-            0.5, "#f97316",
-            0.7, "#ef4444",
-          ],
-          "circle-opacity": 0.65,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1,
-        },
-      });
+    map.on("load", async () => {
+      try {
+        const geojsonResponse = await fetch(GEOJSON_URL);
+        if (!geojsonResponse.ok) {
+          throw new Error("Unable to load map boundaries.");
+        }
+
+        const geojson = await geojsonResponse.json();
+        if (!mapRef.current || mapRef.current._removed) return;
+
+        const enriched = joinDensityToGeoJSON(geojson, locations);
+        addChoroplethLayers(map, enriched);
+
+        const bounds = computeBounds(enriched);
+        if (bounds) map.fitBounds(bounds, { padding: 18, duration: 0 });
+      } catch (choroplethError) {
+        setError(choroplethError.message);
+      }
     });
 
     return () => {
