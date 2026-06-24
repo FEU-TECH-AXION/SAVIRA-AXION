@@ -71,11 +71,11 @@ export function isUpcoming(value) {
   return date >= today;
 }
 
-export function makeDeadline({ emoji, title, dateValue, time, type }) {
+export function makeDeadline({ icon, title, dateValue, time, type }) {
   const date = parseDate(dateValue);
   if (!date || !isUpcoming(dateValue)) return null;
   return {
-    emoji,
+    icon,
     title,
     date: formatDeadlineDate(dateValue, time),
     dateValue: toDateOnly(dateValue),
@@ -115,7 +115,7 @@ export function buildProjectTaskDeadlines(tasks, { userId, actorName, committeeN
         return mine || committeeMatch;
       })
       .map((task) => makeDeadline({
-        emoji: "📌",
+        icon: "task",
         title: task.project?.title ? `${task.title} (${task.project.title})` : task.title || "Project task",
         dateValue: task.due_date,
         type: "project-task",
@@ -135,7 +135,7 @@ export function buildProjectDeadlines(projects, { actorName, limit = 3 } = {}) {
       .filter((project) => project.dueDate || project.dateEnd)
       .filter((project) => !actorName || listIncludesPerson(project.projectOfficers, actorName) || listIncludesPerson(project.projectCommitteeMembers, actorName))
       .map((project) => makeDeadline({
-        emoji: "📁",
+        icon: "project",
         title: project.title || "Project deadline",
         dateValue: project.dueDate || project.dateEnd,
         type: "project",
@@ -159,7 +159,7 @@ export function buildConfirmedInterviewDeadlines(interviews, { userId, actorName
         const slot = interview.slot || {};
         const caseId = interview.caseId || (interview.case_report_id ? `Case #${interview.case_report_id}` : "Case interview");
         return makeDeadline({
-          emoji: "🗓️",
+          icon: "interview",
           title: `Confirmed interview: ${caseId}`,
           dateValue: slot.slot_date || interview.scheduledDate || interview.slot_date,
           time: slot.slot_time || interview.scheduledTime || interview.slot_time,
@@ -171,16 +171,9 @@ export function buildConfirmedInterviewDeadlines(interviews, { userId, actorName
 }
 
 export function buildLegalCaseDeadlines(legalDeadlines, { limit = 3 } = {}) {
-  const iconByType = {
-    filing: "⚖️",
-    hearing: "🏛️",
-    investigation: "🔎",
-    referral: "📨",
-  };
-
   return limitUpcomingDeadlines(
     (legalDeadlines || []).map((deadline) => makeDeadline({
-      emoji: iconByType[deadline.type] || "⚖️",
+      icon: deadline.type || "legal",
       title: `${deadline.label}: ${deadline.caseId || deadline.caseReportId || "Case"}`,
       dateValue: deadline.value || deadline.dateKey || deadline.date,
       type: `legal-${deadline.type || "date"}`,

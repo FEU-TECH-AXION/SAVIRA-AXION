@@ -7,6 +7,7 @@ import styles from "./AdminDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import DeadlineItem from "@/components/dashboard/DeadlineItem";
 import {
   buildConfirmedInterviewDeadlines,
   buildLegalCaseDeadlines,
@@ -37,19 +38,6 @@ function OverviewCard({ category, label, count, showView = false, viewHref = "#"
 }
 
 // ── Heatmap Placeholder ──────────────────────────────────────────────────────
-// ── Deadline item ────────────────────────────────────────────────────────────
-function DeadlineItem({ emoji, title, date }) {
-  return (
-    <div className={styles.deadlineItem}>
-      <div className={styles.deadlineThumb} aria-hidden="true">{emoji}</div>
-      <div>
-        <p className={styles.deadlineTitle}>{title}</p>
-        <p className={styles.deadlineDate}>{date}</p>
-      </div>
-    </div>
-  );
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 function unwrapList(payload, preferredKey) {
   if (Array.isArray(payload)) return payload;
@@ -255,7 +243,7 @@ export default function AdminDashboard() {
       ...buildProjectTaskDeadlines(statsData.projectTasks, { limit: Infinity }),
       ...buildProjectDeadlines(statsData.projects, { limit: Infinity }),
       ...buildLegalCaseDeadlines(statsData.legalDeadlines, { limit: Infinity }),
-    ]);
+    ], Infinity);
   }, [statsData]);
 
   return (
@@ -323,10 +311,14 @@ export default function AdminDashboard() {
               <div className={styles.deadlinesCard}>
                 <h3 className={styles.deadlinesTitle}>Upcoming Deadlines</h3>
                 {deadlines.length === 0 ? (
-                  <p className={styles.deadlineDate}>No upcoming deadlines.</p>
-                ) : deadlines.map((d, i) => (
-                  <DeadlineItem key={i} {...d} />
-                ))}
+                  <p className={styles.deadlineEmpty}>No upcoming deadlines.</p>
+                ) : (
+                  <div className={styles.deadlineList}>
+                    {deadlines.map((d, i) => (
+                      <DeadlineItem key={i} {...d} styles={styles} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

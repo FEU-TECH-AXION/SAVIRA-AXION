@@ -6,6 +6,7 @@ import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import DeadlineItem from "@/components/dashboard/DeadlineItem";
 import {
   buildLegalCaseDeadlines,
   fetchLegalDeadlinesForCases,
@@ -24,18 +25,6 @@ function OverviewCard({ category, label, count, showView = false }) {
         <p className={styles.overviewLabel}>{label}</p>
         <p className={styles.overviewCount}>{count}</p>
         {showView && <button className={styles.viewBtn}>View &rarr;</button>}
-      </div>
-    </div>
-  );
-}
-
-function DeadlineItem({ emoji, title, date }) {
-  return (
-    <div className={styles.deadlineItem}>
-      <div className={styles.deadlineThumb} aria-hidden="true">{emoji}</div>
-      <div>
-        <p className={styles.deadlineTitle}>{title}</p>
-        <p className={styles.deadlineDate}>{date}</p>
       </div>
     </div>
   );
@@ -154,8 +143,8 @@ export default function LegalPersonnelDashboard() {
               <div className={styles.deadlinesCard}>
                 <h3 className={styles.deadlinesTitle}>Upcoming Deadlines</h3>
                 {deadlines.length === 0 ? (
-                  <p className={styles.deadlineDate}>No upcoming deadlines.</p>
-                ) : deadlines.map((d, i) => <DeadlineItem key={i} {...d} />)}
+                  <p className={styles.deadlineEmpty}>No upcoming deadlines.</p>
+                ) : deadlines.map((d, i) => <DeadlineItem key={i} {...d} styles={styles} />)}
               </div>
             </div>
           </div>
