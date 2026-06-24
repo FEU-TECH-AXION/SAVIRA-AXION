@@ -820,6 +820,71 @@
   margin: 0;
 }
 
+.manageUserBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.manageUserIntro {
+  text-align: center;
+}
+
+.manageUserIntro p {
+  margin: 0 0 0.2rem;
+  color: var(--sasha-muted);
+  font-size: 0.88rem;
+}
+
+.manageUserIntro strong {
+  display: block;
+  color: var(--sasha-text);
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.manageOptions {
+  display: grid;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.manageOptionCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 12px;
+  background: var(--sasha-offwhite);
+}
+
+.manageOptionCard h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+}
+
+.manageOptionCard p {
+  margin: 0;
+  color: var(--sasha-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.manageOptionCard button {
+  flex-shrink: 0;
+}
+
+.manageOptionDanger {
+  background: #fff7f7;
+  border-color: #fecaca;
+}
+
 /* ── Inline table action buttons ── */
 .actionBtns {
   display: flex;
@@ -910,6 +975,15 @@
 
   .actionBtns {
     flex-direction: column;
+  }
+
+  .manageOptionCard {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .manageOptionCard button {
+    width: 100%;
   }
 }
 
