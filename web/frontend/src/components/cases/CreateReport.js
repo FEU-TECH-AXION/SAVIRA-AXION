@@ -1929,6 +1929,8 @@ export default function CreateReport({
     }
   };
 
+  const isDirty = useRef(false);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem("savira_case_report_draft");
@@ -1946,6 +1948,8 @@ export default function CreateReport({
         if (draft.evidence) setEvidence(draft.evidence);
         if (draft.consents) setConsents(draft.consents);
         setDraftNotice("You have an unfinished report draft. It has been loaded so you can continue.");
+        // Mark dirty so the save effect preserves this draft going forward
+        isDirty.current = true;
       }, 0);
       return () => clearTimeout(timer);
     } catch (_) {}
@@ -1953,16 +1957,22 @@ export default function CreateReport({
 
   useEffect(() => {
     if (submitted) return;
-    const hasDraft =
-      Object.values(complainant).some(Boolean) ||
-      Object.values(incident).some((value) =>
-        Array.isArray(value) ? value.length > 0 : Boolean(value)
-      ) ||
-      evidence.files.length > 0 ||
-      evidence.anonymous ||
-      consents.dataPrivacy ||
-      consents.caseAnalysis;
-    if (!hasDraft) return;
+    // Only write to localStorage after the user has explicitly started filling
+    // the form (or after a prior draft was loaded).  This prevents a blank
+    // draft from being created for every new page visit.
+    if (!isDirty.current) {
+      const hasDraft =
+        Object.values(complainant).some(Boolean) ||
+        Object.values(incident).some((value) =>
+          Array.isArray(value) ? value.length > 0 : Boolean(value)
+        ) ||
+        evidence.files.length > 0 ||
+        evidence.anonymous ||
+        consents.dataPrivacy ||
+        consents.caseAnalysis;
+      if (!hasDraft) return;
+      isDirty.current = true;
+    }
     localStorage.setItem(
       "savira_case_report_draft",
       JSON.stringify({ complainant, incident, evidence, consents, updatedAt: new Date().toISOString() })
@@ -2048,8 +2058,9 @@ export default function CreateReport({
           });
           throw new Error(errorMsg);
         }
-        setSubmitted(true);
         localStorage.removeItem("savira_case_report_draft");
+        isDirty.current = false;
+        setSubmitted(true);
       } catch (err) {
         console.error('[CreateReport Submit Exception]', err);
         setSubmissionError(err.message || 'Failed to submit report.');

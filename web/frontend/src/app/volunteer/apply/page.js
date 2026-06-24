@@ -1246,6 +1246,8 @@ export default function CreateApplication({
 
   const totalSteps = STEPS.length;
 
+  const isDirty = useRef(false);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
@@ -1257,6 +1259,7 @@ export default function CreateApplication({
         if (draft.screeningAnswers) setScreeningAnswers(draft.screeningAnswers);
         if (draft.essay) setEssay(draft.essay);
         setDraftNotice("You have an unfinished volunteer application draft. It has been loaded so you can continue.");
+        isDirty.current = true;
       } catch (_) {}
     }, 0);
     return () => window.clearTimeout(timer);
@@ -1264,12 +1267,15 @@ export default function CreateApplication({
 
   useEffect(() => {
     if (submitted) return;
-    const hasDraft =
-      Object.values(applicant).some(Boolean) ||
-      Object.values(screeningQuestions).some((v) => Array.isArray(v) ? v.length > 0 : Boolean(v)) ||
-      Object.values(screeningAnswers).some(Boolean) ||
-      Boolean(essay.description);
-    if (!hasDraft) return;
+    if (!isDirty.current) {
+      const hasDraft =
+        Object.values(applicant).some(Boolean) ||
+        Object.values(screeningQuestions).some((v) => Array.isArray(v) ? v.length > 0 : Boolean(v)) ||
+        Object.values(screeningAnswers).some(Boolean) ||
+        Boolean(essay.description);
+      if (!hasDraft) return;
+      isDirty.current = true;
+    }
     localStorage.setItem(
       "savira_volunteer_application_draft",
       JSON.stringify({
@@ -1366,8 +1372,9 @@ export default function CreateApplication({
 
           if (!res.ok) throw new Error(result.error || 'Submission failed.')
 
+          localStorage.removeItem("savira_volunteer_application_draft");
+          isDirty.current = false;
           setSubmitted(true)
-          localStorage.removeItem("savira_volunteer_application_draft")
 
       } catch (error) {
           setSubmitError('Something went wrong: ' + error.message)
