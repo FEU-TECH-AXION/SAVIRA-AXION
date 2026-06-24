@@ -6,6 +6,14 @@ import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import { fetchAllProjectTasks, fetchProjects, fetchStaff } from "@/lib/api";
+import {
+  buildConfirmedInterviewDeadlines,
+  buildProjectDeadlines,
+  buildProjectTaskDeadlines,
+  getActorName,
+  limitUpcomingDeadlines,
+} from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Staff are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -40,6 +48,10 @@ function DeadlineItem({ emoji, title, date }) {
 export default function StaffDashboard() {
   const { user: authUser } = useAuth();
   const [volunteers, setVolunteers] = useState([]);
+  const [projectTasks, setProjectTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [staffRows, setStaffRows] = useState([]);
+  const [interviews, setInterviews] = useState([]);
 
   const user = authUser ? {
     role: authUser.role_name,
@@ -48,21 +60,40 @@ export default function StaffDashboard() {
   } : { role: "staff", firstName: "Staff", lastName: "User" };
 
   useEffect(() => {
-    async function fetchVolunteers() {
+    async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          const list = Array.isArray(json) ? json : json?.data || [];
-          setVolunteers(list);
+        const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
+        const [volunteerRes, taskRows, projectRows, staffData, interviewsRes] = await Promise.all([
+          fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' }),
+          fetchAllProjectTasks(),
+          fetchProjects(),
+          fetchStaff(),
+          fetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { credentials: 'include', cache: 'no-store' }),
+        ]);
+        if (volunteerRes.ok) {
+          const json = await volunteerRes.json();
+          setVolunteers(Array.isArray(json) ? json : json?.data || []);
+        }
+        setProjectTasks(Array.isArray(taskRows) ? taskRows : []);
+        setProjects(Array.isArray(projectRows) ? projectRows : projectRows?.data || []);
+        setStaffRows(Array.isArray(staffData) ? staffData : []);
+        if (interviewsRes.ok) {
+          const json = await interviewsRes.json();
+          setInterviews(Array.isArray(json) ? json : json?.data || []);
         }
       } catch (err) {
-        console.error("Failed to fetch volunteer applications:", err);
+        console.error("Failed to fetch StaffDashboard data:", err);
       }
     }
-    fetchVolunteers();
-  }, []);
+    fetchDashboardData();
+  }, [authUser?.user_id]);
+
+  const actorName = getActorName(user);
+  const currentStaff = useMemo(() => {
+    return staffRows.find((person) => person.user_id === authUser?.user_id);
+  }, [authUser?.user_id, staffRows]);
+  const committeeName = currentStaff?.committees?.committee_name || "";
 
   const stats = useMemo(() => {
     const todayStr = new Date().toDateString();
@@ -92,12 +123,21 @@ export default function StaffDashboard() {
     ];
   }, [volunteers]);
 
-  const deadlines = [
-    { emoji: "🌞", title: "SASHA believes that...",  date: "March 1, 2026"   },
-    { emoji: "⭐", title: "SASHA Awareness an...",   date: "August 18, 2026" },
-    { emoji: "🎄", title: "Youth Empowerment a...",  date: "April 1, 2026"   },
-  ];
-
+  const deadlines = useMemo(() => limitUpcomingDeadlines([
+    ...buildProjectTaskDeadlines(projectTasks, {
+      userId: authUser?.user_id,
+      actorName,
+      committeeName,
+      includeCommittee: Boolean(committeeName),
+      limit: Infinity,
+    }),
+    ...buildProjectDeadlines(projects, { actorName, limit: Infinity }),
+    ...(committeeName ? buildConfirmedInterviewDeadlines(interviews, {
+      userId: authUser?.user_id,
+      actorName,
+      limit: Infinity,
+    }) : []),
+  ]), [actorName, authUser?.user_id, committeeName, interviews, projectTasks, projects]);
   return (
     <>
       <Navbar user={user} />
@@ -150,7 +190,9 @@ export default function StaffDashboard() {
             <div className="col-12 col-lg-4">
               <div className={styles.deadlinesCard}>
                 <h3 className={styles.deadlinesTitle}>Upcoming Deadlines</h3>
-                {deadlines.map((d, i) => <DeadlineItem key={i} {...d} />)}
+                {deadlines.length === 0 ? (
+                  <p className={styles.deadlineDate}>No upcoming deadlines.</p>
+                ) : deadlines.map((d, i) => <DeadlineItem key={i} {...d} />)}
               </div>
             </div>
           </div>

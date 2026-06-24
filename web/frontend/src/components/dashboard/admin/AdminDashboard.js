@@ -7,6 +7,14 @@ import styles from "./AdminDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import {
+  buildConfirmedInterviewDeadlines,
+  buildLegalCaseDeadlines,
+  buildProjectDeadlines,
+  buildProjectTaskDeadlines,
+  fetchLegalDeadlinesForCases,
+  limitUpcomingDeadlines,
+} from "@/lib/dashboardDeadlines";
 
 // ── Overview stat card ───────────────────────────────────────────────────────
 function OverviewCard({ category, label, count, showView = false, viewHref = "#" }) {
@@ -152,20 +160,23 @@ export default function AdminDashboard() {
     async function fetchDashboardStats() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const [projects, users, cases, volunteers] = await Promise.all([
+        const [projects, users, cases, volunteers, interviews, projectTasks] = await Promise.all([
           fetchList(`${API_URL}/api/projects`, "projects"),
           fetchList(`${API_URL}/api/users`, "users"),
           fetchList(`${API_URL}/api/case_reports/all`, "cases"),
           fetchList(`${API_URL}/api/volunteer_applications`, "volunteers"),
+          fetchList(`${API_URL}/api/interviews?type=case_report`, "data"),
+          fetchList(`${API_URL}/api/project-tasks`, "data"),
         ]);
+        const legalDeadlines = await fetchLegalDeadlinesForCases(API_URL, cases);
 
         if (isMounted) {
-          setStatsData({ projects, users, cases, volunteers });
+          setStatsData({ projects, users, cases, volunteers, interviews, projectTasks, legalDeadlines });
         }
       } catch (err) {
         console.error("Failed to fetch dashboard stats:", err);
         if (isMounted) {
-          setStatsData({ projects: [], users: [], cases: [], volunteers: [] });
+          setStatsData({ projects: [], users: [], cases: [], volunteers: [], interviews: [], projectTasks: [], legalDeadlines: [] });
         }
       }
     }
@@ -237,11 +248,15 @@ export default function AdminDashboard() {
     ];
   }, [statsData]);
 
-  const deadlines = [
-    { emoji: "🌞", title: "SASHA believes that...",  date: "March 1, 2026"   },
-    { emoji: "⭐", title: "SASHA Awareness an...",   date: "August 18, 2026" },
-    { emoji: "🎄", title: "Youth Empowerment a...",  date: "April 1, 2026"   },
-  ];
+  const deadlines = useMemo(() => {
+    if (!statsData) return [];
+    return limitUpcomingDeadlines([
+      ...buildConfirmedInterviewDeadlines(statsData.interviews, { limit: Infinity }),
+      ...buildProjectTaskDeadlines(statsData.projectTasks, { limit: Infinity }),
+      ...buildProjectDeadlines(statsData.projects, { limit: Infinity }),
+      ...buildLegalCaseDeadlines(statsData.legalDeadlines, { limit: Infinity }),
+    ]);
+  }, [statsData]);
 
   return (
     <>
@@ -307,7 +322,9 @@ export default function AdminDashboard() {
             <div className="col-12 col-lg-4">
               <div className={styles.deadlinesCard}>
                 <h3 className={styles.deadlinesTitle}>Upcoming Deadlines</h3>
-                {deadlines.map((d, i) => (
+                {deadlines.length === 0 ? (
+                  <p className={styles.deadlineDate}>No upcoming deadlines.</p>
+                ) : deadlines.map((d, i) => (
                   <DeadlineItem key={i} {...d} />
                 ))}
               </div>
