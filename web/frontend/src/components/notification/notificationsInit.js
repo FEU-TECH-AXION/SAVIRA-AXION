@@ -1,48 +1,61 @@
 // SAVIRA/web/frontend/src/components/notification/NotificationsInit.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getToken, onMessage } from 'firebase/messaging';
-import { getFirebaseMessaging } from '@/lib/firebase';
+import {
+  getFirebaseMessaging,
+  isFirebaseMessagingConfigured,
+} from '@/lib/firebase';
 
 export default function NotificationsInit() {
   const [showBanner, setShowBanner] = useState(false);
 
-  useEffect(() => {
-    // Check current permission state
-    if (Notification.permission === 'default') {
-      setShowBanner(true); // not yet asked — show the banner
-    } else if (Notification.permission === 'granted') {
-      registerToken(); // already allowed — register silently
-    }
-    // if 'denied', do nothing
-  }, []);
+  const registerToken = useCallback(async () => {
+    try {
+      const messaging = await getFirebaseMessaging();
+      if (!messaging) return;
 
-  async function registerToken() {
-    const messaging = await getFirebaseMessaging();
-    if (!messaging) return;
-
-    const token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-    });
-
-    if (token) {
-      const res = await fetch('http://localhost:5000/api/notifications/register-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ token, platform: 'web' }),
+      const token = await getToken(messaging, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
       });
 
+      if (token) {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        await fetch(`${API_URL}/api/notifications/register-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token, platform: 'web' }),
+        });
+      }
+
+      onMessage(messaging, () => {});
+    } catch (error) {
+      console.warn('[Notifications] Registration skipped:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      !('Notification' in window) ||
+      !isFirebaseMessagingConfigured
+    ) {
+      return;
     }
 
-    onMessage(messaging, (payload) => {
-      const { title, body } = payload.notification;
-
-    });
-  }
+    if (Notification.permission === 'default') {
+      const timer = window.setTimeout(() => setShowBanner(true), 0);
+      return () => window.clearTimeout(timer);
+    } else if (Notification.permission === 'granted') {
+      registerToken();
+    }
+  }, [registerToken]);
 
   async function handleAllow() {
+    if (!('Notification' in window)) return;
+
     const permission = await Notification.requestPermission();
 
     setShowBanner(false);
@@ -67,7 +80,7 @@ export default function NotificationsInit() {
       maxWidth: '320px',
     }}>
       <p style={{ margin: '0 0 12px', fontSize: '14px' }}>
-        🔔 Enable notifications to stay updated on case assignments and status changes.
+        Enable notifications to stay updated on case assignments and status changes.
       </p>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button

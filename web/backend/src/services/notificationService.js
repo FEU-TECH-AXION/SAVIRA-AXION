@@ -16,6 +16,10 @@ async function notifyUser(userId, { title, body, data = {} }) {
   if (!tokens?.length) return;
 
   const messaging = getMessaging();
+  if (!messaging) {
+    console.warn('[notifyUser] Push notifications skipped: Firebase Admin is not configured.');
+    return;
+  }
 
   const messages = tokens.map(({ token }) => ({
     token,
@@ -28,7 +32,13 @@ async function notifyUser(userId, { title, body, data = {} }) {
     },
   }));
 
-  const response = await messaging.sendEach(messages);
+  let response;
+  try {
+    response = await messaging.sendEach(messages);
+  } catch (error) {
+    console.error('[notifyUser] Failed to send notifications:', error.message);
+    return;
+  }
 
   const invalidTokens = response.responses
     .map((r, i) => (!r.success ? tokens[i].token : null))
