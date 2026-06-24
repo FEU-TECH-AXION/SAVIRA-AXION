@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { FaTimesCircle } from "react-icons/fa";
 import { IoIosWarning } from "react-icons/io";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
 //
@@ -1244,6 +1245,8 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
   const [modal, setModal] = useState(null);
   const [meetingLinkInterview, setMeetingLinkInterview] = useState(null);
   const [cancelInterview, setCancelInterview] = useState(null);
+  const [completeInterview, setCompleteInterview] = useState(null);
+  const [completeSubmitting, setCompleteSubmitting] = useState(false);
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true); // no loading for mock
   const [showForm, setShowForm]       = useState(false);
@@ -1414,6 +1417,45 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
       showToast?.("Interview cancelled.");
     } catch (err) {
       showToast?.(err.message || "Failed to cancel interview.", "error");
+    }
+  }
+
+  async function handleComplete(interviewId) {
+    if (!canManageStaffInterview) {
+      showToast?.("Only assigned Membership Committee staff can modify this interview.", "error");
+      return;
+    }
+    setCompleteSubmitting(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_URL}/api/interviews/${interviewId}/complete`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to mark interview complete.");
+      }
+
+      setInterviews((prev) =>
+        prev.map((iv) =>
+          iv.id === interviewId
+            ? {
+                ...iv,
+                interviewStatus: "Completed",
+                status: "Completed",
+                completed_at: new Date().toISOString(),
+              }
+            : iv
+        )
+      );
+      setCompleteInterview(null);
+      showToast?.("Interview marked as completed.");
+    } catch (err) {
+      showToast?.(err.message || "Failed to mark interview complete.", "error");
+    } finally {
+      setCompleteSubmitting(false);
     }
   }
 
@@ -1713,6 +1755,8 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
             const scheduledLabel = formatStaffDateTime(iv);
             const isInvited = status === "Invited";
             const isConfirmed = status === "Confirmed";
+            const isCancelled = status === "Cancelled";
+            const isCompleted = status === "Completed";
             const canManage = canManageStaffInterview && !["Cancelled", "Completed", "Expired"].includes(status);
 
             return (
@@ -1738,6 +1782,10 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
                     <span style={{ display: "block", marginTop: 3, fontSize: "0.82rem", color: "#6b7280" }}>
                       {isInvited
                         ? "Waiting for the applicant to select an available slot."
+                        : isCancelled
+                        ? "This interview was cancelled."
+                        : isCompleted
+                        ? "This interview has been completed."
                         : isConfirmed
                         ? "Interview details are confirmed."
                         : "Applicant has a selected interview schedule."}
@@ -1787,6 +1835,12 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
                           style={{ padding: "5px 14px", background: "#e0f7f7", color: "#037F81", border: "1.5px solid #037F81", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
                         >
                           Reschedule
+                        </button>
+                        <button
+                          onClick={() => setCompleteInterview(iv)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 14px", background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Mark Interview Complete
                         </button>
                       </>
                     )}
@@ -1864,6 +1918,18 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
           onConfirm={handleCancel}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(completeInterview) && canManageStaffInterview}
+        title="Mark interview complete?"
+        description="Confirm that this interview has taken place and should be marked as completed."
+        detail="Completed interviews are kept in the record and active scheduling actions will be closed."
+        confirmLabel="Mark Complete"
+        cancelLabel="Keep Open"
+        busy={completeSubmitting}
+        onConfirm={() => completeInterview && handleComplete(completeInterview.id)}
+        onCancel={() => !completeSubmitting && setCompleteInterview(null)}
+      />
 
       {rescheduleId && canManageStaffInterview && (() => {
         const iv = interviews.find((x) => x.id === rescheduleId);
