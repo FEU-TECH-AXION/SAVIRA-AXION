@@ -24,10 +24,14 @@ export const STATUS_DISPLAY = {
   "Case Filed": { middle: "Case Filed", phase: 1 },
   "Investigation Ongoing": { middle: "Investigation Ongoing", phase: 1 },
   "Hearing Ongoing": { middle: "Hearing Ongoing", phase: 1 },
-  Dismissed: { middle: "Dismissed", phase: 2 },
-  "Perpetrator Convicted": { middle: "Perpetrator Convicted", phase: 2 },
-  Resolved: { middle: "Resolved", phase: 2 },
-  Withdrawn: { middle: "Withdrawn", phase: 2 },
+  // Terminal statuses: the middle dot label is supplied at runtime from the
+  // actual status history (previous_status_name from the API).  We set
+  // middle: null here as a sentinel — StatusStepper reads previousStatusName
+  // on the report object instead.
+  Dismissed: { middle: null, phase: 2 },
+  "Perpetrator Convicted": { middle: null, phase: 2 },
+  Resolved: { middle: null, phase: 2 },
+  Withdrawn: { middle: null, phase: 2 },
 };
 
 export function getStatusName(report) {
@@ -87,6 +91,9 @@ export function normalizeReport(report) {
     description: report.incident_description || report.description || "",
     followUpSummary: report.follow_up_summary || report.followUpSummary || null,
     withdrawalRequest: report.withdrawal_request || report.withdrawalRequest || null,
+    // The status the case was in just before reaching a terminal outcome.
+    // Populated by the backend for Dismissed/Perpetrator Convicted/Resolved/Withdrawn.
+    previousStatusName: report.previous_status_name || report.previousStatusName || null,
   };
 }
 

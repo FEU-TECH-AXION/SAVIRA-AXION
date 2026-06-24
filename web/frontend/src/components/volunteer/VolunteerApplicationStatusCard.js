@@ -3,13 +3,15 @@
 import { useRouter } from "next/navigation";
 import styles from "./VolunteerApplicationStatusCard.module.css";
 
+// For terminal statuses the third dot shows the actual outcome and the middle
+// dot shows the last in-progress status before that outcome.
 const STATUS_DISPLAY = {
-  pending: { middle: "Pending Review", phase: 1 },
-  reviewing: { middle: "Under Review", phase: 1 },
-  under_review: { middle: "Under Review", phase: 1 },
-  approved: { middle: "Approved", phase: 2 },
-  rejected: { middle: "Rejected", phase: 2 },
-  withdrawn: { middle: "Withdrawn", phase: 2 },
+  pending:      { middle: "Pending Review", phase: 1, terminalLabel: null },
+  reviewing:    { middle: "Under Review",   phase: 1, terminalLabel: null },
+  under_review: { middle: "Under Review",   phase: 1, terminalLabel: null },
+  approved:     { middle: "Under Review",   phase: 2, terminalLabel: "Approved" },
+  rejected:     { middle: "Under Review",   phase: 2, terminalLabel: "Rejected" },
+  withdrawn:    { middle: "Under Review",   phase: 2, terminalLabel: "Withdrawn" },
 };
 
 function formatDate(value) {
@@ -60,11 +62,14 @@ export function normalizeVolunteerApplication(application = {}) {
 }
 
 function ApplicationStepper({ statusName }) {
-  const { middle, phase } = STATUS_DISPLAY[statusName] || {
+  const { middle, phase, terminalLabel } = STATUS_DISPLAY[statusName] || {
     middle: "In Progress",
     phase: 1,
+    terminalLabel: null,
   };
-  const steps = ["Submitted", middle, "Completed"];
+  // Non-terminal: third dot = "Completed". Terminal: third dot = the actual outcome.
+  const thirdLabel = terminalLabel ?? "Completed";
+  const steps = ["Submitted", middle, thirdLabel];
 
   return (
     <div className={styles.stepper}>

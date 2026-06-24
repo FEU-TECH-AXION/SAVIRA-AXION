@@ -32,12 +32,20 @@ function timeAgo(dateStr) {
   });
 }
 
-function StatusStepper({ statusName }) {
-  const { middle, phase } = STATUS_DISPLAY[statusName] ?? {
+const TERMINAL_STATUSES = new Set(["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"]);
+
+function StatusStepper({ statusName, previousStatusName }) {
+  const { middle: middleFromDisplay, phase } = STATUS_DISPLAY[statusName] ?? {
     middle: "In Progress",
     phase: 1,
   };
-  const steps = ["Submitted", middle, "Resolved"];
+  // For terminal statuses the third dot shows the actual outcome label and the
+  // middle dot shows the real last-recorded status before that outcome.
+  // middleFromDisplay is null for terminal statuses — we fall back to
+  // previousStatusName from the API, then to a generic "In Progress".
+  const middle = middleFromDisplay ?? previousStatusName ?? "In Progress";
+  const thirdLabel = TERMINAL_STATUSES.has(statusName) ? statusName : "Resolved";
+  const steps = ["Submitted", middle, thirdLabel];
 
   return (
     <div className={styles.stepper}>
@@ -181,7 +189,7 @@ export default function ReportStatusCard({
           </div>
         </div>
 
-        <StatusStepper statusName={report.statusName} />
+        <StatusStepper statusName={report.statusName} previousStatusName={report.previousStatusName} />
       </div>
     </div>
   );
