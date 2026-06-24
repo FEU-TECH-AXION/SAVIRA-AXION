@@ -1,4 +1,5 @@
 const { assignCaseToOfficer, getAssignmentsByCaseId, getAssignmentsByOfficerId } = require('../models/case_assignments.model');
+const { notifyUser } = require('../services/notificationService');
 
 // POST /api/case_assignments — assign a case to an officer
 const createAssignment = async (req, res) => {
@@ -84,7 +85,7 @@ const bulkAssignOfficers = async (req, res) => {
                 // Get officer details for logging
                 const { data: officerData, error: officerError } = await supabase
                     .from('case_officers')
-                    .select('users(first_name, last_name)')
+                    .select('user_id, users(first_name, last_name)')
                     .eq('case_officer_id', case_officer_id)
                     .single();
 
@@ -119,6 +120,18 @@ const bulkAssignOfficers = async (req, res) => {
                     case_officer_id,
                     name: officerName
                 });
+
+                // Notify the assigned officer
+                if (officerData.user_id) {
+                    notifyUser(officerData.user_id, {
+                        title: 'New Case Assigned',
+                        body: `You have been assigned to case ${case_report_id}.`,
+                        data: {
+                            case_report_id,
+                            link: `/cases/${case_report_id}`,
+                        },
+                    }).catch(err => console.error('[notifyUser] Failed to notify officer:', err.message));
+                }
             }
         }
 

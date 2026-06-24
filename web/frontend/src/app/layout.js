@@ -19,12 +19,12 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  <NotificationsInit />;
 
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body>
         <AuthProvider>
+          <NotificationsInit />;
           <NavbarClient />
           <main>{children}</main>
           <Footer />
