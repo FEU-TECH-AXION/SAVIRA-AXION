@@ -141,6 +141,16 @@ export async function fetchProjectTasks(projectId) {
   return data.data || [];
 }
 
+export async function fetchAllProjectTasks() {
+  const res = await fetch(`${API_URL}/api/project-tasks`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch project tasks');
+  return data.data || [];
+}
+
 export async function createProjectTask(projectId, payload) {
   const res = await fetch(`${API_URL}/api/project-tasks/project/${projectId}`, {
     method: 'POST',
@@ -195,6 +205,16 @@ export async function fetchStaffAvailability() {
   return Array.isArray(data) ? data : data.data || [];
 }
 
+export async function fetchStaff() {
+  const res = await fetch(`${API_URL}/api/staff`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ([]));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch staff');
+  return Array.isArray(data) ? data : data.data || [];
+}
+
 export async function updateStaffAvailability(staffId, payload) {
   const res = await fetch(`${API_URL}/api/availability/${staffId}`, {
     method: 'PATCH',
@@ -237,4 +257,26 @@ export async function createChapter(payload) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Failed to create chapter');
   return data;
+}
+
+export async function updateChapter(id, payload) {
+  const res = await fetch(`${API_URL}/api/chapters/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to update chapter');
+  return data;
+}
+
+export async function deleteChapter(id) {
+  const res = await fetch(`${API_URL}/api/chapters/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to delete chapter');
+  return data.deleted;
 }

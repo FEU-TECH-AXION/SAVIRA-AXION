@@ -10,6 +10,14 @@ async function list(req, res) {
   }
 }
 
+async function listAll(req, res) {
+  try {
+    res.json({ data: await ProjectTasks.listAll() })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
 async function create(req, res) {
   try {
     if (!req.body?.title?.trim()) return res.status(400).json({ error: 'Task title is required.' })
@@ -44,4 +52,4 @@ async function activity(req, res) {
   }
 }
 
-module.exports = { list, create, update, cancel, activity }
+module.exports = { listAll, list, create, update, cancel, activity }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FiCheck, FiAlertCircle } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import { validateBirthday } from "@/utils/birthdayValidation";
 import styles from "./ProfileTab.module.css";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
@@ -65,14 +66,8 @@ function validateProfile(data) {
     errors.gender_identity = "Select a valid gender identity.";
   }
   if (data.birthday) {
-    const age = getAge(data.birthday);
-    if (age === null) {
-      errors.birthday = "Enter a valid birthday.";
-    } else if (age < 13) {
-      errors.birthday = "You must be at least 13 years old.";
-    } else if (age > 120) {
-      errors.birthday = "Enter a valid birthday within the last 120 years.";
-    }
+    const birthdayError = validateBirthday(data.birthday);
+    if (birthdayError) errors.birthday = birthdayError;
   }
   if (!data.contact_number) {
     errors.contact_number = "Contact number is required.";
@@ -112,11 +107,14 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
     if (name === "contact_number") {
       setForm((p) => ({ ...p, [name]: normalisePhone(value) }));
     } else if (name === "birthday") {
-      const age = getAge(value);
       setForm((p) => ({ ...p, birthday: value }));
-      if (value && age !== null && age < 13) {
-        setFormErrors((p) => ({ ...p, birthday: "You must be at least 13 years old." }));
-        setUnderageDialogOpen(true);
+      if (value) {
+        const birthdayError = validateBirthday(value);
+        if (birthdayError) {
+          setFormErrors((p) => ({ ...p, birthday: birthdayError }));
+          const age = getAge(value);
+          if (age !== null && age < 13) setUnderageDialogOpen(true);
+        }
       }
     } else if (name === "province") {
       if (value === "" || value === "National Capital Region (NCR)") {
@@ -207,7 +205,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
         <Field label="Birthday" badge="Optional" hint="Helps us confirm age-appropriate access where required." error={formErrors.birthday}>
           <input name="birthday" type="date" value={form.birthday}
             onChange={handleChange}
-            min={formatDateInput(new Date(new Date().setFullYear(new Date().getFullYear() - 120)))}
+            min={formatDateInput(new Date(new Date().setFullYear(new Date().getFullYear() - 125)))}
             max={birthdayForAge(13)} />
         </Field>
         <Field label="Gender Identity" badge="Optional" hint="Visible only to you and authorized SASHA personnel." error={formErrors.gender_identity}>

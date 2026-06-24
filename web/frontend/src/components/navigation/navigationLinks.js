@@ -72,7 +72,7 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/cases", label: "Cases" },
     { href: "/legalReviews", label: "Legal Review" },
     { href: "/projects", label: "Projects" },
-    { href: "/projectTasks", label: "Project Tasks" },
+    { href: "/projectTasks/admin", label: "Project Tasks" },
     { href: "/staffAvailability", label: "Staff Availability" },
     { href: "/volunteer", label: "Volunteers" },
     { href: "/heatmap", label: "Heatmap" },
@@ -190,7 +190,7 @@ export const SIDEBAR_LINKS = {
       icon: "folder",
       children: [
         { href: "/projects", label: "All Projects" },
-        { href: "/projectTasks", label: "Project Tasks" },
+        { href: "/projectTasks/admin", label: "Project Tasks" },
       ],
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },

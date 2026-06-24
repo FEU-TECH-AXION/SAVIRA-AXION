@@ -168,6 +168,7 @@ export default function CasesTable({
   onPageChange,
   onRowClick,
   onAssign,
+  onRemoveAssignedStaff,
   onUpdateStatus,
   isAdmin,
   getAvailableTransitions,
@@ -265,6 +266,14 @@ export default function CasesTable({
                 onClick={() => onAssign && onAssign(selectedCases)}
               >
                 Assign
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
+                onClick={() => onRemoveAssignedStaff && onRemoveAssignedStaff(selectedCases)}
+              >
+                Remove Assigned Staff
               </button>
             )}
             <button

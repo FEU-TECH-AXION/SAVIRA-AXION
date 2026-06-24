@@ -1603,11 +1603,11 @@ export default function ViewApplication() {
       <div className={styles.pageInner}>
 
         {/* ── Header card ── */}
-        <div className={styles.headerCard}>
-          <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
-            <IoIosArrowBack /> Back to Volunteer Management
-          </button>
+        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
+          <FiArrowLeft /> Back to Volunteer Management
+        </button>
 
+        <div className={styles.headerCard}>
           <div className={styles.headerTop}>
             <div>
               <h1 className={styles.caseTitle}>APP-{String(appData.id).padStart(4, "0")}</h1>

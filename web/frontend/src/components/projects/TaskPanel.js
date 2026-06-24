@@ -17,7 +17,7 @@ const EMPTY = {
   due_date: "", status: "Pending",
 }
 
-export default function TaskPanel({ projectId }) {
+export default function TaskPanel({ projectId, readOnly = false }) {
   const [tasks, setTasks] = useState([])
   const [staff, setStaff] = useState([])
   const [form, setForm] = useState(EMPTY)
@@ -36,15 +36,17 @@ export default function TaskPanel({ projectId }) {
       try {
         const [taskRows, staffRows] = await Promise.all([
           fetchProjectTasks(projectId),
-          fetchStaffAvailability(),
+          readOnly ? Promise.resolve([]) : fetchStaffAvailability(),
         ])
         if (!cancelled) {
           setTasks(taskRows)
-          setStaff(staffRows.filter((person) =>
-            person.role === "Staff" &&
-            person.staff_id &&
-            !["On Leave", "Out of Office"].includes(person.availability_status)
-          ))
+          if (!readOnly) {
+            setStaff(staffRows.filter((person) =>
+              person.role === "Staff" &&
+              person.staff_id &&
+              !["On Leave", "Out of Office"].includes(person.availability_status)
+            ))
+          }
         }
       } catch (err) {
         if (!cancelled) setError(err.message)
@@ -54,7 +56,7 @@ export default function TaskPanel({ projectId }) {
     }
     loadData()
     return () => { cancelled = true }
-  }, [projectId])
+  }, [projectId, readOnly])
 
   const summary = useMemo(() => ({
     total: tasks.filter((task) => task.status !== "Cancelled").length,
@@ -67,12 +69,14 @@ export default function TaskPanel({ projectId }) {
   ), [tasks, filter])
 
   function openCreate() {
+    if (readOnly) return
     setEditing(null)
     setForm(EMPTY)
     setShowForm(true)
   }
 
   function openEdit(task) {
+    if (readOnly) return
     setEditing(task)
     setForm({
       title: task.title || "",
@@ -87,6 +91,7 @@ export default function TaskPanel({ projectId }) {
 
   async function save(event) {
     event.preventDefault()
+    if (readOnly) return
     if (!form.title.trim()) return
     setError("")
     try {
@@ -110,6 +115,7 @@ export default function TaskPanel({ projectId }) {
   }
 
   async function changeStatus(task, status) {
+    if (readOnly) return
     try {
       const saved = await updateProjectTask(task.task_id, { status })
       setTasks((current) => current.map((item) => item.task_id === saved.task_id ? saved : item))
@@ -119,6 +125,7 @@ export default function TaskPanel({ projectId }) {
   }
 
   async function cancel(task) {
+    if (readOnly) return
     try {
       const saved = await cancelProjectTask(task.task_id)
       setTasks((current) => current.map((item) => item.task_id === saved.task_id ? saved : item))
@@ -144,11 +151,14 @@ export default function TaskPanel({ projectId }) {
     <section className={styles.panel}>
       <div className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Accountability</p>
-          <h2>Project Tasks</h2>
+          <p className={styles.eyebrow}>Project Tasks</p>
           <p>{summary.completed} of {summary.total} completed · {summary.overdue} overdue</p>
         </div>
-        <button className={styles.primary} onClick={openCreate}>+ Add task</button>
+        {readOnly ? (
+          <span className={styles.readOnlyBadge}>View only</span>
+        ) : (
+          <button className={styles.primary} onClick={openCreate}>+ Add task</button>
+        )}
       </div>
 
       <div className={styles.summary}>
@@ -194,18 +204,18 @@ export default function TaskPanel({ projectId }) {
                 )}
               </div>
               <div className={styles.actions}>
-                {task.status === "Pending" && <button onClick={() => changeStatus(task, "In Progress")}>Start</button>}
-                {task.status === "In Progress" && <button onClick={() => changeStatus(task, "Completed")}>Complete</button>}
-                <button onClick={() => openEdit(task)}>Edit</button>
+                {!readOnly && task.status === "Pending" && <button onClick={() => changeStatus(task, "In Progress")}>Start</button>}
+                {!readOnly && task.status === "In Progress" && <button onClick={() => changeStatus(task, "Completed")}>Complete</button>}
+                {!readOnly && <button onClick={() => openEdit(task)}>Edit</button>}
                 <button onClick={() => toggleActivity(task.task_id)}>History</button>
-                {!["Completed", "Cancelled"].includes(task.status) && <button className={styles.danger} onClick={() => cancel(task)}>Cancel</button>}
+                {!readOnly && !["Completed", "Cancelled"].includes(task.status) && <button className={styles.danger} onClick={() => cancel(task)}>Cancel</button>}
               </div>
             </article>
           ))}
         </div>
       )}
 
-      {showForm && (
+      {!readOnly && showForm && (
         <div className={styles.overlay} onClick={() => setShowForm(false)}>
           <form className={styles.modal} onSubmit={save} onClick={(event) => event.stopPropagation()}>
             <div className={styles.modalHeader}>

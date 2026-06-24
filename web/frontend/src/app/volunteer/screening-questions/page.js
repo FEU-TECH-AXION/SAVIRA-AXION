@@ -968,7 +968,7 @@ export default function ScreeningQuestionsPage() {
               <Tooltip text="Discard all unpublished changes" position="bottom">
                 <button
                   type="button"
-                  className={styles.heroSecondary}
+                  className={styles.heroPrimary}
                   onClick={requestCancelEditing}
                 >
                   <FiX /> Cancel Editing

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiPlus, FiRefreshCw } from "react-icons/fi";
 import { IoIosWarning } from "react-icons/io";
 import ChapterTable from "@/components/chapterBuilding/ChapterTable";
 import FilterMenu from "@/components/chapterBuilding/FilterMenu";
-import { fetchChapters } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import { deleteChapter, fetchChapters } from "@/lib/api";
 import styles from "./ChapterManagement.module.css";
 
 const PAGE_SIZE = 10;
@@ -112,8 +113,10 @@ export default function ChapterManagementPage() {
   const [sortField, setSortField] = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
+  const [deleteTargets, setDeleteTargets] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
-  function loadChapters() {
+  const loadChapters = useCallback(() => {
     setLoading(true);
     setError("");
     fetchChapters()
@@ -126,11 +129,12 @@ export default function ChapterManagementPage() {
       .finally(() => {
         setLoading(false);
       });
-  }
+  }, []);
 
   useEffect(() => {
-    loadChapters();
-  }, []);
+    const timer = window.setTimeout(loadChapters, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadChapters]);
 
   const filtered = useMemo(() => {
     let list = [...chapters];
@@ -199,10 +203,6 @@ export default function ChapterManagementPage() {
     return list;
   }, [chapters, search, activeFilters, sortField, sortDir]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, activeFilters, sortField]);
-
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -218,10 +218,47 @@ export default function ChapterManagementPage() {
   function handleSort(field) {
     setSortDir((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
     setSortField(field);
+    setPage(1);
   }
+
+  async function confirmDeleteChapters() {
+    if (deleteTargets.length === 0) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await Promise.all(deleteTargets.map((chapter) => deleteChapter(chapter.id)));
+      const deletedIds = new Set(deleteTargets.map((chapter) => chapter.id));
+      setChapters((current) => current.filter((chapter) => !deletedIds.has(chapter.id)));
+      setDeleteTargets([]);
+    } catch (err) {
+      setError(err.message || "Unable to delete selected chapters.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const deleteDetail = deleteTargets.length === 1
+    ? deleteTargets[0]?.chapterName || deleteTargets[0]?.id
+    : deleteTargets
+      .map((chapter) => chapter.chapterName || chapter.id)
+      .slice(0, 5)
+      .join(", ");
 
   return (
     <main className={styles.pageWrapper}>
+      <ConfirmDialog
+        open={deleteTargets.length > 0}
+        title={deleteTargets.length === 1 ? "Delete this chapter?" : `Delete ${deleteTargets.length} chapters?`}
+        description="This will remove the selected chapter record and its roster/officer details. This action cannot be undone."
+        detail={deleteDetail}
+        confirmLabel={deleteTargets.length === 1 ? "Delete chapter" : "Delete chapters"}
+        tone="danger"
+        busy={deleting}
+        onConfirm={confirmDeleteChapters}
+        onCancel={() => {
+          if (!deleting) setDeleteTargets([]);
+        }}
+      />
       <section className={styles.heroBanner}>
         <div className="container-xl">
           <div className={styles.heroContent}>
@@ -292,6 +329,8 @@ export default function ChapterManagementPage() {
               sortField={sortField}
               sortDir={sortDir}
               onSort={handleSort}
+              onEditSelected={(chapter) => router.push(`/volunteer/chapters/edit?id=${chapter.id}`)}
+              onDeleteSelected={setDeleteTargets}
               extraColumns={extraColumns}
             />
           )}

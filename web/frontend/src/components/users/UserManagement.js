@@ -477,44 +477,49 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
 // ══════════════════════════════════════════════════════════════════
 function ViewUserModal({ open, onClose, user }) {
   if (!user) return null;
+  const displayValue = (value, fallback = "Not provided") =>
+    value === null || value === undefined || String(value).trim() === "" || String(value).trim() === "—"
+      ? fallback
+      : value;
+
   return (
     <Modal open={open} onClose={onClose} title="User Details">
       <div className={styles.viewGrid}>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Full Name</span>
-          <span className={styles.viewVal}>{user.name}</span>
+          <span className={styles.viewVal}>{displayValue(user.name, "Unnamed user")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Email</span>
-          <span className={styles.viewVal}>{user.email || "—"}</span>
+          <span className={styles.viewVal}>{displayValue(user.email, "No email provided")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Phone</span>
-          <span className={styles.viewVal}>{user.phone || "—"}</span>
+          <span className={styles.viewVal}>{displayValue(user.phone, "No phone number provided")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Username</span>
-          <span className={styles.viewVal}>{user.user_name || "—"}</span>
+          <span className={styles.viewVal}>{displayValue(user.user_name, "No username provided")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Birthday</span>
-          <span className={styles.viewVal}>{user.birthday ? formatDate(user.birthday) : "—"}</span>
+          <span className={styles.viewVal}>{user.birthday ? formatDate(user.birthday) : "No birthday provided"}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Gender Identity</span>
-          <span className={styles.viewVal}>{user.gender_identity || "—"}</span>
+          <span className={styles.viewVal}>{displayValue(user.gender_identity, "No gender identity provided")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>City</span>
-          <span className={styles.viewVal}>{user.city || "—"}</span>
+          <span className={styles.viewVal}>{displayValue(user.city, "No city provided")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Province</span>
-          <span className={styles.viewVal}>{user.province || "—"}</span>
+          <span className={styles.viewVal}>{displayValue(user.province, "No province provided")}</span>
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Role</span>
-          <span className={styles.viewVal}>{user.role}</span>
+          <span className={styles.viewVal}>{displayValue(user.role, "No role assigned")}</span>
         </div>
         {user.role === "Legal Personnel" && (
           <div className={styles.viewRow}>
@@ -528,7 +533,7 @@ function ViewUserModal({ open, onClose, user }) {
         </div>
         <div className={styles.viewRow}>
           <span className={styles.viewKey}>Date Created</span>
-          <span className={styles.viewVal}>{user.dateCreated}</span>
+          <span className={styles.viewVal}>{displayValue(user.dateCreated, "No creation date available")}</span>
         </div>
       </div>
       <div className={styles.modalFooter}>
@@ -581,7 +586,8 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (!user) return undefined;
+    const timer = window.setTimeout(() => {
       setForm({
         first_name:     user.first_name     ?? "",
         middle_name:    user.middle_name    ?? "",
@@ -601,7 +607,9 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
       });
       setPreview(user.profile_img || null);
       setErrors({});
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [user]);
 
   function validate() {
@@ -813,45 +821,44 @@ function DeleteUserModal({ open, onClose, user, onDeactivate, onReactivate, onHa
   // ── Default screen ────────────────────────────────────────────
   return (
     <Modal open={open} onClose={handleClose} title="Manage User">
-      <div className={styles.deleteBody}>
+      <div className={styles.manageUserBody}>
         <div className={styles.deleteIcon}><FiAlertTriangle /></div>
-        <p className={styles.deleteMsg}>
-          What would you like to do with <strong>{user.name}</strong>?
-        </p>
-      </div>
-
-      {/* Soft option */}
-      <div className={styles.deleteOption}>
-        <div>
-          <strong>{isInactive ? "Reactivate User" : "Deactivate User"}</strong>
-          <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "var(--text-muted, #666)" }}>
-            {isInactive
-              ? "Restore this user's access. They will be able to log in again."
-              : "Disable this user's access. Their data is kept and this can be undone."}
-          </p>
+        <div className={styles.manageUserIntro}>
+          <p>Choose how to manage</p>
+          <strong>{user.name || "this user"}</strong>
         </div>
-        <button
-          className={isInactive ? styles.btnPrimary : styles.btnSecondary}
-          onClick={() => {
-            isInactive ? onReactivate(user.user_id) : onDeactivate(user.user_id);
-            handleClose();
-          }}
-        >
-          {isInactive ? "Reactivate" : "Deactivate"}
-        </button>
-      </div>
 
-      {/* Hard delete option */}
-      <div className={styles.deleteOption}>
-        <div>
-          <strong>Permanently Delete</strong>
-          <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "var(--text-muted, #666)" }}>
-            Remove this user forever. This cannot be undone.
-          </p>
+        <div className={styles.manageOptions}>
+          <section className={styles.manageOptionCard}>
+            <div>
+              <h3>{isInactive ? "Reactivate User" : "Deactivate User"}</h3>
+              <p>
+                {isInactive
+                  ? "Restore this user's access. They will be able to log in again."
+                  : "Disable this user's access. Their data is kept and this can be undone."}
+              </p>
+            </div>
+            <button
+              className={isInactive ? styles.btnPrimary : styles.btnSecondary}
+              onClick={() => {
+                isInactive ? onReactivate(user.user_id) : onDeactivate(user.user_id);
+                handleClose();
+              }}
+            >
+              {isInactive ? "Reactivate" : "Deactivate"}
+            </button>
+          </section>
+
+          <section className={`${styles.manageOptionCard} ${styles.manageOptionDanger}`}>
+            <div>
+              <h3>Permanently Delete</h3>
+              <p>Remove this user forever. This cannot be undone.</p>
+            </div>
+            <button className={styles.btnDanger} onClick={() => setConfirmHard(true)}>
+              Delete
+            </button>
+          </section>
         </div>
-        <button className={styles.btnDanger} onClick={() => setConfirmHard(true)}>
-          Delete
-        </button>
       </div>
 
       <div className={styles.modalFooter}>
@@ -1207,7 +1214,10 @@ export default function AdminDashboard() {
     });
   }, [filtered, sortField, sortDir]);
 
-  useEffect(() => { setPage(1); }, [search, advancedFilters]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timer);
+  }, [search, advancedFilters]);
 
   const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / PAGE_SIZE));
   const paginated  = sortedFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

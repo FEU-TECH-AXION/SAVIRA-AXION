@@ -143,6 +143,7 @@ export default function ApplicationsTable({
   sortDir,
   onSort,
   onAssign,
+  onRemoveAssignedStaff,
   isAdmin,
   isStaff,
   currentUserId,
@@ -228,6 +229,14 @@ export default function ApplicationsTable({
                 onClick={() => onAssign && onAssign(selectedApplicants)}
               >
                 Assign
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
+                onClick={() => onRemoveAssignedStaff && onRemoveAssignedStaff(selectedApplicants)}
+              >
+                Remove Assigned Staff
               </button>
             )}
             {canUpdateSelectedStatus && (

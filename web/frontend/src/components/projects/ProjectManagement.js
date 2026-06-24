@@ -213,15 +213,21 @@ export default function ProjectManagement() {
   const [sortDir, setSortDir]     = useState("asc");
 
   useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      const storedUser = JSON.parse(userCookie);
-      setUser({
-        role: storedUser.role_name,
-        firstName: storedUser.first_name,
-        lastName: storedUser.last_name,
-      });
-    }
+    const timer = window.setTimeout(() => {
+      const userCookie = getCookie("user");
+      if (!userCookie) return;
+      try {
+        const storedUser = JSON.parse(userCookie);
+        setUser({
+          role: storedUser.role_name,
+          firstName: storedUser.first_name,
+          lastName: storedUser.last_name,
+        });
+      } catch {
+        setUser({ role: "", firstName: "", lastName: "" });
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -274,6 +280,9 @@ export default function ProjectManagement() {
   function openEdit(p) {
     setEditingProject(p);
     setFormMode("edit");
+  }
+  function goToView(project) {
+    router.push(`/projects/view?projectId=${project.id}`);
   }
   async function handleFormSave(data) {
     try {
@@ -441,8 +450,6 @@ export default function ProjectManagement() {
     return list;
   }, [projects, search, activeFilters, sortField, sortDir]);
 
-  useEffect(() => { setPage(1); }, [search, activeFilters, sortField]);
-
   const totalPages = Math.max(1, Math.ceil((filtered?.length || 0) / PAGE_SIZE));
   const paginated  = (filtered || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -571,9 +578,9 @@ export default function ProjectManagement() {
                   totalRecords={filtered.length}
                   pageSize={PAGE_SIZE}
                   onPageChange={setPage}
-                  onRowDoubleClick={openEdit}
+                  onRowDoubleClick={goToView}
                   onEdit={openEdit}
-                  onView={(project) => router.push(`/projects/view?projectId=${project.id}`)}
+                  onView={goToView}
                   onDelete={openDelete}
                   onDeleteSelected={handleBulkDelete}
                   sortField={sortField}

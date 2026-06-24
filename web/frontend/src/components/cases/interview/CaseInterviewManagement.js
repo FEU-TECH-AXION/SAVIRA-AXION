@@ -7,6 +7,7 @@ import { FiSearch, FiX, FiPlus, FiAlertTriangle, FiChevronLeft, FiChevronRight, 
 import InterviewsTable from "./InterviewsTable";
 import FilterMenu from "./FilterMenu";
 import AddMeetingLinkModal from "./AddMeetingLinkModal";
+import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import { MdEdit, MdCancel } from "react-icons/md";
 
 const PAGE_SIZE = 10;
@@ -379,6 +380,8 @@ export default function CaseInterviewManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingData, setLoadingData] = useState(true);
   const [user, setUser] = useState(null);
+  const [removeAssignedDialog, setRemoveAssignedDialog] = useState(null);
+  const [removingAssigned, setRemovingAssigned] = useState(false);
 
   const [createSlotDate, setCreateSlotDate] = useState("");
   const [editingSlot, setEditingSlot]       = useState(null);
@@ -640,6 +643,61 @@ export default function CaseInterviewManagement() {
     }
   };
 
+  const requestRemoveAssignedStaff = (selectedIds) => {
+    const ids = Array.isArray(selectedIds) ? selectedIds : [selectedIds];
+    setRemoveAssignedDialog(ids.filter(Boolean));
+  };
+
+  const getRemovableInterviewAssignments = (ids = []) =>
+    ids
+      .map((id) => interviews.find((interview) => String(interview.id) === String(id)))
+      .filter((interview) => interview?.interviewer_user_id)
+      .map((interview) => ({
+        key: String(interview.id),
+        interviewId: interview.id,
+        label: interview.interviewer
+          ? `${interview.interviewer.first_name || ""} ${interview.interviewer.last_name || ""}`.trim()
+          : `Staff #${interview.interviewer_user_id}`,
+        context: `Interview for ${interview.caseId}`,
+        detail: interview.intervieweeName,
+      }));
+
+  const confirmRemoveAssignedStaff = async (selectedAssignments) => {
+    const ids = (selectedAssignments || []).map((assignment) => assignment.interviewId);
+    if (ids.length === 0) {
+      alert("Select at least one assigned interview staff member to remove.");
+      return;
+    }
+
+    setRemovingAssigned(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      await Promise.all(ids.map(async (id) => {
+        const res = await fetch(`${API_URL}/api/interviews/${id}/unassign-staff`, {
+          method: "PATCH",
+          credentials: "include",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove assigned interview staff.");
+      }));
+
+      setInterviews((prev) =>
+        prev.map((interview) =>
+          ids.includes(interview.id)
+            ? { ...interview, interviewer_user_id: null, interviewer: null }
+            : interview
+        )
+      );
+      setSelectedInterviews([]);
+      setRemoveAssignedDialog(null);
+      alert("Selected interview staff removed.");
+    } catch (err) {
+      alert(err.message || "Failed to remove assigned interview staff.");
+    } finally {
+      setRemovingAssigned(false);
+    }
+  };
+
   const handleViewDetails = (interviews) => {
     const interview = Array.isArray(interviews) ? interviews[0] : interviews;
     router.push(`/cases/view?caseId=${interview.caseId.split("-")[1]}&tab=interview`);
@@ -729,6 +787,11 @@ export default function CaseInterviewManagement() {
                   onViewDetails={handleViewDetails}
                   onMarkComplete={handleMarkComplete}
                   onAddMeetingLink={handleAddMeetingLink}
+                  onRemoveAssignedStaff={
+                    String(user?.role_name || user?.role || "").toLowerCase() === "admin"
+                      ? requestRemoveAssignedStaff
+                      : undefined
+                  }
                   onOfferNewSlots={handleViewDetails}
                   loading={loadingData}
                   pageSize={PAGE_SIZE}
@@ -766,6 +829,17 @@ export default function CaseInterviewManagement() {
         interviewIds={selectedInterviews}
         onSave={handleSaveMeetingLink}
         loading={loading}
+      />
+      <RemoveAssignedStaffDialog
+        key={`remove-case-interview-staff-${(removeAssignedDialog || []).join("-") || "closed"}`}
+        open={Boolean(removeAssignedDialog)}
+        title="Remove Assigned Staff"
+        description={`Choose which assigned staff to remove from ${removeAssignedDialog?.length || 0} selected interview${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
+        detail="The interview records will stay in the table, but the interviewer assignment will be cleared."
+        assignments={getRemovableInterviewAssignments(removeAssignedDialog || [])}
+        busy={removingAssigned}
+        onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
+        onConfirm={confirmRemoveAssignedStaff}
       />
     </div>
   );

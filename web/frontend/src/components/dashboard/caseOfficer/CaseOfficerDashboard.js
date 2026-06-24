@@ -6,6 +6,8 @@ import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import DeadlineItem from "@/components/dashboard/DeadlineItem";
+import { buildConfirmedInterviewDeadlines, getActorName, samePerson } from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Case Officer are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -23,23 +25,12 @@ function OverviewCard({ category, label, count, showView = false }) {
   );
 }
 
-function DeadlineItem({ emoji, title, date }) {
-  return (
-    <div className={styles.deadlineItem}>
-      <div className={styles.deadlineThumb} aria-hidden="true">{emoji}</div>
-      <div>
-        <p className={styles.deadlineTitle}>{title}</p>
-        <p className={styles.deadlineDate}>{date}</p>
-      </div>
-    </div>
-  );
-}
-
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function CaseOfficerDashboard() {
   const { user: authUser } = useAuth();
   const [cases, setCases] = useState([]);
+  const [interviews, setInterviews] = useState([]);
 
   const user = authUser ? {
     role: authUser.role_name,
@@ -48,26 +39,33 @@ export default function CaseOfficerDashboard() {
   } : { role: "case officer", firstName: "Case Officer", lastName: "User" };
 
   useEffect(() => {
-    async function fetchCases() {
+    async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          const list = Array.isArray(json) ? json : json?.data || [];
-          setCases(list);
+        const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
+        const [caseRes, interviewsRes] = await Promise.all([
+          fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' }),
+          fetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { credentials: 'include', cache: 'no-store' }),
+        ]);
+        if (caseRes.ok) {
+          const json = await caseRes.json();
+          setCases(Array.isArray(json) ? json : json?.data || []);
+        }
+        if (interviewsRes.ok) {
+          const json = await interviewsRes.json();
+          setInterviews(Array.isArray(json) ? json : json?.data || []);
         }
       } catch (err) {
-        console.error("Failed to fetch cases for CaseOfficerDashboard:", err);
+        console.error("Failed to fetch CaseOfficerDashboard data:", err);
       }
     }
-    fetchCases();
-  }, []);
+    fetchDashboardData();
+  }, [authUser?.user_id]);
 
-  const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+  const actorName = getActorName(user);
 
   const assignedCases = useMemo(() => {
-    return cases.filter(c => c.assigned_officer === actorName);
+    return cases.filter(c => samePerson(c.assigned_officer, actorName));
   }, [cases, actorName]);
 
   const stats = useMemo(() => {
@@ -90,12 +88,10 @@ export default function CaseOfficerDashboard() {
     ];
   }, [assignedCases]);
 
-  const deadlines = [
-    { emoji: "🌞", title: "SASHA believes that...",  date: "March 1, 2026"   },
-    { emoji: "⭐", title: "SASHA Awareness an...",   date: "August 18, 2026" },
-    { emoji: "🎄", title: "Youth Empowerment a...",  date: "April 1, 2026"   },
-  ];
-
+  const deadlines = useMemo(() => buildConfirmedInterviewDeadlines(interviews, {
+    userId: authUser?.user_id,
+    actorName,
+  }), [actorName, authUser?.user_id, interviews]);
   return (
     <>
       <Navbar user={user} />
@@ -148,7 +144,9 @@ export default function CaseOfficerDashboard() {
             <div className="col-12 col-lg-4">
               <div className={styles.deadlinesCard}>
                 <h3 className={styles.deadlinesTitle}>Upcoming Deadlines</h3>
-                {deadlines.map((d, i) => <DeadlineItem key={i} {...d} />)}
+                {deadlines.length === 0 ? (
+                  <p className={styles.deadlineEmpty}>No upcoming deadlines.</p>
+                ) : deadlines.map((d, i) => <DeadlineItem key={i} {...d} styles={styles} />)}
               </div>
             </div>
           </div>

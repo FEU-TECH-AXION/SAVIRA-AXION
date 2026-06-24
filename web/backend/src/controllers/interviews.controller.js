@@ -222,6 +222,27 @@ const cancel = async (req, res) => {
     }
 }
 
+const unassignStaff = async (req, res) => {
+    try {
+        const role = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+        const roleId = parseInt(req.user?.role_id)
+        if (role !== 'admin' && roleId !== 3) {
+            return res.status(403).json({ error: 'Only admins can remove interview staff assignments.' })
+        }
+
+        const interview = await InterviewModel.getById(req.params.id)
+        if (!interview) return res.status(404).json({ error: 'Interview not found.' })
+        if (!interview.interviewer_user_id) {
+            return res.status(404).json({ error: 'Active interview staff assignment not found.' })
+        }
+
+        const data = await InterviewModel.unassignStaff(req.params.id)
+        res.json({ data, message: 'Interview staff assignment removed successfully.' })
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to remove interview staff assignment.' })
+    }
+}
+
 // PATCH /api/interviews/:id/reject
 const reject = async (req, res) => {
     try {
@@ -254,6 +275,7 @@ module.exports = {
     confirm,
     complete,
     cancel,
+    unassignStaff,
     reject,
     expireStale,
 }

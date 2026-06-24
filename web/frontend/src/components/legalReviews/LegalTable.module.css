@@ -67,6 +67,16 @@
   border-color: #c44e24;
 }
 
+.bulkBtnDanger {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.bulkBtnDanger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
 .bulkClear {
   margin-left: auto;
   background: none;

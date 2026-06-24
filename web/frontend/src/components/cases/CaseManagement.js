@@ -4,11 +4,14 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { IoMdClose } from "react-icons/io";
+import { GoDotFill } from "react-icons/go";
 import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
 import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -915,7 +918,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                           fontSize: "0.8rem",
                           fontWeight: 600,
                         }}>
-                          ✓ {name}
+                          <GoDotFill /> {name}
                           {currentIds[index] && (
                             <button
                               type="button"
@@ -925,9 +928,9 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                                 name,
                               })}
                               title={`Remove ${name}`}
-                              style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                              style={{ background: "none", border: "none", color: "#065f46", cursor: "pointer", padding: 0, lineHeight: 1 }}
                             >
-                              ×
+                              <IoMdClose />
                             </button>
                           )}
                         </span>
@@ -1447,6 +1450,8 @@ useEffect(() => {
   // Modal state
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [removeAssignedDialog, setRemoveAssignedDialog] = useState(null);
+  const [removingAssigned, setRemovingAssigned] = useState(false);
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
@@ -1594,6 +1599,82 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
   }
 
+  function requestRemoveAssignedStaff(selectedCases) {
+    const casesToUpdate = Array.isArray(selectedCases) ? selectedCases : [selectedCases];
+    setRemoveAssignedDialog(casesToUpdate.filter(Boolean));
+  }
+
+  function getRemovableCaseOfficerAssignments(casesToUpdate = []) {
+    return casesToUpdate.flatMap((caseItem) => {
+      const names = String(caseItem.assignedOfficer || "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
+
+      return (caseItem.assignedOfficerIds || []).map((officerId, index) => ({
+        key: `${caseItem.id}:${officerId}`,
+        caseId: caseItem.id,
+        officerId,
+        label: names[index] || `Officer #${officerId}`,
+        context: `Case ${caseItem.caseId || caseItem.id}`,
+      }));
+    });
+  }
+
+  async function confirmRemoveAssignedStaff(selectedAssignments) {
+    const casesToUpdate = removeAssignedDialog || [];
+    const assignments = selectedAssignments || [];
+
+    if (assignments.length === 0) {
+      showToast("Select at least one assigned case officer to remove.", "danger");
+      return;
+    }
+
+    setRemovingAssigned(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      await Promise.all(assignments.map(async ({ caseId, officerId }) => {
+        const res = await fetch(`${API_URL}/api/case_assignments/${caseId}/${officerId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove assigned case officer.");
+      }));
+
+      const removedByCase = assignments.reduce((map, assignment) => {
+        const ids = map.get(assignment.caseId) || new Set();
+        ids.add(String(assignment.officerId));
+        map.set(assignment.caseId, ids);
+        return map;
+      }, new Map());
+      setCases((current) =>
+        current.map((caseItem) => {
+          const removedIds = removedByCase.get(caseItem.id);
+          if (!removedIds) return caseItem;
+          const names = String(caseItem.assignedOfficer || "")
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const remaining = (caseItem.assignedOfficerIds || [])
+            .map((officerId, index) => ({ officerId, name: names[index] }))
+            .filter(({ officerId }) => !removedIds.has(String(officerId)));
+          return {
+            ...caseItem,
+            assignedOfficer: remaining.map(({ name, officerId }) => name || `Officer #${officerId}`).join(", ") || null,
+            assignedOfficerIds: remaining.map(({ officerId }) => officerId),
+          };
+        })
+      );
+      setRemoveAssignedDialog(null);
+      showToast("Selected case officers removed.");
+    } catch (err) {
+      showToast(err.message || "Failed to remove assigned case officers.", "danger");
+    } finally {
+      setRemovingAssigned(false);
+    }
+  }
+
   // ── Open correct status modal ──
   function openStatusModal(c) {
     setSelected(c);
@@ -1732,6 +1813,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                     setSelected(cases);
                     setModal("assign");
                   }}
+                  onRemoveAssignedStaff={requestRemoveAssignedStaff}
                   onUpdateStatus={(cases) => {
                     setSelected(cases[0]);
                     setModal("statusRouter");
@@ -1765,6 +1847,18 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
       {/* Assign (admin) */}
       <AssignCaseModal open={modal === "assign"} onClose={closeModal} casesData={selected} onSave={assignOfficer} officers={officers} showToast={showToast} />
+
+      <RemoveAssignedStaffDialog
+        key={`remove-case-staff-${(removeAssignedDialog || []).map((caseItem) => caseItem.id).join("-") || "closed"}`}
+        open={Boolean(removeAssignedDialog)}
+        title="Remove Assigned Staff"
+        description={`Choose which assigned case officers to remove from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
+        detail="Selected case officers will immediately lose access through these case assignments."
+        assignments={getRemovableCaseOfficerAssignments(removeAssignedDialog || [])}
+        busy={removingAssigned}
+        onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
+        onConfirm={confirmRemoveAssignedStaff}
+      />
 
       {/* Status Router — inline transition picker */}
       <UpdateStatusModal

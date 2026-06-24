@@ -21,10 +21,23 @@ function StatusBadge({ status }) {
 }
 
 function formatDate(value) {
-  if (!value) return "-";
+  if (!value) return "No target date set";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return "Invalid target date";
   return date.toLocaleDateString("en-PH", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function renderSortIcon(field, sortField, sortDir) {
+  if (sortField !== field) return <span className={styles.sortNeutral}>{"\u2195"}</span>;
+  return <span className={styles.sortActive}>{sortDir === "asc" ? "\u2191" : "\u2193"}</span>;
+}
+
+function renderSortableTh(field, label, sortField, sortDir, onSort) {
+  return (
+    <th className={`${styles.th} ${styles.sortableTh}`} onClick={() => onSort?.(field)}>
+      {label} {renderSortIcon(field, sortField, sortDir)}
+    </th>
+  );
 }
 
 function Pagination({ current, total, totalRecords, pageSize, onChange }) {
@@ -68,12 +81,18 @@ export default function ChapterTable({
   sortField,
   sortDir,
   onSort,
+  onEditSelected,
+  onDeleteSelected,
   extraColumns = [],
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const pageIds = useMemo(() => paginated.map((chapter) => chapter.id), [paginated]);
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const someSelected = pageIds.some((id) => selectedIds.has(id));
+  const selectedChapters = useMemo(
+    () => paginated.filter((chapter) => selectedIds.has(chapter.id)),
+    [paginated, selectedIds]
+  );
 
   function toggleAll() {
     setSelectedIds((prev) => {
@@ -91,24 +110,32 @@ export default function ChapterTable({
     });
   }
 
-  function SortIcon({ field }) {
-    if (sortField !== field) return <span className={styles.sortNeutral}>↕</span>;
-    return <span className={styles.sortActive}>{sortDir === "asc" ? "↑" : "↓"}</span>;
-  }
-
-  function SortableTh({ field, children }) {
-    return (
-      <th className={`${styles.th} ${styles.sortableTh}`} onClick={() => onSort?.(field)}>
-        {children} <SortIcon field={field} />
-      </th>
-    );
-  }
-
   return (
     <div className={styles.tableWrap}>
       {selectedIds.size > 0 && (
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>{selectedIds.size} selected</span>
+          <div className={styles.bulkActions}>
+            <button
+              type="button"
+              className={styles.bulkBtn}
+              disabled={selectedChapters.length !== 1}
+              onClick={() => onEditSelected?.(selectedChapters[0])}
+              title={selectedChapters.length === 1 ? "Edit selected chapter" : "Select one chapter to edit"}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
+              onClick={() => {
+                onDeleteSelected?.(selectedChapters);
+                setSelectedIds(new Set());
+              }}
+            >
+              Delete
+            </button>
+          </div>
           <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>
             Clear
           </button>
@@ -131,13 +158,13 @@ export default function ChapterTable({
                   aria-label="Select all chapters"
                 />
               </th>
-              <SortableTh field="chapterName">Chapter / Formation</SortableTh>
-              <SortableTh field="formationLevel">Level</SortableTh>
-              <SortableTh field="status">Status</SortableTh>
-              <SortableTh field="memberCount">Members</SortableTh>
+              {renderSortableTh("chapterName", "Chapter / Formation", sortField, sortDir, onSort)}
+              {renderSortableTh("formationLevel", "Level", sortField, sortDir, onSort)}
+              {renderSortableTh("status", "Status", sortField, sortDir, onSort)}
+              {renderSortableTh("memberCount", "Members", sortField, sortDir, onSort)}
               <th className={styles.th}>COC / OG</th>
               <th className={styles.th}>Officers</th>
-              <SortableTh field="targetLaunchDate">Target Launch</SortableTh>
+              {renderSortableTh("targetLaunchDate", "Target Launch", sortField, sortDir, onSort)}
               {extraColumns.includes("location") && <th className={styles.th}>Location</th>}
               {extraColumns.includes("contactPerson") && <th className={styles.th}>Contact Person</th>}
               {extraColumns.includes("mentor") && <th className={styles.th}>SASHA Guide</th>}
@@ -184,9 +211,15 @@ export default function ChapterTable({
                     <td className={styles.td}>{chapter.cocCount} COC / {chapter.ogCount} OG</td>
                     <td className={styles.td}>{chapter.officersFilled}/6</td>
                     <td className={styles.td}>{formatDate(chapter.targetLaunchDate)}</td>
-                    {extraColumns.includes("location") && <td className={styles.td}>{chapter.location || "-"}</td>}
-                    {extraColumns.includes("contactPerson") && <td className={styles.td}>{chapter.contactPerson || "-"}</td>}
-                    {extraColumns.includes("mentor") && <td className={styles.td}>{chapter.higherStructureRepresentative || "-"}</td>}
+                    {extraColumns.includes("location") && (
+                      <td className={styles.td}>{chapter.location || "No location set"}</td>
+                    )}
+                    {extraColumns.includes("contactPerson") && (
+                      <td className={styles.td}>{chapter.contactPerson || "No contact assigned"}</td>
+                    )}
+                    {extraColumns.includes("mentor") && (
+                      <td className={styles.td}>{chapter.higherStructureRepresentative || "No SASHA guide assigned"}</td>
+                    )}
                   </tr>
                 );
               })

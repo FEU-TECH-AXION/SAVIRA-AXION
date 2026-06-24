@@ -30,7 +30,7 @@ function DetailGrid({ rows }) {
       {rows.map(([label, value]) => (
         <div key={label} className={styles.detailItem}>
           <p className={styles.detailKey}>{label}</p>
-          <p className={styles.detailVal}>{value || "-"}</p>
+          <p className={styles.detailVal}>{value || "Not recorded"}</p>
         </div>
       ))}
     </div>
@@ -49,9 +49,9 @@ function Requirement({ done, label }) {
 }
 
 function formatDate(value) {
-  if (!value) return "-";
+  if (!value) return "No target date set";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return "Invalid date";
   return date.toLocaleDateString("en-PH", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -64,17 +64,37 @@ export default function ViewChapter() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     if (!chapterId) {
-      setLoading(false);
-      return;
+      const timer = window.setTimeout(() => {
+        if (mounted) setLoading(false);
+      }, 0);
+      return () => {
+        mounted = false;
+        window.clearTimeout(timer);
+      };
     }
 
-    setLoading(true);
-    setError("");
-    fetchChapter(chapterId)
-      .then((record) => setChapter(record))
-      .catch((err) => setError(err.message || "Unable to load chapter."))
-      .finally(() => setLoading(false));
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError("");
+      fetchChapter(chapterId)
+        .then((record) => {
+          if (mounted) setChapter(record);
+        })
+        .catch((err) => {
+          if (mounted) setError(err.message || "Unable to load chapter.");
+        })
+        .finally(() => {
+          if (mounted) setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+    };
   }, [chapterId]);
 
   const stats = useMemo(() => {
@@ -115,7 +135,7 @@ export default function ViewChapter() {
           <div>
             <p className={styles.kicker}>SASHA Chapter Building</p>
             <h1 className={styles.applicantName}>{chapter.chapterName || "Untitled chapter"}</h1>
-            <p className={styles.applicantMeta}>{chapter.formationLevel} - {chapter.location || "No location set"}</p>
+            <p className={styles.applicantMeta}>{chapter.formationLevel} | {chapter.location || "No location set"}</p>
           </div>
           <span className={styles.statusBadgeDynamic}>{chapter.status || "Formation in Progress"}</span>
         </section>
@@ -129,7 +149,7 @@ export default function ViewChapter() {
               ["Higher SASHA Guide / Mentor", chapter.higherStructureRepresentative],
               ["Target Launch Date", formatDate(chapter.targetLaunchDate)],
               ["Affiliate Organization", chapter.affiliateOrganization ? "Yes" : "No"],
-              ["Affiliate Active Members", chapter.affiliateOrganization ? chapter.affiliateActiveMembers || "0" : "-"],
+              ["Affiliate Active Members", chapter.affiliateOrganization ? chapter.affiliateActiveMembers || "0" : "Not an affiliate organization"],
             ]}
           />
         </Section>
@@ -155,7 +175,7 @@ export default function ViewChapter() {
             ].map(([label, done]) => (
               <div key={label} className={styles.detailItem}>
                 <p className={styles.detailKey}>{label}</p>
-                <p className={styles.detailVal}>{done ? <FiCheckCircle /> : "-"} {done ? "Yes" : "No"}</p>
+                <p className={styles.detailVal}>{done && <FiCheckCircle />} {done ? "Yes" : "No"}</p>
               </div>
             ))}
           </div>
@@ -177,9 +197,9 @@ export default function ViewChapter() {
               <tbody>
                 {stats.members.map((member) => (
                   <tr key={member.userId || member.fullName}>
-                    <td><FiUsers /> {member.fullName}</td>
-                    <td>{member.membershipType || "-"}</td>
-                    <td>{member.affiliation || "-"}</td>
+                    <td><FiUsers /> {member.fullName || "Unnamed member"}</td>
+                    <td>{member.membershipType || "Unclassified"}</td>
+                    <td>{member.affiliation || "No affiliation recorded"}</td>
                     <td>{member.oathTaken ? "Yes" : "No"}</td>
                     <td>{member.organizingCommittee ? "Yes" : "No"}</td>
                     <td>{member.organizingGroup ? "Yes" : "No"}</td>
@@ -195,7 +215,7 @@ export default function ViewChapter() {
             rows={OFFICER_ROLES.map((role) => {
               const selectedUserId = chapter.officers?.[role];
               const member = stats.members.find((item) => String(item.userId) === String(selectedUserId));
-              return [role, member?.fullName || "-"];
+              return [role, member?.fullName || "No officer selected"];
             })}
           />
         </Section>

@@ -23,6 +23,7 @@ export function getLegalCaseDeadlines(caseData) {
   return [
     { type: "referral", label: "Referral follow-up", value: caseData.endorsementDetails?.["Follow-up Date"] },
     ...(caseData.statusHistory || []).flatMap((entry) => [
+      { type: "filing", label: "Filing date", value: entry.formData?.filingDate || entry.form_data?.filingDate },
       { type: "hearing", label: "Next hearing", value: entry.formData?.nextHearingDate || entry.form_data?.nextHearingDate },
       { type: "investigation", label: "Investigation follow-up", value: entry.formData?.nextFollowUp || entry.form_data?.nextFollowUp },
     ]),

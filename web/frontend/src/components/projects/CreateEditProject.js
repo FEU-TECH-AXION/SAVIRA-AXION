@@ -17,6 +17,7 @@ import styles from "./CreateEditProject.module.css";
 import { FiArrowLeft, FiUpload, FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
 import { MdPublic, MdPublicOff } from "react-icons/md";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import TaskPanel from "./TaskPanel";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -625,6 +626,18 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
               />
             </div>
           </SectionCard>
+
+          {/* ── Project Tasks (editable here; read-only on the project view page) ── */}
+          {mode === "edit" && initial?.id ? (
+            <TaskPanel projectId={initial.id} />
+          ) : (
+            <SectionCard title="Project Tasks" subtitle="Internal accountability tracking.">
+              <div className={styles.internalBadge}>Internal use only</div>
+              <p className={styles.formHint}>
+                Save this project first — tasks can be added and assigned once the project exists.
+              </p>
+            </SectionCard>
+          )}
 
         </div>
 

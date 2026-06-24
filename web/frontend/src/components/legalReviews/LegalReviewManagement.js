@@ -8,6 +8,7 @@ import FilterMenu from "./FilterMenu";
 import UpdateStatusModal from "../cases/UpdateStatusModals";
 import Tooltip from "../ui/Tooltip";
 import { ConfirmDialog } from "../ui/Dialog";
+import RemoveAssignedStaffDialog from "../ui/RemoveAssignedStaffDialog";
 import { getLegalCaseDeadlines, normalizeLegalList } from "./legalReviewCalendar";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import {
@@ -1277,6 +1278,8 @@ export default function LegalReviewManagement() {
   const [selectedCase, setSelectedCase] = useState(null);
   const [calendarCases, setCalendarCases] = useState([]);
   const [bulkDialog, setBulkDialog] = useState(null);
+  const [removeAssignedDialog, setRemoveAssignedDialog] = useState(null);
+  const [removingAssigned, setRemovingAssigned] = useState(false);
 
   function showToast(msg, type = "success") { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); }
   function closeModal() { setModal(null); }
@@ -1364,6 +1367,82 @@ export default function LegalReviewManagement() {
     } catch (err) {
       showToast(err.message, "danger");
       throw err;
+    }
+  }
+
+  function requestRemoveAssignedStaff(selectedCases) {
+    const casesToUpdate = Array.isArray(selectedCases) ? selectedCases : [selectedCases];
+    setRemoveAssignedDialog(casesToUpdate.filter(Boolean));
+  }
+
+  function getRemovableLegalAssignments(casesToUpdate = []) {
+    return casesToUpdate.flatMap((caseItem) =>
+      (caseItem.assignedLegal || [])
+        .filter((person) => person.legal_personnel_id)
+        .map((person) => ({
+          key: `${caseItem.id}:${person.legal_personnel_id}`,
+          caseId: caseItem.id,
+          legalPersonnelId: person.legal_personnel_id,
+          label: person.name || `Personnel #${person.legal_personnel_id}`,
+          context: `Case ${caseItem.caseId || caseItem.id}`,
+          detail: person.assignment_role ? `Role: ${person.assignment_role}` : undefined,
+        }))
+    );
+  }
+
+  async function confirmRemoveAssignedStaff(selectedAssignments) {
+    const casesToUpdate = removeAssignedDialog || [];
+    const assignments = selectedAssignments || [];
+
+    if (assignments.length === 0) {
+      showToast("Select at least one assigned legal personnel to remove.", "danger");
+      return;
+    }
+
+    setRemovingAssigned(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      await Promise.all(assignments.map(async ({ caseId, legalPersonnelId }) => {
+        const res = await fetch(`${API_URL}/api/legal_case_assignments/${caseId}/${legalPersonnelId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove assigned legal personnel.");
+      }));
+
+      const removedByCase = assignments.reduce((map, assignment) => {
+        const ids = map.get(assignment.caseId) || new Set();
+        ids.add(String(assignment.legalPersonnelId));
+        map.set(assignment.caseId, ids);
+        return map;
+      }, new Map());
+      setCases((current) =>
+        current.map((caseItem) => {
+          const removedIds = removedByCase.get(caseItem.id);
+          if (!removedIds) return caseItem;
+          const assignedLegal = (caseItem.assignedLegal || []).filter(
+            (person) => !removedIds.has(String(person.legal_personnel_id))
+          );
+          const assignedLawyer = assignedLegal
+            .filter((person) => person.assignment_role === "lawyer")
+            .map((person) => person.name)
+            .filter(Boolean)
+            .join(", ") || null;
+          const assignedParalegal = assignedLegal
+            .filter((person) => person.assignment_role === "paralegal")
+            .map((person) => person.name)
+            .filter(Boolean)
+            .join(", ") || null;
+          return { ...caseItem, assignedLegal, assignedLawyer, assignedParalegal };
+        })
+      );
+      setRemoveAssignedDialog(null);
+      showToast("Selected legal personnel removed.");
+    } catch (err) {
+      showToast(err.message || "Failed to remove assigned legal personnel.", "danger");
+    } finally {
+      setRemovingAssigned(false);
     }
   }
 
@@ -1659,6 +1738,7 @@ export default function LegalReviewManagement() {
               onCalendar={(selected) => { setCalendarCases(selected); setModal("calendar"); }}
               onStatus={(selected) => openSingleCaseAction(selected, "statusChange", "Status Update")}
               onAssignLegal={(selected) => openSingleCaseAction(selected, "assignLegal", "Legal Assignment")}
+              onRemoveAssignedStaff={requestRemoveAssignedStaff}
               isAdmin={isAdmin}
               sortField={sortField}
               sortDir={sortDir}
@@ -1689,6 +1769,17 @@ export default function LegalReviewManagement() {
       />
       <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
       <AssignLegalModal     open={modal === "assignLegal"}  onClose={closeModal} caseData={selectedCase} legalPersonnels={legalPersonnels} onSave={saveCase} showToast={showToast} />
+      <RemoveAssignedStaffDialog
+        key={`remove-legal-staff-${(removeAssignedDialog || []).map((caseItem) => caseItem.id).join("-") || "closed"}`}
+        open={Boolean(removeAssignedDialog)}
+        title="Remove Assigned Staff"
+        description={`Choose which legal personnel to remove from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
+        detail="Selected lawyers and paralegals will immediately lose access through these legal assignments."
+        assignments={getRemovableLegalAssignments(removeAssignedDialog || [])}
+        busy={removingAssigned}
+        onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
+        onConfirm={confirmRemoveAssignedStaff}
+      />
       <CaseCalendarModal
         open={modal === "calendar"}
         onClose={closeModal}
