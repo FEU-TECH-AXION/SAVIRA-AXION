@@ -1277,6 +1277,8 @@ export default function LegalReviewManagement() {
   const [selectedCase, setSelectedCase] = useState(null);
   const [calendarCases, setCalendarCases] = useState([]);
   const [bulkDialog, setBulkDialog] = useState(null);
+  const [removeAssignedDialog, setRemoveAssignedDialog] = useState(null);
+  const [removingAssigned, setRemovingAssigned] = useState(false);
 
   function showToast(msg, type = "success") { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); }
   function closeModal() { setModal(null); }
@@ -1364,6 +1366,57 @@ export default function LegalReviewManagement() {
     } catch (err) {
       showToast(err.message, "danger");
       throw err;
+    }
+  }
+
+  function requestRemoveAssignedStaff(selectedCases) {
+    const casesToUpdate = Array.isArray(selectedCases) ? selectedCases : [selectedCases];
+    setRemoveAssignedDialog(casesToUpdate.filter(Boolean));
+  }
+
+  async function confirmRemoveAssignedStaff() {
+    const casesToUpdate = removeAssignedDialog || [];
+    const assignments = casesToUpdate.flatMap((caseItem) =>
+      (caseItem.assignedLegal || [])
+        .filter((person) => person.legal_personnel_id)
+        .map((person) => ({
+          caseId: caseItem.id,
+          legalPersonnelId: person.legal_personnel_id,
+        }))
+    );
+
+    if (assignments.length === 0) {
+      setRemoveAssignedDialog(null);
+      showToast("No assigned legal personnel to remove.", "danger");
+      return;
+    }
+
+    setRemovingAssigned(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      await Promise.all(assignments.map(async ({ caseId, legalPersonnelId }) => {
+        const res = await fetch(`${API_URL}/api/legal_case_assignments/${caseId}/${legalPersonnelId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove assigned legal personnel.");
+      }));
+
+      const updatedCaseIds = new Set(casesToUpdate.map((caseItem) => caseItem.id));
+      setCases((current) =>
+        current.map((caseItem) =>
+          updatedCaseIds.has(caseItem.id)
+            ? { ...caseItem, assignedLegal: [], assignedLawyer: null, assignedParalegal: null }
+            : caseItem
+        )
+      );
+      setRemoveAssignedDialog(null);
+      showToast("Assigned legal personnel removed.");
+    } catch (err) {
+      showToast(err.message || "Failed to remove assigned legal personnel.", "danger");
+    } finally {
+      setRemovingAssigned(false);
     }
   }
 
@@ -1659,6 +1712,7 @@ export default function LegalReviewManagement() {
               onCalendar={(selected) => { setCalendarCases(selected); setModal("calendar"); }}
               onStatus={(selected) => openSingleCaseAction(selected, "statusChange", "Status Update")}
               onAssignLegal={(selected) => openSingleCaseAction(selected, "assignLegal", "Legal Assignment")}
+              onRemoveAssignedStaff={requestRemoveAssignedStaff}
               isAdmin={isAdmin}
               sortField={sortField}
               sortDir={sortDir}
@@ -1689,6 +1743,19 @@ export default function LegalReviewManagement() {
       />
       <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
       <AssignLegalModal     open={modal === "assignLegal"}  onClose={closeModal} caseData={selectedCase} legalPersonnels={legalPersonnels} onSave={saveCase} showToast={showToast} />
+      <ConfirmDialog
+        open={Boolean(removeAssignedDialog)}
+        title="Remove Assigned Staff"
+        description={`Remove assigned legal personnel from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}?`}
+        detail="Selected lawyers and paralegals will immediately lose access through these legal assignments."
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        tone="danger"
+        busy={removingAssigned}
+        dismissible={!removingAssigned}
+        onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
+        onConfirm={confirmRemoveAssignedStaff}
+      />
       <CaseCalendarModal
         open={modal === "calendar"}
         onClose={closeModal}

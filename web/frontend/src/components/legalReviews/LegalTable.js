@@ -184,6 +184,7 @@ export default function LegalTable({
   onCalendar,
   onStatus,
   onAssignLegal,
+  onRemoveAssignedStaff,
   isAdmin,
   sortField,
   sortDir,
@@ -277,6 +278,11 @@ export default function LegalTable({
             <Tooltip text="Add a referral monitoring update"><button className={styles.bulkBtn} onClick={() => onMonitor?.(selectedCases)}>Monitor</button></Tooltip>
             <Tooltip text="View hearings and follow-up deadlines"><button className={styles.bulkBtn} onClick={() => onCalendar?.(selectedCases)}>Calendar</button></Tooltip>
             <Tooltip text="Update case status"><button className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`} onClick={() => onStatus?.(selectedCases)}>Status</button></Tooltip>
+            {isAdmin && (
+              <Tooltip text="Remove assigned lawyers and paralegals">
+                <button className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={() => onRemoveAssignedStaff?.(selectedCases)}>Remove Assigned Staff</button>
+              </Tooltip>
+            )}
           </div>
           <Tooltip text="Clear selected rows">
             <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>Clear</button>

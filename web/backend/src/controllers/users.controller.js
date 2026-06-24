@@ -66,7 +66,12 @@ const createItem = async (req, res) => {
 const updateItem = async (req, res) => {
   try {
     const { id } = req.params
-    if (String(req.user.id) !== String(id) && parseInt(req.user.role_id) !== 3) {
+    const actorId = req.user?.id || req.user?.user_id
+    const actorRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    const actorRoleId = parseInt(req.user?.role_id)
+    const isAdmin = actorRole === 'admin' || actorRoleId === 3
+
+    if (String(actorId) !== String(id) && !isAdmin) {
       return res.status(403).json({ error: 'You are not allowed to update this profile.' })
     }
 
@@ -156,7 +161,7 @@ const updateItem = async (req, res) => {
     }
     const safeUser = toSafeUser(responseUser)
 
-    if (String(req.user.id) === String(id)) {
+    if (String(actorId) === String(id)) {
       res.cookie('user', JSON.stringify(safeUser), USER_COOKIE_OPTIONS)
     }
 

@@ -90,6 +90,7 @@ export default function InterviewsTable({
   onViewDetails,
   onMarkComplete,
   onAddMeetingLink,
+  onRemoveAssignedStaff,
   loading = false,
   pageSize = 10,
 }) {
@@ -183,6 +184,14 @@ useEffect(() => {
           >
             View Details
           </button>
+          {onRemoveAssignedStaff && (
+            <button
+              className={`${styles.bulkActionBtn} ${styles.bulkActionBtnDanger}`}
+              onClick={() => onRemoveAssignedStaff(selectedIds)}
+            >
+              Remove Assigned Staff
+            </button>
+          )}
         </div>
       </div>
     )}

@@ -121,6 +121,13 @@ const cancel = async (id, cancellation_reason) => {
     })
 }
 
+const unassignStaff = async (id) => {
+    return updateById(id, {
+        interviewer_user_id: null,
+        updated_at: new Date().toISOString(),
+    })
+}
+
 const reject = async (id, rejection_reason) => {
     return updateById(id, {
         status: 'rejected',
@@ -152,6 +159,7 @@ module.exports = {
     confirm,
     complete,
     cancel,
+    unassignStaff,
     reject,
     expireStale,
 }

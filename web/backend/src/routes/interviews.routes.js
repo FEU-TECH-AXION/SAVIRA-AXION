@@ -11,9 +11,11 @@ const {
     confirm,
     complete,
     cancel,
+    unassignStaff,
     reject,
     expireStale,
 } = require('../controllers/interviews.controller')
+const { verifyToken } = require('../middleware/auth.middleware')
 
 router.get('/',              getItems)
 router.get('/:id',           getItem)
@@ -25,6 +27,7 @@ router.patch('/:id/reopen-selection', reopenSelection)
 router.patch('/:id/confirm',     confirm)
 router.patch('/:id/complete',    complete)
 router.patch('/:id/cancel',      cancel)
+router.patch('/:id/unassign-staff', verifyToken, unassignStaff)
 router.patch('/:id/reject',      reject)
 router.post('/expire',           expireStale)
 
