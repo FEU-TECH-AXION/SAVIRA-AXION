@@ -50,6 +50,19 @@ const mapProjectToEvent = (project) => ({
   slug: project.slug || (project.title || project.event_name || "").toLowerCase().replace(/\s+/g, "-"),
 });
 
+const formatEventDate = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 const normalizeProjects = (rawProjects) => {
   const projects = Array.isArray(rawProjects) ? rawProjects : rawProjects?.data || [];
   const mapped = projects.map(mapProjectToEvent);
@@ -106,7 +119,7 @@ export default async function EventsPage({ searchParams }) {
 
   const recentPosts = PUBLIC_EVENTS.slice(0, 3).map((p) => ({
     title: p.title,
-    date: p.dateStart,
+    date: formatEventDate(p.dateStart),
     slug: p.slug,
     image: p.image || "/event-placeholder.png",
   }));
@@ -191,8 +204,8 @@ export default async function EventsPage({ searchParams }) {
                         {showDesc && <p className={styles.eventDesc}>{ev.description}</p>}
                         <div className={styles.eventDetails}>
                           <span>
-                            <FaCalendarAlt /> {ev.dateStart}
-                            {ev.dateEnd ? ` – ${ev.dateEnd}` : ""}
+                            <FaCalendarAlt /> {formatEventDate(ev.dateStart)}
+                            {ev.dateEnd ? ` – ${formatEventDate(ev.dateEnd)}` : ""}
                           </span>
                           {ev.venue && (
                             <span>

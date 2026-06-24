@@ -156,9 +156,13 @@
 
 /* ── Event cards ─────────────────────────────────────────────────────────────── */
 .eventsList {
+  --event-card-top-left-radius: 200px;
+  --event-card-top-right-radius: 50px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  border-top-left-radius: var(--event-card-top-left-radius);
+  border-top-right-radius: var(--event-card-top-right-radius);
 }
 
 .eventCard {
@@ -166,10 +170,14 @@
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  border-top-left-radius: var(--event-card-top-left-radius);
+  border-top-right-radius: var(--event-card-top-right-radius);
 }
 
 .eventImageWrap {
   position: relative;
+  border-top-left-radius: var(--event-card-top-left-radius);
+  border-top-right-radius: var(--event-card-top-right-radius);
 }
 
 .eventImage {
@@ -177,6 +185,15 @@
   object-fit: cover;
   display: block;
   background: var(--gray-200);
+  border-top-left-radius: var(--event-card-top-left-radius);
+  border-top-right-radius: var(--event-card-top-right-radius);
+}
+
+@media (max-width: 900px) {
+  .eventsList {
+    --event-card-top-left-radius: 120px;
+    --event-card-top-right-radius: 42px;
+  }
 }
 
 .eventBadge {
@@ -462,9 +479,21 @@
 }
 
 @media (max-width: 768px) {
+  .eventsList {
+    --event-card-top-left-radius: 86px;
+    --event-card-top-right-radius: 32px;
+  }
+
   .footerInner {
     grid-template-columns: 1fr;
     gap: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .eventsList {
+    --event-card-top-left-radius: 48px;
+    --event-card-top-right-radius: 22px;
   }
 }
 
