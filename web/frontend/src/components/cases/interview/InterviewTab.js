@@ -288,6 +288,9 @@ function SlotPickerCalendar({ slots, onSelectSlot, compact = false }) {
             <p className={styles.rpPromptSub}>
               Highlighted dates have available slots. Click a date to see the times.
             </p>
+            <p className={styles.rpPromptSub}>
+              If none of these slots work for you, request different interview slots above.
+            </p>
           </>
         ) : (
           <>
@@ -472,6 +475,64 @@ function parseInterviewNotes(raw) {
     venue: venueMatch?.[1]?.trim() || "",
     notes: notesMatch?.[1]?.trim() || (!venueMatch ? text.trim() : ""),
   };
+}
+
+function getDateTimeLocalValue(date = new Date()) {
+  const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localTime.toISOString().slice(0, 16);
+}
+
+function getLocalDateValue(date = new Date()) {
+  return getDateTimeLocalValue(date).slice(0, 10);
+}
+
+function parsePreferredDateTime(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute] = match;
+  return { year, month, day, hour, minute };
+}
+
+function formatPreferredDate(value) {
+  const parts = parsePreferredDateTime(value);
+  if (!parts) return value;
+
+  const monthName = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ][Number(parts.month) - 1] || parts.month;
+
+  return `${monthName} ${Number(parts.day)}, ${parts.year}`;
+}
+
+function formatPreferredTime(value) {
+  const parts = parsePreferredDateTime(value);
+  if (!parts) return value;
+
+  const hourNumber = Number(parts.hour);
+  const hour12 = hourNumber % 12 || 12;
+  const ampm = hourNumber >= 12 ? "PM" : "AM";
+
+  return `${hour12}:${parts.minute} ${ampm}`;
+}
+
+function composeAvailabilityRequestText({ reason, preferredDateTime }) {
+  const normalizedReason = String(reason || "").trim();
+  const normalizedPreferredDateTime = String(preferredDateTime || "").trim();
+
+  if (!normalizedPreferredDateTime) return normalizedReason;
+  return `Preferred date: ${formatPreferredDate(normalizedPreferredDateTime)}\nPreferred time: ${formatPreferredTime(normalizedPreferredDateTime)}\nReason: ${normalizedReason}`;
 }
 
 function formatStaffDateTime(interview) {
@@ -728,24 +789,59 @@ function AddMeetingLinkModal({
 
 function AvailabilityRequestModal({ open, onClose, onSubmit, scheduled = false }) {
   const defaultReason = scheduled
-    ? "I am no longer available at the selected date and time. My preferred availability is: "
-    : "I am unavailable during the displayed dates and times. My preferred availability is: ";
+    ? "I am no longer available at the selected date and time because "
+    : "I am unavailable during the displayed dates and times because ";
   const [reason, setReason] = useState(defaultReason);
-  const [error, setError] = useState("");
+  const [preferredDate, setPreferredDate] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit() {
     const normalized = reason.trim();
+    const normalizedPreferredDate = preferredDate.trim();
+    const normalizedPreferredTime = preferredTime.trim();
+    const normalizedPreferredDateTime =
+      normalizedPreferredDate && normalizedPreferredTime
+        ? `${normalizedPreferredDate}T${normalizedPreferredTime}`
+        : "";
+    const nextErrors = {};
+
+    if (!normalizedPreferredDate) {
+      nextErrors.preferredDate = "Please select your preferred date.";
+    }
+
+    if (!normalizedPreferredTime) {
+      nextErrors.preferredTime = "Please select your preferred time.";
+    }
+
+    if (normalizedPreferredDateTime) {
+      const preferredTimestamp = new Date(normalizedPreferredDateTime).getTime();
+      if (Number.isNaN(preferredTimestamp) || preferredTimestamp < Date.now() - 60000) {
+        nextErrors.preferredTime = "Choose a future date and time.";
+      }
+    }
+
     if (!normalized || normalized === defaultReason.trim()) {
-      setError("Please add your preferred days or times.");
+      nextErrors.reason = "Please add a short reason.";
+    }
+
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
       return;
     }
+
     setSubmitting(true);
     try {
-      await onSubmit(normalized);
+      await onSubmit({
+        reason: normalized,
+        preferredDate: normalizedPreferredDate,
+        preferredTime: normalizedPreferredTime,
+        preferredDateTime: normalizedPreferredDateTime,
+      });
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to send availability request.");
+      setErrors({ form: err.message || "Failed to send availability request." });
     } finally {
       setSubmitting(false);
     }
@@ -754,15 +850,48 @@ function AvailabilityRequestModal({ open, onClose, onSubmit, scheduled = false }
   return (
     <Modal open={open} onClose={() => !submitting && onClose()} title={scheduled ? "Request a Different Interview Time" : "Request Different Interview Slots"}>
       <p style={{ margin: "0 0 1rem", color: "#6b7280", fontSize: "0.875rem" }}>
-        Explain what does not work and include the days or times when you are available.
+        Share the schedule that works best and a short note for your case officer.
       </p>
-      <FormGroup label="Availability and reason" required error={error}>
+      {errors.form && (
+        <div style={{ marginBottom: "0.85rem", color: "#991b1b", fontSize: "0.84rem" }}>
+          {errors.form}
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
+        <FormGroup label="Preferred date" required error={errors.preferredDate}>
+          <input
+            className={`${styles.formInput} ${errors.preferredDate ? styles.inputError : ""}`}
+            type="date"
+            min={getLocalDateValue()}
+            value={preferredDate}
+            onChange={(event) => {
+              setPreferredDate(event.target.value);
+              setErrors((current) => ({ ...current, preferredDate: "", preferredTime: "", form: "" }));
+            }}
+          />
+        </FormGroup>
+        <FormGroup label="Preferred time" required error={errors.preferredTime}>
+          <input
+            className={`${styles.formInput} ${errors.preferredTime ? styles.inputError : ""}`}
+            type="time"
+            value={preferredTime}
+            onChange={(event) => {
+              setPreferredTime(event.target.value);
+              setErrors((current) => ({ ...current, preferredTime: "", form: "" }));
+            }}
+          />
+        </FormGroup>
+      </div>
+      <FormGroup label="Reason" required error={errors.reason}>
         <FTextarea
           value={reason}
-          onChange={(event) => { setReason(event.target.value); setError(""); }}
+          onChange={(event) => {
+            setReason(event.target.value);
+            setErrors((current) => ({ ...current, reason: "", form: "" }));
+          }}
           rows={5}
           maxLength={700}
-          error={error}
+          error={errors.reason}
         />
       </FormGroup>
       <div className={styles.modalFooter}>
@@ -835,18 +964,24 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
     }
   }
 
-  async function handleRequestNewSlots() {
-    const reason = arguments[0];
+  async function handleRequestNewSlots(request) {
+    const payload = typeof request === "string" ? { reason: request } : request;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({
+        reason: payload.reason,
+        preferred_date: payload.preferredDate,
+        preferred_time: payload.preferredTime,
+        preferred_datetime: payload.preferredDateTime,
+      }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || "Failed to send availability request.");
-    onAvailabilityRequested?.(reason);
+    const requestText = body.data?.availability_request_reason || composeAvailabilityRequestText(payload);
+    onAvailabilityRequested?.(requestText);
     showToast?.("Your availability request was sent to your case officer.");
   }
 
@@ -863,12 +998,17 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
       {/* Header */}
-      <div>
-        <h2 className={styles.statusTitle}>Select an Interview Slot</h2>
-        <p className={styles.statusDesc}>
-          You have been invited to an interview with your SASHA case officer.
-          Please select a time slot that works for you.
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.9rem", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+          <h2 className={styles.statusTitle}>Select an Interview Slot</h2>
+          <p className={styles.statusDesc}>
+            You have been invited to an interview with your SASHA case officer.
+            Please select a time slot that works for you.
+          </p>
+        </div>
+        <button type="button" className={styles.rescheduleBtn} onClick={() => setRequestOpen(true)}>
+          None of these slots work
+        </button>
       </div>
 
       {/* Invitation expiry countdown */}
@@ -890,10 +1030,6 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
           onSelectSlot={(slot) => handleConfirmSlot(slot)}
         />
       )}
-
-      <button type="button" className={styles.rescheduleBtn} onClick={() => setRequestOpen(true)} style={{ alignSelf: "flex-start" }}>
-        None of these slots work
-      </button>
 
       {confirming && (
         <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center" }}>
@@ -1315,7 +1451,7 @@ function RescheduleModal({ interview, mode, userId, onClose, onConfirm }) {
       {mode === "reopen-selection" && (
         <div style={{ padding: "0.8rem 0.9rem", marginBottom: "1rem", borderRadius: 8, border: "1px solid #f5c26b", background: "#fff8e6", color: "#7c4a03" }}>
           <strong>Interviewee availability</strong>
-          <div style={{ marginTop: 4, fontSize: "0.86rem" }}>{interview.availabilityRequest}</div>
+          <div style={{ marginTop: 4, fontSize: "0.86rem", whiteSpace: "pre-line" }}>{interview.availabilityRequest}</div>
         </div>
       )}
       <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "#6b7280" }}>
@@ -1670,21 +1806,28 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     }
   }
 
-  async function requestAvailabilityChange(interview, reason) {
+  async function requestAvailabilityChange(interview, request) {
+    const payload = typeof request === "string" ? { reason: request } : request;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const res = await fetch(`${API_URL}/api/interviews/${interview.id}/request-new-slots`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({
+        reason: payload.reason,
+        preferred_date: payload.preferredDate,
+        preferred_time: payload.preferredTime,
+        preferred_datetime: payload.preferredDateTime,
+      }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || "Failed to send availability request.");
+    const requestText = body.data?.availability_request_reason || composeAvailabilityRequestText(payload);
     setInterviews((prev) => prev.map((iv) => iv.id === interview.id ? {
       ...iv,
       interviewStatus: "Awaiting New Slots",
       status: "Awaiting New Slots",
-      availabilityRequest: reason,
+      availabilityRequest: requestText,
       availabilityRequested: true,
       scheduledDate: null,
       scheduledTime: null,
@@ -1729,7 +1872,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
           </p>
           {activeInterview.availabilityRequest && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f5c26b", fontSize: "0.85rem" }}>
-              <strong>Your request:</strong> {activeInterview.availabilityRequest}
+              <strong>Your request:</strong>{" "}
+              <span style={{ whiteSpace: "pre-line" }}>{activeInterview.availabilityRequest}</span>
             </div>
           )}
         </div>
@@ -1758,12 +1902,12 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               )
             );
           }}
-          onAvailabilityRequested={(reason) => {
+          onAvailabilityRequested={(requestText) => {
             setInterviews((prev) => prev.map((iv) => iv.id === activeInterview.id ? {
               ...iv,
               interviewStatus: "Awaiting New Slots",
               status: "Awaiting New Slots",
-              availabilityRequest: reason,
+              availabilityRequest: requestText,
               availabilityRequested: true,
             } : iv));
           }}
@@ -2029,7 +2173,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                   <p style={{ margin: "0 0 0.3rem", fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" }}>
                     New slots requested
                   </p>
-                  <p style={{ margin: 0, fontSize: "0.86rem", lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: "0.86rem", lineHeight: 1.5, whiteSpace: "pre-line" }}>
                     {iv.availabilityRequest}
                   </p>
                 </div>

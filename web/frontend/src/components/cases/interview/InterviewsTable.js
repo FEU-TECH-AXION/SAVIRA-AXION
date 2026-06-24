@@ -251,7 +251,7 @@ useEffect(() => {
                 <td className={styles.colInterviewee}>
                   {interview.intervieweeName}
                   {interview.availabilityRequest && (
-                    <div style={{ marginTop: 4, color: "#92400e", fontSize: "0.72rem", lineHeight: 1.35 }}>
+                    <div style={{ marginTop: 4, color: "#92400e", fontSize: "0.72rem", lineHeight: 1.35, whiteSpace: "pre-line" }}>
                       <strong>New slots requested:</strong>{" "}
                       {interview.availabilityRequest}
                       <div>
