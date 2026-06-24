@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiArrowLeft,
   FiCheckCircle,
@@ -10,7 +10,7 @@ import {
   FiTrash2,
   FiUsers,
 } from "react-icons/fi";
-import { createChapter, fetchUsers } from "@/lib/api";
+import { createChapter, fetchChapter, fetchUsers, updateChapter } from "@/lib/api";
 import styles from "./CreateChapter.module.css";
 
 const DRAFT_KEY = "savira_chapter_formation_workspace";
@@ -65,6 +65,33 @@ const initialState = {
   officers: Object.fromEntries(OFFICER_ROLES.map((role) => [role, ""])),
   notes: "",
 };
+
+function normalizeChapterForm(chapter) {
+  return {
+    ...initialState,
+    ...chapter,
+    members: Array.isArray(chapter?.members) && chapter.members.length > 0
+      ? chapter.members.map((member) => ({
+        ...blankMember,
+        ...member,
+        userId: member.userId ? String(member.userId) : "",
+        age: member.age != null ? String(member.age) : "",
+      }))
+      : [{ ...blankMember, organizingGroup: true, organizingCommittee: true }],
+    officers: {
+      ...initialState.officers,
+      ...Object.fromEntries(
+        Object.entries(chapter?.officers || {}).map(([role, userId]) => [
+          role,
+          userId ? String(userId) : "",
+        ])
+      ),
+    },
+    affiliateActiveMembers: chapter?.affiliateActiveMembers != null
+      ? String(chapter.affiliateActiveMembers)
+      : "",
+  };
+}
 
 function calcAge(birthday) {
   if (!birthday) return "";
@@ -133,8 +160,11 @@ function Requirement({ done, title, detail }) {
   );
 }
 
-export default function ChapterFormationPage() {
+export default function ChapterFormationPage({ mode = "create" }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const chapterId = searchParams.get("id");
+  const isEdit = mode === "edit";
   const [form, setForm] = useState(initialState);
   const [staffUsers, setStaffUsers] = useState([]);
   const [staffError, setStaffError] = useState("");
@@ -143,13 +173,46 @@ export default function ChapterFormationPage() {
   const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) setForm({ ...initialState, ...JSON.parse(raw) });
-    } catch {
-      setForm(initialState);
+    if (isEdit) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) setForm({ ...initialState, ...JSON.parse(raw) });
+      } catch {
+        setForm(initialState);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [isEdit]);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    if (!chapterId) {
+      const timer = window.setTimeout(() => {
+        setSaveError("No chapter was selected for editing.");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
-  }, []);
+
+    let mounted = true;
+    const timer = window.setTimeout(() => {
+      fetchChapter(chapterId)
+        .then((chapter) => {
+          if (!mounted) return;
+          setForm(normalizeChapterForm(chapter));
+        })
+        .catch((err) => {
+          if (!mounted) return;
+          setSaveError(err.message || "Unable to load chapter for editing.");
+        });
+    }, 0);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+    };
+  }, [chapterId, isEdit]);
 
   useEffect(() => {
     let mounted = true;
@@ -302,6 +365,11 @@ export default function ChapterFormationPage() {
   }
 
   async function saveDraft() {
+    if (isEdit && !chapterId) {
+      setSaveError("No chapter was selected for editing.");
+      return;
+    }
+
     setSaving(true);
     setSaveError("");
     const cleanedMembers = form.members
@@ -320,12 +388,16 @@ export default function ChapterFormationPage() {
     record.status = getChapterStatus(record);
 
     try {
-      await createChapter(record);
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      if (isEdit) {
+        await updateChapter(chapterId, record);
+      } else {
+        await createChapter(record);
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      }
       setSavedAt(new Date().toLocaleString("en-PH"));
       router.push("/volunteer/chapters");
     } catch (err) {
-      setSaveError(err.message || "Unable to save chapter.");
+      setSaveError(err.message || (isEdit ? "Unable to update chapter." : "Unable to save chapter."));
     } finally {
       setSaving(false);
     }
@@ -341,20 +413,20 @@ export default function ChapterFormationPage() {
         <section className={styles.hero}>
           <div>
             <p className={styles.eyebrow}>Volunteer Chapter Formation</p>
-            <h1>SASHA Chapter Building Workspace</h1>
+            <h1>{isEdit ? "Edit Chapter Building Workspace" : "SASHA Chapter Building Workspace"}</h1>
             <p>
-              Organize accepted volunteers into a chapter, Chapter Organizing Committee, or
-              higher-level formation while checking the membership, oath-taking, officer, and
-              recognition requirements.
+              {isEdit
+                ? "Update this chapter formation while keeping the same readiness, roster, officer, and recognition workflow."
+                : "Organize accepted volunteers into a chapter, Chapter Organizing Committee, or higher-level formation while checking the membership, oath-taking, officer, and recognition requirements."}
             </p>
           </div>
           <button className={styles.saveBtn} onClick={saveDraft} disabled={saving}>
-            <FiSave /> {saving ? "Saving..." : "Save Chapter"}
+            <FiSave /> {saving ? "Saving..." : isEdit ? "Save Changes" : "Save Chapter"}
           </button>
         </section>
 
         {saveError && <div className={styles.warning}>{saveError}</div>}
-        {savedAt && <div className={styles.savedBanner}>Chapter record saved to the database at {savedAt}.</div>}
+        {savedAt && <div className={styles.savedBanner}>Chapter record {isEdit ? "updated" : "saved"} at {savedAt}.</div>}
 
         <section className={styles.statsGrid}>
           <Stat label="Total Members" value={stats.members.length} tone={stats.overCapacity ? "warn" : ""} />
@@ -383,10 +455,24 @@ export default function ChapterFormationPage() {
               <input value={form.location} onChange={(e) => update("location", e.target.value)} placeholder="Primary locality or institution" />
             </Field>
             <Field label="Assigned Contact Person">
-              <input value={form.contactPerson} onChange={(e) => update("contactPerson", e.target.value)} placeholder="Lead organizer" />
+              <select value={form.contactPerson} onChange={(e) => update("contactPerson", e.target.value)}>
+                <option value="">Select staff contact person</option>
+                {staffUsers.map((staff) => (
+                  <option key={`contact-${staff.user_id}`} value={staff.displayName}>
+                    {staff.displayName}{staff.email ? ` - ${staff.email}` : ""}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Higher SASHA Guide / Mentor">
-              <input value={form.higherStructureRepresentative} onChange={(e) => update("higherStructureRepresentative", e.target.value)} placeholder="Representative from higher SASHA structure" />
+              <select value={form.higherStructureRepresentative} onChange={(e) => update("higherStructureRepresentative", e.target.value)}>
+                <option value="">Select staff guide / mentor</option>
+                {staffUsers.map((staff) => (
+                  <option key={`mentor-${staff.user_id}`} value={staff.displayName}>
+                    {staff.displayName}{staff.email ? ` - ${staff.email}` : ""}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Target Launch Date">
               <input type="date" value={form.targetLaunchDate} onChange={(e) => update("targetLaunchDate", e.target.value)} />

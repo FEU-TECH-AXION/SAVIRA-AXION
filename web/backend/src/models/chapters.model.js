@@ -152,6 +152,20 @@ const toChapterDbPayload = (payload = {}) => ({
   created_by_user_id: payload.createdByUserId || null,
 })
 
+const toMemberDbPayload = (chapterId, member) => ({
+  chapter_id: chapterId,
+  user_id: member.userId,
+  nickname: member.nickname || null,
+  date_of_birth: member.birthday || null,
+  age: member.age ? Number(member.age) : null,
+  affiliation: member.affiliation || null,
+  reason_for_joining: member.reason || null,
+  membership_type: member.membershipType || memberType(member.age),
+  oath_taken: !!member.oathTaken,
+  is_organizing_group: !!member.organizingGroup,
+  is_organizing_committee: !!member.organizingCommittee,
+})
+
 const getAll = async () => {
   const { data, error } = await supabase
     .from('chapters')
@@ -192,19 +206,7 @@ const create = async (payload = {}) => {
 
   let insertedMembers = []
   if (members.length > 0) {
-    const memberPayloads = members.map((member) => ({
-      chapter_id: chapter.chapter_id,
-      user_id: member.userId,
-      nickname: member.nickname || null,
-      date_of_birth: member.birthday || null,
-      age: member.age ? Number(member.age) : null,
-      affiliation: member.affiliation || null,
-      reason_for_joining: member.reason || null,
-      membership_type: member.membershipType || memberType(member.age),
-      oath_taken: !!member.oathTaken,
-      is_organizing_group: !!member.organizingGroup,
-      is_organizing_committee: !!member.organizingCommittee,
-    }))
+    const memberPayloads = members.map((member) => toMemberDbPayload(chapter.chapter_id, member))
 
     const { data, error } = await supabase
       .from('chapter_members')
@@ -244,8 +246,105 @@ const create = async (payload = {}) => {
   return getById(chapter.chapter_id)
 }
 
+const update = async (chapterId, payload = {}) => {
+  const existing = await getById(chapterId)
+  if (!existing) return null
+
+  const chapterPayload = toChapterDbPayload(payload)
+  delete chapterPayload.created_by_user_id
+
+  const members = Array.isArray(payload.members) ? payload.members.filter((m) => m.userId) : []
+  const provisionalOfficers = Object.entries(payload.officers || {})
+    .filter(([role, userId]) => OFFICER_ROLES.includes(role) && userId)
+    .map(([role, userId]) => ({ role, userId }))
+
+  chapterPayload.status = computeStatus(
+    chapterPayload,
+    members,
+    provisionalOfficers.map((officer) => ({ chapterMemberId: officer.userId }))
+  )
+  chapterPayload.updated_at = new Date().toISOString()
+
+  const { error: updateError } = await supabase
+    .from('chapters')
+    .update(chapterPayload)
+    .eq('chapter_id', chapterId)
+  if (updateError) throw updateError
+
+  const { error: officersDeleteError } = await supabase
+    .from('chapter_officers')
+    .delete()
+    .eq('chapter_id', chapterId)
+  if (officersDeleteError) throw officersDeleteError
+
+  const { error: membersDeleteError } = await supabase
+    .from('chapter_members')
+    .delete()
+    .eq('chapter_id', chapterId)
+  if (membersDeleteError) throw membersDeleteError
+
+  let insertedMembers = []
+  if (members.length > 0) {
+    const { data, error } = await supabase
+      .from('chapter_members')
+      .insert(members.map((member) => toMemberDbPayload(chapterId, member)))
+      .select()
+    if (error) throw error
+    insertedMembers = data || []
+  }
+
+  const memberByUserId = new Map(insertedMembers.map((member) => [String(member.user_id), member]))
+  const officerPayloads = provisionalOfficers
+    .map((officer) => ({
+      chapter_id: chapterId,
+      chapter_member_id: memberByUserId.get(String(officer.userId))?.chapter_member_id || null,
+      role: officer.role,
+    }))
+    .filter((officer) => officer.chapter_member_id)
+
+  if (officerPayloads.length > 0) {
+    const { error } = await supabase.from('chapter_officers').insert(officerPayloads)
+    if (error) throw error
+  }
+
+  const finalStatus = computeStatus(chapterPayload, insertedMembers, officerPayloads)
+  await supabase
+    .from('chapters')
+    .update({ status: finalStatus, updated_at: new Date().toISOString() })
+    .eq('chapter_id', chapterId)
+
+  return getById(chapterId)
+}
+
+const deleteById = async (chapterId) => {
+  const existing = await getById(chapterId)
+  if (!existing) return null
+
+  const { error: officersError } = await supabase
+    .from('chapter_officers')
+    .delete()
+    .eq('chapter_id', chapterId)
+  if (officersError) throw officersError
+
+  const { error: membersError } = await supabase
+    .from('chapter_members')
+    .delete()
+    .eq('chapter_id', chapterId)
+  if (membersError) throw membersError
+
+  const { error: chapterError } = await supabase
+    .from('chapters')
+    .delete()
+    .eq('chapter_id', chapterId)
+  if (chapterError) throw chapterError
+
+  return existing
+}
+
 module.exports = {
   getAll,
   getById,
   create,
+  update,
+  deleteById,
 }
