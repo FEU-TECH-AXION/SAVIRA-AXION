@@ -11,6 +11,7 @@ import FilterMenu from "./FilterMenu";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
 import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1603,18 +1604,29 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     setRemoveAssignedDialog(casesToUpdate.filter(Boolean));
   }
 
-  async function confirmRemoveAssignedStaff() {
-    const casesToUpdate = removeAssignedDialog || [];
-    const assignments = casesToUpdate.flatMap((caseItem) =>
-      (caseItem.assignedOfficerIds || []).map((officerId) => ({
+  function getRemovableCaseOfficerAssignments(casesToUpdate = []) {
+    return casesToUpdate.flatMap((caseItem) => {
+      const names = String(caseItem.assignedOfficer || "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
+
+      return (caseItem.assignedOfficerIds || []).map((officerId, index) => ({
+        key: `${caseItem.id}:${officerId}`,
         caseId: caseItem.id,
         officerId,
-      }))
-    );
+        label: names[index] || `Officer #${officerId}`,
+        context: `Case ${caseItem.caseId || caseItem.id}`,
+      }));
+    });
+  }
+
+  async function confirmRemoveAssignedStaff(selectedAssignments) {
+    const casesToUpdate = removeAssignedDialog || [];
+    const assignments = selectedAssignments || [];
 
     if (assignments.length === 0) {
-      setRemoveAssignedDialog(null);
-      showToast("No assigned case officers to remove.", "danger");
+      showToast("Select at least one assigned case officer to remove.", "danger");
       return;
     }
 
@@ -1630,16 +1642,32 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
         if (!res.ok) throw new Error(body.error || "Failed to remove assigned case officer.");
       }));
 
-      const updatedCaseIds = new Set(casesToUpdate.map((caseItem) => caseItem.id));
+      const removedByCase = assignments.reduce((map, assignment) => {
+        const ids = map.get(assignment.caseId) || new Set();
+        ids.add(String(assignment.officerId));
+        map.set(assignment.caseId, ids);
+        return map;
+      }, new Map());
       setCases((current) =>
-        current.map((caseItem) =>
-          updatedCaseIds.has(caseItem.id)
-            ? { ...caseItem, assignedOfficer: null, assignedOfficerIds: [] }
-            : caseItem
-        )
+        current.map((caseItem) => {
+          const removedIds = removedByCase.get(caseItem.id);
+          if (!removedIds) return caseItem;
+          const names = String(caseItem.assignedOfficer || "")
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const remaining = (caseItem.assignedOfficerIds || [])
+            .map((officerId, index) => ({ officerId, name: names[index] }))
+            .filter(({ officerId }) => !removedIds.has(String(officerId)));
+          return {
+            ...caseItem,
+            assignedOfficer: remaining.map(({ name, officerId }) => name || `Officer #${officerId}`).join(", ") || null,
+            assignedOfficerIds: remaining.map(({ officerId }) => officerId),
+          };
+        })
       );
       setRemoveAssignedDialog(null);
-      showToast("Assigned case officers removed.");
+      showToast("Selected case officers removed.");
     } catch (err) {
       showToast(err.message || "Failed to remove assigned case officers.", "danger");
     } finally {
@@ -1820,16 +1848,14 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       {/* Assign (admin) */}
       <AssignCaseModal open={modal === "assign"} onClose={closeModal} casesData={selected} onSave={assignOfficer} officers={officers} showToast={showToast} />
 
-      <ConfirmDialog
+      <RemoveAssignedStaffDialog
+        key={`remove-case-staff-${(removeAssignedDialog || []).map((caseItem) => caseItem.id).join("-") || "closed"}`}
         open={Boolean(removeAssignedDialog)}
         title="Remove Assigned Staff"
-        description={`Remove assigned case officers from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}?`}
+        description={`Choose which assigned case officers to remove from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
         detail="Selected case officers will immediately lose access through these case assignments."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
-        tone="danger"
+        assignments={getRemovableCaseOfficerAssignments(removeAssignedDialog || [])}
         busy={removingAssigned}
-        dismissible={!removingAssigned}
         onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
         onConfirm={confirmRemoveAssignedStaff}
       />

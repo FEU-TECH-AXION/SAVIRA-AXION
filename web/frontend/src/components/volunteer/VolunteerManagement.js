@@ -9,6 +9,7 @@ import FilterMenu from "./FilterMenu";
 import Link from "next/link";
 import { IoIosWarning } from "react-icons/io";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 
@@ -773,18 +774,26 @@ export default function VolunteerManagement() {
     setRemoveAssignedDialog(applicantsToUpdate.filter(Boolean));
   }
 
-  async function confirmRemoveAssignedStaff() {
-    const applicantsToUpdate = removeAssignedDialog || [];
-    const assignments = applicantsToUpdate.flatMap((applicant) =>
-      (applicant.assignedEvaluatorIds || []).map((assessorId) => ({
+  function getRemovableApplicationAssignments(applicantsToUpdate = []) {
+    return applicantsToUpdate.flatMap((applicant) => {
+      const names = applicant.assignedEvaluators || applicant.assignedStaff || [];
+      return (applicant.assignedEvaluatorIds || []).map((assessorId, index) => ({
+        key: `${applicant.id}:${assessorId}`,
         applicationId: applicant.id,
         assessorId,
-      }))
-    );
+        label: names[index] || `Staff #${assessorId}`,
+        context: `APP-${String(applicant.id).padStart(4, "0")}`,
+        detail: applicant.name,
+      }));
+    });
+  }
+
+  async function confirmRemoveAssignedStaff(selectedAssignments) {
+    const applicantsToUpdate = removeAssignedDialog || [];
+    const assignments = selectedAssignments || [];
 
     if (assignments.length === 0) {
-      setRemoveAssignedDialog(null);
-      showToast("No assigned staff to remove.", "danger");
+      showToast("Select at least one assigned staff member to remove.", "danger");
       return;
     }
 
@@ -800,21 +809,30 @@ export default function VolunteerManagement() {
         if (!res.ok) throw new Error(body.error || "Failed to remove assigned staff.");
       }));
 
-      const updatedApplicantIds = new Set(applicantsToUpdate.map((applicant) => applicant.id));
+      const removedByApplication = assignments.reduce((map, assignment) => {
+        const ids = map.get(assignment.applicationId) || new Set();
+        ids.add(String(assignment.assessorId));
+        map.set(assignment.applicationId, ids);
+        return map;
+      }, new Map());
       setApplicants((current) =>
-        current.map((applicant) =>
-          updatedApplicantIds.has(applicant.id)
-            ? {
-                ...applicant,
-                assignedEvaluators: [],
-                assignedEvaluatorIds: [],
-                status: applicant.status === "Reviewing" ? "Pending" : applicant.status,
-              }
-            : applicant
-        )
+        current.map((applicant) => {
+          const removedIds = removedByApplication.get(applicant.id);
+          if (!removedIds) return applicant;
+          const names = applicant.assignedEvaluators || applicant.assignedStaff || [];
+          const remaining = (applicant.assignedEvaluatorIds || [])
+            .map((assessorId, index) => ({ assessorId, name: names[index] }))
+            .filter(({ assessorId }) => !removedIds.has(String(assessorId)));
+          return {
+            ...applicant,
+            assignedEvaluators: remaining.map(({ name, assessorId }) => name || `Staff #${assessorId}`),
+            assignedEvaluatorIds: remaining.map(({ assessorId }) => assessorId),
+            status: remaining.length === 0 && applicant.status === "Reviewing" ? "Pending" : applicant.status,
+          };
+        })
       );
       setRemoveAssignedDialog(null);
-      showToast("Assigned staff removed.");
+      showToast("Selected staff removed.");
     } catch (err) {
       showToast(err.message || "Failed to remove assigned staff.", "danger");
     } finally {
@@ -1142,16 +1160,14 @@ export default function VolunteerManagement() {
           return body
         }}
       />
-      <ConfirmDialog
+      <RemoveAssignedStaffDialog
+        key={`remove-application-staff-${(removeAssignedDialog || []).map((applicant) => applicant.id).join("-") || "closed"}`}
         open={Boolean(removeAssignedDialog)}
         title="Remove Assigned Staff"
-        description={`Remove assigned staff from ${removeAssignedDialog?.length || 0} selected application${removeAssignedDialog?.length === 1 ? "" : "s"}?`}
+        description={`Choose which assigned staff to remove from ${removeAssignedDialog?.length || 0} selected application${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
         detail="Selected Membership Committee staff will immediately lose access through these application assignments."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
-        tone="danger"
+        assignments={getRemovableApplicationAssignments(removeAssignedDialog || [])}
         busy={removingAssigned}
-        dismissible={!removingAssigned}
         onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
         onConfirm={confirmRemoveAssignedStaff}
       />

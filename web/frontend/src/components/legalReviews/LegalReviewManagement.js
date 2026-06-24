@@ -8,6 +8,7 @@ import FilterMenu from "./FilterMenu";
 import UpdateStatusModal from "../cases/UpdateStatusModals";
 import Tooltip from "../ui/Tooltip";
 import { ConfirmDialog } from "../ui/Dialog";
+import RemoveAssignedStaffDialog from "../ui/RemoveAssignedStaffDialog";
 import { getLegalCaseDeadlines, normalizeLegalList } from "./legalReviewCalendar";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import {
@@ -1374,20 +1375,27 @@ export default function LegalReviewManagement() {
     setRemoveAssignedDialog(casesToUpdate.filter(Boolean));
   }
 
-  async function confirmRemoveAssignedStaff() {
-    const casesToUpdate = removeAssignedDialog || [];
-    const assignments = casesToUpdate.flatMap((caseItem) =>
+  function getRemovableLegalAssignments(casesToUpdate = []) {
+    return casesToUpdate.flatMap((caseItem) =>
       (caseItem.assignedLegal || [])
         .filter((person) => person.legal_personnel_id)
         .map((person) => ({
+          key: `${caseItem.id}:${person.legal_personnel_id}`,
           caseId: caseItem.id,
           legalPersonnelId: person.legal_personnel_id,
+          label: person.name || `Personnel #${person.legal_personnel_id}`,
+          context: `Case ${caseItem.caseId || caseItem.id}`,
+          detail: person.assignment_role ? `Role: ${person.assignment_role}` : undefined,
         }))
     );
+  }
+
+  async function confirmRemoveAssignedStaff(selectedAssignments) {
+    const casesToUpdate = removeAssignedDialog || [];
+    const assignments = selectedAssignments || [];
 
     if (assignments.length === 0) {
-      setRemoveAssignedDialog(null);
-      showToast("No assigned legal personnel to remove.", "danger");
+      showToast("Select at least one assigned legal personnel to remove.", "danger");
       return;
     }
 
@@ -1403,16 +1411,34 @@ export default function LegalReviewManagement() {
         if (!res.ok) throw new Error(body.error || "Failed to remove assigned legal personnel.");
       }));
 
-      const updatedCaseIds = new Set(casesToUpdate.map((caseItem) => caseItem.id));
+      const removedByCase = assignments.reduce((map, assignment) => {
+        const ids = map.get(assignment.caseId) || new Set();
+        ids.add(String(assignment.legalPersonnelId));
+        map.set(assignment.caseId, ids);
+        return map;
+      }, new Map());
       setCases((current) =>
-        current.map((caseItem) =>
-          updatedCaseIds.has(caseItem.id)
-            ? { ...caseItem, assignedLegal: [], assignedLawyer: null, assignedParalegal: null }
-            : caseItem
-        )
+        current.map((caseItem) => {
+          const removedIds = removedByCase.get(caseItem.id);
+          if (!removedIds) return caseItem;
+          const assignedLegal = (caseItem.assignedLegal || []).filter(
+            (person) => !removedIds.has(String(person.legal_personnel_id))
+          );
+          const assignedLawyer = assignedLegal
+            .filter((person) => person.assignment_role === "lawyer")
+            .map((person) => person.name)
+            .filter(Boolean)
+            .join(", ") || null;
+          const assignedParalegal = assignedLegal
+            .filter((person) => person.assignment_role === "paralegal")
+            .map((person) => person.name)
+            .filter(Boolean)
+            .join(", ") || null;
+          return { ...caseItem, assignedLegal, assignedLawyer, assignedParalegal };
+        })
       );
       setRemoveAssignedDialog(null);
-      showToast("Assigned legal personnel removed.");
+      showToast("Selected legal personnel removed.");
     } catch (err) {
       showToast(err.message || "Failed to remove assigned legal personnel.", "danger");
     } finally {
@@ -1743,16 +1769,14 @@ export default function LegalReviewManagement() {
       />
       <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
       <AssignLegalModal     open={modal === "assignLegal"}  onClose={closeModal} caseData={selectedCase} legalPersonnels={legalPersonnels} onSave={saveCase} showToast={showToast} />
-      <ConfirmDialog
+      <RemoveAssignedStaffDialog
+        key={`remove-legal-staff-${(removeAssignedDialog || []).map((caseItem) => caseItem.id).join("-") || "closed"}`}
         open={Boolean(removeAssignedDialog)}
         title="Remove Assigned Staff"
-        description={`Remove assigned legal personnel from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}?`}
+        description={`Choose which legal personnel to remove from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
         detail="Selected lawyers and paralegals will immediately lose access through these legal assignments."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
-        tone="danger"
+        assignments={getRemovableLegalAssignments(removeAssignedDialog || [])}
         busy={removingAssigned}
-        dismissible={!removingAssigned}
         onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
         onConfirm={confirmRemoveAssignedStaff}
       />

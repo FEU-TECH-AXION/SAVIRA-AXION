@@ -7,7 +7,7 @@ import { FiSearch, FiX, FiPlus, FiAlertTriangle, FiChevronLeft, FiChevronRight, 
 import InterviewsTable from "./InterviewsTable";
 import FilterMenu from "./FilterMenu";
 import AddMeetingLinkModal from "./AddMeetingLinkModal";
-import { ConfirmDialog } from "@/components/ui/Dialog";
+import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import { MdEdit, MdCancel } from "react-icons/md";
 
 const PAGE_SIZE = 10;
@@ -645,9 +645,26 @@ export default function VolunteerApplicationInterviewManagement() {
     setRemoveAssignedDialog(ids.filter(Boolean));
   };
 
-  const confirmRemoveAssignedStaff = async () => {
-    const ids = removeAssignedDialog || [];
-    if (ids.length === 0) return;
+  const getRemovableInterviewAssignments = (ids = []) =>
+    ids
+      .map((id) => interviews.find((interview) => String(interview.id) === String(id)))
+      .filter((interview) => interview?.interviewer_user_id)
+      .map((interview) => ({
+        key: String(interview.id),
+        interviewId: interview.id,
+        label: interview.interviewer
+          ? `${interview.interviewer.first_name || ""} ${interview.interviewer.last_name || ""}`.trim()
+          : `Staff #${interview.interviewer_user_id}`,
+        context: `Interview for ${interview.appRefId}`,
+        detail: interview.intervieweeName,
+      }));
+
+  const confirmRemoveAssignedStaff = async (selectedAssignments) => {
+    const ids = (selectedAssignments || []).map((assignment) => assignment.interviewId);
+    if (ids.length === 0) {
+      alert("Select at least one assigned interview staff member to remove.");
+      return;
+    }
 
     setRemovingAssigned(true);
     try {
@@ -670,7 +687,7 @@ export default function VolunteerApplicationInterviewManagement() {
       );
       setSelectedInterviews([]);
       setRemoveAssignedDialog(null);
-      alert("Assigned interview staff removed.");
+      alert("Selected interview staff removed.");
     } catch (err) {
       alert(err.message || "Failed to remove assigned interview staff.");
     } finally {
@@ -797,16 +814,14 @@ export default function VolunteerApplicationInterviewManagement() {
         onSave={handleSaveMeetingLink}
         loading={loading}
       />
-      <ConfirmDialog
+      <RemoveAssignedStaffDialog
+        key={`remove-volunteer-interview-staff-${(removeAssignedDialog || []).join("-") || "closed"}`}
         open={Boolean(removeAssignedDialog)}
         title="Remove Assigned Staff"
-        description={`Remove assigned staff from ${removeAssignedDialog?.length || 0} selected interview${removeAssignedDialog?.length === 1 ? "" : "s"}?`}
+        description={`Choose which assigned staff to remove from ${removeAssignedDialog?.length || 0} selected interview${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
         detail="The interview records will stay in the table, but the interviewer assignment will be cleared."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
-        tone="danger"
+        assignments={getRemovableInterviewAssignments(removeAssignedDialog || [])}
         busy={removingAssigned}
-        dismissible={!removingAssigned}
         onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
         onConfirm={confirmRemoveAssignedStaff}
       />
