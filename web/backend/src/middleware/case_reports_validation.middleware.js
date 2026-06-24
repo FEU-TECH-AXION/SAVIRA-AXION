@@ -81,11 +81,6 @@ function validateCaseReport(req, res, next) {
   if (!['Yes', 'No'].includes(incident.witnesses))
     errors.push('Please indicate if there are witnesses.');
 
-  if (incident.witnesses === 'Yes') {
-    if (!incident.witnessName?.trim())      errors.push('Witness name is required.');
-    if (!incident.witnessContact?.trim())   errors.push('Witness contact is required.');
-  }
-
   if (!['Yes', 'No'].includes(incident.toldAnyone))
     errors.push('Please indicate if you told anyone.');
 

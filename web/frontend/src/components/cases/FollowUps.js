@@ -45,6 +45,7 @@ const USER_REASON_OPTIONS = [
       "incident_datetime",
       "incident_location",
       "incident_description",
+      "incident_outcome",
       "perpetrator",
       "witnesses",
       "prior_disclosure",
@@ -56,6 +57,7 @@ const USER_REASON_OPTIONS = [
     description: "Choose this when the existing information is correct, but the case team needs new details or files.",
     groupIds: [
       "incident_description",
+      "incident_outcome",
       "perpetrator",
       "witnesses",
       "prior_disclosure",
@@ -760,27 +762,29 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
         </div>
         <div className={styles.threadHeaderAside}>
           <time>{new Date(request.created_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}</time>
-          {isStaff && isOpen && (
+          {isOpen && (canCancel || isStaff) && (
             <div className={styles.headerActions}>
-              <Tooltip text="Close this follow-up because the requested action cannot be approved.">
-                <button type="button" disabled={busy} className={styles.rejectButton} onClick={() => setCloseStatus("rejected")}>
-                  Reject
-                </button>
-              </Tooltip>
-              <Tooltip text="Confirm that the necessary follow-up action has been completed.">
-                <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("resolved")}>
-                  <FiCheck /> Mark Resolved
-                </button>
-              </Tooltip>
-            </div>
-          )}
-          {canCancel && (
-            <div className={styles.headerActions}>
-              <Tooltip text="Cancel this request. The other party will be notified.">
-                <button type="button" disabled={busy} className={styles.cancelButton} onClick={() => setCancelConfirmOpen(true)}>
-                  <FiX /> Cancel Request
-                </button>
-              </Tooltip>
+              {canCancel && (
+                <Tooltip text="Cancel this request. The other party will be notified.">
+                  <button type="button" disabled={busy} className={styles.cancelButton} onClick={() => setCancelConfirmOpen(true)}>
+                    <FiX /> Cancel Request
+                  </button>
+                </Tooltip>
+              )}
+              {isStaff && (
+                <Tooltip text="Close this follow-up because the requested action cannot be approved.">
+                  <button type="button" disabled={busy} className={styles.rejectButton} onClick={() => setCloseStatus("rejected")}>
+                    Reject
+                  </button>
+                </Tooltip>
+              )}
+              {isStaff && (
+                <Tooltip text="Confirm that the necessary follow-up action has been completed.">
+                  <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("resolved")}>
+                    <FiCheck /> Mark Resolved
+                  </button>
+                </Tooltip>
+              )}
             </div>
           )}
           {isStaff && !isOpen && (
@@ -922,8 +926,8 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
           <div className={`${styles.modal} ${styles.editorModal}`} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div>
-                <h2>Update requested information</h2>
-                <p>Only the fields tagged by the case officer are shown.</p>
+                <h2>Share the requested details</h2>
+                <p>The case team only needs the details below. Share what you can, in your own words.</p>
               </div>
               <Tooltip text="Close correction form">
                 <button type="button" className={styles.iconButton} onClick={() => setEditorOpen(false)} aria-label="Close correction form"><FiX /></button>

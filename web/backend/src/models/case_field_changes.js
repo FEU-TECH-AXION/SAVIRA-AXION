@@ -96,6 +96,7 @@ function mergeApprovedFieldChanges(report, changes = []) {
 module.exports = {
   FIELD_TO_COLUMN,
   buildApprovedFieldUpdate,
+  columnForChange,
   mergeApprovedFieldChanges,
   normalizePerpetratorGenderColumns,
   shouldApplyAuditValue,
