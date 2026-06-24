@@ -1,0 +1,396 @@
+.tableWrap {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.tableScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #b2e0e0;
+  background: #e1f5f5;
+  animation: slideDown 0.15s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.bulkCount {
+  color: #037F81;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.bulkActions {
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+}
+
+.bulkBtn {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid #037F81;
+  border-radius: 999px;
+  color: #fff;
+  background: #037F81;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bulkBtn:hover {
+  background: #025f61;
+}
+
+.bulkBtnStatus {
+  border-color: #E8663A;
+  background: #E8663A;
+}
+
+.bulkBtnStatus:hover {
+  border-color: #c44e24;
+  background: #c44e24;
+}
+
+.bulkClear {
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  color: #6b7280;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bulkClear:hover {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.headerRow {
+  border-bottom: 2px solid #e5e7eb;
+  background: #fff;
+}
+
+.th {
+  padding: 0.85rem 0.9rem;
+  color: #374151;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sortableTh {
+  cursor: pointer;
+}
+
+.sortableTh:hover,
+.sortActive {
+  color: #037F81;
+}
+
+.sortNeutral {
+  margin-left: 3px;
+  opacity: 0.3;
+  font-size: 0.72rem;
+}
+
+.sortActive {
+  margin-left: 3px;
+  font-size: 0.72rem;
+}
+
+.checkTh,
+.checkTd {
+  width: 44px;
+  padding-right: 0.5rem;
+  padding-left: 1rem;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #037F81;
+  cursor: pointer;
+}
+
+.row {
+  position: relative;
+  border-bottom: 1px solid #f1f3f5;
+  transition: background 0.1s;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover {
+  background: #f0fffe !important;
+}
+
+.rowSelected {
+  background: #e1f5f5 !important;
+}
+
+.td {
+  padding: 0.7rem 0.9rem;
+  color: #292929;
+  vertical-align: middle;
+}
+
+.nameTd {
+  min-width: 230px;
+}
+
+.personCell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #037F81;
+  background: #e1f5f5;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.nameStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nameText {
+  color: #292929;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.emailText,
+.committeeText {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.roleText {
+  display: block;
+  color: #374151;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.workloadGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(62px, 1fr));
+  gap: 0.35rem;
+  min-width: 300px;
+}
+
+.workloadGrid span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #eef2f3;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.workloadGrid strong {
+  color: #037F81;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+.workloadGrid small {
+  color: #6b7280;
+  font-size: 0.67rem;
+  white-space: nowrap;
+}
+
+.conflictBadge,
+.noteBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.conflictBadge {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.noteBadge {
+  color: #025f61;
+  background: #e1f5f5;
+}
+
+.muted {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.rowActions {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding: 0.35rem;
+  border: 1px solid #d7eeee;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(8px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.row:hover .rowActions,
+.row:focus-within .rowActions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) translateX(0);
+}
+
+.actionBtn,
+.actionBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.actionBtn {
+  border: 0;
+  color: #fff;
+  background: #037F81;
+}
+
+.actionBtnSecondary {
+  border: 1px solid #037F81;
+  color: #037F81;
+  background: #fff;
+}
+
+.actionBtn:disabled,
+.actionBtnSecondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.emptyState {
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.paginationBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.pageArrow {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #374151;
+  background: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.pageArrow:hover:not(:disabled) {
+  border-color: #037F81;
+  color: #037F81;
+  background: #f0fffe;
+}
+
+.pageArrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.recordCount {
+  margin-left: 0.5rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .bulkBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bulkActions {
+    width: 100%;
+  }
+
+  .bulkBtn {
+    flex: 1;
+  }
+
+  .bulkClear {
+    margin-left: 0;
+  }
+
+  .paginationBar {
+    justify-content: center;
+  }
+}
