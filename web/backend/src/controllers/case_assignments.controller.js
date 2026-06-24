@@ -120,9 +120,10 @@ const bulkAssignOfficers = async (req, res) => {
                     case_officer_id,
                     name: officerName
                 });
-
+                
                 // Notify the assigned officer
                 if (officerData.user_id) {
+                    console.log('[notifyUser] sending to:', officerData.user_id);
                     notifyUser(officerData.user_id, {
                         title: 'New Case Assigned',
                         body: `You have been assigned to case ${case_report_id}.`,
