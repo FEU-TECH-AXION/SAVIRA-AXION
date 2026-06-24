@@ -8,8 +8,8 @@ async function notifyUser(userId, { title, body, data = {} }) {
     .select('token, platform')
     .eq('user_id', userId);
 
-  console.log('[notifyUser] tokens found:', tokens);  // add this
-  console.log('[notifyUser] fetch error:', error);     // add this
+  console.log('[notifyUser] tokens found:', tokens);  
+  console.log('[notifyUser] fetch error:', error);     
 
   if (error) {
     console.error('[notifyUser] Failed to fetch tokens:', error.message);
@@ -19,6 +19,11 @@ async function notifyUser(userId, { title, body, data = {} }) {
   if (!tokens?.length) return;
 
   const messaging = getMessaging();
+  if (!messaging) {
+    console.warn('[notifyUser] Push notifications skipped: Firebase Admin is not configured.');
+    return;
+  }
+
   const messages = tokens.map(({ token }) => ({
     token,
     notification: { title, body },
@@ -30,8 +35,13 @@ async function notifyUser(userId, { title, body, data = {} }) {
     },
   }));
 
-  const response = await messaging.sendEach(messages);
-  console.log('[notifyUser] FCM responses:', JSON.stringify(response.responses.map(r => ({ success: r.success, error: r.error })))); // add this
+  let response;
+  try {
+    response = await messaging.sendEach(messages);
+  } catch (error) {
+    console.error('[notifyUser] Failed to send notifications:', error.message);
+    return;
+  }
 
   const invalidTokens = response.responses
     .map((r, i) => (!r.success ? tokens[i].token : null))

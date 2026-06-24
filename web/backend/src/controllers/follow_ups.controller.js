@@ -6,13 +6,14 @@ const { FIELD_TO_COLUMN } = require('../models/case_field_changes')
 const TERMINAL_CASE_STATUSES = new Set([10, 11, 12, 13])
 const ALLOWED_TYPES = new Set(['user_change_request', 'officer_clarification_request'])
 const ALLOWED_REASONS = new Set(['Correction needed', 'Additional info', 'Other'])
-const ALLOWED_STATUS_UPDATES = new Set(['open', 'resolved', 'rejected'])
+const ALLOWED_STATUS_UPDATES = new Set(['open', 'resolved', 'rejected', 'cancelled'])
 const ATTACHMENT_BUCKET = 'case-evidence'
 const EVIDENCE_FIELD = 'evidence.files'
 const RESOLUTION_MESSAGES = {
   open: 'This follow-up has been reopened by the case team. You may continue the conversation in this thread.',
   resolved: 'The follow-up has been reviewed and the necessary action has been completed. This request is now marked as resolved.',
   rejected: 'The follow-up has been reviewed, but the requested action could not be approved. This request is now closed.',
+  cancelled: 'This request has been cancelled by the person who submitted it.',
 }
 
 function actorId(req) {
@@ -392,6 +393,31 @@ async function updateFollowUp(req, res) {
     const request = await FollowUps.getRequest(id)
     if (!request) return res.status(404).json({ error: 'Follow-up not found.' })
     const isActive = FollowUps.ACTIVE_STATUSES.includes(request.status)
+    const userId = actorId(req)
+
+    // The originator may cancel their own request; all other status changes
+    // (open / resolved / rejected) are restricted to staff with canManageFollowUps.
+    if (status === 'cancelled') {
+      if (!isActive) {
+        return res.status(409).json({ error: 'This follow-up is already closed.' })
+      }
+      const access = await FollowUps.getCaseAccess(request.case_id, userId)
+      if (!access || (!access.isOwner && !access.isStaff)) {
+        return res.status(403).json({ error: 'You cannot access this follow-up.' })
+      }
+      if (String(request.initiated_by_user_id) !== String(userId)) {
+        return res.status(403).json({ error: 'Only the person who submitted this request can cancel it.' })
+      }
+      const updated = await FollowUps.updateStatusWithMessage(
+        id,
+        'cancelled',
+        userId,
+        RESOLUTION_MESSAGES.cancelled,
+        null
+      )
+      return res.json({ data: updated })
+    }
+
     if (status === 'open' && isActive) {
       return res.status(409).json({ error: 'This follow-up is already open.' })
     }
@@ -406,13 +432,13 @@ async function updateFollowUp(req, res) {
     if (status !== 'open' && !isActive) {
       return res.status(409).json({ error: 'This follow-up is already closed.' })
     }
-    const access = await FollowUps.getCaseAccess(request.case_id, actorId(req))
+    const access = await FollowUps.getCaseAccess(request.case_id, userId)
     if (!access?.canManageFollowUps) return res.status(403).json({ error: 'Only case officers or admins can close follow-ups.' })
 
     const updated = await FollowUps.updateStatusWithMessage(
       id,
       status,
-      actorId(req),
+      userId,
       RESOLUTION_MESSAGES[status],
       status === 'open'
         ? request.type === 'officer_clarification_request' ? 'user' : 'officer'

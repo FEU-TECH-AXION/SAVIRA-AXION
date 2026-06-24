@@ -11,10 +11,36 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const requiredFirebaseConfigKeys = [
+  'apiKey',
+  'projectId',
+  'messagingSenderId',
+  'appId',
+];
+
+export const isFirebaseMessagingConfigured =
+  requiredFirebaseConfigKeys.every((key) => Boolean(firebaseConfig[key])) &&
+  Boolean(process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY);
+
+const getFirebaseApp = () => {
+  if (!isFirebaseMessagingConfigured) return null;
+  return getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+};
 
 // getFirebaseMessaging is async because isSupported() checks browser compatibility
 export const getFirebaseMessaging = async () => {
-  const supported = await isSupported();
-  return supported ? getMessaging(app) : null;
+  if (!isFirebaseMessagingConfigured) return null;
+
+  const supported = await isSupported().catch(() => false);
+  if (!supported) return null;
+
+  const app = getFirebaseApp();
+  if (!app) return null;
+
+  try {
+    return getMessaging(app);
+  } catch (error) {
+    console.warn('[Firebase] Messaging unavailable:', error);
+    return null;
+  }
 };

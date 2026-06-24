@@ -7,6 +7,64 @@ const normalizeInterviewType = (type) =>
 const isVolunteerType = (type) =>
     normalizeInterviewType(type) === 'volunteer'
 
+const parsePreferredDateTime = (value) => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+    if (!match) return null
+
+    const [, year, month, day, hour, minute] = match
+    return { year, month, day, hour, minute }
+}
+
+const formatPreferredDate = (value) => {
+    const parts = parsePreferredDateTime(value)
+    if (!parts) return String(value || '').trim()
+
+    const monthName = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+    ][Number(parts.month) - 1] || parts.month
+
+    return `${monthName} ${Number(parts.day)}, ${parts.year}`
+}
+
+const formatPreferredTime = (value) => {
+    const parts = parsePreferredDateTime(value)
+    if (!parts) return String(value || '').trim()
+
+    const hourNumber = Number(parts.hour)
+    const hour12 = hourNumber % 12 || 12
+    const ampm = hourNumber >= 12 ? 'PM' : 'AM'
+
+    return `${hour12}:${parts.minute} ${ampm}`
+}
+
+const composeAvailabilityRequestReason = (reason, preferredDateTime) => {
+    const normalizedReason = String(reason || '').trim()
+    const normalizedPreferredDateTime = String(preferredDateTime || '').trim()
+
+    if (!normalizedPreferredDateTime) return normalizedReason
+    return `Preferred date: ${formatPreferredDate(normalizedPreferredDateTime)}\nPreferred time: ${formatPreferredTime(normalizedPreferredDateTime)}\nReason: ${normalizedReason}`
+}
+
+const getPreferredDateTimeFromBody = (body = {}) => {
+    const explicitDateTime = String(body.preferred_datetime || body.preferredDateTime || '').trim()
+    if (explicitDateTime) return explicitDateTime
+
+    const preferredDate = String(body.preferred_date || body.preferredDate || '').trim()
+    const preferredTime = String(body.preferred_time || body.preferredTime || '').trim()
+    return preferredDate && preferredTime ? `${preferredDate}T${preferredTime}` : ''
+}
+
 const getItems = async (req, res) => {
     try {
         // Accepts query params: type, status, interviewer_user_id,
@@ -146,6 +204,7 @@ const reschedule = async (req, res) => {
 const requestNewSlots = async (req, res) => {
     try {
         const normalizedReason = String(req.body.reason || '').trim()
+        const normalizedPreferredDateTime = getPreferredDateTimeFromBody(req.body)
         if (!normalizedReason) {
             return res.status(400).json({ error: 'A reason or availability note is required.' })
         }
@@ -154,7 +213,10 @@ const requestNewSlots = async (req, res) => {
         if (!interview) return res.status(404).json({ error: 'Interview not found.' })
 
         const previousSlotId = interview.selected_slot_id
-        const data = await InterviewModel.requestNewSlots(req.params.id, normalizedReason)
+        const data = await InterviewModel.requestNewSlots(
+            req.params.id,
+            composeAvailabilityRequestReason(normalizedReason, normalizedPreferredDateTime)
+        )
         if (previousSlotId) await InterviewSlotsModel.markAvailable(previousSlotId)
 
         res.json({ data })

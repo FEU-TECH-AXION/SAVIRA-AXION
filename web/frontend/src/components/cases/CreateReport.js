@@ -470,13 +470,6 @@ export function validateStep1(data) {
       errors.perpetratorGender = "Please share the perpetrator's gender as you perceive it — this helps us complete the incident record accurately.";
   }
 
-  if (data.witnesses === "Yes") {
-    if (!data.witnessName)
-      errors.witnessName = "Please provide the witness's name — this helps us reach out if their account is needed to support your case.";
-    if (!data.witnessContact)
-      errors.witnessContact = "A contact number or email for the witness would be helpful — this allows us to follow up with them directly if needed.";
-  }
-
   return errors;
 }
 
@@ -1473,7 +1466,7 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
 
       {data.witnesses === "Yes" && (
         <div className={styles.formGrid}>
-        <Field label="Name of Witness" required hint="Full name if known." error={errors.witnessName}>
+        <Field label="Name of Witness" hint="Full name if known." error={errors.witnessName}>
             <Input
               placeholder="Full name"
               value={data.witnessName || ""}
@@ -2254,7 +2247,7 @@ export default function CreateReport({
 
               <div className={styles.successSupportCallout}>
                 <p className={styles.successSupportText}>
-                  Need help right now? If you're in immediate danger, contact emergency services.
+                  Need help right now? If you&apos;re in immediate danger, contact emergency services.
                 </p>
                 <Link className={styles.supportResourcesButton} href="/helplines">
                   Find Support &amp; Resources

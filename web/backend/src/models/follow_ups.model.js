@@ -1,7 +1,53 @@
 const supabase = require('../config/supabase')
-const { buildApprovedFieldUpdate } = require('./case_field_changes')
+const { buildApprovedFieldUpdate, columnForChange } = require('./case_field_changes')
 
 const ACTIVE_STATUSES = ['open', 'responded']
+
+function isFieldChangeCaseIdConstraintError(error) {
+  const message = String(error?.message || '')
+  return (
+    error?.code === '23502' &&
+    message.includes('field_changes') &&
+    message.includes('case_id')
+  )
+}
+
+async function getCurrentCaseReport(caseId) {
+  const { data, error } = await supabase
+    .from('case_reports')
+    .select('*')
+    .eq('case_report_id', caseId)
+    .eq('is_current', true)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('Case report not found.')
+  return data
+}
+
+function buildFieldChangeRows(requestId, caseId, userId, changes, report) {
+  return changes.map((change) => {
+    const column = columnForChange(change, report)
+    return {
+      case_id: caseId,
+      follow_up_request_id: requestId,
+      field_key: change.field_key,
+      previous_value: column ? report?.[column] ?? null : null,
+      new_value: change.new_value,
+      changed_by_user_id: userId,
+    }
+  })
+}
+
+async function insertFieldChangeRows(requestId, caseId, userId, changes, report) {
+  if (!changes.length) return []
+  const rows = buildFieldChangeRows(requestId, caseId, userId, changes, report)
+  const { data, error } = await supabase
+    .from('field_changes')
+    .insert(rows)
+    .select('id, follow_up_request_id, field_key, previous_value, new_value, changed_by_user_id, changed_at')
+  if (error) throw error
+  return data || []
+}
 
 async function getCaseAccess(caseId, userId) {
   let { data: user, error: userError } = await supabase
@@ -73,7 +119,31 @@ async function createRequestWithChanges(payload, changes) {
     p_request: payload,
     p_changes: changes,
   })
-  if (error) throw error
+  if (error) {
+    if (!isFieldChangeCaseIdConstraintError(error)) throw error
+
+    const request = await createRequest(payload)
+    try {
+      const report = await getCurrentCaseReport(payload.case_id)
+      await insertFieldChangeRows(
+        request.id,
+        payload.case_id,
+        payload.initiated_by_user_id,
+        changes,
+        report
+      )
+      return request
+    } catch (fallbackError) {
+      const { error: cleanupError } = await supabase
+        .from('follow_up_requests')
+        .delete()
+        .eq('id', request.id)
+      if (cleanupError) {
+        console.error('[createRequestWithChanges] Failed to remove incomplete request:', cleanupError.message)
+      }
+      throw fallbackError
+    }
+  }
   return Array.isArray(data) ? data[0] : data
 }
 
@@ -85,7 +155,26 @@ async function applyFieldChanges(requestId, caseId, userId, changes, message) {
     p_changes: changes,
     p_system_message: message,
   })
-  if (error) throw error
+  if (error) {
+    if (!isFieldChangeCaseIdConstraintError(error)) throw error
+
+    const report = await getCurrentCaseReport(caseId)
+    const insertedChanges = await insertFieldChangeRows(requestId, caseId, userId, changes, report)
+    const update = buildApprovedFieldUpdate(insertedChanges, report)
+    if (Object.keys(update).length > 0) {
+      const { error: updateError } = await supabase
+        .from('case_reports')
+        .update(update)
+        .eq('case_report_id', caseId)
+      if (updateError) throw updateError
+    }
+    await addMessage({
+      follow_up_request_id: requestId,
+      sender_user_id: userId,
+      message,
+    }, 'officer')
+    return insertedChanges
+  }
   return data
 }
 
@@ -246,9 +335,12 @@ async function addMessageRecord(payload) {
 }
 
 async function updateStatus(id, status, resolvedByUserId) {
-  const terminal = ['resolved', 'rejected'].includes(status)
+  // 'cancelled' is stored as 'rejected' in the DB (same CHECK constraint value)
+  // but is distinguished from a staff rejection by the resolution message written to follow_up_messages.
+  const dbStatus = status === 'cancelled' ? 'rejected' : status
+  const terminal = ['resolved', 'rejected', 'cancelled'].includes(status)
   const updates = {
-    status,
+    status: dbStatus,
     updated_at: new Date().toISOString(),
     resolved_at: terminal ? new Date().toISOString() : null,
     resolved_by_user_id: terminal ? resolvedByUserId : null,

@@ -293,10 +293,44 @@ async function getReportsByUserId(complainantId) {
   }
 
   const followUpSummary = await getFollowUpSummary(normalized.map((report) => report.case_report_id))
+
+  // For terminal-status reports, look up the last approved status recorded
+  // *before* the terminal entry so the front-end can show it as the middle
+  // step-dot instead of a hardcoded label.
+  const TERMINAL_STATUS_IDS = new Set([10, 11, 12, 13]) // Dismissed, Perpetrator Convicted, Resolved, Withdrawn
+  const terminalReportIds = normalized
+    .filter((report) => TERMINAL_STATUS_IDS.has(Number(report.case_status_id)))
+    .map((report) => report.case_report_id)
+
+  const previousStatusByReport = {}
+  if (terminalReportIds.length > 0) {
+    const { data: historyRows, error: historyError } = await supabase
+      .from('case_status_history')
+      .select('case_report_id, case_status_id, created_at, case_status ( case_status_name )')
+      .in('case_report_id', terminalReportIds)
+      .eq('approval_status', 'approved')
+      .order('created_at', { ascending: false })
+
+    if (historyError) {
+      console.warn('[getReportsByUserId] Previous status lookup unavailable:', historyError.message)
+    } else {
+      // For each terminal report, find the first history row whose status_id is
+      // NOT itself terminal — that is the status just before the outcome.
+      for (const row of historyRows || []) {
+        const id = row.case_report_id
+        if (previousStatusByReport[id]) continue // already found for this report
+        if (!TERMINAL_STATUS_IDS.has(Number(row.case_status_id))) {
+          previousStatusByReport[id] = row.case_status?.case_status_name || null
+        }
+      }
+    }
+  }
+
   return normalized.map((report) => ({
     ...report,
     assigned_officer: assignedOfficerByReport[report.case_report_id] || null,
     follow_up_summary: followUpSummary[report.case_report_id] || null,
+    previous_status_name: previousStatusByReport[report.case_report_id] || null,
   }))
 }
 

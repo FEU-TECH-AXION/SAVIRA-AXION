@@ -14,12 +14,15 @@
 .secondaryButton { background: #f3f4f6; color: #374151; font-size: .8rem; padding: .5rem .78rem; }
 .rejectButton { background: #fee2e2; color: #991b1b; font-size: .78rem; padding: .42rem .68rem; }
 .resolveButton { font-size: .78rem; padding: .42rem .68rem; }
+.cancelButton { align-items: center; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; color: #374151; cursor: pointer; display: inline-flex; font: inherit; font-size: .78rem; font-weight: 700; gap: .35rem; padding: .42rem .68rem; }
+.cancelButton:disabled { cursor: not-allowed; opacity: .5; }
 .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-size: .72rem; font-weight: 800; padding: .25rem .65rem; white-space: nowrap; }
 .badgeDot { background: currentColor; border-radius: 50%; flex: 0 0 auto; height: 6px; width: 6px; }
 .badge_pending { background: #fef3c7; color: #92400e; }
 .badge_action { background: #fee2e2; color: #991b1b; }
 .badge_resolved { background: #dcfce7; color: #166534; }
 .badge_rejected { background: #fee2e2; color: #991b1b; }
+.badge_cancelled { background: #f3f4f6; color: #6b7280; }
 .thread { border: 1px solid #e5e7eb; border-radius: 12px; }
 .threadHeader {
   align-items: flex-start;
@@ -36,7 +39,7 @@
 .threadHeader h3 { margin: 0; font-size: 1rem; }
 .threadHeader time, .messageMeta time { color: #6b7280; font-size: .72rem; }
 .threadHeaderAside { align-items: flex-end; display: flex; flex: 0 0 auto; flex-direction: column; gap: .55rem; }
-.headerActions { align-items: center; display: flex; gap: .45rem; }
+.headerActions { align-items: center; display: flex; flex-wrap: wrap; gap: .45rem; justify-content: flex-end; max-width: 100%; }
 .messages { display: flex; flex-direction: column; gap: .8rem; padding: 1rem; }
 .message { align-self: flex-start; background: #f3f4f6; border-radius: 4px 12px 12px; max-width: 82%; padding: .75rem .9rem; }
 .messageMine { align-self: flex-end; background: #e1f5f5; border-radius: 12px 4px 12px 12px; }
@@ -160,6 +163,7 @@
 .statusDot { border-radius: 50%; flex: 0 0 auto; height: 9px; width: 9px; }
 .statusDot_resolved { background: #22c55e; }
 .statusDot_rejected { background: #ef4444; }
+.statusDot_cancelled { background: #9ca3af; }
 .statusDot_open { background: #f59e0b; }
 .statusDot_responded { background: #3b82f6; }
 .historyMain { display: flex; flex: 1; flex-direction: column; gap: .2rem; min-width: 0; }
@@ -224,7 +228,7 @@
   .message { max-width: 95%; }
   .threadHeader { position: static; }
   .threadHeaderAside { align-items: stretch; width: 100%; }
-  .headerActions { width: 100%; }
+  .headerActions { justify-content: stretch; width: 100%; }
   .headerActions > * { flex: 1; }
   .headerActions button { width: 100%; }
   .historyDate { display: none; }

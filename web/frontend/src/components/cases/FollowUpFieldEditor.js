@@ -32,8 +32,13 @@ export const AMENDMENT_GROUPS = [
   },
   {
     id: "incident_description",
-    label: "Incident description/outcome",
-    fields: ["incident.description", "incident.outcome"],
+    label: "Incident description",
+    fields: ["incident.description"],
+  },
+  {
+    id: "incident_outcome",
+    label: "Requested outcome",
+    fields: ["incident.outcome"],
   },
   {
     id: "perpetrator",
@@ -83,7 +88,7 @@ export const FIELD_LABELS = {
   "incident.locationType": "Incident Location Type",
   "incident.incidentCity": "City / Municipality",
   "incident.incidentVenue": "Incident Venue / Online Platform",
-  "incident.description": "What happened?",
+  "incident.description": "Tell us what happened, in your own words",
   "incident.outcome": "What action or outcome are you seeking?",
   "incident.perpetratorKnown": "Is the perpetrator known to you?",
   "incident.perpetratorName": "Name of Perpetrator",
@@ -129,6 +134,12 @@ const OUTCOME_OPTIONS = [
   "I am not sure yet",
 ];
 
+const WIDE_FIELDS = new Set([
+  "incident.description",
+  "incident.outcome",
+  "incident.perpetratorUnknownAppearance",
+]);
+
 function firstValue(source, keys, fallback = "") {
   for (const key of keys) {
     const value = source?.[key];
@@ -154,6 +165,28 @@ function timeValue(value) {
   const raw = String(value);
   if (/^\d{2}:\d{2}/.test(raw)) return raw.slice(0, 5);
   return "";
+}
+
+function getWordCount(value) {
+  return String(value || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function getDescriptionFeedback(value) {
+  const text = String(value || "");
+  const wordCount = getWordCount(text);
+  if (!wordCount) return null;
+  const message =
+    wordCount < 20
+      ? { text: "You're not alone in this. Share only what feels right for you.", style: styles.textareaFooterNeutral }
+      : wordCount < 50
+        ? { text: `You're doing great. If you're able to, a few more details can help us support you better. (${wordCount}/50 words)`, style: styles.textareaFooterWarn }
+        : { text: "Thank you for trusting us with this. Your account will be noted.", style: styles.textareaFooterOk };
+
+  return {
+    ...message,
+    charCount: text.length,
+    wordCount,
+  };
 }
 
 function todayInputValue() {
@@ -431,9 +464,20 @@ export default function FollowUpFieldEditor({
           </Field>
         );
       case "incident.description":
+        const descriptionFeedback = getDescriptionFeedback(value);
         return (
-          <Field label={FIELD_LABELS[path]} required hint="Describe the sequence of events clearly and factually." error={error}>
-            <textarea className={styles.textarea} placeholder="Describe what happened, including relevant details such as individuals involved and the sequence of events." value={value || ""} rows={6} onChange={(e) => setValue(path, e.target.value)} />
+          <Field label={FIELD_LABELS[path]} required hint="Share the details you remember. Include only what feels safe and important to add." error={error}>
+            <textarea className={`${styles.textarea} ${error ? styles.inputError : ""}`} placeholder="You can include who was involved, where it happened, and anything else you want the case team to understand." value={value || ""} rows={6} onChange={(e) => setValue(path, e.target.value)} />
+            {descriptionFeedback && (
+              <div className={styles.textareaFooter}>
+                <span className={descriptionFeedback.style}>
+                  {descriptionFeedback.text}
+                </span>
+                <span className={styles.textareaFooterCounts}>
+                  {descriptionFeedback.wordCount} {descriptionFeedback.wordCount === 1 ? "word (Min 50 recommended)" : "words (Min 50 recommended)"} . {descriptionFeedback.charCount} characters
+                </span>
+              </div>
+            )}
           </Field>
         );
       case "incident.outcome":
@@ -521,8 +565,6 @@ export default function FollowUpFieldEditor({
             label={FIELD_LABELS[path]}
             required={[
               "incident.perpetratorName",
-              "incident.witnessName",
-              "incident.witnessContact",
             ].includes(path)}
             hint={fieldProps.hint}
             error={error}
@@ -552,7 +594,13 @@ export default function FollowUpFieldEditor({
 
   const content = (
     <>
-      <div className={styles.editorGrid}>{visibleFields.map((path) => <div key={path}>{field(path)}</div>)}</div>
+      <div className={styles.editorGrid}>
+        {visibleFields.map((path) => (
+          <div key={path} className={WIDE_FIELDS.has(path) ? styles.fullWidthField : undefined}>
+            {field(path)}
+          </div>
+        ))}
+      </div>
       {errors._form && <div className={styles.formError}>{errors._form}</div>}
       {showActions && (
         <div className={styles.actions}>

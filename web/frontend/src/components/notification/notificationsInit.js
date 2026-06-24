@@ -1,54 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getToken, onMessage } from 'firebase/messaging';
 import { getFirebaseMessaging } from '@/lib/firebase';
-import { addNotification } from '@/lib/notificationStore'; 
 
 export default function NotificationsInit() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
+    // Check current permission state
     if (Notification.permission === 'default') {
-      setShowBanner(true);
+      setShowBanner(true); // not yet asked — show the banner
     } else if (Notification.permission === 'granted') {
-      console.log('[FCM] auto-registering token');
-      registerToken();
+      registerToken(); // already allowed — register silently
     }
+    // if 'denied', do nothing
   }, []);
 
   async function registerToken() {
-    console.log('[FCM] starting registerToken'); // add
     const messaging = await getFirebaseMessaging();
-    console.log('[FCM] messaging:', messaging); // add
     if (!messaging) return;
 
-    try {
-      const token = await getToken(messaging, {
-        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-      });
-      console.log('[FCM] token:', token); // add
+    const token = await getToken(messaging, {
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+    });
 
-      if (token) {
-        const res = await fetch('http://localhost:5000/api/notifications/register-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ token, platform: 'web' }),
-        });
-        console.log('[FCM] register response:', res.status); // add
-      }
-
-      onMessage(messaging, (payload) => {
-        const { title, body } = payload.notification;
-        addNotification({ title, body });
+    if (token) {
+      const res = await fetch('http://localhost:5000/api/notifications/register-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ token, platform: 'web' }),
       });
-    } catch (err) {
-      console.error('[FCM] registerToken error:', err); // add
+
     }
+
+    onMessage(messaging, (payload) => {
+      const { title, body } = payload.notification;
+
+    });
   }
 
   async function handleAllow() {
+    if (!('Notification' in window)) return;
+
     const permission = await Notification.requestPermission();
     setShowBanner(false);
     if (permission === 'granted') await registerToken();
@@ -64,7 +59,7 @@ export default function NotificationsInit() {
       zIndex: 9999, maxWidth: '320px',
     }}>
       <p style={{ margin: '0 0 12px', fontSize: '14px' }}>
-        🔔 Enable notifications to stay updated on case assignments and status changes.
+        Enable notifications to stay updated on case assignments and status changes.
       </p>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={handleAllow} style={{

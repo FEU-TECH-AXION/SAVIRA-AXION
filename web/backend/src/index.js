@@ -16,9 +16,22 @@ const allowedOrigins = [
     .filter(Boolean),
 ];
 
+function isLocalDevOrigin(origin) {
+  if (process.env.NODE_ENV === 'production') return false;
+
+  try {
+    const { hostname } = new URL(origin);
+    return ['localhost', '127.0.0.1', '::1'].includes(hostname);
+  } catch (_) {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    if (!origin || allowedOrigins.includes(origin) || isLocalDevOrigin(origin)) {
+      return callback(null, true)
+    }
     return callback(new Error(`CORS origin not allowed: ${origin}`))
   },
   credentials: true, // required for cookies
