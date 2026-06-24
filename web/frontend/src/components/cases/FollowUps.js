@@ -33,6 +33,7 @@ const CLOSED_CASE_STATUSES = new Set([
   "Resolved",
   "Withdrawn",
 ]);
+const CANCELLATION_MESSAGE = "This request has been cancelled by the person who submitted it.";
 
 const USER_REASON_OPTIONS = [
   {
@@ -97,12 +98,17 @@ function suggestedFollowUpMessage({ isStaff, reason, fields, groups }) {
 
 export function getFollowUpDisplay(summary) {
   if (!summary) return null;
-  if (["resolved", "rejected"].includes(summary.status)) {
+  const displayStatus = getRequestDisplayStatus(summary);
+  if (["resolved", "rejected", "cancelled"].includes(displayStatus)) {
     const changedAt = new Date(summary.updated_at || summary.created_at).getTime();
     if (!Number.isNaN(changedAt) && Date.now() - changedAt < 3 * 86400000) {
       return {
-        label: summary.status === "resolved" ? "Follow-up Resolved" : "Follow-up Closed",
-        tone: "resolved",
+        label: displayStatus === "resolved"
+          ? "Follow-up Resolved"
+          : displayStatus === "cancelled"
+            ? "Follow-up Cancelled"
+            : "Follow-up Closed",
+        tone: displayStatus === "cancelled" ? "cancelled" : "resolved",
       };
     }
     return null;
@@ -113,11 +119,16 @@ export function getFollowUpDisplay(summary) {
 }
 
 export function FollowUpBadge({ summary, always = false }) {
+  const displayStatus = getRequestDisplayStatus(summary);
   const display = getFollowUpDisplay(summary) || (
-    always && ["resolved", "rejected"].includes(summary?.status)
+    always && ["resolved", "rejected", "cancelled"].includes(displayStatus)
       ? {
-          label: summary.status === "resolved" ? "Follow-up Resolved" : "Follow-up Rejected",
-          tone: summary.status,
+          label: displayStatus === "resolved"
+            ? "Follow-up Resolved"
+            : displayStatus === "cancelled"
+              ? "Follow-up Cancelled"
+              : "Follow-up Rejected",
+          tone: displayStatus === "cancelled" ? "cancelled" : displayStatus,
         }
       : null
   );
@@ -527,8 +538,17 @@ function getRequestTitle(request) {
 function getRequestStatusLabel(status) {
   if (status === "resolved") return "Resolved";
   if (status === "rejected") return "Rejected";
+  if (status === "cancelled") return "Cancelled";
   if (status === "responded") return "Responded";
   return "Open";
+}
+
+function getRequestDisplayStatus(request) {
+  if (!request) return request?.status;
+  if (request.status !== "rejected") return request.status;
+  const entries = request.follow_up_messages || [];
+  const latestEntry = entries[entries.length - 1];
+  return latestEntry?.message === CANCELLATION_MESSAGE ? "cancelled" : request.status;
 }
 
 function relativeDate(value) {
@@ -562,10 +582,14 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
   const [error, setError] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [closeStatus, setCloseStatus] = useState(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [editorError, setEditorError] = useState("");
   const isOpen = ["open", "responded"].includes(request.status);
   const requestedFields = Array.isArray(request.fields_requested) ? request.fields_requested : [];
+  const canCancel =
+    isOpen &&
+    String(request.initiated_by_user_id) === String(currentUserId);
   const canSubmitCorrection =
     !isStaff &&
     isOpen &&
@@ -664,6 +688,27 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
     }
   }
 
+  async function cancelThread() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_URL}/api/follow-ups/${request.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Failed to cancel follow-up.");
+      setCancelConfirmOpen(false);
+      onChanged();
+    } catch (cancelError) {
+      setError(cancelError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const entries = [
     {
       id: `request-${request.id}`,
@@ -725,6 +770,15 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
               <Tooltip text="Confirm that the necessary follow-up action has been completed.">
                 <button type="button" disabled={busy} className={styles.resolveButton} onClick={() => setCloseStatus("resolved")}>
                   <FiCheck /> Mark Resolved
+                </button>
+              </Tooltip>
+            </div>
+          )}
+          {canCancel && (
+            <div className={styles.headerActions}>
+              <Tooltip text="Cancel this request. The other party will be notified.">
+                <button type="button" disabled={busy} className={styles.cancelButton} onClick={() => setCancelConfirmOpen(true)}>
+                  <FiX /> Cancel Request
                 </button>
               </Tooltip>
             </div>
@@ -848,6 +902,21 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
         onConfirm={() => closeThread(closeStatus)}
         onCancel={() => !busy && setCloseStatus(null)}
       />
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        title={request.type === "officer_clarification_request"
+          ? "Cancel this clarification request?"
+          : "Cancel this follow-up request?"}
+        description={request.type === "officer_clarification_request"
+          ? "The complainant will be notified that the clarification request has been withdrawn."
+          : "The case team will be notified that this follow-up has been withdrawn."}
+        detail="This action cannot be undone. You may open a new request if needed."
+        confirmLabel="Yes, Cancel Request"
+        tone="danger"
+        busy={busy}
+        onConfirm={cancelThread}
+        onCancel={() => !busy && setCancelConfirmOpen(false)}
+      />
       {editorOpen && (
         <div className={styles.overlay} onMouseDown={() => !busy && setEditorOpen(false)}>
           <div className={`${styles.modal} ${styles.editorModal}`} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
@@ -919,6 +988,7 @@ function HistoryThreadRow({ request, expanded, onToggle, children }) {
     request.type === "officer_clarification_request" ? "Case officer" : "Complainant"
   );
   const preview = String(request.message || "No message provided.").replace(/\s+/g, " ").trim();
+  const displayStatus = getRequestDisplayStatus(request);
 
   return (
     <div className={styles.historyItem}>
@@ -934,12 +1004,12 @@ function HistoryThreadRow({ request, expanded, onToggle, children }) {
         <span className={styles.historyTypeIcon}>
           {request.type === "officer_clarification_request" ? <FiMessageCircle /> : <FiEdit3 />}
         </span>
-        <span className={`${styles.statusDot} ${styles[`statusDot_${request.status}`]}`} />
+        <span className={`${styles.statusDot} ${styles[`statusDot_${displayStatus}`]}`} />
         <span className={styles.historyMain}>
           <span className={styles.historyMeta}>
             <strong>{getRequestTitle(request)}</strong>
             <span>{initiator}</span>
-            <span className={styles.historyStatus}>{getRequestStatusLabel(request.status)}</span>
+            <span className={styles.historyStatus}>{getRequestStatusLabel(displayStatus)}</span>
           </span>
           <span className={styles.historyPreview}>{preview}</span>
         </span>
@@ -1009,7 +1079,7 @@ function FieldHistoryGroup({
                     <small>from {formatChangeValue(change.previous_value)}</small>
                   </span>
                   <span>
-                    {getRequestStatusLabel(request.status)} · {relativeDate(change.changed_at || request.created_at)}
+                    {getRequestStatusLabel(getRequestDisplayStatus(request))} · {relativeDate(change.changed_at || request.created_at)}
                     {expanded ? <FiChevronDown /> : <FiChevronRight />}
                   </span>
                 </button>

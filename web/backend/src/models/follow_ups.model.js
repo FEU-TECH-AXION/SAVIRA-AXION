@@ -246,9 +246,12 @@ async function addMessageRecord(payload) {
 }
 
 async function updateStatus(id, status, resolvedByUserId) {
-  const terminal = ['resolved', 'rejected'].includes(status)
+  // 'cancelled' is stored as 'rejected' in the DB (same CHECK constraint value)
+  // but is distinguished from a staff rejection by the resolution message written to follow_up_messages.
+  const dbStatus = status === 'cancelled' ? 'rejected' : status
+  const terminal = ['resolved', 'rejected', 'cancelled'].includes(status)
   const updates = {
-    status,
+    status: dbStatus,
     updated_at: new Date().toISOString(),
     resolved_at: terminal ? new Date().toISOString() : null,
     resolved_by_user_id: terminal ? resolvedByUserId : null,
