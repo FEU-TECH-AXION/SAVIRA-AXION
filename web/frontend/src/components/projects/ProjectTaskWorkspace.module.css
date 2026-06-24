@@ -1,0 +1,282 @@
+.page {
+  min-height: 100vh;
+  margin-top: 64px;
+  padding: 2rem max(1rem, 4vw) 3rem;
+  background: #f5f7f8;
+  color: #292929;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.backBtn,
+.iconBtn,
+.tabs button,
+.pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.backBtn {
+  gap: 6px;
+  min-height: 38px;
+  margin-bottom: 1.5rem;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.backBtn:hover,
+.iconBtn:hover,
+.tabs button:hover,
+.pagination button:hover:not(:disabled) {
+  border-color: #037f81;
+  color: #037f81;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0 0 0.5rem;
+  color: #1f2937;
+  font-size: 2rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.hero p:not(.eyebrow) {
+  max-width: 620px;
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: 0.75rem;
+  min-width: 360px;
+}
+
+.summary div {
+  padding: 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.summary strong {
+  display: block;
+  color: #037f81;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.summary span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px) 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin: 1.25rem 0;
+  background: #ffffff;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 42px;
+  padding: 0 0.8rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #6b7280;
+}
+
+.searchBox input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.tabs button {
+  min-height: 38px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tabs .activeTab {
+  border-color: #037f81;
+  background: #e1f5f5;
+  color: #037f81;
+}
+
+.tableWrap,
+.state,
+.error {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.tableWrap {
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.86rem;
+}
+
+.table th {
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.table td strong,
+.table td span {
+  display: block;
+}
+
+.table td strong {
+  color: #1f2937;
+  font-weight: 750;
+}
+
+.table td span {
+  margin-top: 0.25rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.pagination button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.state,
+.error {
+  padding: 2.5rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.error {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 850px) {
+  .hero,
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+
+  .summary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tabs {
+    justify-content: flex-start;
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 820px;
+  }
+}

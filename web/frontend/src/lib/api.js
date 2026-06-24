@@ -141,6 +141,16 @@ export async function fetchProjectTasks(projectId) {
   return data.data || [];
 }
 
+export async function fetchAllProjectTasks() {
+  const res = await fetch(`${API_URL}/api/project-tasks`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch project tasks');
+  return data.data || [];
+}
+
 export async function createProjectTask(projectId, payload) {
   const res = await fetch(`${API_URL}/api/project-tasks/project/${projectId}`, {
     method: 'POST',
@@ -192,6 +202,16 @@ export async function fetchStaffAvailability() {
   });
   const data = await res.json().catch(() => ([]));
   if (!res.ok) throw new Error(data.error || 'Failed to fetch staff availability');
+  return Array.isArray(data) ? data : data.data || [];
+}
+
+export async function fetchStaff() {
+  const res = await fetch(`${API_URL}/api/staff`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ([]));
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch staff');
   return Array.isArray(data) ? data : data.data || [];
 }
 

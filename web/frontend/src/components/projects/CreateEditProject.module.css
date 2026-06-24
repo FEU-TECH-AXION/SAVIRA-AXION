@@ -3,18 +3,18 @@
    SASHA Design tokens
    ════════════════════════════════════════ */
 :root {
-  --sasha-teal:         #037F81;
-  --sasha-teal-dark:    #025f61;
-  --sasha-teal-light:   #e1f5f5;
-  --sasha-orange:       #E8663A;
-  --sasha-orange-dark:  #c44e24;
-  --sasha-white:        #ffffff;
-  --sasha-offwhite:     #f5f7f8;
-  --sasha-text:         #292929;
-  --sasha-muted:        #6b7280;
-  --sasha-border:       #e5e7eb;
-  --sasha-card-radius:  14px;
-  --sasha-error:        #dc2626;
+  --sasha-teal: #037f81;
+  --sasha-teal-dark: #025f61;
+  --sasha-teal-light: #e1f5f5;
+  --sasha-orange: #e8663a;
+  --sasha-orange-dark: #c44e24;
+  --sasha-white: #ffffff;
+  --sasha-offwhite: #f5f7f8;
+  --sasha-text: #292929;
+  --sasha-muted: #6b7280;
+  --sasha-border: #e5e7eb;
+  --sasha-card-radius: 14px;
+  --sasha-error: #dc2626;
 }
 
 /* ── Page Wrapper ── */
@@ -36,7 +36,7 @@
   background: var(--sasha-white);
   border: 1px solid var(--sasha-border);
   border-radius: var(--sasha-card-radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -61,7 +61,10 @@
   white-space: nowrap;
   transition: border-color 0.15s, color 0.15s;
 }
-.backBtn:hover { border-color: var(--sasha-teal); color: var(--sasha-teal); }
+.backBtn:hover {
+  border-color: var(--sasha-teal);
+  color: var(--sasha-teal);
+}
 
 .eyebrow {
   margin: 0 0 0.5rem;
@@ -144,7 +147,7 @@
   background: var(--sasha-white);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   margin-bottom: 1.25rem;
   overflow: hidden;
 }
@@ -204,7 +207,7 @@
 
 .formInput:focus {
   border-color: var(--sasha-teal);
-  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.1);
 }
 
 .inputError {
@@ -259,8 +262,15 @@
   transition: all 0.15s;
 }
 
-.modeTab:hover { border-color: var(--sasha-teal); color: var(--sasha-teal); }
-.modeTabActive { border-color: var(--sasha-teal) !important; color: var(--sasha-teal) !important; background: var(--sasha-teal-light) !important; }
+.modeTab:hover {
+  border-color: var(--sasha-teal);
+  color: var(--sasha-teal);
+}
+.modeTabActive {
+  border-color: var(--sasha-teal) !important;
+  color: var(--sasha-teal) !important;
+  background: var(--sasha-teal-light) !important;
+}
 
 /* ── Image upload ── */
 .imageUploadArea {
@@ -275,7 +285,9 @@
   align-items: center;
   justify-content: center;
 }
-.imageUploadArea:hover { border-color: var(--sasha-teal); }
+.imageUploadArea:hover {
+  border-color: var(--sasha-teal);
+}
 
 .imageUploadPlaceholder {
   display: flex;
@@ -316,7 +328,9 @@
 }
 
 /* ── People list ── */
-.peopleList { margin-bottom: 0; }
+.peopleList {
+  margin-bottom: 0;
+}
 
 .peopleRow {
   display: flex;
@@ -339,7 +353,9 @@
   cursor: pointer;
   transition: background 0.12s;
 }
-.removeBtn:hover { background: #fca5a5; }
+.removeBtn:hover {
+  background: #fca5a5;
+}
 
 .addPersonBtn {
   display: flex;
@@ -355,10 +371,16 @@
   cursor: pointer;
   transition: border-color 0.12s;
 }
-.addPersonBtn:hover { border-color: var(--sasha-teal); background: var(--sasha-teal-light); }
+.addPersonBtn:hover {
+  border-color: var(--sasha-teal);
+  background: var(--sasha-teal-light);
+}
 
 /* ══ SIDEBAR ═══════════════════════════════════════════ */
-.sidebarCol { position: sticky; top: 80px; }
+.sidebarCol {
+  position: sticky;
+  top: 80px;
+}
 
 /* ── Visibility cards ── */
 .visibilityNote {
@@ -384,14 +406,33 @@
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
-.visibilityCard:hover { border-color: var(--sasha-teal); background: var(--sasha-teal-light); }
-.visibilityCardActive { border-color: var(--sasha-teal) !important; background: var(--sasha-teal-light) !important; }
+.visibilityCard:hover {
+  border-color: var(--sasha-teal);
+  background: var(--sasha-teal-light);
+}
+.visibilityCardActive {
+  border-color: var(--sasha-teal) !important;
+  background: var(--sasha-teal-light) !important;
+}
 
-.visibilityIcon { font-size: 1.25rem; flex-shrink: 0; }
+.visibilityIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
 
-.visibilityDesc { font-size: 0.78rem; color: var(--sasha-muted); margin: 0.15rem 0 0; }
+.visibilityDesc {
+  font-size: 0.78rem;
+  color: var(--sasha-muted);
+  margin: 0.15rem 0 0;
+}
 
-.visuallyHidden { position: absolute; width: 1px; height: 1px; clip: rect(0,0,0,0); overflow: hidden; }
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip: rect(0, 0, 0, 0);
+  overflow: hidden;
+}
 
 .approvalNote {
   display: flex;
@@ -428,17 +469,43 @@
   padding: 3px 10px;
   border-radius: 999px;
 }
-.approval--pending  { background: #fef3c7; color: #92400e; }
-.approval--approved { background: #d1fae5; color: #065f46; }
-.approval--rejected { background: #fee2e2; color: #991b1b; }
+.approval--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+.approval--approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+.approval--rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 /* ── Radio group ── */
-.radioGroup { display: flex; flex-direction: column; gap: 0.5rem; }
-.radioLabel  { display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; color: var(--sasha-text); cursor: pointer; }
-.radioInput  { accent-color: var(--sasha-teal); width: 15px; height: 15px; }
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--sasha-text);
+  cursor: pointer;
+}
+.radioInput {
+  accent-color: var(--sasha-teal);
+  width: 15px;
+  height: 15px;
+}
 
 /* ── Sidebar actions ── */
-.sidebarActions { margin-top: 0; }
+.sidebarActions {
+  margin-top: 0;
+}
 
 /* ── Buttons ── */
 .btnPrimary {
@@ -456,7 +523,10 @@
   justify-content: center;
   gap: 6px;
 }
-.btnPrimary:hover { background: var(--sasha-teal-dark); transform: translateY(-1px); }
+.btnPrimary:hover {
+  background: var(--sasha-teal-dark);
+  transform: translateY(-1px);
+}
 
 .btnSecondary {
   background: var(--sasha-white);
@@ -473,4 +543,7 @@
   justify-content: center;
   gap: 6px;
 }
-.btnSecondary:hover { background: var(--sasha-offwhite); border-color: var(--sasha-muted); }
+.btnSecondary:hover {
+  background: var(--sasha-offwhite);
+  border-color: var(--sasha-muted);
+}
