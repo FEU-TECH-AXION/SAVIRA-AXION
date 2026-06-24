@@ -1,10 +1,8 @@
 // SAVIRA/web/backend/src/routes/notifications.routes.js
 const router = require('express').Router();
-const { supabase } = require('../config/supabase'); 
+const supabase = require('../config/supabase');
 const { verifyToken } = require('../middleware/auth.middleware');
 
-// POST /api/notifications/register-token
-// Called by web/mobile after they get an FCM token
 router.post('/register-token', verifyToken, async (req, res) => {
   const { token, platform } = req.body;
   const userId = req.user.id;
@@ -13,7 +11,7 @@ router.post('/register-token', verifyToken, async (req, res) => {
     return res.status(400).json({ error: 'token and platform are required' });
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('device_tokens')
     .upsert(
       { user_id: userId, token, platform, updated_at: new Date() },
@@ -24,8 +22,6 @@ router.post('/register-token', verifyToken, async (req, res) => {
   res.json({ success: true });
 });
 
-// DELETE /api/notifications/register-token
-// Called on logout to stop sending notifications to this device
 router.delete('/register-token', verifyToken, async (req, res) => {
   const { token } = req.body;
 

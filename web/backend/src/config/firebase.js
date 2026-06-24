@@ -1,13 +1,14 @@
 // SAVIRA/web/backend/src/config/firebase.js
-const admin = require('firebase-admin');
 const path = require('path');
+const { initializeApp, getApps, cert } = require('firebase-admin/app');
+const { getMessaging } = require('firebase-admin/messaging');
 
-if (!admin.apps.length) {
-  const serviceAccount = require(path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH));
+const serviceAccount = require(path.join(__dirname, '../../savira-firebase-adminsdk.json'));
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount),
   });
 }
 
-module.exports = admin;
+module.exports = { getMessaging };
