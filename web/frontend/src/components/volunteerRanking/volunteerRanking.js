@@ -82,34 +82,32 @@ export default function VolunteerRanking() {
       {/* ── Hero Banner ── */}
 
     <div className={styles.container}>
-        {/* <button
+        <button
           type="button"
           className={styles.backButton}
           onClick={() => router.push("/volunteer")}
         >
           <FiArrowLeft /> Back to Volunteer Management
-        </button> */}
+        </button>
       
-      <section className={styles.heroBanner}>
-        <div className="container-xl">
-          <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle}>Applicant Rankings</h1>
-            <p className={styles.heroSubtitle}>
-              Screening, hybrid essay, interview, and priority scores in one comparison table.
-            </p>
-            {!loading && !error && (
-              <div className="row g-3 justify-content-center">
-                {stats.map(({ num, label }) => (
-                  <div key={label} className="col-12 col-md-4">
-                    <div className={styles.statCard}>
-                      <p className={styles.statNum}>{num}</p>
-                      <p className={styles.statLabel}>{label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      <section className={styles.hero}>
+        <div>
+          <span>Volunteer applications</span>
+          <h1>Applicant Rankings</h1>
+          <p>
+            Compare screening, hybrid essay, interview, and priority scores in
+            one ranking table.
+          </p>
+          {!loading && !error && (
+            <div className={styles.heroStats}>
+              {stats.map(({ num, label }) => (
+                <div key={label} className={styles.heroStat}>
+                  <strong>{num}</strong>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

@@ -1829,17 +1829,18 @@ export default function ViewCase() {
 
       <div className={styles.pageInner}>
 
+        <button className={styles.backBtn} onClick={() => router.push(backRoute)}>
+          <FiArrowLeft /> {backLabel}
+        </button>
+
         {/* Header card */}
         <div className={styles.headerCard}>
-          <button className={styles.backBtn} onClick={() => router.push(backRoute)}>
-            <IoIosArrowBack /> {backLabel}
-          </button>
           <div className={styles.headerTop}>
             <div>
               <h1 className={styles.caseTitle}>{caseData.caseId}</h1>
               <p className={styles.caseSubtitle}>Submitted: {caseData.dateSubmitted}</p>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div className={styles.headerActions}>
               <StatusBadge status={caseData.status} />
               <FollowUpBadge summary={caseData.followUpSummary} />
               {(!isStaff || canManageFollowUps) &&
