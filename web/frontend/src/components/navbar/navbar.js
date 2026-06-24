@@ -14,6 +14,7 @@ import {
 import Sidebar from "@/components/sidebar/sidebar";
 import { PUBLIC_LINKS, ROLE_LABELS } from "@/components/navigation/navigationLinks";
 import styles from "./navbar.module.css";
+import { useNotificationStore, markAllRead } from '@/lib/notificationStore';
 
 // ── Component ──────────────────────────────────────────────
 
@@ -23,6 +24,9 @@ export default function Navbar() {
   const publicNavRef = useRef(null);
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const { notifications } = useNotificationStore();
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -88,9 +92,37 @@ export default function Navbar() {
 
               {/* Right icons */}
               <div className={styles.navRight}>
-                <button className={styles.iconBtn} aria-label="Notifications">
-                  <FiBell size={20} />
-                </button>
+                <div className={styles.notifWrapper}>
+                  <button
+                    className={styles.iconBtn}
+                    aria-label="Notifications"
+                    onClick={() => { setNotifOpen(o => !o); markAllRead(); }}
+                  >
+                    <FiBell size={20} />
+                    {unreadCount > 0 && (
+                      <span className={styles.notifBadge}>{unreadCount}</span>
+                    )}
+                  </button>
+
+                  {notifOpen && (
+                    <div className={styles.notifDropdown}>
+                      <div className={styles.notifHeader}>Notifications</div>
+                      {notifications.length === 0 ? (
+                        <div className={styles.notifEmpty}>No notifications yet</div>
+                      ) : (
+                        notifications.map(n => (
+                          <div
+                            key={n.id}
+                            className={`${styles.notifItem} ${!n.read ? styles.notifItemUnread : ''}`}
+                          >
+                            <p className={styles.notifTitle}>{n.title}</p>
+                            <p className={styles.notifBody}>{n.body}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 <button className={styles.iconBtn} aria-label="Help">
                   <FiHelpCircle size={20} />
                 </button>
