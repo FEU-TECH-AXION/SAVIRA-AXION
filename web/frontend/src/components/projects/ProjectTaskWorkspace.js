@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { FiArrowLeft, FiExternalLink, FiSearch } from "react-icons/fi"
+import { FiArrowLeft, FiExternalLink } from "react-icons/fi"
 import { fetchAllProjectTasks, fetchStaff } from "@/lib/api"
 import Tooltip from "@/components/ui/Tooltip"
 import TaskStatusBadge from "./TaskStatusBadge"
+import TaskFilterMenu from "./TaskFilterMenu"
 import styles from "./ProjectTaskWorkspace.module.css"
 
 const PAGE_SIZE = 10
@@ -48,6 +49,40 @@ function isDueThisWeek(value) {
   return due >= today && due <= end
 }
 
+function isDueThisMonth(value) {
+  if (!value) return false
+  const due = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(due.getTime())) return false
+  const today = new Date()
+  return due.getMonth() === today.getMonth() && due.getFullYear() === today.getFullYear()
+}
+
+function isDueToday(value) {
+  if (!value) return false
+  const due = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(due.getTime())) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  return due >= today && due < tomorrow
+}
+
+function isInDateRange(value, rangeValue) {
+  if (!rangeValue || rangeValue === "") return true
+  if (rangeValue === "today") return isDueToday(value)
+  if (rangeValue === "thisWeek") return isDueThisWeek(value)
+  if (rangeValue === "thisMonth") return isDueThisMonth(value)
+  if (rangeValue === "overdue") return false // overdue is handled via display_status
+  if (rangeValue.startsWith("custom|")) {
+    const [, start, end] = rangeValue.split("|")
+    if (!value) return false
+    const due = new Date(`${value}T00:00:00`)
+    return due >= new Date(`${start}T00:00:00`) && due <= new Date(`${end}T00:00:00`)
+  }
+  return true
+}
+
 function Pagination({ current, total, totalRecords, onChange }) {
   const start = totalRecords === 0 ? 0 : (current - 1) * PAGE_SIZE + 1
   const end = Math.min(current * PAGE_SIZE, totalRecords)
@@ -60,13 +95,15 @@ function Pagination({ current, total, totalRecords, onChange }) {
   )
 }
 
+const EMPTY_FILTERS = { status: "", priority: "", dueDate: "", scope: "", createdAt: "" }
+
 export default function ProjectTaskWorkspace({ scope = "mine" }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [tasks, setTasks] = useState([])
   const [staff, setStaff] = useState([])
   const [search, setSearch] = useState("")
-  const [filter, setFilter] = useState(scope === "all" ? "all" : "mine")
+  const [activeFilters, setActiveFilters] = useState(EMPTY_FILTERS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [page, setPage] = useState(1)
@@ -121,37 +158,72 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase()
+    const { status, priority, dueDate, scope: scopeFilter } = activeFilters
+
     return scopedTasks.filter((task) => {
       const mine = task.assignee?.user_id === user?.user_id
       const committee = currentStaff?.committees?.committee_name || ""
       const committeeMatch = committee && task.assignee?.committee_name === committee && !mine
-      const matchesFilter =
-        filter === "all" ||
-        (filter === "mine" && mine) ||
-        (filter === "committee" && committeeMatch) ||
-        (filter === "overdue" && task.display_status === "Overdue") ||
-        (filter === "week" && isDueThisWeek(task.due_date)) ||
-        task.status === filter
+
+      // Scope filter
+      if (scopeFilter === "Mine" && !mine) return false
+      if (scopeFilter === "My Committee" && !committeeMatch) return false
+
+      // Status filter
+      if (status && status !== "All") {
+        if (status === "Overdue") {
+          if (task.display_status !== "Overdue") return false
+        } else {
+          if (task.status !== status) return false
+        }
+      }
+
+      // Priority filter
+      if (priority && priority !== "All") {
+        if ((task.priority || "Medium") !== priority) return false
+      }
+
+      // Due date filter
+      if (dueDate && dueDate !== "") {
+        if (dueDate === "overdue") {
+          if (task.display_status !== "Overdue") return false
+        } else if (!isInDateRange(task.due_date, dueDate)) {
+          return false
+        }
+      }
+
+      // Search
       const matchesSearch =
         !query ||
         task.title?.toLowerCase().includes(query) ||
         task.assignee?.name?.toLowerCase().includes(query) ||
         task.project?.title?.toLowerCase().includes(query) ||
         String(task.project_id || "").includes(query)
-      return matchesFilter && matchesSearch
+
+      return matchesSearch
     })
-  }, [currentStaff, filter, scopedTasks, search, user])
+  }, [activeFilters, currentStaff, scopedTasks, search, user])
 
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE))
   const visibleTasks = filteredTasks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   const summary = {
     total: scopedTasks.filter((task) => task.status !== "Cancelled").length,
     overdue: scopedTasks.filter((task) => task.display_status === "Overdue").length,
     week: scopedTasks.filter((task) => isDueThisWeek(task.due_date)).length,
   }
-  const tabs = scope === "all"
-    ? [["all", "All tasks"], ["overdue", "Overdue"], ["week", "Due this week"], ["Pending", "Pending"], ["In Progress", "In progress"], ["Completed", "Completed"]]
-    : [["mine", "My tasks"], ["committee", "My committee"], ["overdue", "Overdue"], ["week", "Due this week"], ["all", "All scoped"]]
+
+  const hasActiveFilters = Object.values(activeFilters).some(v => v && v !== "All" && v !== "")
+
+  function handleFilterChange(newFilters) {
+    setActiveFilters(prev => ({ ...prev, ...newFilters }))
+    setPage(1)
+  }
+
+  function handleSearch(value) {
+    setSearch(value)
+    setPage(1)
+  }
 
   return (
     <main className={styles.page}>
@@ -178,33 +250,25 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
         </section>
 
         <section className={styles.toolbar}>
-          <div className={styles.searchBox}>
-            <FiSearch />
-            <input
-              type="search"
-              placeholder="Search task, project, assignee, or project ID..."
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setPage(1)
-              }}
-            />
-          </div>
-          <div className={styles.tabs}>
-            {tabs.map(([value, label]) => (
-              <button
-                key={value}
-                className={filter === value ? styles.activeTab : ""}
-                onClick={() => {
-                  setFilter(value)
-                  setPage(1)
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <TaskFilterMenu
+            activeFilters={activeFilters}
+            onFilterChange={handleFilterChange}
+            onSearch={handleSearch}
+            searchValue={search}
+          />
         </section>
+
+        {hasActiveFilters && (
+          <p className={styles.recordLabel}>
+            {filteredTasks.length} result{filteredTasks.length !== 1 ? "s" : ""}
+            <button
+              className={styles.clearFiltersBtn}
+              onClick={() => { setActiveFilters(EMPTY_FILTERS); setSearch(""); setPage(1) }}
+            >
+              Clear filters
+            </button>
+          </p>
+        )}
 
         {error && <div className={styles.error}>{error}</div>}
         {loading ? (

@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { IoMdClose } from "react-icons/io";
+import { GoDotFill } from "react-icons/go";
 import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
@@ -915,7 +917,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                           fontSize: "0.8rem",
                           fontWeight: 600,
                         }}>
-                          ✓ {name}
+                          <GoDotFill /> {name}
                           {currentIds[index] && (
                             <button
                               type="button"
@@ -925,9 +927,9 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                                 name,
                               })}
                               title={`Remove ${name}`}
-                              style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                              style={{ background: "none", border: "none", color: "#065f46", cursor: "pointer", padding: 0, lineHeight: 1 }}
                             >
-                              ×
+                              <IoMdClose />
                             </button>
                           )}
                         </span>
