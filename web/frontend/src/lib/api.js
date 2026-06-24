@@ -238,3 +238,25 @@ export async function createChapter(payload) {
   if (!res.ok) throw new Error(data.error || 'Failed to create chapter');
   return data;
 }
+
+export async function updateChapter(id, payload) {
+  const res = await fetch(`${API_URL}/api/chapters/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to update chapter');
+  return data;
+}
+
+export async function deleteChapter(id) {
+  const res = await fetch(`${API_URL}/api/chapters/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to delete chapter');
+  return data.deleted;
+}
