@@ -72,6 +72,7 @@ function EventCard({ image, tag, title, description, onPress }) {
 const CATEGORIES = ['Awareness Campaigns', 'Workshops', 'Summits', 'Community'];
 
 export default function EventsScreen() {
+  const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
