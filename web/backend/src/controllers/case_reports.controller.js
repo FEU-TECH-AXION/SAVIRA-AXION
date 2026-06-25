@@ -10,6 +10,27 @@ const IMMEDIATE_WITHDRAWAL_STATUSES = new Set([2, 3, 4, 6]);
 const APPROVAL_WITHDRAWAL_STATUSES = new Set([7, 8]);
 const AFFIDAVIT_REQUIRED_STATUS = 7;
 
+function formatErrorMessage(error, fallback = 'Failed to submit report. Please try again.') {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  if (Array.isArray(error)) {
+    return error.map((item) => formatErrorMessage(item, '')).filter(Boolean).join('\n');
+  }
+  if (typeof error === 'object') {
+    return [
+      error.message,
+      error.error,
+      error.details,
+      error.hint,
+      error.description,
+    ]
+      .map((item) => formatErrorMessage(item, ''))
+      .filter(Boolean)
+      .join('\n') || fallback;
+  }
+  return String(error);
+}
+
 const getItems = async (req, res) => {
     try {
         const data = await CaseReports.getAll()
@@ -143,7 +164,7 @@ async function submitReport(req, res) {
     return res.status(201).json({ data: newReport, files: uploadedFiles });
   } catch (err) {
     console.error('[submitReport]', err?.message ?? err, err?.stack ?? '');
-    return res.status(500).json({ error: err?.message || 'Failed to submit report. Please try again.' });
+    return res.status(500).json({ error: formatErrorMessage(err) });
   }
 }
 

@@ -313,6 +313,7 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     marginHorizontal: 20,
     marginTop: 8,
+    marginBottom: 24,
   },
   logoutText: {
     color: '#fff',

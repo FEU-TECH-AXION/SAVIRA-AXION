@@ -203,7 +203,7 @@ async function getCaseById(caseReportId) {
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (withdrawalError && withdrawalError.code !== '42P01') {
+  if (withdrawalError && !['42P01', '42501'].includes(withdrawalError.code)) {
     console.warn('[getCaseById] Withdrawal metadata unavailable:', withdrawalError.message)
   }
 

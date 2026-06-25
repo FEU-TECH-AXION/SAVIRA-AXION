@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -102,6 +103,16 @@ const FOLLOW_UP_FIELDS = [
   { id: 'evidence', label: 'Evidence/attachments', fields: ['evidence.files'] },
 ];
 
+const INTERVIEW_STATUS_COLORS = {
+  Invited: { bg: '#fff7ed', fg: '#9a3412', border: '#fed7aa' },
+  Scheduled: { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' },
+  Confirmed: { bg: '#ecfdf5', fg: '#047857', border: '#bbf7d0' },
+  Completed: { bg: '#ecfdf5', fg: '#047857', border: '#bbf7d0' },
+  Cancelled: { bg: '#fef2f2', fg: '#b91c1c', border: '#fecaca' },
+  Expired: { bg: '#f8fafc', fg: '#64748b', border: '#e2e8f0' },
+  'Awaiting New Slots': { bg: '#fff7ed', fg: '#9a3412', border: '#fed7aa' },
+};
+
 function getFollowUpFieldLabels(selectedFields) {
   return FOLLOW_UP_FIELDS
     .filter((group) => group.fields.some((field) => selectedFields.includes(field)))
@@ -142,6 +153,13 @@ function timeOf(value) {
   if (!Number.isNaN(date.getTime()) && String(value).includes('T')) {
     return date.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
   }
+  const parts = String(value).split(':');
+  if (parts.length >= 2 && /^\d+$/.test(parts[0])) {
+    const hour = Number(parts[0]);
+    const minute = parts[1];
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    return `${hour % 12 || 12}:${minute.padStart(2, '0')} ${suffix}`;
+  }
   return String(value);
 }
 
@@ -175,6 +193,48 @@ function getEvidenceKind(evidence) {
 
 function getStatusName(report) {
   return report?.case_status?.status_name || report?.status || STATUS_BY_ID[report?.case_status_id] || 'Submitted';
+}
+
+function formatInterviewStatus(status) {
+  if (!status) return 'Scheduled';
+  return String(status)
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function parseInterviewNotes(notes) {
+  if (!notes) return { venue: null, notes: null };
+  const text = String(notes);
+  const venueMatch = text.match(/Location \/ Platform:\s*([^\n]+)/i);
+  const notesMatch = text.match(/Notes:\s*([\s\S]+)/i);
+  return {
+    venue: venueMatch?.[1]?.trim() || null,
+    notes: notesMatch?.[1]?.trim() || text,
+  };
+}
+
+function mapInterview(raw) {
+  const parsedNotes = parseInterviewNotes(raw?.notes);
+  return {
+    ...raw,
+    id: raw?.interview_id || raw?.id,
+    interviewStatus: formatInterviewStatus(raw?.status),
+    scheduledDate: raw?.slot?.slot_date || raw?.interview_date || null,
+    scheduledTime: raw?.slot?.slot_time?.slice?.(0, 5) || raw?.interview_time?.slice?.(0, 5) || null,
+    location: parsedNotes.venue || raw?.location || null,
+    notes: parsedNotes.notes,
+    meetingLink: raw?.meeting_link || raw?.meetingLink || null,
+    expiresAt: raw?.slot_expires_at || raw?.expiresAt || null,
+    availabilityRequest: raw?.availability_request_reason || raw?.availabilityRequest || null,
+  };
+}
+
+function isInterviewWilling(report) {
+  const value = report?.is_willing_for_interview ?? report?.is_willing_to_be_interviewed ?? report?.willing_for_interview;
+  if (value === undefined || value === null || value === '') return true;
+  if (typeof value === 'string') return !['false', 'no', '0'].includes(value.trim().toLowerCase());
+  return Boolean(value);
 }
 
 function getReportId(report, paramId, caseId) {
@@ -334,6 +394,18 @@ export default function ReportDetailScreen() {
   const [replyDrafts, setReplyDrafts] = useState({});
   const [replySendingId, setReplySendingId] = useState(null);
   const [replyError, setReplyError] = useState('');
+  const [interviews, setInterviews] = useState([]);
+  const [interviewsLoading, setInterviewsLoading] = useState(false);
+  const [interviewsChecked, setInterviewsChecked] = useState(false);
+  const [interviewError, setInterviewError] = useState('');
+  const [slots, setSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotSubmittingId, setSlotSubmittingId] = useState(null);
+  const [availabilityOpenFor, setAvailabilityOpenFor] = useState(null);
+  const [availabilityReason, setAvailabilityReason] = useState('');
+  const [availabilityPreferredDate, setAvailabilityPreferredDate] = useState('');
+  const [availabilityPreferredTime, setAvailabilityPreferredTime] = useState('');
+  const [availabilitySubmitting, setAvailabilitySubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -380,6 +452,53 @@ export default function ReportDetailScreen() {
     if (caseId) loadFollowUps();
   }, [caseId]);
 
+  async function loadInterviews() {
+    setInterviewsLoading(true);
+    setInterviewError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/interviews?type=case_report&case_report_id=${caseId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to load interview details.');
+      setInterviews((body.data || []).map(mapInterview));
+    } catch (err) {
+      setInterviewError(err.message || 'Failed to load interview details.');
+      setInterviews([]);
+    } finally {
+      setInterviewsLoading(false);
+      setInterviewsChecked(true);
+    }
+  }
+
+  async function loadSlots() {
+    setSlotsLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/interview_slots?slot_type=case_report&is_available=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to load available slots.');
+      setSlots((body.data || []).map((slot) => ({
+        ...slot,
+        id: slot.slot_id || slot.id,
+        date: slot.slot_date,
+        time: slot.slot_time?.slice?.(0, 5) || slot.slot_time,
+        duration: slot.duration_minutes,
+      })));
+    } catch (_) {
+      setSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (caseId) loadInterviews();
+  }, [caseId]);
+
   const statusName = getStatusName(report);
   const reportId = getReportId(report, displayId, caseId);
   const statusCopy = STATUS_COPY[statusName] || STATUS_COPY.Submitted;
@@ -404,6 +523,14 @@ export default function ReportDetailScreen() {
   const canFollowUp = !TERMINAL_STATUSES.includes(statusName) && !activeUserFollowUp;
   const canWithdraw = WITHDRAWAL_ALLOWED.includes(statusName) || WITHDRAWAL_REQUIRES_APPROVAL.includes(statusName);
   const withdrawalCopy = getWithdrawalCopy(statusName);
+  const showInterviewTab = isInterviewWilling(report) && interviewsChecked && interviews.length > 0;
+  const visibleTabs = [
+    { id: 'details', label: 'Case Details' },
+    ...(showInterviewTab ? [{ id: 'interview', label: 'Interview' }] : []),
+    { id: 'followups', label: 'Follow-ups' },
+  ];
+  const displayedActiveTab = activeTab === 'interview' && !showInterviewTab ? 'details' : activeTab;
+  const currentInterview = interviews[0] || null;
 
   const openFollowUp = () => {
     setActionError('');
@@ -498,6 +625,65 @@ export default function ReportDetailScreen() {
       setReplyError(err.message || 'Failed to send reply.');
     } finally {
       setReplySendingId(null);
+    }
+  };
+
+  const selectInterviewSlot = async (interview, slot) => {
+    setSlotSubmittingId(slot.id);
+    setInterviewError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/interviews/${interview.id}/select-slot`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ slot_id: slot.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to confirm interview slot.');
+      await loadInterviews();
+      await loadSlots();
+    } catch (err) {
+      setInterviewError(err.message || 'Failed to confirm interview slot.');
+    } finally {
+      setSlotSubmittingId(null);
+    }
+  };
+
+  const openAvailabilityRequest = (interview) => {
+    setAvailabilityOpenFor(interview);
+    setAvailabilityReason('');
+    setAvailabilityPreferredDate('');
+    setAvailabilityPreferredTime('');
+    setInterviewError('');
+  };
+
+  const submitAvailabilityRequest = async () => {
+    const reason = availabilityReason.trim();
+    if (!reason || !availabilityPreferredDate || !availabilityPreferredTime) {
+      setInterviewError('Add your preferred date, time, and a short reason.');
+      return;
+    }
+    setAvailabilitySubmitting(true);
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/interviews/${availabilityOpenFor.id}/request-new-slots`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          reason,
+          preferred_date: availabilityPreferredDate,
+          preferred_time: availabilityPreferredTime,
+          preferred_datetime: `${availabilityPreferredDate}T${availabilityPreferredTime}`,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to send availability request.');
+      setAvailabilityOpenFor(null);
+      await loadInterviews();
+    } catch (err) {
+      setInterviewError(err.message || 'Failed to send availability request.');
+    } finally {
+      setAvailabilitySubmitting(false);
     }
   };
 
@@ -610,15 +796,21 @@ export default function ReportDetailScreen() {
           </View>
 
           <View style={s.tabs}>
-            <Pressable style={[s.tab, activeTab === 'details' && s.tabActive]} onPress={() => setActiveTab('details')}>
-              <Text style={[s.tabText, activeTab === 'details' && s.tabTextActive]}>Case Details</Text>
-            </Pressable>
-            <Pressable style={[s.tab, activeTab === 'followups' && s.tabActive]} onPress={() => setActiveTab('followups')}>
-              <Text style={[s.tabText, activeTab === 'followups' && s.tabTextActive]}>Follow-ups</Text>
-            </Pressable>
+            {visibleTabs.map((tab) => (
+              <Pressable
+                key={tab.id}
+                style={[s.tab, displayedActiveTab === tab.id && s.tabActive]}
+                onPress={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id === 'interview' && currentInterview?.interviewStatus === 'Invited') loadSlots();
+                }}
+              >
+                <Text style={[s.tabText, displayedActiveTab === tab.id && s.tabTextActive]}>{tab.label}</Text>
+              </Pressable>
+            ))}
           </View>
 
-          {activeTab === 'details' ? (
+          {displayedActiveTab === 'details' ? (
             <>
               <View style={s.infoPanel}>
                 <Text style={s.infoTitle}>{statusCopy.title}</Text>
@@ -631,7 +823,7 @@ export default function ReportDetailScreen() {
                 <DetailRow label="Gender Identity" value={report?.gender || report?.gender_identity} />
                 <DetailRow label="Email" value={report?.email} />
                 <DetailRow label="Contact Number" value={report?.contact_number} />
-                <DetailRow label="Willing for Interview?" value={yesNo(report?.is_willing_to_be_interviewed ?? report?.willing_for_interview)} />
+                <DetailRow label="Willing for Interview?" value={yesNo(report?.is_willing_for_interview ?? report?.is_willing_to_be_interviewed ?? report?.willing_for_interview)} />
                 <DetailRow label="Anonymous Report?" value={yesNo(report?.is_anonymous ?? report?.anonymous)} />
               </Section>
 
@@ -734,6 +926,140 @@ export default function ReportDetailScreen() {
                 )}
               </Section>
             </>
+          ) : displayedActiveTab === 'interview' ? (
+            <Section title="Interview">
+              {interviewsLoading ? (
+                <View style={s.followState}>
+                  <ActivityIndicator color={TEAL} />
+                  <Text style={s.emptyText}>Loading interview details...</Text>
+                </View>
+              ) : currentInterview ? (
+                <>
+                  <View style={s.interviewHero}>
+                    <View style={s.interviewHeroIcon}>
+                      <Ionicons name="calendar-outline" size={20} color={TEAL} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.interviewHeroTitle}>
+                        {currentInterview.interviewStatus === 'Invited'
+                          ? 'Select an Interview Slot'
+                          : currentInterview.interviewStatus === 'Scheduled'
+                          ? 'Waiting for Meeting Link'
+                          : currentInterview.interviewStatus === 'Confirmed'
+                          ? 'Your Interview is Confirmed'
+                          : 'Interview Record'}
+                      </Text>
+                      <Text style={s.interviewHeroText}>
+                        {currentInterview.interviewStatus === 'Invited'
+                          ? 'You have been invited to an interview with your SASHA case officer. Please select a time slot that works for you.'
+                          : currentInterview.interviewStatus === 'Scheduled'
+                          ? 'Your slot has been reserved. Your case officer will confirm and send the meeting link shortly.'
+                          : currentInterview.interviewStatus === 'Confirmed'
+                          ? 'Everything is set. See the details below and join at the scheduled time.'
+                          : 'This interview remains part of your case record.'}
+                      </Text>
+                    </View>
+                    <View style={[
+                      s.interviewStatus,
+                      {
+                        backgroundColor: (INTERVIEW_STATUS_COLORS[currentInterview.interviewStatus] || INTERVIEW_STATUS_COLORS.Scheduled).bg,
+                        borderColor: (INTERVIEW_STATUS_COLORS[currentInterview.interviewStatus] || INTERVIEW_STATUS_COLORS.Scheduled).border,
+                      },
+                    ]}>
+                      <Text style={[
+                        s.interviewStatusText,
+                        { color: (INTERVIEW_STATUS_COLORS[currentInterview.interviewStatus] || INTERVIEW_STATUS_COLORS.Scheduled).fg },
+                      ]}>
+                        {currentInterview.interviewStatus}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {interviewError ? <Text style={s.followError}>{interviewError}</Text> : null}
+
+                  {currentInterview.interviewStatus === 'Invited' && (
+                    <View style={s.interviewBlock}>
+                      {currentInterview.expiresAt ? (
+                        <View style={s.interviewNotice}>
+                          <Ionicons name="time-outline" size={16} color={ORANGE} />
+                          <Text style={s.interviewNoticeText}>Select a slot before {dateOf(currentInterview.expiresAt)}.</Text>
+                        </View>
+                      ) : null}
+                      <Pressable style={s.interviewOutlineBtn} onPress={() => openAvailabilityRequest(currentInterview)}>
+                        <Ionicons name="create-outline" size={16} color={TEAL} />
+                        <Text style={s.interviewOutlineText}>None of these slots work</Text>
+                      </Pressable>
+                      {slotsLoading ? (
+                        <View style={s.followState}>
+                          <ActivityIndicator color={TEAL} />
+                          <Text style={s.emptyText}>Loading available slots...</Text>
+                        </View>
+                      ) : slots.length ? (
+                        <View style={s.slotList}>
+                          {slots.map((slot) => (
+                            <Pressable
+                              key={slot.id}
+                              style={s.slotCard}
+                              disabled={slotSubmittingId === slot.id}
+                              onPress={() => selectInterviewSlot(currentInterview, slot)}
+                            >
+                              <View style={s.slotIcon}>
+                                <Ionicons name="calendar-clear-outline" size={18} color={TEAL} />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={s.slotDate}>{dateOf(slot.date)}</Text>
+                                <Text style={s.slotTime}>
+                                  {timeOf(slot.time)}{slot.duration ? ` · ${slot.duration} minutes` : ''}
+                                </Text>
+                              </View>
+                              {slotSubmittingId === slot.id ? (
+                                <ActivityIndicator color={TEAL} />
+                              ) : (
+                                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                              )}
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : (
+                        <View style={s.followEmpty}>
+                          <Ionicons name="calendar-outline" size={24} color="#9ca3af" />
+                          <Text style={s.followEmptyTitle}>No slots available</Text>
+                          <Text style={s.followEmptyText}>Request a different interview time so your case officer can offer new slots.</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {['Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'Expired', 'Awaiting New Slots'].includes(currentInterview.interviewStatus) && (
+                    <View style={s.interviewDetailsCard}>
+                      <DetailRow label="Date" value={dateOf(currentInterview.scheduledDate)} />
+                      <DetailRow label="Time" value={timeOf(currentInterview.scheduledTime)} />
+                      <DetailRow label="Location / Platform" value={currentInterview.location} />
+                      <DetailRow label="Notes" value={currentInterview.notes} />
+                      {currentInterview.interviewStatus === 'Awaiting New Slots' && (
+                        <DetailRow label="Availability Request" value={currentInterview.availabilityRequest} />
+                      )}
+                      {currentInterview.meetingLink ? (
+                        <Pressable style={s.meetingLinkBtn} onPress={() => Linking.openURL(currentInterview.meetingLink)}>
+                          <Ionicons name="videocam-outline" size={17} color="#fff" />
+                          <Text style={s.meetingLinkText}>Join Meeting</Text>
+                        </Pressable>
+                      ) : currentInterview.interviewStatus === 'Scheduled' ? (
+                        <Text style={s.interviewWaitingText}>You will be notified once the meeting link is ready.</Text>
+                      ) : null}
+                      {['Scheduled', 'Confirmed'].includes(currentInterview.interviewStatus) && (
+                        <Pressable style={s.interviewOutlineBtn} onPress={() => openAvailabilityRequest(currentInterview)}>
+                          <Ionicons name="repeat-outline" size={16} color={TEAL} />
+                          <Text style={s.interviewOutlineText}>Request a Different Time</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  )}
+                </>
+              ) : (
+                <Text style={s.emptyText}>No interview invitation yet.</Text>
+              )}
+            </Section>
           ) : (
             <Section title="Follow-up History">
               <View style={s.followHero}>
@@ -938,6 +1264,65 @@ export default function ReportDetailScreen() {
                 </Pressable>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(availabilityOpenFor)} transparent animationType="fade" onRequestClose={() => !availabilitySubmitting && setAvailabilityOpenFor(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <View style={s.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.modalTitle}>Request Different Interview Slots</Text>
+                <Text style={s.modalSubtitle}>Share the schedule that works best and a short note for your case officer.</Text>
+              </View>
+              <Pressable disabled={availabilitySubmitting} onPress={() => setAvailabilityOpenFor(null)}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </Pressable>
+            </View>
+            <Text style={s.modalLabel}>Preferred date</Text>
+            <TextInput
+              style={s.modalInput}
+              value={availabilityPreferredDate}
+              onChangeText={(text) => {
+                setInterviewError('');
+                setAvailabilityPreferredDate(text);
+              }}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#9ca3af"
+            />
+            <Text style={s.modalLabel}>Preferred time</Text>
+            <TextInput
+              style={s.modalInput}
+              value={availabilityPreferredTime}
+              onChangeText={(text) => {
+                setInterviewError('');
+                setAvailabilityPreferredTime(text);
+              }}
+              placeholder="HH:MM"
+              placeholderTextColor="#9ca3af"
+            />
+            <Text style={s.modalLabel}>Reason</Text>
+            <TextInput
+              style={s.modalTextarea}
+              multiline
+              value={availabilityReason}
+              onChangeText={(text) => {
+                setInterviewError('');
+                setAvailabilityReason(text);
+              }}
+              placeholder="Briefly explain your availability or why the offered slots do not work."
+              placeholderTextColor="#9ca3af"
+            />
+            {interviewError ? <Text style={s.modalError}>{interviewError}</Text> : null}
+            <View style={s.modalActions}>
+              <Pressable style={s.modalCancelBtn} disabled={availabilitySubmitting} onPress={() => setAvailabilityOpenFor(null)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.modalPrimaryBtn, availabilitySubmitting && { opacity: 0.7 }]} disabled={availabilitySubmitting} onPress={submitAvailabilityRequest}>
+                {availabilitySubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>Send Request</Text>}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1288,6 +1673,109 @@ const s = StyleSheet.create({
   },
   replyButtonDisabled: { backgroundColor: '#9ca3af' },
   replyButtonText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  interviewHero: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: '#f8fbfb',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dbe7e7',
+    padding: 13,
+  },
+  interviewHeroIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f0fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  interviewHeroTitle: { color: '#111827', fontSize: 15, fontWeight: '900', marginBottom: 4 },
+  interviewHeroText: { color: '#4b5563', fontSize: 12, lineHeight: 18 },
+  interviewStatus: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  interviewStatusText: { fontSize: 10, fontWeight: '900' },
+  interviewBlock: { marginTop: 12, gap: 10 },
+  interviewNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    backgroundColor: '#fff7ed',
+    padding: 11,
+  },
+  interviewNoticeText: { flex: 1, color: '#9a3412', fontSize: 12, fontWeight: '800', lineHeight: 17 },
+  interviewOutlineBtn: {
+    minHeight: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+  },
+  interviewOutlineText: { color: TEAL, fontSize: 12, fontWeight: '900' },
+  slotList: { gap: 9 },
+  slotCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dbe7e7',
+    backgroundColor: '#fff',
+    padding: 12,
+  },
+  slotIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fafb',
+  },
+  slotDate: { color: '#111827', fontSize: 13, fontWeight: '900' },
+  slotTime: { color: '#6b7280', fontSize: 12, marginTop: 2, fontWeight: '700' },
+  interviewDetailsCard: {
+    marginTop: 12,
+    gap: 0,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dbe7e7',
+    backgroundColor: '#fbfdfd',
+    padding: 8,
+  },
+  meetingLinkBtn: {
+    marginTop: 10,
+    minHeight: 42,
+    borderRadius: 12,
+    backgroundColor: TEAL,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  meetingLinkText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  interviewWaitingText: {
+    marginTop: 10,
+    color: '#4b5563',
+    fontSize: 12,
+    lineHeight: 18,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 11,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(17,24,39,0.55)',
@@ -1375,6 +1863,16 @@ const s = StyleSheet.create({
     color: '#111827',
     fontSize: 13,
     textAlignVertical: 'top',
+    backgroundColor: '#fff',
+  },
+  modalInput: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    color: '#111827',
+    fontSize: 13,
     backgroundColor: '#fff',
   },
   modalError: { color: ERROR, fontSize: 12, fontWeight: '700', marginTop: 10 },
