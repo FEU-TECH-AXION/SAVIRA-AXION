@@ -3,6 +3,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { getToken, onMessage } from 'firebase/messaging';
 import { getFirebaseMessaging } from '@/lib/firebase';
+import { addNotification } from '@/lib/notificationStore';
 
 export default function NotificationsInit() {
   const [showBanner, setShowBanner] = useState(false);
@@ -18,27 +19,34 @@ export default function NotificationsInit() {
   }, []);
 
   async function registerToken() {
+    console.log('[FCM] starting registerToken'); // add
     const messaging = await getFirebaseMessaging();
+    console.log('[FCM] messaging:', messaging); // add
     if (!messaging) return;
 
-    const token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-    });
-
-    if (token) {
-      const res = await fetch('http://localhost:5000/api/notifications/register-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ token, platform: 'web' }),
+    try {
+      const token = await getToken(messaging, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
       });
+      console.log('[FCM] token:', token); // add
 
+      if (token) {
+        const res = await fetch('http://localhost:5000/api/notifications/register-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token, platform: 'web' }),
+        });
+        console.log('[FCM] register response:', res.status); // add
+      }
+
+      onMessage(messaging, (payload) => {
+        const { title, body } = payload.notification;
+        addNotification({ title, body });
+      });
+    } catch (err) {
+      console.error('[FCM] registerToken error:', err); // add
     }
-
-    onMessage(messaging, (payload) => {
-      const { title, body } = payload.notification;
-
-    });
   }
 
   async function handleAllow() {
