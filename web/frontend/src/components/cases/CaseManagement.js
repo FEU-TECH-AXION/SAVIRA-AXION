@@ -1362,6 +1362,7 @@ useEffect(() => {
         caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
         reporterId:      String(r.complainant_id),
         region:          r.incident_province || r.incident_city || "—",
+        city:            r.incident_city || "",
         status:          STATUS_STEP[r.case_status_id] || "For Verification",
         assignedOfficer: r.assigned_officer || null,
         assignedOfficerIds: r.assigned_officer_id ? [r.assigned_officer_id] : [],
@@ -1503,7 +1504,7 @@ const stats = useMemo(() => {
   // ── Filtering ──
   const filtered = useMemo(() =>
     cases.filter((c) => {
-      const ms = !search || c.caseId.includes(search) || c.reporterId.includes(search) || c.region.toLowerCase().includes(search.toLowerCase());
+      const ms = !search || c.caseId.includes(search) || c.reporterId.includes(search) || c.region.toLowerCase().includes(search.toLowerCase()) || (c.city && c.city.toLowerCase().includes(search.toLowerCase()));
       
       // Apply advanced filters
       let mf = true;
@@ -1526,7 +1527,7 @@ const stats = useMemo(() => {
         mf = mf && (c.primaryCategory || "") === advancedFilters.primaryCategory;
       }
       if (advancedFilters.city && advancedFilters.city !== "" && advancedFilters.city !== "All") {
-        mf = mf && (c.region || "").toLowerCase().includes(advancedFilters.city.toLowerCase());
+        mf = mf && ((c.region || "").toLowerCase().includes(advancedFilters.city.toLowerCase()) || (c.city || "").toLowerCase().includes(advancedFilters.city.toLowerCase()));
       }
       
       return ms && mf;
