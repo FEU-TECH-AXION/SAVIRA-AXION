@@ -35,6 +35,13 @@ const CATEGORIES = [
   "New Projects",
 ];
 
+const toSlug = (value = "") =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 const mapProjectToEvent = (project) => ({
   id: project.id ?? project.project_id,
   title: project.title || project.event_name || "Untitled event",
@@ -50,7 +57,7 @@ const mapProjectToEvent = (project) => ({
   image: project.image || "/event-placeholder.png",
   visibility: project.visibility,
   approvalStatus: project.approvalStatus || project.approval_status,
-  slug: project.slug || (project.title || project.event_name || "").toLowerCase().replace(/\s+/g, "-"),
+  slug: project.slug || toSlug(project.title || project.event_name || ""),
 });
 
 const formatEventDate = (value) => {
@@ -172,7 +179,7 @@ export default async function EventsPage({ searchParams }) {
                 <p style={{ color: "#6b7280" }}>No public events available at this time.</p>
               ) : (
                 filteredEvents.map((ev) => {
-                  const slug = ev.slug || ev.title.toLowerCase().replace(/\s+/g, "-");
+                  const slug = ev.slug || toSlug(ev.title);
                   const isUpcoming = ev.status?.toLowerCase() === "upcoming";
                   const isActive = ev.status?.toLowerCase() === "active";
 

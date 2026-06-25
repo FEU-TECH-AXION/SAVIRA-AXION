@@ -45,7 +45,7 @@ function EventCard({ image, tag, title, description, onPress }) {
   const showDesc = description && description.trim().toLowerCase() !== title.trim().toLowerCase();
 
   return (
-    <View style={s.eventCard}>
+    <Pressable style={s.eventCard} onPress={onPress}>
       <View style={s.eventImageWrap}>
         {imageSource
           ? <Image source={imageSource} style={s.eventImage} resizeMode="cover" />
@@ -64,7 +64,7 @@ function EventCard({ image, tag, title, description, onPress }) {
           <Text style={s.viewEventBtnText}>View Event</Text>
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -118,6 +118,15 @@ export default function EventsScreen() {
         tag: project.status?.toLowerCase() === 'upcoming' ? 'Happening Soon' : null,
         category: project.category || project.project_category || 'Awareness Campaign',
         date: project.start_date || project.dateStart || '',
+        dateStart: project.dateStart || project.start_date || '',
+        dateEnd: project.dateEnd || project.end_date || '',
+        venue: project.venue || '',
+        onlinePlatform: project.onlinePlatform || project.online_platform || '',
+        onlineLink: project.onlineLink || project.online_link || '',
+        targetParticipants: project.targetParticipants || project.target_participants || '',
+        partnerOrganizations: project.partnerOrganizations || project.partner_organization || '',
+        tagline: project.tagline || project.event_tagline || '',
+        activityMode: project.activityMode || project.activity_mode || '',
         image: project.image || null,
         status: project.status || project.project_status || '',
         visibility: project.visibility,
@@ -218,7 +227,10 @@ export default function EventsScreen() {
                   tag={e.tag}
                   title={e.title}
                   description={e.description}
-                  onPress={() => {}}
+                  onPress={() => router.push({
+                    pathname: '/event-detail',
+                    params: { eventId: e.id },
+                  })}
                 />
               ))
             )}
