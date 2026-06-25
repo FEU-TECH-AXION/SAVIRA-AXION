@@ -16,6 +16,7 @@ import { Ionicons, Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import { Calendar } from "react-native-calendars";
 
 const TEAL = "#037F81";
 const ORANGE = "#E96433";
@@ -152,6 +153,387 @@ function StyledInput({ error, multiline, numberOfLines, ...props }) {
       numberOfLines={numberOfLines}
       {...props}
     />
+  );
+}
+
+// ── Date Picker Field ─────────────────────────────────────────────────────────
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+const THIS_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: THIS_YEAR - 1899 }, (_, i) =>
+  String(THIS_YEAR - i)
+);
+
+function DatePickerField({ value, onChange, error }) {
+  const [open, setOpen] = useState(false);
+  // current calendar page (YYYY-MM-DD)
+  const today = new Date().toISOString().split("T")[0];
+  const [calCurrent, setCalCurrent] = useState(today);
+  // which dropdown is open: null | "month" | "year"
+  const [dropOpen, setDropOpen] = useState(null);
+
+  // Convert MM/DD/YYYY ↔ YYYY-MM-DD
+  const toCalendarDate = (val) => {
+    if (!val) return undefined;
+    const parts = val.split("/");
+    if (parts.length !== 3) return undefined;
+    return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+  };
+  const fromCalendarDate = (dateStr) => {
+    const [y, m, d] = dateStr.split("-");
+    return `${m}/${d}/${y}`;
+  };
+
+  const calDate = toCalendarDate(value);
+
+  const handleOpen = () => {
+    setCalCurrent(calDate || today);
+    setDropOpen(null);
+    setOpen(true);
+  };
+
+  // current display month/year from calCurrent
+  const [curYear, curMonthIdx] = calCurrent.split("-").map(Number);
+  const curMonthName = MONTH_NAMES[curMonthIdx - 1] || "";
+
+  const jumpTo = (year, month) => {
+    const m = String(month).padStart(2, "0");
+    setCalCurrent(`${year}-${m}-01`);
+    setDropOpen(null);
+  };
+
+  const displayLabel = value
+    ? (() => {
+        const parts = value.split("/");
+        if (parts.length === 3) {
+          const mName = MONTH_NAMES[Number(parts[0]) - 1] || "";
+          return `${mName} ${Number(parts[1])}, ${parts[2]}`;
+        }
+        return value;
+      })()
+    : "Select date";
+
+  return (
+    <View>
+      <Pressable
+        style={[s.pickerField, error && s.inputError]}
+        onPress={handleOpen}
+      >
+        <Text style={[s.pickerFieldText, value && { color: "#1a1a1a" }]}>
+          {displayLabel}
+        </Text>
+        <Feather name="calendar" size={20} color={TEAL} />
+      </Pressable>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={s.pickerOverlay} onPress={() => setOpen(false)}>
+          <Pressable
+            style={s.pickerModal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <View style={s.pickerModalHeader}>
+              <Text style={s.pickerModalTitle}>Select Date</Text>
+              <Pressable onPress={() => setOpen(false)}>
+                <Feather name="x" size={22} color="#1a1a1a" />
+              </Pressable>
+            </View>
+
+            {/* Month / Year quick-jump bar */}
+            <View style={s.calJumpBar}>
+              {/* Month selector */}
+              <Pressable
+                style={s.calJumpBtn}
+                onPress={() => setDropOpen(dropOpen === "month" ? null : "month")}
+              >
+                <Text style={s.calJumpBtnText}>{curMonthName}</Text>
+                <Feather
+                  name={dropOpen === "month" ? "chevron-up" : "chevron-down"}
+                  size={14}
+                  color={TEAL}
+                />
+              </Pressable>
+
+              {/* Year selector */}
+              <Pressable
+                style={s.calJumpBtn}
+                onPress={() => setDropOpen(dropOpen === "year" ? null : "year")}
+              >
+                <Text style={s.calJumpBtnText}>{curYear}</Text>
+                <Feather
+                  name={dropOpen === "year" ? "chevron-up" : "chevron-down"}
+                  size={14}
+                  color={TEAL}
+                />
+              </Pressable>
+            </View>
+
+            {/* Inline dropdown lists */}
+            {dropOpen === "month" && (
+              <ScrollView
+                style={s.calDropdown}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                {MONTH_NAMES.map((m, i) => {
+                  const isActive = i + 1 === curMonthIdx;
+                  return (
+                    <Pressable
+                      key={m}
+                      style={[s.calDropdownItem, isActive && s.calDropdownItemActive]}
+                      onPress={() => jumpTo(curYear, i + 1)}
+                    >
+                      <Text style={[s.calDropdownText, isActive && s.calDropdownTextActive]}>
+                        {m}
+                      </Text>
+                      {isActive && <Feather name="check" size={14} color={TEAL} />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {dropOpen === "year" && (
+              <ScrollView
+                style={s.calDropdown}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                {YEARS.map((y) => {
+                  const isActive = Number(y) === curYear;
+                  return (
+                    <Pressable
+                      key={y}
+                      style={[s.calDropdownItem, isActive && s.calDropdownItemActive]}
+                      onPress={() => jumpTo(Number(y), curMonthIdx)}
+                    >
+                      <Text style={[s.calDropdownText, isActive && s.calDropdownTextActive]}>
+                        {y}
+                      </Text>
+                      {isActive && <Feather name="check" size={14} color={TEAL} />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {/* Calendar grid (hidden while a dropdown is open) */}
+            {!dropOpen && (
+              <Calendar
+                key={calCurrent}
+                current={calCurrent}
+                markedDates={
+                  calDate
+                    ? { [calDate]: { selected: true, selectedColor: TEAL } }
+                    : {}
+                }
+                maxDate={today}
+                onDayPress={(day) => {
+                  onChange(fromCalendarDate(day.dateString));
+                  setOpen(false);
+                }}
+                onMonthChange={(month) => {
+                  setCalCurrent(`${month.year}-${String(month.month).padStart(2, "0")}-01`);
+                }}
+                hideExtraDays
+                theme={{
+                  todayTextColor: ORANGE,
+                  selectedDayBackgroundColor: TEAL,
+                  arrowColor: TEAL,
+                  dotColor: TEAL,
+                }}
+              />
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+
+// ── Time Picker Field ─────────────────────────────────────────────────────────
+const HOURS = Array.from({ length: 12 }, (_, i) =>
+  String(i + 1).padStart(2, "0")
+);
+const MINUTES = Array.from({ length: 60 }, (_, i) =>
+  String(i).padStart(2, "0")
+);
+const PERIODS = ["AM", "PM"];
+
+function TimePickerField({ value, onChange, error }) {
+  const [open, setOpen] = useState(false);
+
+  // Parse value like "03:00 PM" → {hour, minute, period}
+  const parseTime = (val) => {
+    if (!val) return { hour: "12", minute: "00", period: "AM" };
+    const match = val.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) return { hour: "12", minute: "00", period: "AM" };
+    return {
+      hour: match[1].padStart(2, "0"),
+      minute: match[2],
+      period: match[3].toUpperCase(),
+    };
+  };
+
+  const parsed = parseTime(value);
+  const [selHour, setSelHour] = useState(parsed.hour);
+  const [selMin, setSelMin] = useState(parsed.minute);
+  const [selPeriod, setSelPeriod] = useState(parsed.period);
+
+  const handleOpen = () => {
+    const p = parseTime(value);
+    setSelHour(p.hour);
+    setSelMin(p.minute);
+    setSelPeriod(p.period);
+    setOpen(true);
+  };
+
+  const handleConfirm = () => {
+    onChange(`${selHour}:${selMin} ${selPeriod}`);
+    setOpen(false);
+  };
+
+  return (
+    <View>
+      <Pressable
+        style={[s.pickerField, error && s.inputError]}
+        onPress={handleOpen}
+      >
+        <Text style={[s.pickerFieldText, value && { color: "#1a1a1a" }]}>
+          {value || "Select time"}
+        </Text>
+        <Feather name="clock" size={20} color={TEAL} />
+      </Pressable>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={s.pickerOverlay} onPress={() => setOpen(false)}>
+          <Pressable
+            style={s.pickerModal}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={s.pickerModalHeader}>
+              <Text style={s.pickerModalTitle}>Select Time</Text>
+              <Pressable onPress={() => setOpen(false)}>
+                <Feather name="x" size={22} color="#1a1a1a" />
+              </Pressable>
+            </View>
+
+            {/* Preview */}
+            <Text style={s.timePreview}>
+              {selHour}:{selMin} {selPeriod}
+            </Text>
+
+            {/* Drum pickers */}
+            <View style={s.timeDrumRow}>
+              {/* Hours */}
+              <View style={s.timeDrumWrap}>
+                <Text style={s.timeDrumLabel}>Hour</Text>
+                <ScrollView
+                  style={s.timeDrum}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                >
+                  {HOURS.map((h) => (
+                    <Pressable
+                      key={h}
+                      style={[
+                        s.timeDrumItem,
+                        selHour === h && s.timeDrumItemActive,
+                      ]}
+                      onPress={() => setSelHour(h)}
+                    >
+                      <Text
+                        style={[
+                          s.timeDrumItemText,
+                          selHour === h && s.timeDrumItemTextActive,
+                        ]}
+                      >
+                        {h}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <Text style={s.timeSep}>:</Text>
+
+              {/* Minutes */}
+              <View style={s.timeDrumWrap}>
+                <Text style={s.timeDrumLabel}>Min</Text>
+                <ScrollView
+                  style={s.timeDrum}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                >
+                  {MINUTES.map((m) => (
+                    <Pressable
+                      key={m}
+                      style={[
+                        s.timeDrumItem,
+                        selMin === m && s.timeDrumItemActive,
+                      ]}
+                      onPress={() => setSelMin(m)}
+                    >
+                      <Text
+                        style={[
+                          s.timeDrumItemText,
+                          selMin === m && s.timeDrumItemTextActive,
+                        ]}
+                      >
+                        {m}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* AM/PM */}
+              <View style={s.timeDrumWrap}>
+                <Text style={s.timeDrumLabel}>AM/PM</Text>
+                <View style={s.periodWrap}>
+                  {PERIODS.map((p) => (
+                    <Pressable
+                      key={p}
+                      style={[
+                        s.periodBtn,
+                        selPeriod === p && s.periodBtnActive,
+                      ]}
+                      onPress={() => setSelPeriod(p)}
+                    >
+                      <Text
+                        style={[
+                          s.periodBtnText,
+                          selPeriod === p && s.periodBtnTextActive,
+                        ]}
+                      >
+                        {p}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <Pressable style={s.pickerConfirmBtn} onPress={handleConfirm}>
+              <Text style={s.pickerConfirmBtnText}>Confirm</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 
@@ -648,10 +1030,9 @@ function StepIncidentDetails({ data, onChange, errors }) {
         hint="When did the incident happen?"
         error={errors.date}
       >
-        <StyledInput
-          placeholder="MM/DD/YYYY"
+        <DatePickerField
           value={data.date}
-          onChangeText={set("date")}
+          onChange={set("date")}
           error={errors.date}
         />
       </Field>
@@ -660,10 +1041,9 @@ function StepIncidentDetails({ data, onChange, errors }) {
         hint="Approximate time is fine if exact time is unknown."
         error={errors.time}
       >
-        <StyledInput
-          placeholder="e.g. 3:00 PM"
+        <TimePickerField
           value={data.time}
-          onChangeText={set("time")}
+          onChange={set("time")}
           error={errors.time}
         />
       </Field>
@@ -1861,6 +2241,174 @@ const s = StyleSheet.create({
   },
   inputError: { borderColor: ERROR },
   inputReadonly: { backgroundColor: "#f0f0f0", color: "#888" },
+
+  // Picker trigger (shared by date & time)
+  pickerField: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    backgroundColor: "#fff",
+  },
+  pickerFieldText: { fontSize: 14, color: "#aaa", flex: 1 },
+
+  // Modal overlay + card
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  pickerModal: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    width: "100%",
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  pickerModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  pickerModalTitle: { fontSize: 17, fontWeight: "800", color: "#1a1a1a" },
+
+  // Date picker preview
+  datePreview: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: TEAL,
+    textAlign: "center",
+    paddingVertical: 14,
+    letterSpacing: 0.5,
+  },
+
+  // Time picker preview
+  timePreview: {
+    fontSize: 36,
+    fontWeight: "900",
+    color: TEAL,
+    textAlign: "center",
+    paddingVertical: 16,
+    letterSpacing: 2,
+  },
+
+
+  // Drum row
+  timeDrumRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingBottom: 8,
+  },
+  timeDrumWrap: { alignItems: "center", flex: 1 },
+  timeDrumLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9ca3af",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  timeDrum: { maxHeight: 180, width: "100%" },
+  timeDrumItem: {
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 10,
+    marginVertical: 2,
+  },
+  timeDrumItemActive: { backgroundColor: "#e6f5f5" },
+  timeDrumItemText: { fontSize: 18, color: "#6b7280", fontWeight: "500" },
+  timeDrumItemTextActive: { color: TEAL, fontWeight: "800" },
+  timeSep: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#1a1a1a",
+    marginTop: 34,
+  },
+
+  // AM/PM toggle
+  periodWrap: { gap: 8, marginTop: 2 },
+  periodBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    alignItems: "center",
+  },
+  periodBtnActive: { backgroundColor: TEAL, borderColor: TEAL },
+  periodBtnText: { fontSize: 14, fontWeight: "700", color: "#9ca3af" },
+  periodBtnTextActive: { color: "#fff" },
+
+  // Confirm button
+  pickerConfirmBtn: {
+    backgroundColor: TEAL,
+    margin: 16,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  pickerConfirmBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+
+  // Calendar month/year jump bar
+  calJumpBar: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  calJumpBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f0fafb",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "#d1f0f0",
+  },
+  calJumpBtnText: { fontSize: 14, fontWeight: "700", color: TEAL },
+  calDropdown: {
+    maxHeight: 220,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#fff",
+  },
+  calDropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  calDropdownItemActive: { backgroundColor: "#f0fafb" },
+  calDropdownText: { fontSize: 14, color: "#374151" },
+  calDropdownTextActive: { color: TEAL, fontWeight: "700" },
+
 
   // Select
   selectBox: {
