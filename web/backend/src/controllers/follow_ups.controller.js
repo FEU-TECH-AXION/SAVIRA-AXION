@@ -149,6 +149,7 @@ async function createFollowUp(req, res) {
     const caseId = Number(req.params.id)
     const userId = actorId(req)
     const { type, reason_category, message, blocks_processing } = req.body
+    const messageOnly = String(req.body.message_only) === 'true'
     if (!Number.isInteger(caseId) || !userId) return res.status(400).json({ error: 'Invalid request.' })
     if (!ALLOWED_TYPES.has(type)) return res.status(400).json({ error: 'Invalid follow-up type.' })
     if (!String(message || '').trim()) return res.status(400).json({ error: 'A message is required.' })
@@ -198,7 +199,7 @@ async function createFollowUp(req, res) {
     if (req.file && !evidenceRequested) {
       return res.status(400).json({ error: 'Attachments are only allowed when evidence is selected.' })
     }
-    if (type === 'user_change_request' && evidenceRequested && !req.file) {
+    if (type === 'user_change_request' && evidenceRequested && !req.file && !messageOnly) {
       return res.status(400).json({ error: 'Attach at least one evidence file.' })
     }
     const attachment = await uploadAttachment(caseId, null, req.file)
@@ -211,6 +212,7 @@ async function createFollowUp(req, res) {
     const submittedFields = type === 'user_change_request'
       ? [
           ...new Set([
+            ...(messageOnly ? fieldsRequested : []),
             ...changes.map((change) => change.field_key),
             ...(evidenceRequested ? [EVIDENCE_FIELD] : []),
           ]),
@@ -231,6 +233,7 @@ async function createFollowUp(req, res) {
     }
     if (
       type === 'user_change_request' &&
+      !messageOnly &&
       fieldsRequested.some((field) => field !== EVIDENCE_FIELD) &&
       changes.length === 0
     ) {

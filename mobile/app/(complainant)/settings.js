@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
+import NavSearchButton from '../../components/NavSearchButton';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
 
@@ -183,7 +184,7 @@ export default function SettingsScreen() {
   const [pwForm, setPwForm] = useState({ current: '', new: '', confirm: '' });
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
   const [pwSaving, setPwSaving] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState({ email_updates: true, case_updates: true, event_reminders: false, volunteer_news: false });
+  const [notifPrefs, setNotifPrefs] = useState({ email_updates: true, case_updates: true, event_reminders: false });
   const [policy, setPolicy] = useState('terms');
 
   const handlePasswordSave = async () => {
@@ -309,7 +310,7 @@ export default function SettingsScreen() {
             </Pressable>
 
             <View style={styles.navRight}>
-              <Feather name="search" size={20} color="#fff" />
+              <NavSearchButton />
               <View>
                 <Ionicons name="notifications-outline" size={20} color="#fff" />
                 <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
@@ -501,7 +502,6 @@ export default function SettingsScreen() {
                   { key: 'email_updates', title: 'General email updates', desc: 'News and announcements.' },
                   { key: 'case_updates', title: 'Case status notifications', desc: 'Updates on your cases.' },
                   { key: 'event_reminders', title: 'Event reminders', desc: 'Reminders for upcoming events.' },
-                  { key: 'volunteer_news', title: 'Volunteer opportunities', desc: 'New volunteer calls.' },
                 ].map(({key, title, desc}) => (
                   <View key={key} style={styles.prefRow}>
                     <View style={{ flex: 1, paddingRight: 10 }}>

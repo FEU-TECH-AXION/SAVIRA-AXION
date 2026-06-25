@@ -7,8 +7,9 @@ import {
   StyleSheet, Modal, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NavSearchButton from '../../components/NavSearchButton';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
@@ -27,7 +28,7 @@ function Navbar({ onBurger, notifCount = 0 }) {
         <Ionicons name="menu" size={26} color="#fff" />
       </Pressable>
       <View style={s.navRight}>
-        <Feather name="search" size={20} color="#fff" />
+        <NavSearchButton />
         <View>
           <Ionicons name="notifications-outline" size={20} color="#fff" />
           {notifCount > 0 && (
@@ -46,7 +47,6 @@ function Navbar({ onBurger, notifCount = 0 }) {
 function getTypeIcon(type) {
   switch (type) {
     case 'case_update':   return 'document-text';
-    case 'volunteer':     return 'people';
     case 'event':         return 'calendar';
     case 'system':        return 'information-circle';
     default:              return 'notifications';
@@ -55,7 +55,6 @@ function getTypeIcon(type) {
 function getTypeColor(type) {
   switch (type) {
     case 'case_update':   return TEAL;
-    case 'volunteer':     return ORANGE;
     case 'event':         return '#8b5cf6';
     case 'system':        return '#3b82f6';
     default:              return '#6b7280';
@@ -124,8 +123,7 @@ export default function NotificationsScreen() {
       // fallback demo data
       setNotifications([
         { id: '1', title: 'Case Status Update', message: 'Your case has been moved to the investigation phase.', type: 'case_update', read: false, created_at: new Date(Date.now() - 600000) },
-        { id: '2', title: 'Volunteer Application', message: 'Your volunteer application is now under review.', type: 'volunteer', read: false, created_at: new Date(Date.now() - 3600000) },
-        { id: '3', title: 'Event Reminder', message: 'Support group meeting starts in 2 hours at the community center.', type: 'event', read: true, created_at: new Date(Date.now() - 7200000) },
+        { id: '2', title: 'Event Reminder', message: 'Support group meeting starts in 2 hours at the community center.', type: 'event', read: true, created_at: new Date(Date.now() - 7200000) },
       ]);
     } finally {
       setLoading(false);

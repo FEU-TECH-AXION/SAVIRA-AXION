@@ -6,18 +6,18 @@ import {
   Pressable,
   Image,
   StyleSheet,
-  Modal,
   ImageBackground,
   ActivityIndicator,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
+import NavSearchButton from '../../components/NavSearchButton';
 import ncrCities from '../../assets/geojson/ncr-cities';
 
 // ── Top Navbar ────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ function Navbar({ onBurger, onNotifications, notifCount, user }) {
         <Ionicons name="menu" size={26} color="#fff" />
       </Pressable>
       <View style={s.navRight}>
-        <Feather name="search" size={20} color="#fff" />
+        <NavSearchButton />
         <Pressable onPress={onNotifications} style={s.notifContainer}>
           <Ionicons name="notifications-outline" size={20} color="#fff" />
           {notifCount > 0 && (
@@ -347,7 +347,6 @@ export default function ComplainantDashboard() {
 
   const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '' });
   const [reports, setReports] = useState([]);
-  const [applications, setApplications] = useState([]);
   const [dashEvents, setDashEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -378,13 +377,7 @@ export default function ComplainantDashboard() {
       });
       const reportsData = await reportsRes.json();
 
-      // 3. Fetch applications
-      const appsRes = await fetch(`${API_URL}/api/volunteer_applications/my_applications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const appsData = await appsRes.json();
-
-      // 4. Fetch public events
+      // 3. Fetch public events
       const eventsRes = await fetch(`${API_URL}/api/projects?visibility=public&approval_status=approved`);
       let fetchedEvents = [];
       if (eventsRes.ok) {
@@ -400,9 +393,6 @@ export default function ComplainantDashboard() {
 
       if (reportsRes.ok && reportsData.data) {
         setReports(reportsData.data);
-      }
-      if (appsRes.ok) {
-        setApplications(Array.isArray(appsData) ? appsData : appsData.data || []);
       }
       setDashEvents(fetchedEvents);
 
@@ -424,8 +414,8 @@ export default function ComplainantDashboard() {
   const getNotifications = () => {
     const list = [];
     
-    if (reports.length === 0 && applications.length === 0) {
-      list.push({ id: 'welcome', text: 'Welcome to SAVIRA! Submit a report or volunteer application to get started.' });
+    if (reports.length === 0) {
+      list.push({ id: 'welcome', text: 'Welcome to SAVIRA! Submit a report to get started.' });
     }
 
     reports.forEach((rep, idx) => {
@@ -434,14 +424,6 @@ export default function ComplainantDashboard() {
       list.push({
         id: `rep-${rep.case_report_id || idx}`,
         text: `Report #${displayId} status update: Case is currently "${statusText}".`
-      });
-    });
-
-    applications.forEach((app, idx) => {
-      const statusText = app.status || 'Pending';
-      list.push({
-        id: `app-${app.id || idx}`,
-        text: `Volunteer Application status update: Application is currently "${statusText}".`
       });
     });
 
@@ -482,13 +464,6 @@ export default function ComplainantDashboard() {
             description="Report safely and securely."
             onPress={() => router.push('/(complainant)/reports')}
           />
-          <ActionCard
-            iconSource={require('../../assets/VolunteerIcon.png')}
-            title="Apply as Volunteer"
-            description="Join our mission to support survivors."
-            onPress={() => router.push('/(complainant)/volunteer-application')}
-          />
-
           <SectionHeading title="Overview" />
 
           <NotificationsCard
@@ -498,8 +473,11 @@ export default function ComplainantDashboard() {
 
           {/* Render Case Reports Status */}
           {reports.length > 0 ? (
-            reports.slice(0, 1).map((rep) => {
-              const displayId = rep.case_report_id ? String(rep.case_report_id).slice(0, 8).toUpperCase() : '';
+            reports.slice(0, 1).map((rep, idx) => {
+              const rawReportId = rep.case_report_id || rep.id;
+              const createdAt = rep.created_at || rep.incident_date;
+              const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
+              const displayId = rawReportId ? `${year}-${String(rawReportId).padStart(3, '0')}` : `REP-${idx + 1}`;
               // map case_status_id (1 -> 0, 2 -> 1, 3 -> 2)
               const currentStep = rep.case_status_id ? rep.case_status_id - 1 : 0;
               return (
@@ -511,7 +489,10 @@ export default function ComplainantDashboard() {
                   dateApplied={rep.incident_date ? new Date(rep.incident_date).toLocaleDateString() : 'N/A'}
                   steps={['Submitted', 'Assessed', 'Resolved']}
                   currentStep={currentStep >= 0 && currentStep <= 2 ? currentStep : 0}
-                  onView={() => {}}
+                  onView={() => router.push({
+                    pathname: '/(complainant)/report-detail',
+                    params: { caseId: rawReportId, displayId },
+                  })}
                 />
               );
             })
@@ -519,30 +500,6 @@ export default function ComplainantDashboard() {
             <View style={s.emptyCard}>
               <Ionicons name="document-text-outline" size={32} color="#9ca3af" />
               <Text style={s.emptyCardText}>You have not submitted any reports yet.</Text>
-            </View>
-          )}
-
-          {/* Render Volunteer Applications Status */}
-          {applications.length > 0 ? (
-            applications.slice(0, 1).map((app, idx) => {
-              const currentStep = app.status === 'Approved' ? 2 : app.status === 'Reviewing' ? 1 : 0;
-              return (
-                <StatusCard
-                  key={app.id || app.volunteer_application_id || `app-${idx}`}
-                  title="Latest Volunteer Application"
-                  email={app.email || user.email || 'N/A'}
-                  contactNumber={app.contact_number || 'N/A'}
-                  dateApplied={app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A'}
-                  steps={['Pending', 'Reviewing', 'Approved']}
-                  currentStep={currentStep}
-                  onView={() => {}}
-                />
-              );
-            })
-          ) : (
-            <View style={s.emptyCard}>
-              <Ionicons name="people-outline" size={32} color="#9ca3af" />
-              <Text style={s.emptyCardText}>You have not applied as a volunteer yet.</Text>
             </View>
           )}
 
