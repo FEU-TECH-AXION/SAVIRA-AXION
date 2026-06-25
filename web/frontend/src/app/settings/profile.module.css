@@ -9,15 +9,29 @@
   min-height: 100vh;
   background: #f4f6f8;
   padding-bottom: 4rem;
-  padding-top: 4rem;
 }
 
 /* ── Hero strip ─────────────────────────────────────────────── */
 .hero {
-  background: url('/hero-banner.png') center/cover no-repeat;
   padding: 2.5rem 1rem 3.5rem;
   position: relative;
   overflow: hidden;
+  padding-top: 4rem;
+  /* 1. Create a new stacking context for the hero element */
+  z-index: 1; 
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/hero-banner.png') center/cover no-repeat;
+  filter: grayscale(100%);
+  /* 2. Keep the image at the lowest layer *inside* the hero */
+  z-index: -2; 
 }
 
 .heroOverlay {
@@ -26,9 +40,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #025f61 0%, #037F81 60%, #048f92 100%);
+  background: linear-gradient(135deg, #629293 0%, #48a1a3 60%, #148082 100%);
   opacity: 0.85;
-  z-index: 0;
+  z-index: -1; 
 }
 
 .hero::after {
