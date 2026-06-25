@@ -1,5 +1,7 @@
+//controller
 const supabase = require('../config/supabase')
 const VolunteerApplicationAssignmentsModel = require('../models/volunteer_application_assignments.model')
+const { notifyUser } = require('../services/notificationService');
 
 const getItems = async (req, res) => {
     try {
@@ -53,24 +55,12 @@ const bulkAssignApplication = async (req, res) => {
         }
 
         const results = { assigned: [], failed: [] }
-        const validRows = []
 
         // 2. Build rows — check duplicates per application + assessor pair
+        const validRows = []
+        
         for (const appId of application_ids) {
             for (const assessorId of assessor_ids) {
-                const alreadyAssigned = await VolunteerApplicationAssignmentsModel.isAlreadyAssigned(
-                    appId,
-                    assessorId
-                )
-                if (alreadyAssigned) {
-                    results.failed.push({
-                        volunteer_application_id: appId,
-                        assessor_id:              assessorId,
-                        reason:                   'Already actively assigned to this application.'
-                    })
-                    continue
-                }
-
                 const staffMember = validStaff.find(s => s.user_id === assessorId)
                 validRows.push({
                     volunteer_application_id: appId,
@@ -78,7 +68,6 @@ const bulkAssignApplication = async (req, res) => {
                     assigned_by,
                     committee_id:             2,
                     is_active:                true,
-                    // notes:                    notes ?? null,
                     _name: staffMember?.users
                         ? `${staffMember.users.first_name} ${staffMember.users.last_name}`.trim()
                         : `Staff #${assessorId}`,
@@ -89,13 +78,31 @@ const bulkAssignApplication = async (req, res) => {
         // 3. Bulk insert valid rows
         if (validRows.length > 0) {
             const rowsToInsert = validRows.map(({ _name, ...row }) => row)
-            await VolunteerApplicationAssignmentsModel.bulkCreate(rowsToInsert)
+            const inserted = await VolunteerApplicationAssignmentsModel.bulkCreate(rowsToInsert)
 
-            results.assigned = validRows.map(r => ({
-                volunteer_application_id: r.volunteer_application_id,
-                assessor_id:              r.assessor_id,
-                name:                     r._name,
-            }))
+            // Only notify for rows that were actually inserted
+            const insertedIds = new Set(
+                (inserted || []).map(r => `${r.volunteer_application_id}:${r.assessor_id}`)
+            )
+
+            results.assigned = validRows
+                .filter(r => insertedIds.has(`${r.volunteer_application_id}:${r.assessor_id}`))
+                .map(r => ({
+                    volunteer_application_id: r.volunteer_application_id,
+                    assessor_id:              r.assessor_id,
+                    name:                     r._name,
+                }))
+
+            for (const row of validRows.filter(r => insertedIds.has(`${r.volunteer_application_id}:${r.assessor_id}`))) {
+                notifyUser(row.assessor_id, {
+                    title: 'New Application Assigned',
+                    body: `You have been assigned to review a volunteer application.`,
+                    data: {
+                        volunteer_application_id: row.volunteer_application_id,
+                        link: `/volunteer-applications/${row.volunteer_application_id}`,
+                    },
+                }).catch(err => console.error('[notifyUser] Failed to notify assessor:', err.message))
+            }
         }
 
         res.status(201).json({

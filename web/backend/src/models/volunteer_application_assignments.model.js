@@ -1,3 +1,4 @@
+// model
 const supabase = require('../config/supabase')
 
 const getAll = async () => {
@@ -56,12 +57,48 @@ const isAlreadyAssigned = async (volunteer_application_id, assessor_id) => {
 }
 
 const bulkCreate = async (assignments) => {
-    const { data, error } = await supabase
-        .from('volunteer_application_assignments')
-        .insert(assignments)
-        .select()
-    if (error) throw error
-    return data
+    const results = []
+
+    for (const row of assignments) {
+        // Check if a row already exists (active or inactive)
+        const { data: existing, error: fetchError } = await supabase
+            .from('volunteer_application_assignments')
+            .select('assignment_id, is_active')
+            .eq('volunteer_application_id', row.volunteer_application_id)
+            .eq('assessor_id', row.assessor_id)
+            .maybeSingle()
+
+        if (fetchError) throw fetchError
+
+        if (existing) {
+            if (existing.is_active) {
+                // Already active — skip
+                continue
+            }
+            // Reactivate
+            const { data, error } = await supabase
+                .from('volunteer_application_assignments')
+                .update({ is_active: true, assigned_by: row.assigned_by, assigned_at: new Date().toISOString() })
+                .eq('assignment_id', existing.assignment_id)
+                .select('volunteer_application_id, assessor_id')
+                .single()
+
+            if (error) throw error
+            results.push(data)
+        } else {
+            // Fresh insert
+            const { data, error } = await supabase
+                .from('volunteer_application_assignments')
+                .insert(row)
+                .select('volunteer_application_id, assessor_id')
+                .single()
+
+            if (error) throw error
+            results.push(data)
+        }
+    }
+
+    return results
 }
 
 const deactivateOne = async (volunteer_application_id, assessor_id) => {
