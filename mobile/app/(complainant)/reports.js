@@ -622,37 +622,6 @@ function StepComplainantInfo({ data, onChange, errors }) {
           error={errors.email}
         />
       </Field>
-
-      <View style={s.divider} />
-      <Text style={s.subSectionTitle}>Mode of Contact</Text>
-      <Field
-        label="Contact Number"
-        required
-        hint="We will use this to reach you regarding your report."
-        error={errors.contactNumber}
-      >
-        <StyledInput
-          placeholder="+639XXXXXXXXX"
-          value={data.contactNumber}
-          onChangeText={set("contactNumber")}
-          keyboardType="phone-pad"
-          error={errors.contactNumber}
-        />
-      </Field>
-      <Field
-        label="Email"
-        required
-        hint="A confirmation and updates will be sent here."
-        error={errors.email}
-      >
-        <StyledInput
-          placeholder="sample@gmail.com"
-          value={data.email}
-          onChangeText={set("email")}
-          keyboardType="email-address"
-          error={errors.email}
-        />
-      </Field>
     </View>
   );
 }
