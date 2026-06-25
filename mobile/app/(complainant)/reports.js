@@ -23,6 +23,7 @@ const ORANGE = "#E96433";
 const BORDER = "#e5e7eb";
 const BG = "#f5f7f8";
 const ERROR = "#dc2626";
+const HISTORY_PAGE_SIZE = 5;
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -58,6 +59,7 @@ const STEPS = [
 
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
+import NavSearchButton from '../../components/NavSearchButton';
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, notifCount = 0 }) {
@@ -67,7 +69,7 @@ function Navbar({ onBurger, notifCount = 0 }) {
         <Ionicons name="menu" size={26} color="#fff" />
       </Pressable>
       <View style={s.navRight}>
-        <Feather name="search" size={20} color="#fff" />
+        <NavSearchButton />
         <View>
           <Ionicons name="notifications-outline" size={20} color="#fff" />
           {notifCount > 0 && (
@@ -1594,12 +1596,153 @@ function validateStep2(data) {
 // ── Status badge colours ─────────────────────────────────────────────────────
 const STATUS_COLORS = {
   Submitted:    { bg: '#e0f2f1', text: '#037F81' },
+  'For Verification': { bg: '#e0f2f1', text: '#037F81' },
   'Under Review': { bg: '#fff3e0', text: '#e96433' },
+  'Undergoing Review': { bg: '#fff3e0', text: '#e96433' },
+  'Verified - True': { bg: '#ecfdf5', text: '#047857' },
+  'Verified - False': { bg: '#fef2f2', text: '#b91c1c' },
+  'Under Case Evaluation': { bg: '#eff6ff', text: '#1d4ed8' },
+  'Case Filed': { bg: '#f5f3ff', text: '#6d28d9' },
+  'Investigation Ongoing': { bg: '#fff7ed', text: '#c2410c' },
+  'Hearing Ongoing': { bg: '#fefce8', text: '#a16207' },
+  Dismissed: { bg: '#f3f4f6', text: '#4b5563' },
+  'Perpetrator Convicted': { bg: '#ecfdf5', text: '#047857' },
   Resolved:     { bg: '#e8f5e9', text: '#2e7d32' },
+  Withdrawn: { bg: '#fef3c7', text: '#92400e' },
 };
+
+const STATUS_LABELS = {
+  1: 'Submitted',
+  2: 'For Verification',
+  3: 'Undergoing Review',
+  4: 'Verified - True',
+  5: 'Verified - False',
+  6: 'Under Case Evaluation',
+  7: 'Case Filed',
+  8: 'Investigation Ongoing',
+  9: 'Hearing Ongoing',
+  10: 'Dismissed',
+  11: 'Perpetrator Convicted',
+  12: 'Resolved',
+  13: 'Withdrawn',
+};
+
+const STATUS_DISPLAY = {
+  Submitted: { middle: 'For Verification', phase: 1 },
+  'For Verification': { middle: 'For Verification', phase: 1 },
+  'Undergoing Review': { middle: 'Undergoing Review', phase: 1 },
+  'Verified - True': { middle: 'Verified', phase: 1 },
+  'Verified - False': { middle: 'Verified', phase: 2 },
+  'Under Case Evaluation': { middle: 'Under Case Evaluation', phase: 1 },
+  'Case Filed': { middle: 'Case Filed', phase: 1 },
+  'Investigation Ongoing': { middle: 'Investigation Ongoing', phase: 1 },
+  'Hearing Ongoing': { middle: 'Hearing Ongoing', phase: 1 },
+  Dismissed: { middle: null, phase: 2 },
+  'Perpetrator Convicted': { middle: null, phase: 2 },
+  Resolved: { middle: null, phase: 2 },
+  Withdrawn: { middle: null, phase: 2 },
+};
+
+const TERMINAL_STATUSES = ['Dismissed', 'Perpetrator Convicted', 'Resolved', 'Withdrawn'];
+const WITHDRAWAL_ALLOWED = ['For Verification', 'Undergoing Review', 'Verified - True', 'Under Case Evaluation'];
+const WITHDRAWAL_REQUIRES_APPROVAL = ['Case Filed', 'Investigation Ongoing'];
+const FOLLOW_UP_REASON_OPTIONS = [
+  {
+    value: 'Correction needed',
+    label: 'Correct existing information',
+    description: 'Choose this when information already recorded on the case is inaccurate.',
+    groupIds: ['complainant_contact', 'incident_datetime', 'incident_location', 'incident_description', 'incident_outcome', 'perpetrator', 'witnesses', 'prior_disclosure'],
+  },
+  {
+    value: 'Additional info',
+    label: 'Add information or evidence',
+    description: 'Choose this when the existing information is correct, but the case team needs new details or files.',
+    groupIds: ['incident_description', 'incident_outcome', 'perpetrator', 'witnesses', 'prior_disclosure', 'evidence'],
+  },
+  {
+    value: 'Other',
+    label: 'Other request',
+    description: 'Choose this for a request that does not change a case field, then explain it below.',
+    groupIds: [],
+  },
+];
+
+const FOLLOW_UP_FIELDS = [
+  { id: 'complainant_contact', label: 'Complainant contact info', fields: ['complainant.contactNumber', 'complainant.email'] },
+  { id: 'incident_datetime', label: 'Incident date/time', fields: ['incident.date', 'incident.time'] },
+  { id: 'incident_location', label: 'Incident location', fields: ['incident.incidentCity', 'incident.incidentVenue'] },
+  { id: 'incident_description', label: 'Incident description', fields: ['incident.description'] },
+  { id: 'incident_outcome', label: 'Requested outcome', fields: ['incident.outcome'] },
+  { id: 'perpetrator', label: 'Perpetrator details', fields: ['incident.perpetratorKnown', 'incident.perpetratorName', 'incident.perpetratorOccupation', 'incident.perpetratorRelationship', 'incident.perpetratorGender'] },
+  { id: 'witnesses', label: 'Witness details', fields: ['incident.witnesses', 'incident.witnessName', 'incident.witnessContact', 'incident.witnessRelationship'] },
+  { id: 'prior_disclosure', label: 'Prior disclosure/police report', fields: ['incident.toldAnyone', 'incident.toldAnyoneWho', 'incident.toldPolice', 'incident.policeStation'] },
+  { id: 'evidence', label: 'Evidence/attachments', fields: ['evidence.files'] },
+];
+
+function getFollowUpFieldLabels(selectedFields) {
+  return FOLLOW_UP_FIELDS
+    .filter((group) => group.fields.some((field) => selectedFields.includes(field)))
+    .map((group) => group.label);
+}
+
+function getFollowUpGroupsForReason(reason) {
+  const selectedReason = FOLLOW_UP_REASON_OPTIONS.find((option) => option.value === reason);
+  return FOLLOW_UP_FIELDS.filter((group) => selectedReason?.groupIds.includes(group.id));
+}
+
+function getStatusName(report) {
+  return report.case_status?.status_name || report.statusName || report.status || STATUS_LABELS[report.case_status_id] || 'Submitted';
+}
+
+function getReportId(report, fallback = 1) {
+  const raw = report.case_report_id || report.id;
+  if (!raw) return `#${fallback}`;
+  const createdAt = report.created_at || report.incident_date;
+  const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
+  return `${year}-${String(raw).padStart(3, '0')}`;
+}
+
+function getWithdrawalCopy(status) {
+  const requiresApproval = WITHDRAWAL_REQUIRES_APPROVAL.includes(status);
+  if (status === 'Case Filed') {
+    return {
+      buttonLabel: 'Request Withdrawal',
+      title: 'Request Case Withdrawal',
+      description: 'This case has already been filed. Your request requires approval and an Affidavit of Desistance or equivalent official document.',
+      requiresAffidavit: true,
+      requiresApproval,
+    };
+  }
+  if (status === 'Investigation Ongoing') {
+    return {
+      buttonLabel: 'Request Withdrawal',
+      title: 'Request Case Withdrawal',
+      description: 'An investigation is active. Explain why you are requesting withdrawal; an administrator or case officer must approve it.',
+      requiresAffidavit: false,
+      requiresApproval,
+    };
+  }
+  if (status === 'Verified - True') {
+    return {
+      buttonLabel: 'Withdraw',
+      title: 'Withdraw Validated Case',
+      description: 'This case has already been verified as valid. Withdrawing it will archive the validated record and cannot be undone.',
+      requiresAffidavit: false,
+      requiresApproval: false,
+    };
+  }
+  return {
+    buttonLabel: 'Withdraw',
+    title: 'Withdraw Case Report',
+    description: 'This will archive the case and stop its current progress. The withdrawal is permanent and remains in the audit record.',
+    requiresAffidavit: false,
+    requiresApproval: false,
+  };
+}
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ReportScreen() {
+  const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(tab === 'history' ? 'history' : 'submit'); // 'submit' | 'history'
@@ -1613,9 +1756,21 @@ export default function ReportScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
 
   const [reports, setReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [withdrawReport, setWithdrawReport] = useState(null);
+  const [withdrawReason, setWithdrawReason] = useState('');
+  const [withdrawFile, setWithdrawFile] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [followUpReport, setFollowUpReport] = useState(null);
+  const [followUpReason, setFollowUpReason] = useState('Correction needed');
+  const [followUpReasonOpen, setFollowUpReasonOpen] = useState(false);
+  const [followUpFields, setFollowUpFields] = useState([]);
+  const [followUpMessage, setFollowUpMessage] = useState('');
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const [consents, setConsents] = useState({
     dataPrivacy: false,
@@ -1685,6 +1840,137 @@ export default function ReportScreen() {
     }
   };
 
+  const toggleFollowUpField = (fieldGroup) => {
+    setActionError('');
+    setFollowUpFields((current) => {
+      const hasGroup = fieldGroup.fields.every((field) => current.includes(field));
+      return hasGroup
+        ? current.filter((field) => !fieldGroup.fields.includes(field))
+        : [...new Set([...current, ...fieldGroup.fields])];
+    });
+  };
+
+  const openFollowUp = (report) => {
+    setActionError('');
+    setFollowUpReport(report);
+    setFollowUpReason('Correction needed');
+    setFollowUpReasonOpen(false);
+    setFollowUpFields([]);
+    setFollowUpMessage('');
+  };
+
+  const submitFollowUp = async () => {
+    if (!followUpReport) return;
+    if (followUpReason !== 'Other' && followUpFields.length === 0) {
+      setActionError(followUpReason === 'Correction needed'
+        ? 'Select at least one field that you want to correct.'
+        : 'Select the information or evidence that you want to add.');
+      return;
+    }
+    if (!followUpMessage.trim()) {
+      setActionError('Please add a short note explaining your request.');
+      return;
+    }
+    setFollowUpSubmitting(true);
+    setActionError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const selectedLabels = getFollowUpFieldLabels(followUpFields);
+      const selectedReason = FOLLOW_UP_REASON_OPTIONS.find((option) => option.value === followUpReason);
+      const messageParts = [
+        selectedLabels.length ? `Selected: ${selectedLabels.join(', ')}` : '',
+        followUpMessage.trim(),
+      ].filter(Boolean);
+      const form = new FormData();
+      form.append('type', 'user_change_request');
+      form.append('reason_category', followUpReason);
+      form.append('message', messageParts.join('\n\n'));
+      form.append('fields_requested', JSON.stringify(followUpFields));
+      form.append('message_only', 'true');
+      const id = followUpReport.case_report_id || followUpReport.id;
+      const res = await fetch(`${API_URL}/api/case_reports/${id}/follow-ups`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to submit follow-up.');
+      setReports((current) => current.map((report) =>
+        (report.case_report_id || report.id) === id
+          ? { ...report, follow_up_summary: body.data || { status: 'open', type: 'user_change_request' } }
+          : report
+      ));
+      setFollowUpReport(null);
+      setFollowUpFields([]);
+    } catch (err) {
+      setActionError(err.message || 'Failed to submit follow-up.');
+    } finally {
+      setFollowUpSubmitting(false);
+    }
+  };
+
+  const pickWithdrawFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets?.[0]) setWithdrawFile(result.assets[0]);
+    } catch (_) {
+      Alert.alert('Error', 'Could not pick the withdrawal document.');
+    }
+  };
+
+  const submitWithdrawal = async () => {
+    if (!withdrawReport) return;
+    const statusName = getStatusName(withdrawReport);
+    const copy = getWithdrawalCopy(statusName);
+    if (!withdrawReason.trim()) {
+      setActionError('Enter a reason for withdrawal.');
+      return;
+    }
+    if (copy.requiresAffidavit && !withdrawFile) {
+      setActionError('Attach an Affidavit of Desistance or official withdrawal document.');
+      return;
+    }
+    setWithdrawing(true);
+    setActionError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const form = new FormData();
+      form.append('reason', withdrawReason.trim());
+      if (withdrawFile) {
+        form.append('affidavit', {
+          uri: withdrawFile.uri,
+          name: withdrawFile.name || 'withdrawal-document',
+          type: withdrawFile.mimeType || 'application/octet-stream',
+        });
+      }
+      const id = withdrawReport.case_report_id || withdrawReport.id;
+      const res = await fetch(`${API_URL}/api/case_reports/${id}/withdraw`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to withdraw case.');
+      setReports((current) => current.map((report) =>
+        (report.case_report_id || report.id) === id
+          ? copy.requiresApproval
+            ? { ...report, withdrawal_request: body.withdrawal_request || { status: 'pending' } }
+            : { ...report, case_status_id: 13, case_status: { status_name: 'Withdrawn' }, withdrawal_request: body.withdrawal_request || null }
+          : report
+      ));
+      setWithdrawReport(null);
+      setWithdrawReason('');
+      setWithdrawFile(null);
+    } catch (err) {
+      setActionError(err.message || 'Failed to withdraw case.');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
   useEffect(() => {
     fetchReports();
   }, []);
@@ -1694,6 +1980,10 @@ export default function ReportScreen() {
     if (tab === 'history') setActiveTab('history');
     else if (tab === 'submit') setActiveTab('submit');
   }, [tab]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [searchQuery, filterStatus]);
 
   // Notification count = number of reports
   const notifCount = reports.length;
@@ -1834,9 +2124,8 @@ export default function ReportScreen() {
   };
 
   // ── Derived filtered reports for history tab ─────────────────────────────
-  const STATUS_LABELS = { 1: 'Submitted', 2: 'Under Review', 3: 'Resolved' };
   const filteredReports = reports.filter((r) => {
-    const statusName = r.case_status?.status_name || STATUS_LABELS[r.case_status_id] || 'Submitted';
+    const statusName = getStatusName(r);
     const matchesStatus = filterStatus === 'All' || statusName === filterStatus;
     const q = searchQuery.toLowerCase();
     const matchesSearch = !q ||
@@ -1845,6 +2134,18 @@ export default function ReportScreen() {
       (r.case_report_id ? String(r.case_report_id).toLowerCase().includes(q) : false);
     return matchesStatus && matchesSearch;
   });
+  const historyTotalPages = Math.max(1, Math.ceil(filteredReports.length / HISTORY_PAGE_SIZE));
+  const clampedHistoryPage = Math.min(historyPage, historyTotalPages);
+  const paginatedReports = filteredReports.slice(
+    (clampedHistoryPage - 1) * HISTORY_PAGE_SIZE,
+    clampedHistoryPage * HISTORY_PAGE_SIZE
+  );
+  const historyStart = filteredReports.length === 0 ? 0 : (clampedHistoryPage - 1) * HISTORY_PAGE_SIZE + 1;
+  const historyEnd = Math.min(clampedHistoryPage * HISTORY_PAGE_SIZE, filteredReports.length);
+
+  useEffect(() => {
+    if (historyPage > historyTotalPages) setHistoryPage(historyTotalPages);
+  }, [historyPage, historyTotalPages]);
 
   return (
     <View style={s.container}>
@@ -1987,7 +2288,7 @@ export default function ReportScreen() {
           {/* Filter dropdown */}
           {filterOpen && (
             <View style={s.filterDropdown}>
-              {['All', 'Submitted', 'Under Review', 'Resolved'].map((opt) => (
+              {['All', 'Submitted', 'For Verification', 'Undergoing Review', 'Under Case Evaluation', 'Case Filed', 'Investigation Ongoing', 'Resolved', 'Withdrawn'].map((opt) => (
                 <Pressable
                   key={opt}
                   style={[s.filterOption, filterStatus === opt && s.filterOptionActive]}
@@ -2003,7 +2304,11 @@ export default function ReportScreen() {
           {/* Results count */}
           <View style={s.historyCountRow}>
             <Text style={s.historyCount}>
-              {loadingReports ? 'Loading…' : `${filteredReports.length} report${filteredReports.length !== 1 ? 's' : ''} found`}
+              {loadingReports
+                ? 'Loading…'
+                : filteredReports.length
+                  ? `${historyStart}-${historyEnd} of ${filteredReports.length} reports`
+                  : '0 reports found'}
             </Text>
             {(searchQuery || filterStatus !== 'All') && (
               <Pressable onPress={() => { setSearchQuery(''); setFilterStatus('All'); }}>
@@ -2023,15 +2328,24 @@ export default function ReportScreen() {
                 </Text>
               </View>
             ) : (
-              filteredReports.map((r, i) => {
-                const statusName = r.case_status?.status_name || STATUS_LABELS[r.case_status_id] || 'Submitted';
+              paginatedReports.map((r, i) => {
+                const statusName = getStatusName(r);
                 const statusColor = STATUS_COLORS[statusName] || STATUS_COLORS['Submitted'];
-                const displayId = r.case_report_id ? String(r.case_report_id).slice(0, 8).toUpperCase() : `#${i + 1}`;
+                const displayId = getReportId(r, historyStart + i);
+                const statusDisplay = STATUS_DISPLAY[statusName] || STATUS_DISPLAY.Submitted;
+                const middle = statusDisplay.middle || r.previous_status_name || 'In Progress';
+                const steps = ['Submitted', middle, TERMINAL_STATUSES.includes(statusName) ? statusName : 'Resolved'];
+                const followUpAllowed = !TERMINAL_STATUSES.includes(statusName);
+                const followUpActive = r.follow_up_summary?.type === 'user_change_request' && ['open', 'responded'].includes(r.follow_up_summary?.status);
+                const canWithdraw = (WITHDRAWAL_ALLOWED.includes(statusName) || WITHDRAWAL_REQUIRES_APPROVAL.includes(statusName)) && r.withdrawal_request?.status !== 'pending';
+                const withdrawalCopy = getWithdrawalCopy(statusName);
                 return (
                   <View key={r.case_report_id || i} style={s.historyCard}>
+                    <View style={[s.historyAccent, { backgroundColor: statusColor.text }]} />
                     <View style={s.historyCardHeader}>
-                      <View>
-                        <Text style={s.historyCardId}>Report #{displayId}</Text>
+                      <View style={s.historyIdentity}>
+                        <Text style={s.historyEyebrow}>Report ID</Text>
+                        <Text style={s.historyCardId}>{displayId}</Text>
                         <Text style={s.historyCardDate}>
                           {r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
                         </Text>
@@ -2052,15 +2366,213 @@ export default function ReportScreen() {
                           {r.incident_description || '—'}
                         </Text>
                       </View>
+                      <View style={s.historyDetailRow}>
+                        <Ionicons name="person-outline" size={14} color="#9ca3af" />
+                        <Text style={s.historyDetailText}>{r.assigned_personnel || r.assigned_officer || 'Unassigned'}</Text>
+                      </View>
+                      {r.follow_up_summary && (
+                        <View style={s.followBadge}>
+                          <View style={s.followBadgeDot} />
+                          <Text style={s.followBadgeText}>
+                            {r.follow_up_summary.awaiting_role === 'user' ? 'Action Needed' : 'Follow-up Pending'}
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                    <StatusStepper steps={['Submitted', 'Under Review', 'Resolved']} current={r.case_status_id ? r.case_status_id - 1 : 0} />
+                    <StatusStepper steps={steps} current={statusDisplay.phase} />
+                    <View style={s.historyActions}>
+                      <Pressable
+                        style={[s.historyActionBtn, (!followUpAllowed || followUpActive) && s.historyActionDisabled]}
+                        disabled={!followUpAllowed || followUpActive}
+                        onPress={() => openFollowUp(r)}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={15} color={(!followUpAllowed || followUpActive) ? '#9ca3af' : TEAL} />
+                        <Text style={[s.historyActionText, (!followUpAllowed || followUpActive) && s.historyActionTextDisabled]}>Follow Up</Text>
+                      </Pressable>
+                      {(WITHDRAWAL_ALLOWED.includes(statusName) || WITHDRAWAL_REQUIRES_APPROVAL.includes(statusName)) && (
+                        <Pressable
+                          style={[s.historyActionBtn, s.withdrawActionBtn, !canWithdraw && s.historyActionDisabled]}
+                          disabled={!canWithdraw}
+                          onPress={() => {
+                            setActionError('');
+                            setWithdrawReport(r);
+                            setWithdrawReason('');
+                            setWithdrawFile(null);
+                          }}
+                        >
+                          <Ionicons name="archive-outline" size={15} color={!canWithdraw ? '#9ca3af' : ORANGE} />
+                          <Text style={[s.historyActionText, s.withdrawActionText, !canWithdraw && s.historyActionTextDisabled]}>
+                            {r.withdrawal_request?.status === 'pending' ? 'Pending' : withdrawalCopy.buttonLabel}
+                          </Text>
+                        </Pressable>
+                      )}
+                      <Pressable
+                        style={[s.historyActionBtn, s.viewActionBtn]}
+                        onPress={() => router.push({ pathname: '/(complainant)/report-detail', params: { caseId: r.case_report_id || r.id, displayId } })}
+                      >
+                        <Ionicons name="eye-outline" size={15} color="#fff" />
+                        <Text style={s.viewActionText}>View</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 );
               })
             )}
+            {!loadingReports && filteredReports.length > HISTORY_PAGE_SIZE && (
+              <View style={s.paginationBar}>
+                <Pressable
+                  style={[s.pageButton, clampedHistoryPage === 1 && s.pageButtonDisabled]}
+                  disabled={clampedHistoryPage === 1}
+                  onPress={() => setHistoryPage((page) => Math.max(1, page - 1))}
+                >
+                  <Ionicons name="chevron-back" size={16} color={clampedHistoryPage === 1 ? '#9ca3af' : TEAL} />
+                  <Text style={[s.pageButtonText, clampedHistoryPage === 1 && s.pageButtonTextDisabled]}>Previous</Text>
+                </Pressable>
+                <Text style={s.pageIndicator}>Page {clampedHistoryPage} of {historyTotalPages}</Text>
+                <Pressable
+                  style={[s.pageButton, clampedHistoryPage === historyTotalPages && s.pageButtonDisabled]}
+                  disabled={clampedHistoryPage === historyTotalPages}
+                  onPress={() => setHistoryPage((page) => Math.min(historyTotalPages, page + 1))}
+                >
+                  <Text style={[s.pageButtonText, clampedHistoryPage === historyTotalPages && s.pageButtonTextDisabled]}>Next</Text>
+                  <Ionicons name="chevron-forward" size={16} color={clampedHistoryPage === historyTotalPages ? '#9ca3af' : TEAL} />
+                </Pressable>
+              </View>
+            )}
           </ScrollView>
         </View>
       )}
+
+      <Modal visible={Boolean(followUpReport)} transparent animationType="fade" onRequestClose={() => !followUpSubmitting && setFollowUpReport(null)}>
+        <View style={s.actionModalOverlay}>
+          <View style={s.actionModal}>
+            <View style={s.actionModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.actionModalTitle}>Follow Up</Text>
+                <Text style={s.actionModalSubtitle}>Tell the case team what you need to correct or add.</Text>
+              </View>
+              <Pressable disabled={followUpSubmitting} onPress={() => setFollowUpReport(null)}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
+              <Text style={s.modalLabel}>Reason</Text>
+              <Pressable style={s.reasonSelect} onPress={() => setFollowUpReasonOpen((open) => !open)}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.reasonTitle}>{FOLLOW_UP_REASON_OPTIONS.find((option) => option.value === followUpReason)?.label}</Text>
+                  <Text style={s.reasonHelp}>{FOLLOW_UP_REASON_OPTIONS.find((option) => option.value === followUpReason)?.description}</Text>
+                </View>
+                <Ionicons name={followUpReasonOpen ? 'chevron-up' : 'chevron-down'} size={18} color={TEAL} />
+              </Pressable>
+              {followUpReasonOpen && (
+                <View style={s.reasonDropdown}>
+                  {FOLLOW_UP_REASON_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      style={[s.reasonOption, followUpReason === option.value && s.reasonOptionActive]}
+                      onPress={() => {
+                        setFollowUpReason(option.value);
+                        setFollowUpFields([]);
+                        setFollowUpReasonOpen(false);
+                        setActionError('');
+                      }}
+                    >
+                      <Text style={[s.reasonOptionTitle, followUpReason === option.value && { color: TEAL }]}>{option.label}</Text>
+                      <Text style={s.reasonOptionHelp}>{option.description}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {followUpReason !== 'Other' && (
+                <>
+                  <Text style={s.modalLabel}>
+                    {followUpReason === 'Additional info' ? 'What information would you like to add?' : 'Which information would you like to correct?'} <Text style={{ color: ERROR }}>*</Text>
+                  </Text>
+                  <View style={s.checkList}>
+                    {getFollowUpGroupsForReason(followUpReason).map((field) => {
+                      const checked = field.fields.every((item) => followUpFields.includes(item));
+                      return (
+                        <Pressable key={field.label} style={s.checkRow} onPress={() => toggleFollowUpField(field)}>
+                          <View style={[s.checkBox, checked && s.checkBoxActive]}>
+                            {checked && <Ionicons name="checkmark" size={14} color="#fff" />}
+                          </View>
+                          <Text style={s.checkText}>{field.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+              <Text style={s.modalLabel}>We're here to help. Please let us know what changed so we can support you. <Text style={{ color: ERROR }}>*</Text></Text>
+              <TextInput
+                style={s.modalTextarea}
+                multiline
+                value={followUpMessage}
+                onChangeText={(text) => {
+                  setActionError('');
+                  setFollowUpMessage(text);
+                }}
+                placeholder="Describe the correction or additional information..."
+                placeholderTextColor="#9ca3af"
+              />
+              {actionError ? <Text style={s.modalError}>{actionError}</Text> : null}
+              <View style={s.modalActions}>
+                <Pressable style={s.modalCancelBtn} disabled={followUpSubmitting} onPress={() => setFollowUpReport(null)}>
+                  <Text style={s.modalCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[s.modalPrimaryBtn, followUpSubmitting && { opacity: 0.7 }]} disabled={followUpSubmitting} onPress={submitFollowUp}>
+                  {followUpSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>Submit Follow-up</Text>}
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(withdrawReport)} transparent animationType="fade" onRequestClose={() => !withdrawing && setWithdrawReport(null)}>
+        <View style={s.actionModalOverlay}>
+          <View style={s.actionModal}>
+            <View style={s.actionModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.actionModalTitle}>{withdrawReport ? getWithdrawalCopy(getStatusName(withdrawReport)).title : 'Withdraw Case Report'}</Text>
+                <Text style={s.actionModalSubtitle}>
+                  {withdrawReport ? `${getReportId(withdrawReport)} (report ID): ${getWithdrawalCopy(getStatusName(withdrawReport)).description}` : ''}
+                </Text>
+              </View>
+              <Pressable disabled={withdrawing} onPress={() => setWithdrawReport(null)}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </Pressable>
+            </View>
+            <Text style={s.modalLabel}>Reason for withdrawal</Text>
+            <TextInput
+              style={s.modalTextarea}
+              multiline
+              value={withdrawReason}
+              onChangeText={(text) => {
+                setActionError('');
+                setWithdrawReason(text);
+              }}
+              placeholder="Explain why you want to withdraw this case."
+              placeholderTextColor="#9ca3af"
+            />
+            {withdrawReport && getWithdrawalCopy(getStatusName(withdrawReport)).requiresAffidavit && (
+              <Pressable style={s.filePickBtn} onPress={pickWithdrawFile}>
+                <Ionicons name="document-attach-outline" size={17} color={TEAL} />
+                <Text style={s.filePickText}>{withdrawFile?.name || 'Attach withdrawal document'}</Text>
+              </Pressable>
+            )}
+            {actionError ? <Text style={s.modalError}>{actionError}</Text> : null}
+            <View style={s.modalActions}>
+              <Pressable style={s.modalCancelBtn} disabled={withdrawing} onPress={() => setWithdrawReport(null)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.modalDangerBtn, withdrawing && { opacity: 0.7 }]} disabled={withdrawing} onPress={submitWithdrawal}>
+                {withdrawing ? <ActivityIndicator color="#fff" /> : <Text style={s.modalDangerText}>Confirm Withdrawal</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2856,29 +3368,243 @@ const s = StyleSheet.create({
 
   // History list
   historyList: { paddingHorizontal: 16, paddingBottom: 32, gap: 12 },
+  paginationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+    paddingVertical: 6,
+  },
+  pageButton: {
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+  },
+  pageButtonDisabled: { backgroundColor: '#f9fafb', borderColor: BORDER },
+  pageButtonText: { color: TEAL, fontSize: 12, fontWeight: '900' },
+  pageButtonTextDisabled: { color: '#9ca3af' },
+  pageIndicator: { flex: 1, textAlign: 'center', color: '#6b7280', fontSize: 12, fontWeight: '800' },
   historyCard: {
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#dbe7e7',
     overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+  },
+  historyAccent: {
+    height: 4,
+    width: '100%',
   },
   historyCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 14,
+    paddingHorizontal: 15,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
-  historyCardId: { fontSize: 14, fontWeight: '800', color: '#1a1a1a' },
-  historyCardDate: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+  historyIdentity: { flex: 1, paddingRight: 10 },
+  historyEyebrow: { fontSize: 10, fontWeight: '900', color: '#6b7280', textTransform: 'uppercase', marginBottom: 2 },
+  historyCardId: { fontSize: 18, fontWeight: '900', color: '#111827' },
+  historyCardDate: { fontSize: 11, color: '#6b7280', marginTop: 3, fontWeight: '700' },
   historyStatusBadge: {
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    maxWidth: 150,
   },
-  historyStatusText: { fontSize: 11, fontWeight: '700' },
-  historyCardDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: 14 },
-  historyCardBody: { padding: 14, gap: 6 },
-  historyDetailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  historyDetailText: { flex: 1, fontSize: 12, color: '#4b5563', lineHeight: 18 },
+  historyStatusText: { fontSize: 10, fontWeight: '900', textAlign: 'center' },
+  historyCardDivider: { height: 1, backgroundColor: '#edf2f2', marginHorizontal: 15 },
+  historyCardBody: { padding: 15, gap: 8 },
+  historyDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  historyDetailText: { flex: 1, fontSize: 12, color: '#374151', lineHeight: 18, fontWeight: '600' },
+  followBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff7ed',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: 4,
+  },
+  followBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ORANGE },
+  followBadgeText: { fontSize: 11, fontWeight: '800', color: '#9a3412' },
+  historyActions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 15,
+    paddingTop: 8,
+    paddingBottom: 15,
+  },
+  historyActionBtn: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 6,
+  },
+  historyActionDisabled: { backgroundColor: '#f9fafb', borderColor: BORDER },
+  historyActionText: { fontSize: 11, fontWeight: '800', color: TEAL },
+  historyActionTextDisabled: { color: '#9ca3af' },
+  withdrawActionBtn: { backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
+  withdrawActionText: { color: ORANGE },
+  viewActionBtn: { backgroundColor: TEAL, borderColor: TEAL },
+  viewActionText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+  actionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(17,24,39,0.55)',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  actionModal: {
+    maxHeight: '88%',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 18,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+  },
+  actionModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    marginBottom: 14,
+  },
+  actionModalTitle: { fontSize: 19, fontWeight: '900', color: '#111827' },
+  actionModalSubtitle: { fontSize: 12, lineHeight: 18, color: '#6b7280', marginTop: 4 },
+  modalLabel: { fontSize: 12, fontWeight: '800', color: '#374151', marginBottom: 8, marginTop: 10 },
+  reasonBox: {
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  reasonSelect: {
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reasonDropdown: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  reasonOption: {
+    padding: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  reasonOptionActive: { backgroundColor: '#f0fafb' },
+  reasonOptionTitle: { color: '#111827', fontSize: 13, fontWeight: '900', marginBottom: 3 },
+  reasonOptionHelp: { color: '#6b7280', fontSize: 12, lineHeight: 16 },
+  reasonTitle: { fontSize: 13, fontWeight: '900', color: TEAL, marginBottom: 3 },
+  reasonHelp: { fontSize: 12, color: '#4b5563', lineHeight: 17 },
+  checkList: { gap: 8, marginBottom: 8 },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 3 },
+  checkBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkBoxActive: { backgroundColor: TEAL, borderColor: TEAL },
+  checkText: { flex: 1, fontSize: 13, color: '#1f2937', lineHeight: 18 },
+  modalTextarea: {
+    minHeight: 106,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    padding: 12,
+    color: '#111827',
+    fontSize: 13,
+    textAlignVertical: 'top',
+    backgroundColor: '#fff',
+  },
+  modalError: { color: ERROR, fontSize: 12, fontWeight: '700', marginTop: 10 },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  modalCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: { color: '#374151', fontSize: 13, fontWeight: '800' },
+  modalPrimaryBtn: {
+    flex: 1.4,
+    backgroundColor: TEAL,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  modalDangerBtn: {
+    flex: 1.4,
+    backgroundColor: ORANGE,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalDangerText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  filePickBtn: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filePickText: { flex: 1, color: TEAL, fontSize: 13, fontWeight: '800' },
 });

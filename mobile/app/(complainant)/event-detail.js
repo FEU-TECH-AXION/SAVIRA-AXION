@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
+import NavSearchButton from '../../components/NavSearchButton';
 
 const TEAL = '#037F81';
 const ORANGE = '#E96433';
@@ -19,7 +20,7 @@ function Navbar({ onBurger }) {
         <Ionicons name="menu" size={26} color="#fff" />
       </Pressable>
       <View style={s.navRight}>
-        <Feather name="search" size={20} color="#fff" />
+        <NavSearchButton />
         <Ionicons name="notifications-outline" size={20} color="#fff" />
         <HeaderAvatar />
       </View>

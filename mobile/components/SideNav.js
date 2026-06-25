@@ -36,16 +36,6 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    type: 'group',
-    label: 'Volunteer',
-    icon: 'people-outline',
-    children: [
-      { label: 'Volunteering',         icon: 'heart-outline',         href: '/(complainant)/volunteer-application' },
-      { label: 'Apply to volunteer',   icon: 'add-circle-outline',    href: '/(complainant)/volunteer-apply' },
-      { label: 'Application History',  icon: 'list-outline',          href: '/(complainant)/volunteer-history' },
-    ],
-  },
-  {
     type: 'link',
     label: 'Events',
     icon: 'calendar-outline',

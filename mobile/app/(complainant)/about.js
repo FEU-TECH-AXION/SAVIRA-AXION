@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
+import NavSearchButton from '../../components/NavSearchButton';
 
 import {
   View, Text, ScrollView, Pressable, Image,
@@ -26,7 +27,7 @@ function Navbar({ onBurger }) {
       </Pressable>
 
       <View style={s.navRight}>
-        <Feather name="search" size={20} color="#fff" />
+        <NavSearchButton />
         <Ionicons name="notifications-outline" size={20} color="#fff" />
         <HeaderAvatar />
       </View>

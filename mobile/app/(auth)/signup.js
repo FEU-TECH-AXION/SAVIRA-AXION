@@ -48,8 +48,8 @@ const POLICY_CONTENT = {
   privacy: {
     title: 'Privacy Policy',
     sections: [
-      ['Information collected', 'Savira may collect account details, reports, attachments, interview information, volunteer applications, preferences, and security logs.'],
-      ['How information is used', 'Information supports case services, interviews, volunteering, communications, safeguarding, platform security, and legal obligations.'],
+      ['Information collected', 'Savira may collect account details, reports, attachments, interview information, preferences, and security logs.'],
+      ['How information is used', 'Information supports case services, interviews, communications, safeguarding, platform security, and legal obligations.'],
       ['Sharing and protection', 'Access is limited to authorized personnel and service providers with a legitimate purpose. Sensitive case information is not ordinary public content.'],
       ['Your rights', 'Subject to applicable law, you may request access, correction, deletion or blocking, object to processing, or withdraw consent.'],
     ],
