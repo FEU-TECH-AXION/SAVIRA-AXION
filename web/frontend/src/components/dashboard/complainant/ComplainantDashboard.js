@@ -72,6 +72,27 @@ function NotificationsCard({ notifications = [], onView }) {
 // ── Heatmap Placeholder ──────────────────────────────────────────────────────
 // ── Events item ──────────────────────────────────────────────────────────────
 // ── Page ─────────────────────────────────────────────────────────────────────
+function EmptyStatusCard({ title, message, buttonLabel, onAction }) {
+  return (
+    <div className={styles.emptyStatusCard}>
+      <div className={styles.statusCardHeader}>
+        <span>{title}</span>
+      </div>
+      <div className={styles.emptyStatusBody}>
+        <p className={styles.emptyStatusText}>{message}</p>
+        <button
+          type="button"
+          className={`${styles.viewBtn} ${styles.emptyStatusBtn}`}
+          onClick={onAction}
+        >
+          <span>{buttonLabel}</span>
+          <span aria-hidden="true">&rarr;</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ComplainantDashboard({
   // These props will be populated by real data fetching in parent pages/layouts.
   // Passing null/undefined → cards show graceful placeholders.
@@ -174,8 +195,8 @@ export default function ComplainantDashboard({
             {/* Left col — status cards */}
             <div className="col-12 col-lg-8">
               <div className="row g-3">
-                {normalisedReports.length > 0 && (
-                  <div className="col-12">
+                <div className="col-12">
+                  {normalisedReports.length > 0 ? (
                     <ReportStatusCard
                       reportNumber="Latest"
                       report={normalisedReports[0]}
@@ -183,16 +204,30 @@ export default function ComplainantDashboard({
                       headerLabel="Latest Report"
                       viewFrom="dashboard"
                     />
-                  </div>
-                )}
-                {resolvedApplication && (
-                  <div className="col-12">
+                  ) : (
+                    <EmptyStatusCard
+                      title="Latest Report"
+                      message="No reports submitted yet."
+                      buttonLabel="Submit Report"
+                      onAction={() => router.push("/cases")}
+                    />
+                  )}
+                </div>
+                <div className="col-12">
+                  {resolvedApplication ? (
                     <VolunteerApplicationStatusCard
                       application={resolvedApplication}
                       title="Latest Volunteer Application"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <EmptyStatusCard
+                      title="Latest Volunteer Application"
+                      message="No volunteer application submitted yet."
+                      buttonLabel="Apply Now"
+                      onAction={() => router.push("/volunteer/apply")}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
