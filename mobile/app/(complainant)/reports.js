@@ -32,6 +32,9 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 function formatErrorMessage(error, fallback = "Failed to submit report.") {
   if (!error) return fallback;
   if (typeof error === "string") return error;
+  if (error?.message === "Network request failed") {
+    return "Network request failed. If you are using Expo Go on a phone, set EXPO_PUBLIC_API_URL to your computer's LAN IP address, for example http://192.168.1.10:5000, not localhost.";
+  }
   if (Array.isArray(error)) {
     return error.map((item) => formatErrorMessage(item, "")).filter(Boolean).join("\n");
   }
@@ -2155,6 +2158,12 @@ export default function ReportScreen() {
 
   const handleSubmit = async () => {
     setSubmitError(null);
+    if (!API_URL || API_URL.includes("localhost") || API_URL.includes("127.0.0.1")) {
+      setSubmitError(
+        "The mobile app is pointed at localhost. On Expo Go, use your computer's LAN IP for EXPO_PUBLIC_API_URL, for example http://192.168.1.10:5000."
+      );
+      return;
+    }
     const oversizedFiles = (evidence.files || []).filter(
       (file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE
     );
@@ -2305,17 +2314,24 @@ export default function ReportScreen() {
               <View style={s.successIcon}>
                 <Ionicons name="checkmark" size={36} color="#fff" />
               </View>
-              <Text style={s.successTitle}>Report Submitted!</Text>
+              <Text style={s.successEyebrow}>Submitted securely</Text>
+              <Text style={s.successTitle}>Report submitted</Text>
               <Text style={s.successDesc}>
                 Your report has been received. We will review it and get back to
                 you via your provided contact details. All information is handled
                 with strict confidentiality.
               </Text>
-              <Pressable style={s.submitBtn} onPress={handleReset}>
-                <Text style={s.submitBtnText}>Submit Another Report</Text>
+              <View style={s.successInfoBox}>
+                <Ionicons name="time-outline" size={18} color={TEAL} />
+                <Text style={s.successInfoText}>Initial review may take up to 72 hours.</Text>
+              </View>
+              <Pressable style={s.successPrimaryBtn} onPress={handleReset}>
+                <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                <Text style={s.successPrimaryText}>Submit another report</Text>
               </Pressable>
-              <Pressable style={[s.backBtn, { marginTop: 10, borderColor: ORANGE }]} onPress={() => { handleReset(); setActiveTab('history'); }}>
-                <Text style={[s.backBtnText, { color: ORANGE }]}>View Report History →</Text>
+              <Pressable style={s.successSecondaryBtn} onPress={() => { handleReset(); setActiveTab('history'); }}>
+                <Ionicons name="time-outline" size={18} color={ORANGE} />
+                <Text style={s.successSecondaryText}>View report history</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -3340,14 +3356,16 @@ const s = StyleSheet.create({
     borderColor: TEAL,
     borderRadius: 14,
     paddingVertical: 14,
+    paddingHorizontal: 10,
     alignItems: "center",
   },
-  backBtnText: { color: TEAL, fontWeight: "700", fontSize: 14 },
+  backBtnText: { color: TEAL, fontWeight: "700", fontSize: 14, textAlign: "center", flexShrink: 1 },
   nextBtn: {
     flex: 1,
     backgroundColor: TEAL,
     borderRadius: 14,
     paddingVertical: 14,
+    paddingHorizontal: 10,
     alignItems: "center",
     elevation: 3,
     shadowColor: TEAL,
@@ -3355,12 +3373,13 @@ const s = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, textAlign: "center", flexShrink: 1 },
   submitBtn: {
     flex: 1,
     backgroundColor: ORANGE,
     borderRadius: 14,
     paddingVertical: 14,
+    paddingHorizontal: 10,
     alignItems: "center",
     elevation: 3,
     shadowColor: ORANGE,
@@ -3368,7 +3387,7 @@ const s = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  submitBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  submitBtnText: { color: "#fff", fontWeight: "800", fontSize: 14, textAlign: "center", flexShrink: 1 },
 
   // Error alert
   errorAlert: {
@@ -3385,38 +3404,118 @@ const s = StyleSheet.create({
   errorAlertText: { color: ERROR, fontSize: 13, flex: 1 },
 
   // Success
-  successContainer: { flexGrow: 1, padding: 24 },
+  successContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 28,
+  },
   successCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: BORDER,
-    marginBottom: 24,
+    borderColor: "#d8eeee",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 18,
+    elevation: 4,
   },
   successIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: TEAL,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 14,
+    borderWidth: 6,
+    borderColor: "#e6f5f5",
+  },
+  successEyebrow: {
+    color: TEAL,
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginBottom: 6,
   },
   successTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "900",
     color: "#1a1a1a",
-    marginBottom: 12,
+    marginBottom: 10,
     textAlign: "center",
   },
   successDesc: {
     fontSize: 13,
-    color: "#6b7280",
+    color: "#4b5563",
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 20,
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+  successInfoBox: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#f0fafb",
+    borderWidth: 1,
+    borderColor: "#cde8e8",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 18,
+  },
+  successInfoText: {
+    flex: 1,
+    color: "#374151",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
+  },
+  successPrimaryBtn: {
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: ORANGE,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 13,
+    marginBottom: 10,
+  },
+  successPrimaryText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 14,
+    textAlign: "center",
+    flexShrink: 1,
+  },
+  successSecondaryBtn: {
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: ORANGE,
+    backgroundColor: "#fffaf3",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 13,
+  },
+  successSecondaryText: {
+    color: ORANGE,
+    fontWeight: "900",
+    fontSize: 14,
+    textAlign: "center",
+    flexShrink: 1,
   },
 
   // Status section
