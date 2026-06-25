@@ -2,6 +2,7 @@ import { useState } from 'react';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
 
 import {
   View, Text, ScrollView, Pressable, Image, StyleSheet,
@@ -28,7 +29,7 @@ function Navbar({ onBurger }) {
 
       <View style={s.navRight}>
         <NavSearchButton />
-        <Ionicons name="notifications-outline" size={20} color="#fff" />
+        <NotificationBell />
         <HeaderAvatar />
       </View>
     </View>

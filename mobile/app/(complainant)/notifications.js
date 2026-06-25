@@ -10,6 +10,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
+import { fetchNotifications as fetchSharedNotifications, getUnreadNotificationCount } from '../../lib/notifications';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
@@ -29,14 +31,7 @@ function Navbar({ onBurger, notifCount = 0 }) {
       </Pressable>
       <View style={s.navRight}>
         <NavSearchButton />
-        <View>
-          <Ionicons name="notifications-outline" size={20} color="#fff" />
-          {notifCount > 0 && (
-            <View style={s.notifBadge}>
-              <Text style={s.notifBadgeText}>{notifCount > 9 ? '9+' : notifCount}</Text>
-            </View>
-          )}
-        </View>
+        <NotificationBell count={notifCount} />
         <HeaderAvatar />
       </View>
     </View>
@@ -111,14 +106,8 @@ export default function NotificationsScreen() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      setNotifications(data.notifications || []);
+      const data = await fetchSharedNotifications();
+      setNotifications(data);
     } catch {
       // fallback demo data
       setNotifications([
@@ -163,7 +152,7 @@ export default function NotificationsScreen() {
     ]);
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = getUnreadNotificationCount(notifications);
 
   return (
     <View style={s.container}>
