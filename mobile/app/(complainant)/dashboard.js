@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ImageBackground,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -18,7 +19,13 @@ import { WebView } from 'react-native-webview';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
 import ncrCities from '../../assets/geojson/ncr-cities';
+import {
+  fetchNotifications,
+  getImportantNotifications,
+  getUnreadNotificationCount,
+} from '../../lib/notifications';
 
 // ── Top Navbar ────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, onNotifications, notifCount, user }) {
@@ -30,14 +37,7 @@ function Navbar({ onBurger, onNotifications, notifCount, user }) {
       </Pressable>
       <View style={s.navRight}>
         <NavSearchButton />
-        <Pressable onPress={onNotifications} style={s.notifContainer}>
-          <Ionicons name="notifications-outline" size={20} color="#fff" />
-          {notifCount > 0 && (
-            <View style={s.badge}>
-              <Text style={s.badgeText}>{notifCount > 9 ? '9+' : notifCount}</Text>
-            </View>
-          )}
-        </Pressable>
+        <NotificationBell count={notifCount} onPress={onNotifications} />
         <HeaderAvatar user={user} />
       </View>
     </View>
@@ -148,11 +148,16 @@ function NotificationsCard({ notifications, onView }) {
         <Text style={s.cardHeaderText}>Important Notifications</Text>
       </View>
       <View style={s.cardBody}>
-        {notifications.map((n) => (
-          <View key={n.id} style={s.notifItem}>
-            <Text style={s.notifText} numberOfLines={1}>{n.text}</Text>
-          </View>
-        ))}
+        {notifications.length === 0 ? (
+          <Text style={s.notifEmpty}>No important notifications right now.</Text>
+        ) : (
+          notifications.slice(0, 3).map((n) => (
+            <View key={n.id} style={s.notifItem}>
+              <Text style={s.notifTitle} numberOfLines={1}>{n.title}</Text>
+              <Text style={s.notifText} numberOfLines={1}>{n.message || n.text}</Text>
+            </View>
+          ))
+        )}
         <Pressable style={s.viewBtn} onPress={onView}>
           <Text style={s.viewBtnText}>View →</Text>
         </Pressable>
@@ -348,6 +353,8 @@ export default function ComplainantDashboard() {
   const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '' });
   const [reports, setReports] = useState([]);
   const [dashEvents, setDashEvents] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [importantOpen, setImportantOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -377,8 +384,9 @@ export default function ComplainantDashboard() {
       });
       const reportsData = await reportsRes.json();
 
-      // 3. Fetch public events
+      // 3. Fetch public events and notifications
       const eventsRes = await fetch(`${API_URL}/api/projects?visibility=public&approval_status=approved`);
+      const fetchedNotifications = await fetchNotifications().catch(() => []);
       let fetchedEvents = [];
       if (eventsRes.ok) {
         const eventsData = await eventsRes.json();
@@ -395,6 +403,7 @@ export default function ComplainantDashboard() {
         setReports(reportsData.data);
       }
       setDashEvents(fetchedEvents);
+      setNotifications(fetchedNotifications);
 
     } catch (err) {
       console.error('[fetchData]', err);
@@ -410,27 +419,8 @@ export default function ComplainantDashboard() {
     }, [])
   );
 
-  // Dynamic notifications based on real data
-  const getNotifications = () => {
-    const list = [];
-    
-    if (reports.length === 0) {
-      list.push({ id: 'welcome', text: 'Welcome to SAVIRA! Submit a report to get started.' });
-    }
-
-    reports.forEach((rep, idx) => {
-      const displayId = rep.case_report_id ? String(rep.case_report_id).slice(0, 8).toUpperCase() : `REP-${idx}`;
-      const statusText = rep.case_status_id === 3 ? 'Resolved' : rep.case_status_id === 2 ? 'Under Review' : 'Submitted';
-      list.push({
-        id: `rep-${rep.case_report_id || idx}`,
-        text: `Report #${displayId} status update: Case is currently "${statusText}".`
-      });
-    });
-
-    return list.slice(0, 5); // Limit to top 5 notifications
-  };
-
-  const notifications = getNotifications();
+  const unreadCount = getUnreadNotificationCount(notifications);
+  const importantNotifications = getImportantNotifications(notifications);
 
   return (
     <View style={s.container}>
@@ -438,16 +428,64 @@ export default function ComplainantDashboard() {
       <Navbar 
         onBurger={() => setNavOpen(true)} 
         onNotifications={() => router.push('/(complainant)/notifications')}
-        notifCount={notifications.length}
+        notifCount={unreadCount}
         user={user}
       />
+
+      <Modal
+        visible={importantOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setImportantOpen(false)}
+      >
+        <Pressable style={s.modalOverlay} onPress={() => setImportantOpen(false)}>
+          <Pressable style={s.notificationSheet} onPress={(event) => event.stopPropagation()}>
+            <View style={s.sheetHandle} />
+            <View style={s.sheetHeader}>
+              <View>
+                <Text style={s.sheetTitle}>Important Notifications</Text>
+                <Text style={s.sheetSubtitle}>
+                  {importantNotifications.length} update{importantNotifications.length === 1 ? '' : 's'}
+                </Text>
+              </View>
+              <Pressable style={s.sheetClose} onPress={() => setImportantOpen(false)}>
+                <Ionicons name="close" size={20} color="#374151" />
+              </Pressable>
+            </View>
+            <ScrollView style={s.sheetList} contentContainerStyle={s.sheetListContent}>
+              {importantNotifications.length === 0 ? (
+                <View style={s.sheetEmpty}>
+                  <Ionicons name="notifications-off-outline" size={38} color="#9ca3af" />
+                  <Text style={s.sheetEmptyText}>No important notifications right now.</Text>
+                </View>
+              ) : (
+                importantNotifications.map((item) => (
+                  <View key={item.id} style={[s.sheetNotifItem, !item.read && s.sheetNotifUnread]}>
+                    <View style={s.sheetNotifIcon}>
+                      <Ionicons
+                        name={item.type === 'case_update' ? 'document-text' : 'notifications'}
+                        size={17}
+                        color="#fff"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.sheetNotifTitle}>{item.title}</Text>
+                      <Text style={s.sheetNotifMessage}>{item.message || item.text}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
         <HeroBanner
           firstName={user.firstName}
           lastName={user.lastName}
-          totalNotifications={notifications.length}
+          totalNotifications={unreadCount}
         />
 
         <View style={s.content}>
@@ -467,8 +505,8 @@ export default function ComplainantDashboard() {
           <SectionHeading title="Overview" />
 
           <NotificationsCard
-            notifications={notifications}
-            onView={() => {}}
+            notifications={importantNotifications}
+            onView={() => setImportantOpen(true)}
           />
 
           {/* Render Case Reports Status */}
@@ -723,7 +761,73 @@ heroOverlay: {
     borderColor: BORDER,
     marginBottom: 6,
   },
+  notifTitle: { fontSize: 12, color: TEAL, fontWeight: '800', marginBottom: 2 },
   notifText: { fontSize: 13, color: '#1a1a1a' },
+  notifEmpty: { color: '#6b7280', fontSize: 13, paddingVertical: 8 },
+
+  // Notification sheet
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(17,24,39,0.45)',
+    justifyContent: 'flex-end',
+  },
+  notificationSheet: {
+    maxHeight: '78%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  sheetHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#d1d5db',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sheetTitle: { fontSize: 20, fontWeight: '900', color: '#111827' },
+  sheetSubtitle: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  sheetClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetList: { maxHeight: 420 },
+  sheetListContent: { gap: 10, paddingBottom: 10 },
+  sheetNotifItem: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: '#fff',
+  },
+  sheetNotifUnread: { backgroundColor: '#f0faf9', borderColor: '#cde8e8' },
+  sheetNotifIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetNotifTitle: { fontSize: 14, fontWeight: '900', color: '#111827', marginBottom: 3 },
+  sheetNotifMessage: { fontSize: 12, color: '#4b5563', lineHeight: 18 },
+  sheetEmpty: { alignItems: 'center', gap: 8, paddingVertical: 28 },
+  sheetEmptyText: { color: '#6b7280', fontSize: 13, textAlign: 'center' },
 
   // View Button
   viewBtn: {

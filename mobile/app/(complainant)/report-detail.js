@@ -12,7 +12,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -257,6 +257,31 @@ function getMonthCells(year, monthIndex) {
   ];
 }
 
+function formatDateInput(text) {
+  const digits = String(text || '').replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
+function formatTimeInput(text) {
+  const digits = String(text || '').replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function isValidDateInput(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && toDateKey(date) === value;
+}
+
+function isValidTimeInput(value) {
+  if (!/^\d{2}:\d{2}$/.test(value)) return false;
+  const [hour, minute] = value.split(':').map(Number);
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+}
+
 function getReportId(report, paramId, caseId) {
   if (paramId) return paramId;
   const raw = report?.case_report_id || report?.id || caseId;
@@ -431,6 +456,7 @@ export default function ReportDetailScreen() {
   const [availabilityReason, setAvailabilityReason] = useState('');
   const [availabilityPreferredDate, setAvailabilityPreferredDate] = useState('');
   const [availabilityPreferredTime, setAvailabilityPreferredTime] = useState('');
+  const [availabilityError, setAvailabilityError] = useState('');
   const [availabilitySubmitting, setAvailabilitySubmitting] = useState(false);
 
   useEffect(() => {
@@ -566,6 +592,8 @@ export default function ReportDetailScreen() {
   const monthIndex = calendarMonth.getMonth();
   const monthCells = useMemo(() => getMonthCells(monthYear, monthIndex), [monthYear, monthIndex]);
   const selectedDateSlots = selectedSlotDate ? (slotsByDate[selectedSlotDate] || []) : [];
+  const suggestedDates = useMemo(() => [...new Set(slots.map((slot) => toDateKey(slot.date)).filter(Boolean))].sort().slice(0, 4), [slots]);
+  const suggestedTimes = useMemo(() => [...new Set(slots.map((slot) => slot.time).filter(Boolean))].sort().slice(0, 6), [slots]);
 
   useEffect(() => {
     if (!slots.length) {
@@ -706,15 +734,25 @@ export default function ReportDetailScreen() {
     setAvailabilityReason('');
     setAvailabilityPreferredDate('');
     setAvailabilityPreferredTime('');
+    setAvailabilityError('');
     setInterviewError('');
   };
 
   const submitAvailabilityRequest = async () => {
     const reason = availabilityReason.trim();
     if (!reason || !availabilityPreferredDate || !availabilityPreferredTime) {
-      setInterviewError('Add your preferred date, time, and a short reason.');
+      setAvailabilityError('Add your preferred date, time, and a short reason.');
       return;
     }
+    if (!isValidDateInput(availabilityPreferredDate)) {
+      setAvailabilityError('Use a valid date in YYYY-MM-DD format.');
+      return;
+    }
+    if (!isValidTimeInput(availabilityPreferredTime)) {
+      setAvailabilityError('Use a valid time in HH:MM format.');
+      return;
+    }
+    setAvailabilityError('');
     setAvailabilitySubmitting(true);
     try {
       const token = await AsyncStorage.getItem('user_token');
@@ -733,7 +771,7 @@ export default function ReportDetailScreen() {
       setAvailabilityOpenFor(null);
       await loadInterviews();
     } catch (err) {
-      setInterviewError(err.message || 'Failed to send availability request.');
+      setAvailabilityError(err.message || 'Failed to send availability request.');
     } finally {
       setAvailabilitySubmitting(false);
     }
@@ -1444,49 +1482,97 @@ export default function ReportDetailScreen() {
                 <Ionicons name="close" size={22} color="#374151" />
               </Pressable>
             </View>
-            <Text style={s.modalLabel}>Preferred date</Text>
-            <TextInput
-              style={s.modalInput}
-              value={availabilityPreferredDate}
-              onChangeText={(text) => {
-                setInterviewError('');
-                setAvailabilityPreferredDate(text);
-              }}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#9ca3af"
-            />
-            <Text style={s.modalLabel}>Preferred time</Text>
-            <TextInput
-              style={s.modalInput}
-              value={availabilityPreferredTime}
-              onChangeText={(text) => {
-                setInterviewError('');
-                setAvailabilityPreferredTime(text);
-              }}
-              placeholder="HH:MM"
-              placeholderTextColor="#9ca3af"
-            />
-            <Text style={s.modalLabel}>Reason</Text>
-            <TextInput
-              style={s.modalTextarea}
-              multiline
-              value={availabilityReason}
-              onChangeText={(text) => {
-                setInterviewError('');
-                setAvailabilityReason(text);
-              }}
-              placeholder="Briefly explain your availability or why the offered slots do not work."
-              placeholderTextColor="#9ca3af"
-            />
-            {interviewError ? <Text style={s.modalError}>{interviewError}</Text> : null}
-            <View style={s.modalActions}>
-              <Pressable style={s.modalCancelBtn} disabled={availabilitySubmitting} onPress={() => setAvailabilityOpenFor(null)}>
-                <Text style={s.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[s.modalPrimaryBtn, availabilitySubmitting && { opacity: 0.7 }]} disabled={availabilitySubmitting} onPress={submitAvailabilityRequest}>
-                {availabilitySubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>Send Request</Text>}
-              </Pressable>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={s.modalLabel}>Preferred date</Text>
+              <View style={s.iconInputWrap}>
+                <Feather name="calendar" size={18} color={TEAL} />
+                <TextInput
+                  style={s.iconInput}
+                  value={availabilityPreferredDate}
+                  onChangeText={(text) => {
+                    setAvailabilityError('');
+                    setAvailabilityPreferredDate(formatDateInput(text));
+                  }}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                />
+              </View>
+              {suggestedDates.length > 0 && (
+                <View style={s.quickChipRow}>
+                  {suggestedDates.map((date) => (
+                    <Pressable
+                      key={date}
+                      style={[s.quickChip, availabilityPreferredDate === date && s.quickChipActive]}
+                      onPress={() => {
+                        setAvailabilityError('');
+                        setAvailabilityPreferredDate(date);
+                      }}
+                    >
+                      <Feather name="calendar" size={13} color={availabilityPreferredDate === date ? '#fff' : TEAL} />
+                      <Text style={[s.quickChipText, availabilityPreferredDate === date && s.quickChipTextActive]}>{dateOf(date, true)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              <Text style={s.modalLabel}>Preferred time</Text>
+              <View style={s.iconInputWrap}>
+                <Feather name="clock" size={18} color={TEAL} />
+                <TextInput
+                  style={s.iconInput}
+                  value={availabilityPreferredTime}
+                  onChangeText={(text) => {
+                    setAvailabilityError('');
+                    setAvailabilityPreferredTime(formatTimeInput(text));
+                  }}
+                  placeholder="HH:MM"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="number-pad"
+                  maxLength={5}
+                />
+              </View>
+              {suggestedTimes.length > 0 && (
+                <View style={s.quickChipRow}>
+                  {suggestedTimes.map((time) => (
+                    <Pressable
+                      key={time}
+                      style={[s.quickChip, availabilityPreferredTime === time && s.quickChipActive]}
+                      onPress={() => {
+                        setAvailabilityError('');
+                        setAvailabilityPreferredTime(time);
+                      }}
+                    >
+                      <Feather name="clock" size={13} color={availabilityPreferredTime === time ? '#fff' : TEAL} />
+                      <Text style={[s.quickChipText, availabilityPreferredTime === time && s.quickChipTextActive]}>{timeOf(time)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              <Text style={s.modalLabel}>Reason</Text>
+              <TextInput
+                style={s.modalTextarea}
+                multiline
+                value={availabilityReason}
+                onChangeText={(text) => {
+                  setAvailabilityError('');
+                  setAvailabilityReason(text);
+                }}
+                placeholder="Briefly explain your availability or why the offered slots do not work."
+                placeholderTextColor="#9ca3af"
+              />
+              {availabilityError ? <Text style={s.modalError}>{availabilityError}</Text> : null}
+              <View style={s.modalActions}>
+                <Pressable style={s.modalCancelBtn} disabled={availabilitySubmitting} onPress={() => setAvailabilityOpenFor(null)}>
+                  <Text style={s.modalCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[s.modalPrimaryBtn, availabilitySubmitting && { opacity: 0.7 }]} disabled={availabilitySubmitting} onPress={submitAvailabilityRequest}>
+                  {availabilitySubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>Send Request</Text>}
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -2153,6 +2239,48 @@ const s = StyleSheet.create({
     fontSize: 13,
     backgroundColor: '#fff',
   },
+  iconInputWrap: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  iconInput: {
+    flex: 1,
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingVertical: 10,
+  },
+  quickChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 9,
+    marginBottom: 2,
+  },
+  quickChip: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    backgroundColor: '#f0fafb',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  quickChipActive: {
+    backgroundColor: TEAL,
+    borderColor: TEAL,
+  },
+  quickChipText: { color: TEAL, fontSize: 11, fontWeight: '900' },
+  quickChipTextActive: { color: '#fff' },
   modalError: { color: ERROR, fontSize: 12, fontWeight: '700', marginTop: 10 },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
   modalCancelBtn: {

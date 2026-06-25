@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -87,6 +87,8 @@ const STEPS = [
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
+import { fetchNotifications, getUnreadNotificationCount } from '../../lib/notifications';
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, notifCount = 0 }) {
@@ -97,14 +99,7 @@ function Navbar({ onBurger, notifCount = 0 }) {
       </Pressable>
       <View style={s.navRight}>
         <NavSearchButton />
-        <View>
-          <Ionicons name="notifications-outline" size={20} color="#fff" />
-          {notifCount > 0 && (
-            <View style={s.notifBadge}>
-              <Text style={s.notifBadgeText}>{notifCount}</Text>
-            </View>
-          )}
-        </View>
+        <NotificationBell count={notifCount} />
         <HeaderAvatar />
       </View>
     </View>
@@ -1909,6 +1904,7 @@ export default function ReportScreen() {
   const [historyPage, setHistoryPage] = useState(1);
 
   const [reports, setReports] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loadingReports, setLoadingReports] = useState(true);
   const [withdrawReport, setWithdrawReport] = useState(null);
   const [withdrawReason, setWithdrawReason] = useState('');
@@ -2125,6 +2121,22 @@ export default function ReportScreen() {
     fetchReports();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      fetchNotifications()
+        .then((items) => {
+          if (active) setNotifications(items);
+        })
+        .catch(() => {
+          if (active) setNotifications([]);
+        });
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
   // Sync tab when navigated from sidenav with ?tab=history
   useEffect(() => {
     if (tab === 'history') setActiveTab('history');
@@ -2135,8 +2147,7 @@ export default function ReportScreen() {
     setHistoryPage(1);
   }, [searchQuery, filterStatus]);
 
-  // Notification count = number of reports
-  const notifCount = reports.length;
+  const notifCount = getUnreadNotificationCount(notifications);
 
   const handleNext = () => {
     let errs = {};

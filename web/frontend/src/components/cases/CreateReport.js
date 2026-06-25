@@ -1547,9 +1547,18 @@ function StepEvidence({ data, onChange }) {
   const fileInputRef = useRef();
   const [dragging, setDragging] = useState(false);
 
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
   const addFiles = (newFiles) => {
     const arr = Array.from(newFiles);
-    onChange({ ...data, files: [...(data.files || []), ...arr] });
+    const oversized = arr.filter(f => f.size > MAX_FILE_SIZE);
+    
+    if (oversized.length > 0) {
+      alert(`These files exceed the 50MB limit and were not added:\n${oversized.map(f => f.name).join('\n')}`);
+    }
+
+    const valid = arr.filter(f => f.size <= MAX_FILE_SIZE);
+    onChange({ ...data, files: [...(data.files || []), ...valid] });
   };
 
   const removeFile = (idx) => {
@@ -1594,7 +1603,7 @@ function StepEvidence({ data, onChange }) {
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,.jpg,.jpeg,.png,.mp4"
+            accept=".pdf,.jpg,.jpeg,.png,.mp4,video/mp4,video/*"
             style={{ display: "none" }}
             onChange={(e) => addFiles(e.target.files)}
           />

@@ -21,6 +21,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
 
@@ -311,10 +312,7 @@ export default function SettingsScreen() {
 
             <View style={styles.navRight}>
               <NavSearchButton />
-              <View>
-                <Ionicons name="notifications-outline" size={20} color="#fff" />
-                <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
-              </View>
+              <NotificationBell />
               <HeaderAvatar user={user} />
             </View>
           </View>

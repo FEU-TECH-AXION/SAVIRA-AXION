@@ -9,6 +9,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TEAL  = '#037F81';
@@ -31,7 +32,7 @@ function Navbar({ onBurger }) {
 
       <View style={s.navRight}>
         <NavSearchButton />
-        <Ionicons name="notifications-outline" size={20} color="#fff" />
+        <NotificationBell />
         <HeaderAvatar />
       </View>
     </View>
