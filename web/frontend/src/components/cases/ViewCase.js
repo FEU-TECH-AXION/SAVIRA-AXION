@@ -83,6 +83,93 @@ const STATUS_MODAL_MAP = {
   "Perpetrator Convicted": "convicted",
 };
 
+const mapCaseReportToViewData = (data) => {
+  const caseYear = new Date(data.created_at).getFullYear();
+  return {
+    reportData:           data,
+    id:                   data.case_report_id,
+    caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
+    reporterId:           data.complainant_user_id,
+    region:               data.incident_province || data.incident_city || "Not provided",
+    status:               STATUS_STEP[data.case_status_id] || "For Verification",
+    assignedOfficer:      data.assigned_officer || null,
+    dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+    description:          data.incident_description || "No incident description provided.",
+    requestedOutcome:     data.action_requested || [],
+    evidences:            data.evidences || [],
+    incidentLocationType: data.incident_location_type || null,
+    incidentCity:         data.incident_city,
+    incidentLocation:     data.incident_location,
+    incidentLocationDisplay: data.incident_location_type === "Online"
+      ? data.incident_location || "Online"
+      : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "Not provided",
+    incidentDate:         data.incident_date ? new Date(data.incident_date).toLocaleDateString("en-PH", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }) : "Not provided",
+    incidentTime: data.incident_time
+      ? new Date(`1970-01-01T${data.incident_time}`).toLocaleTimeString("en-PH", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "N/A",
+    perpetratorKnown:        data.is_perpetrator_known,
+    perpetratorName:         data.perpetrator_name,
+    perpetratorGender:       data.perpetrator_gender,
+    perpetratorUnknownGender:
+      data.perpetrator_unknown_gender ||
+      (!data.is_perpetrator_known ? data.perpetrator_gender : null),
+    perpetratorUnknownAppearance: data.perpetrator_unknown_appearance,
+    perpetratorOccupation:   data.perpetrator_occupation,
+    perpetratorRelationship: data.perpetrator_relationship,
+    hasWitnesses:            data.has_witnesses,
+    witnessName:             data.witness_name,
+    witnessContact:          data.witness_contact,
+    witnessRelationship:     data.witness_relationship,
+    reportedToOthers:        data.reported_to_others,
+    toldAnyoneWho:           data.told_anyone_who,
+    reportedToPolice:        data.reported_to_police,
+    policeStation:           data.police_station,
+    isAnonymous:             data.is_anonymous,
+    isWillingForInterview:   !!data.is_willing_for_interview,
+    name:                    data.name,
+    age:                     data.age,
+    genderIdentity:          data.gender_identity,
+    email:                   data.email,
+    contactNumber:           data.contact_number,
+    caseType:                data.case_type || null,
+    caseCategory:            data.case_category || null,
+    referralRequired:        data.referral_required || false,
+    referralBody:            data.referral_body || null,
+    assignedParalegal:       data.assigned_paralegal || null,
+    assignedLegal:           (data.assigned_legal || []).map((person) => ({
+      ...person,
+      assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
+    })),
+    endorsementStatus:       data.endorsement_status || null,
+    internalNotes:           data.internal_notes || null,
+    pendingApproval:         null,
+    followUpSummary:         data.follow_up_summary || null,
+    followUps:               [],
+    withdrawalRequest:       data.withdrawal_request || null,
+    possibleDuplicates:      data.possible_duplicates || [],
+    statusHistory: [
+      {
+        status: STATUS_STEP[data.case_status_id] || "For Verification",
+        date:   new Date(data.created_at).toLocaleDateString("en-PH"),
+        by:     data.assigned_officer || "System",
+        notes:  "Report received and logged.",
+      },
+    ],
+  };
+};
+
 const ENDORSEMENT_BODIES = [
   "DSWD",
   "PNP Women and Children Protection Desk",
@@ -287,7 +374,7 @@ function FSelect({ error, children, ...props }) {
 
 // ─── NLP Analysis Tab (staff only) ───────────────────────────────────────────
 
-function NLPAnalysisTab({ caseReportId, isAdmin }) {
+function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
   const [nlpData, setNlpData]     = useState(null);
   const [nlpLoading, setNlpLoading] = useState(false);
   const [nlpStatus, setNlpStatus]   = useState(null);
@@ -507,7 +594,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
                           {nlpData.clarification_reason}
                       </p>
                       <button
-                          onClick={() => {/* trigger your clarification request flow */}}
+                          onClick={onRequestClarification}
                           style={{
                               background: "#d97706", color: "#fff",
                               border: "none", borderRadius: 999,
@@ -1417,7 +1504,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
         <h2 className={styles.sectionHeadingText}>Case Classification</h2>
         <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
           {[
-            ["Current Status",    <StatusBadge status={caseData.status} />],
+            ["Current Status",    <StatusBadge key="current-status" status={caseData.status} />],
             ["Case Type",         caseTypes.join(", ") || "Not yet classified"],
             ["Case Categories",   categoryDisplay],
             ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
@@ -1469,6 +1556,68 @@ function CaseDetailsTab({ caseData, isStaff }) {
 // MAIN VIEWCASE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
+function DuplicateComparePanel({ currentCase, compareCase, loading, error, onClose }) {
+  const rows = [
+    ["Complainant", currentCase?.name, compareCase?.name],
+    ["Email", currentCase?.email, compareCase?.email],
+    ["Contact", currentCase?.contactNumber, compareCase?.contactNumber],
+    ["Incident Date", currentCase?.incidentDate, compareCase?.incidentDate],
+    ["Location", currentCase?.incidentLocationDisplay, compareCase?.incidentLocationDisplay],
+    ["Case Category", currentCase?.caseCategory || currentCase?.primaryCategory, compareCase?.caseCategory || compareCase?.primaryCategory],
+    ["Status", currentCase?.status, compareCase?.status],
+  ];
+
+  return (
+    <section className={styles.comparePanel}>
+      <div className={styles.compareHeader}>
+        <div>
+          <p className={styles.compareEyebrow}>Duplicate comparison</p>
+          <h2 className={styles.compareTitle}>
+            {currentCase.caseId} vs {compareCase?.caseId || "matched case"}
+          </h2>
+        </div>
+        <button type="button" className={styles.compareCloseBtn} onClick={onClose}>
+          Close compare
+        </button>
+      </div>
+
+      {loading ? (
+        <p className={styles.compareState}>Loading matched case...</p>
+      ) : error ? (
+        <p className={styles.compareState}>{error}</p>
+      ) : compareCase ? (
+        <>
+          <div className={styles.compareGrid}>
+            <div className={styles.compareCaseCard}>
+              <span className={styles.compareCaseLabel}>Current report</span>
+              <strong>{currentCase.caseId}</strong>
+            </div>
+            <div className={styles.compareCaseCard}>
+              <span className={styles.compareCaseLabel}>Possible duplicate</span>
+              <strong>{compareCase.caseId}</strong>
+            </div>
+          </div>
+
+          <div className={styles.compareTable}>
+            {rows.map(([label, currentValue, compareValue]) => (
+              <div className={styles.compareRow} key={label}>
+                <div className={styles.compareField}>{label}</div>
+                <div className={styles.compareValue}>{currentValue || "Not provided"}</div>
+                <div className={styles.compareValue}>{compareValue || "Not provided"}</div>
+              </div>
+            ))}
+            <div className={`${styles.compareRow} ${styles.compareDescriptionRow}`}>
+              <div className={styles.compareField}>Description</div>
+              <div className={styles.compareValue}>{currentCase.description || "Not provided"}</div>
+              <div className={styles.compareValue}>{compareCase.description || "Not provided"}</div>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export default function ViewCase() {
   
   const router      = useRouter();
@@ -1476,8 +1625,12 @@ export default function ViewCase() {
 
   const caseId    = searchParams.get("caseId");
   const fromParam = searchParams.get("from");
+  const compareCaseId = searchParams.get("compareCaseId");
 
   const [caseData, setCaseData] = useState(null);
+  const [compareCaseData, setCompareCaseData] = useState(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
   const [activeTab, setActiveTab] = useState("details");
@@ -1574,90 +1727,7 @@ export default function ViewCase() {
           throw new Error(body.error || "Case not found");
         }
         const { data } = await res.json();
-        const caseYear = new Date(data.created_at).getFullYear();
-        setCaseData({
-          reportData:           data,
-          id:                   data.case_report_id,
-          caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
-          reporterId:           data.complainant_user_id,
-          region:               data.incident_province || data.incident_city || "Not provided",
-          status:               STATUS_STEP[data.case_status_id] || "For Verification",
-          assignedOfficer:      data.assigned_officer || null,
-          dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          description:          data.incident_description || "No incident description provided.",
-          requestedOutcome:     data.action_requested || [],
-          evidences:            data.evidences || [],
-          incidentLocationType: data.incident_location_type || null,
-          incidentCity:         data.incident_city,
-          incidentLocation:     data.incident_location,
-          incidentLocationDisplay: data.incident_location_type === "Online"
-            ? data.incident_location || "Online"
-            : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "Not provided",
-          incidentDate:         new Date(data.incident_date).toLocaleDateString("en-PH", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          incidentTime: data.incident_time
-            ? new Date(`1970-01-01T${data.incident_time}`).toLocaleTimeString("en-PH", {
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true,
-              })
-            : "N/A",
-          perpetratorKnown:        data.is_perpetrator_known,
-          perpetratorName:         data.perpetrator_name,
-          perpetratorGender:       data.perpetrator_gender,
-          perpetratorUnknownGender:
-            data.perpetrator_unknown_gender ||
-            (!data.is_perpetrator_known ? data.perpetrator_gender : null),
-          perpetratorUnknownAppearance: data.perpetrator_unknown_appearance,
-          perpetratorOccupation:   data.perpetrator_occupation,
-          perpetratorRelationship: data.perpetrator_relationship,
-          hasWitnesses:            data.has_witnesses,
-          witnessName:             data.witness_name,
-          witnessContact:          data.witness_contact,
-          witnessRelationship:     data.witness_relationship,
-          reportedToOthers:        data.reported_to_others,
-          toldAnyoneWho:           data.told_anyone_who,
-          reportedToPolice:        data.reported_to_police,
-          policeStation:           data.police_station,
-          isAnonymous:             data.is_anonymous,
-          isWillingForInterview:   !!data.is_willing_for_interview,
-          name:                    data.name,
-          age:                     data.age,
-          genderIdentity:          data.gender_identity,
-          email:                   data.email,
-          contactNumber:           data.contact_number,
-          caseType:                data.case_type || null,
-          caseCategory:            data.case_category || null,
-          referralRequired:        data.referral_required || false,
-          referralBody:            data.referral_body || null,
-          assignedParalegal:       data.assigned_paralegal || null,
-          assignedLegal:           (data.assigned_legal || []).map((person) => ({
-            ...person,
-            assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
-          })),
-          endorsementStatus:       data.endorsement_status || null,
-          internalNotes:           data.internal_notes || null,
-          pendingApproval:         null,
-          followUpSummary:         data.follow_up_summary || null,
-          followUps:               [],
-          withdrawalRequest:       data.withdrawal_request || null,
-          possibleDuplicates:      data.possible_duplicates || [],
-          statusHistory: [
-            {
-              status: STATUS_STEP[data.case_status_id] || "For Verification",
-              date:   new Date(data.created_at).toLocaleDateString("en-PH"),
-              by:     data.assigned_officer || "System",
-              notes:  "Report received and logged.",
-            },
-          ],
-        });
+        setCaseData(mapCaseReportToViewData(data));
 
         const asmRes = await fetch(`${API_URL}/api/case_assessments/case/${data.case_report_id}`, { credentials: "include" });
         if (asmRes.ok) {
@@ -1724,6 +1794,25 @@ export default function ViewCase() {
             followUps: followUpsJson.data || [],
           }));
         }
+
+        setCompareCaseData(null);
+        setCompareError(null);
+        if (compareCaseId && String(compareCaseId) !== String(data.case_report_id)) {
+          try {
+            setCompareLoading(true);
+            const compareRes = await fetch(`${API_URL}/api/case_reports/${compareCaseId}`, { credentials: "include" });
+            if (!compareRes.ok) {
+              const body = await compareRes.json().catch(() => ({}));
+              throw new Error(body.error || "Matched case not found");
+            }
+            const compareJson = await compareRes.json();
+            setCompareCaseData(mapCaseReportToViewData(compareJson.data));
+          } catch (compareErr) {
+            setCompareError(compareErr.message);
+          } finally {
+            setCompareLoading(false);
+          }
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -1731,7 +1820,7 @@ export default function ViewCase() {
       }
     };
     fetchCase();
-  }, [caseId, caseRefreshKey]);
+  }, [caseId, caseRefreshKey, compareCaseId]);
 
   useEffect(() => {
     if (!userLoaded || !caseData?.id) return;
@@ -1882,47 +1971,76 @@ export default function ViewCase() {
         </div>
 
         {isStaff && caseData.possibleDuplicates?.length > 0 && (
-          <div style={{
-            background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 12,
-            padding: "1rem 1.2rem", marginBottom: "1rem", color: "#9a3412",
-          }}>
-            <strong>Possible duplicate report{caseData.possibleDuplicates.length > 1 ? "s" : ""}</strong>
-            <p style={{ margin: ".35rem 0 .75rem" }}>
-              Review these matches before proceeding. This is a warning only and does not block the case.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+          <section className={styles.duplicateWarning}>
+            <div className={styles.duplicateHeader}>
+              <div>
+                <strong>Possible duplicate report{caseData.possibleDuplicates.length > 1 ? "s" : ""}</strong>
+                <p>
+                  Review these matches before proceeding. This is a warning only and does not block the case.
+                </p>
+              </div>
+            </div>
+            <div className={styles.duplicateList}>
               {caseData.possibleDuplicates.map((match) => (
-                <div key={match.duplicate_match_id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: ".6rem" }}>
-                  <a href={`/cases/view?caseId=${match.matched_case_report_id}`} style={{ color: "#9a3412", fontWeight: 800 }}>
-                    Case #{match.matched_case_report_id}
-                  </a>
-                  <span>{Number(match.similarity_score)}% match</span>
-                  <span>({(match.matched_fields || []).join(", ")})</span>
-                  <button
-                    style={{ marginLeft: "auto", border: "1px solid #fdba74", background: "#fff", color: "#9a3412", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}
-                    onClick={async () => {
-                      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-                      const response = await fetch(
-                        `${API_URL}/api/case_reports/${caseData.id}/duplicates/${match.duplicate_match_id}/dismiss`,
-                        { method: "PATCH", credentials: "include" }
-                      );
-                      if (response.ok) {
-                        setCaseData((current) => ({
-                          ...current,
-                          possibleDuplicates: current.possibleDuplicates.filter(
-                            (item) => item.duplicate_match_id !== match.duplicate_match_id
-                          ),
-                        }));
-                        showToast("Duplicate warning dismissed.");
-                      }
-                    }}
-                  >
-                    Not a duplicate
-                  </button>
+                <div key={match.duplicate_match_id} className={styles.duplicateItem}>
+                  <div className={styles.duplicateInfo}>
+                    <div className={styles.duplicateMeta}>
+                      <a href={`/cases/view?caseId=${match.matched_case_report_id}`} className={styles.duplicateCaseLink}>
+                        Case #{match.matched_case_report_id}
+                      </a>
+                      <span className={styles.duplicateScore}>{Number(match.similarity_score)}% match</span>
+                    </div>
+                    <div className={styles.duplicateFields}>
+                      {(match.matched_fields || []).map((field) => (
+                        <span key={field}>{field}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.duplicateActions}>
+                    <button
+                      type="button"
+                      className={styles.duplicatePrimaryBtn}
+                      onClick={() => router.push(`/cases/view?caseId=${caseData.id}&compareCaseId=${match.matched_case_report_id}`)}
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.duplicateSecondaryBtn}
+                      onClick={async () => {
+                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+                        const response = await fetch(
+                          `${API_URL}/api/case_reports/${caseData.id}/duplicates/${match.duplicate_match_id}/dismiss`,
+                          { method: "PATCH", credentials: "include" }
+                        );
+                        if (response.ok) {
+                          setCaseData((current) => ({
+                            ...current,
+                            possibleDuplicates: current.possibleDuplicates.filter(
+                              (item) => item.duplicate_match_id !== match.duplicate_match_id
+                            ),
+                          }));
+                          showToast("Duplicate warning dismissed.");
+                        }
+                      }}
+                    >
+                      Not a duplicate
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
+        )}
+
+        {isStaff && compareCaseId && (
+          <DuplicateComparePanel
+            currentCase={caseData}
+            compareCase={compareCaseData}
+            loading={compareLoading}
+            error={compareError}
+            onClose={() => router.push(`/cases/view?caseId=${caseData.id}`)}
+          />
         )}
 
         {/* Content card with tabs */}
@@ -1990,7 +2108,11 @@ export default function ViewCase() {
           )}
 
           {displayedActiveTab === "nlp" && isStaff && userLoaded && (
-            <NLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
+            <NLPAnalysisTab
+              caseReportId={caseData.id}
+              isAdmin={isAdmin}
+              onRequestClarification={() => setActiveTab("follow-ups")}
+            />
           )}
 
         </div>

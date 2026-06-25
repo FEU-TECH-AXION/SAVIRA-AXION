@@ -21,7 +21,10 @@ import { FaSearch, FaCalendarAlt } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const getServerApiUrl = () => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "http://localhost:5000";
+  return apiUrl.replace(/\/$/, "");
+};
 
 const CATEGORIES = [
   "All",
@@ -74,7 +77,10 @@ const normalizeProjects = (rawProjects) => {
 
 async function fetchProjectEvents() {
   try {
-    const res = await fetch(`${API_URL}/api/projects`, { cache: "no-store" });
+    const res = await fetch(
+      `${getServerApiUrl()}/api/projects?visibility=public&approval_status=approved`,
+      { cache: "no-store" }
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return normalizeProjects(data);
