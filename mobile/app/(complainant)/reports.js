@@ -24,8 +24,32 @@ const BORDER = "#e5e7eb";
 const BG = "#f5f7f8";
 const ERROR = "#dc2626";
 const HISTORY_PAGE_SIZE = 5;
+const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_EVIDENCE_FILE_SIZE_LABEL = "50 MB";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+
+function formatErrorMessage(error, fallback = "Failed to submit report.") {
+  if (!error) return fallback;
+  if (typeof error === "string") return error;
+  if (Array.isArray(error)) {
+    return error.map((item) => formatErrorMessage(item, "")).filter(Boolean).join("\n");
+  }
+  if (typeof error === "object") {
+    const parts = [
+      error.message,
+      error.error,
+      error.details,
+      error.hint,
+      error.description,
+    ]
+      .map((item) => formatErrorMessage(item, ""))
+      .filter(Boolean);
+
+    return parts.length > 0 ? parts.join("\n") : fallback;
+  }
+  return String(error);
+}
 
 // ── NCR Cities ────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -1284,6 +1308,24 @@ function StepIncidentDetails({ data, onChange, errors }) {
 
 // ── STEP 3: Supporting Evidence ───────────────────────────────────────────────
 function StepEvidence({ data, onChange }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const appendValidFiles = (files) => {
+    const oversizedFiles = files.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
+    const validFiles = files.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
+
+    if (oversizedFiles.length > 0) {
+      Alert.alert(
+        "File Too Large",
+        `Each evidence file must be ${MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller. Please choose a smaller file.`
+      );
+    }
+
+    if (validFiles.length > 0) {
+      onChange({ ...data, files: [...(data.files || []), ...validFiles] });
+    }
+  };
+
   const pickFiles = async () => {
     Alert.alert(
       "Attach Evidence",
@@ -1310,7 +1352,7 @@ function StepEvidence({ data, onChange }) {
                   uri: asset.uri,
                   mimeType: asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg"),
                 }));
-                onChange({ ...data, files: [...(data.files || []), ...mappedAssets] });
+                appendValidFiles(mappedAssets);
               }
             } catch (err) {
               Alert.alert("Error", "Could not pick images/videos from gallery.");
@@ -1327,7 +1369,7 @@ function StepEvidence({ data, onChange }) {
                 copyToCacheDirectory: true,
               });
               if (!result.canceled && result.assets) {
-                onChange({ ...data, files: [...(data.files || []), ...result.assets] });
+                appendValidFiles(result.assets);
               }
             } catch (e) {
               Alert.alert("Error", "Could not pick files.");
@@ -1342,6 +1384,55 @@ function StepEvidence({ data, onChange }) {
     );
   };
 
+  const pickFromGallery = async () => {
+    setPickerOpen(false);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "We need permission to access your local gallery to attach evidence.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images", "videos"],
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+      if (!result.canceled && result.assets) {
+        const mappedAssets = result.assets.map((asset) => ({
+          name: asset.fileName || `gallery-item-${Date.now()}.${asset.uri.split(".").pop()}`,
+          size: asset.fileSize || 0,
+          uri: asset.uri,
+          mimeType: asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg"),
+        }));
+        appendValidFiles(mappedAssets);
+      }
+    } catch (err) {
+      Alert.alert("Error", "Could not pick images/videos from gallery.");
+    }
+  };
+
+  const pickFromFiles = async () => {
+    setPickerOpen(false);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "image/jpeg", "image/png", "video/mp4"],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets) {
+        appendValidFiles(result.assets);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not pick files.");
+    }
+  };
+
+  const formatFileSize = (size) => {
+    if (!size) return "";
+    if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    return `${Math.max(1, Math.round(size / 1024))} KB`;
+  };
+
   const removeFile = (idx) => {
     onChange({ ...data, files: data.files.filter((_, i) => i !== idx) });
   };
@@ -1353,46 +1444,102 @@ function StepEvidence({ data, onChange }) {
       </Text>
       <Text style={s.stepDesc}>
         Attach any files, photos, or documents relevant to the incident
-        (optional).
+        (optional). Each file must be {MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller.
       </Text>
 
       <View style={s.credSection}>
-        <Pressable style={s.dropZone} onPress={pickFiles}>
-          <Ionicons
-            name="cloud-upload-outline"
-            size={32}
-            color="rgba(255,255,255,0.9)"
-          />
-          <Text style={s.dropText}>Tap to upload files</Text>
-          <View style={s.browseBtn}>
-            <Text style={s.browseBtnText}>Browse</Text>
+        <Pressable style={s.dropZone} onPress={() => setPickerOpen(true)}>
+          <View style={s.uploadIconWrap}>
+            <Ionicons name="phone-portrait-outline" size={30} color={TEAL} />
           </View>
-          <Text style={s.dropHint}>Supported: PDF, JPG, PNG, MP4</Text>
+          <Text style={s.dropText}>Add evidence files</Text>
+          <Text style={s.dropSubtext}>Photos, videos, PDFs, JPG, PNG, or MP4</Text>
+          <View style={s.browseBtn}>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={s.browseBtnText}>Choose Files</Text>
+          </View>
+          <Text style={s.dropHint}>Max {MAX_EVIDENCE_FILE_SIZE_LABEL} per file</Text>
         </Pressable>
 
         <View style={s.fileList}>
-          <Text style={s.fileListTitle}>Submitted Files</Text>
+          <Text style={s.fileListTitle}>Attached Files</Text>
           {!data.files || data.files.length === 0 ? (
-            <Text style={s.noFilesText}>No files uploaded yet.</Text>
+            <View style={s.noFilesBox}>
+              <Ionicons name="document-attach-outline" size={18} color="#6b7280" />
+              <Text style={s.noFilesText}>No files added yet.</Text>
+            </View>
           ) : (
             data.files.map((f, i) => (
               <View key={i} style={s.fileItem}>
-                <Ionicons name="document-outline" size={14} color="#fff" />
-                <Text style={s.fileName} numberOfLines={1}>
-                  {f.name}
-                </Text>
-                <Pressable onPress={() => removeFile(i)}>
-                  <Ionicons
-                    name="close"
-                    size={14}
-                    color="rgba(255,255,255,0.7)"
-                  />
+                <View style={s.fileIconBubble}>
+                  <Ionicons name="document-outline" size={15} color={TEAL} />
+                </View>
+                <View style={s.fileMeta}>
+                  <Text style={s.fileName} numberOfLines={1}>
+                    {f.name}
+                  </Text>
+                  {!!formatFileSize(f.size) && (
+                    <Text style={s.fileSize}>{formatFileSize(f.size)}</Text>
+                  )}
+                </View>
+                <Pressable style={s.fileRemoveBtn} onPress={() => removeFile(i)}>
+                  <Ionicons name="close" size={14} color="#6b7280" />
                 </Pressable>
               </View>
             ))
           )}
         </View>
       </View>
+
+      <Modal
+        visible={pickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <Pressable style={s.uploadModalOverlay} onPress={() => setPickerOpen(false)}>
+          <Pressable style={s.uploadModalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={s.uploadModalHandle} />
+            <View style={s.uploadModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.uploadModalTitle}>Add Evidence</Text>
+                <Text style={s.uploadModalSubtitle}>
+                  Choose from your device. Up to {MAX_EVIDENCE_FILE_SIZE_LABEL} per file.
+                </Text>
+              </View>
+              <Pressable style={s.uploadModalClose} onPress={() => setPickerOpen(false)}>
+                <Ionicons name="close" size={18} color="#374151" />
+              </Pressable>
+            </View>
+
+            <Pressable style={s.uploadOption} onPress={pickFromGallery}>
+              <View style={s.uploadOptionIcon}>
+                <Ionicons name="images-outline" size={22} color={TEAL} />
+              </View>
+              <View style={s.uploadOptionTextWrap}>
+                <Text style={s.uploadOptionTitle}>Photo & Video Gallery</Text>
+                <Text style={s.uploadOptionDesc}>
+                  Select screenshots, photos, or recorded clips from this phone.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+            </Pressable>
+
+            <Pressable style={s.uploadOption} onPress={pickFromFiles}>
+              <View style={s.uploadOptionIcon}>
+                <Ionicons name="folder-open-outline" size={22} color={TEAL} />
+              </View>
+              <View style={s.uploadOptionTextWrap}>
+                <Text style={s.uploadOptionTitle}>Device Files</Text>
+                <Text style={s.uploadOptionDesc}>
+                  Attach PDFs or saved media using your phone's file picker.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -2008,69 +2155,46 @@ export default function ReportScreen() {
 
   const handleSubmit = async () => {
     setSubmitError(null);
+    const oversizedFiles = (evidence.files || []).filter(
+      (file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE
+    );
+    if (oversizedFiles.length > 0) {
+      setSubmitError(`Each evidence file must be ${MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller.`);
+      setStep(3);
+      return;
+    }
     setIsSubmitting(true);
     try {
-      // 1. If evidence files exist, upload them first (e.g. to Supabase Storage)
-      // and grab their public URLs to include in the payload.
-      const uploadedFileUrls = [];
-
-      // 2. Format payload exactly as the backend's buildPayload expects
-      const payload = {
-        complainant: {
-          reporteeType: complainant.reporteeType,
-          name: complainant.name,
-          age: complainant.age,
-          gender: complainant.gender,
-          organization: complainant.organization,
-          council: complainant.council,
-          organizationType: complainant.organizationType,
-          orgName: complainant.orgName,
-          orgCity: complainant.orgCity,
-          userCity: complainant.userCity,
-          contactNumber: complainant.contactNumber,
-          email: complainant.email,
-          interview: complainant.interview,
-        },
-        incident: {
-          date: incident.date,
-          time: incident.time,
-          incidentCity: incident.incidentCity,
-          incidentVenue: incident.incidentVenue,
-          description: incident.description,
-          outcome: incident.outcome,
-          perpetratorKnown: incident.perpetratorKnown,
-          perpetratorName: incident.perpetratorName,
-          perpetratorOccupation: incident.perpetratorOccupation,
-          perpetratorRelationship: incident.perpetratorRelationship,
-          perpetratorGender: incident.perpetratorGender,
-        },
-        evidence: {
-          anonymous: false, // Or dynamic choice
-          files: uploadedFileUrls,
-        },
-      };
-
-      // Retrieve user token from secure storage (e.g., AsyncStorage)
       const userToken = await AsyncStorage.getItem("user_token");
+      const formData = new FormData();
+      formData.append("complainant", JSON.stringify(complainant));
+      formData.append("incident", JSON.stringify(incident));
+      formData.append("evidence", JSON.stringify({ anonymous: false }));
+      (evidence.files || []).forEach((file) => {
+        formData.append("files", {
+          uri: file.uri,
+          name: file.name || file.fileName || `evidence-${Date.now()}`,
+          type: file.mimeType || file.type || "application/octet-stream",
+        });
+      });
 
       const res = await fetch(`${API_URL}/api/case_reports/submit`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${userToken}`,
         },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.error || `Server error (${res.status})`);
+        throw new Error(formatErrorMessage(body?.error || body, `Server error (${res.status})`));
       }
 
       setSubmitted(true);
       fetchReports();
     } catch (err) {
-      setSubmitError(err.message || "Failed to submit report.");
+      setSubmitError(formatErrorMessage(err, "Failed to submit report."));
     } finally {
       setIsSubmitting(false);
     }
@@ -3016,53 +3140,158 @@ const s = StyleSheet.create({
 
   // Credentials / Evidence
   credSection: {
-    backgroundColor: TEAL,
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: "row",
-    gap: 10,
+    backgroundColor: "#f8fbfb",
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#dbe7e7",
   },
   dropZone: {
-    flex: 1,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.5)",
+    borderColor: "#8fd2d1",
     borderStyle: "dashed",
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: 14,
+    padding: 18,
     alignItems: "center",
-    gap: 6,
-  },
-  dropText: { color: "#fff", fontSize: 12, textAlign: "center" },
-  browseBtn: {
+    gap: 8,
     backgroundColor: "#fff",
-    borderRadius: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+  },
+  uploadIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "#f0fafb",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#cde8e8",
+  },
+  dropText: { color: "#111827", fontSize: 16, fontWeight: "900", textAlign: "center" },
+  dropSubtext: { color: "#6b7280", fontSize: 12, textAlign: "center", lineHeight: 17 },
+  browseBtn: {
+    backgroundColor: TEAL,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
-  browseBtnText: { color: TEAL, fontWeight: "700", fontSize: 12 },
+  browseBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
   dropHint: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 10,
+    color: "#6b7280",
+    fontSize: 11,
     textAlign: "center",
-  },
-  fileList: { flex: 1, gap: 6 },
-  fileListTitle: {
-    color: "#fff",
     fontWeight: "700",
-    fontSize: 12,
-    marginBottom: 4,
+  },
+  fileList: { gap: 8 },
+  fileListTitle: {
+    color: "#111827",
+    fontWeight: "900",
+    fontSize: 13,
   },
   fileItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 6,
-    padding: 8,
+    gap: 9,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
-  fileName: { flex: 1, color: "#fff", fontSize: 11 },
-  noFilesText: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
+  fileIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f0fafb",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fileMeta: { flex: 1 },
+  fileName: { color: "#111827", fontSize: 12, fontWeight: "800" },
+  fileSize: { color: "#6b7280", fontSize: 10, marginTop: 2 },
+  fileRemoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  noFilesBox: {
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  noFilesText: { color: "#6b7280", fontSize: 12, fontWeight: "700" },
+  uploadModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(17, 24, 39, 0.55)",
+    justifyContent: "flex-end",
+  },
+  uploadModalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 24,
+  },
+  uploadModalHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "#d1d5db",
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+  uploadModalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 14,
+  },
+  uploadModalTitle: { fontSize: 19, fontWeight: "900", color: "#111827" },
+  uploadModalSubtitle: { fontSize: 12, color: "#6b7280", lineHeight: 18, marginTop: 3 },
+  uploadModalClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  uploadOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f0fafb",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadOptionTextWrap: { flex: 1 },
+  uploadOptionTitle: { fontSize: 14, color: "#111827", fontWeight: "900" },
+  uploadOptionDesc: { fontSize: 12, color: "#6b7280", lineHeight: 17, marginTop: 2 },
 
   // Review
   reviewSection: {
