@@ -1,4 +1,7 @@
 import { useState, useCallback } from 'react';
+import SideNav from '../../components/SideNav';
+import HeaderAvatar from '../../components/HeaderAvatar';
+
 import {
   View, Text, ScrollView, Pressable, Image,
   StyleSheet, Modal, ActivityIndicator, Alert,
@@ -14,68 +17,7 @@ const BG     = '#f5f7f8';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
-// ── Side Nav ──────────────────────────────────────────────────────────────────
-function SideNav({ open, onClose }) {
-  const router = useRouter();
-  const links = [
-    { label: 'Home',      href: '/(complainant)/dashboard',            icon: 'home-outline' },
-    { label: 'Report',    href: '/(complainant)/reports',               icon: 'document-text-outline' },
-    { label: 'Volunteer', href: '/(complainant)/volunteer-application', icon: 'people-outline' },
-    { label: 'About',     href: '/(complainant)/about',                 icon: 'information-circle-outline' },
-    { label: 'Contact',   href: '/(complainant)/contact',               icon: 'call-outline' },
-    { label: 'Events',    href: '/(complainant)/events',                icon: 'calendar-outline' },
-    { label: 'Settings',  href: '/(complainant)/settings',              icon: 'settings-outline' },
-  ];
-  return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        <View style={nav.drawer}>
-          <View style={nav.drawerHeader}>
-            <Image
-              source={require('../../assets/sasha-icon-teal.png')}
-              style={nav.drawerLogo}
-              resizeMode="contain"
-            />
-            <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color="#6b7280" />
-            </Pressable>
-          </View>
-          {links.map((l) => (
-            <Pressable
-              key={l.label}
-              style={nav.drawerItem}
-              onPress={() => { router.push(l.href); onClose(); }}
-            >
-              <Ionicons name={l.icon} size={20} color={TEAL} />
-              <Text style={nav.drawerItemText}>{l.label}</Text>
-            </Pressable>
-          ))}
-          <Pressable
-            style={nav.logoutBtn}
-            onPress={async () => {
-              await AsyncStorage.removeItem('token');
-              router.replace('/(auth)/login');
-              onClose();
-            }}
-          >
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={nav.logoutText}>Log Out</Text>
-          </Pressable>
-        </View>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-      </View>
-    </Modal>
-  );
-}
-const nav = StyleSheet.create({
-  drawer: { width: 260, backgroundColor: '#fff', paddingTop: 52, paddingHorizontal: 20, paddingBottom: 32, elevation: 10 },
-  drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
-  drawerLogo: { width: 100, height: 36 },
-  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  drawerItemText: { fontSize: 15, color: '#1a1a1a', fontWeight: '600' },
-  logoutBtn: { marginTop: 32, backgroundColor: ORANGE, borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  logoutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
+
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, notifCount = 0 }) {
@@ -94,7 +36,7 @@ function Navbar({ onBurger, notifCount = 0 }) {
             </View>
           )}
         </View>
-        <View style={s.avatar}><Text style={s.avatarText}>U</Text></View>
+        <HeaderAvatar />
       </View>
     </View>
   );

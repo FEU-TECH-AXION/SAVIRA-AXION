@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import SideNav from '../../components/SideNav';
+import HeaderAvatar from '../../components/HeaderAvatar';
+
 import {
   View, Text, ScrollView, Pressable, Image,
   StyleSheet, TextInput, ImageBackground, Modal,
@@ -11,51 +14,8 @@ const TEAL  = '#037F81';
 const ORANGE = '#E96433';
 const BORDER = '#e5e7eb';
 
-// ── Side Nav ──────────────────────────────────────────────────────────────────
-function SideNav({ open, onClose }) {
-  const router = useRouter();
-  const links = [
-    { label: 'Home',      href: '/(complainant)/dashboard',              icon: 'home-outline' },
-    { label: 'Report',    href: '/(complainant)/reports',                 icon: 'document-text-outline' },
-    { label: 'Volunteer', href: '/(complainant)/volunteer-application',   icon: 'people-outline' },
-    { label: 'About',     href: '/(complainant)/about',                   icon: 'information-circle-outline' },
-    { label: 'Contact',   href: '/(complainant)/contact',                 icon: 'call-outline' },
-    { label: 'Events',    href: '/(complainant)/events',                  icon: 'calendar-outline' },
-  ];
-  return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        <View style={nav.drawer}>
-          <View style={nav.drawerHeader}>
-            <Image source={require('../../assets/sasha-icon-teal.png')} style={nav.drawerLogo} resizeMode="contain" />
-            <Pressable onPress={onClose}><Ionicons name="close" size={24} color="#6b7280" /></Pressable>
-          </View>
-          {links.map((l) => (
-            <Pressable key={l.label} style={nav.drawerItem} onPress={() => { router.push(l.href); onClose(); }}>
-              <Ionicons name={l.icon} size={20} color={TEAL} />
-              <Text style={nav.drawerItemText}>{l.label}</Text>
-            </Pressable>
-          ))}
-          <Pressable style={nav.logoutBtn} onPress={() => { router.replace('/(auth)/login'); onClose(); }}>
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={nav.logoutText}>Log Out</Text>
-          </Pressable>
-        </View>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-      </View>
-    </Modal>
-  );
-}
 
-const nav = StyleSheet.create({
-  drawer: { width: 260, backgroundColor: '#fff', paddingTop: 52, paddingHorizontal: 20, paddingBottom: 32, elevation: 10 },
-  drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
-  drawerLogo: { width: 100, height: 36 },
-  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  drawerItemText: { fontSize: 15, color: '#1a1a1a', fontWeight: '600' },
-  logoutBtn: { marginTop: 32, backgroundColor: ORANGE, borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  logoutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
+
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onBurger }) {
@@ -68,7 +28,7 @@ function Navbar({ onBurger }) {
       <View style={s.navRight}>
         <Feather name="search" size={20} color="#fff" />
         <Ionicons name="notifications-outline" size={20} color="#fff" />
-        <View style={s.avatar}><Text style={s.avatarText}>U</Text></View>
+        <HeaderAvatar />
       </View>
     </View>
   );
@@ -115,7 +75,7 @@ export default function EventsScreen() {
   const [navOpen, setNavOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
-  const [page, setPage] = useState(2);
+  const [page, setPage] = useState(1);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -157,6 +117,7 @@ export default function EventsScreen() {
         description: project.description || project.tagline || project.event_tagline || '',
         tag: project.status?.toLowerCase() === 'upcoming' ? 'Happening Soon' : null,
         category: project.category || project.project_category || 'Awareness Campaign',
+        date: project.start_date || project.dateStart || '',
         image: project.image || null,
         status: project.status || project.project_status || '',
         visibility: project.visibility,
@@ -165,7 +126,26 @@ export default function EventsScreen() {
       .filter((project) => project.visibility === 'public' && project.approvalStatus === 'approved');
   };
 
-  const displayedEvents = loading ? [] : events;
+  const displayedEvents = useMemo(() => {
+    if (loading) return [];
+    let filtered = events;
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
+    }
+    return filtered;
+  }, [events, loading, search]);
+
+  const ITEMS_PER_PAGE = 4;
+  const totalPages = Math.max(1, Math.ceil(displayedEvents.length / ITEMS_PER_PAGE));
+  const paginatedEvents = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return displayedEvents.slice(start, start + ITEMS_PER_PAGE);
+  }, [displayedEvents, page]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
 
   return (
     <View style={s.container}>
@@ -231,9 +211,10 @@ export default function EventsScreen() {
             ) : displayedEvents.length === 0 ? (
               <Text style={s.loadingText}>No public events available.</Text>
             ) : (
-              displayedEvents.map((e) => (
+              paginatedEvents.map((e) => (
                 <EventCard
                   key={e.id}
+                  image={e.image}
                   tag={e.tag}
                   title={e.title}
                   description={e.description}
@@ -245,13 +226,17 @@ export default function EventsScreen() {
 
           {/* Pagination */}
           <View style={s.pagination}>
-            <Pressable style={s.pageArrow}><Ionicons name="chevron-back" size={18} color="#fff" /></Pressable>
-            {[1, 2, 3].map((n) => (
+            <Pressable style={s.pageArrow} onPress={() => setPage(p => Math.max(1, p - 1))}>
+              <Ionicons name="chevron-back" size={18} color="#fff" />
+            </Pressable>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
               <Pressable key={n} style={[s.pageNum, page === n && s.pageNumActive]} onPress={() => setPage(n)}>
                 <Text style={[s.pageNumText, page === n && s.pageNumTextActive]}>{n}</Text>
               </Pressable>
             ))}
-            <Pressable style={s.pageArrow}><Ionicons name="chevron-forward" size={18} color="#fff" /></Pressable>
+            <Pressable style={s.pageArrow} onPress={() => setPage(p => Math.min(totalPages, p + 1))}>
+              <Ionicons name="chevron-forward" size={18} color="#fff" />
+            </Pressable>
           </View>
         </View>
 
