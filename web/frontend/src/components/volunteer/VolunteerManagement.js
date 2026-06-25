@@ -1040,7 +1040,7 @@ export default function VolunteerManagement() {
             </div>
             <div className="col-12 col-sm-6">
               <ActionCard
-                icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
+                icon={<img src="chapter.png" alt="" className={styles.actionIconImg} />}
                 title="Chapter Formation"
                 description="Manage volunteer chapter formation."
                 onView={() => router.push("/volunteer/chapters")}

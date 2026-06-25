@@ -541,7 +541,7 @@ export default function ProjectManagement() {
             </div>
             <div className="col-12 col-sm-6">
               <ActionCard
-                icon={<FiCheckSquare size={34} color="#037F81" />}
+                icon={<img src="LegalIconEndorse.png" alt="" className={styles.actionIconImg} />}
                 title="Manage Project Tasks"
                 description="Assign project work, monitor deadlines, update progress, and review overdue tasks."
                 onView={() => router.push("/projectTasks")}

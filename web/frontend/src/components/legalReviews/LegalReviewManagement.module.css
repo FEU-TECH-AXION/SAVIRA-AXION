@@ -171,6 +171,7 @@
   min-width: 60px;
   min-height: 60px;
   border-radius: 100%;
+  background-color: #fff;
 }
 
 .actionBody { margin-top: 2rem; flex: 1; }

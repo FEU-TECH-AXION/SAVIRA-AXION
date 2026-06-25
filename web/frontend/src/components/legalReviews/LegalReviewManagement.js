@@ -1674,7 +1674,7 @@ export default function LegalReviewManagement() {
               <ActionCard icon={<img src="/LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Record routine progress immediately; filing and terminal outcomes require admin approval." onView={() => setModal("selectStatus")} />
             </div>
             <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<FiCalendar size={30} />} title="Case Calendar" description="See upcoming and overdue hearings, investigation follow-ups, and referral deadlines." onView={() => { setCalendarCases(cases); setModal("calendar"); }} />
+              <ActionCard icon={<img src="/case-calendar.png" alt="" className={styles.actionIconImg} />} title="Case Calendar" description="See upcoming and overdue hearings, investigation follow-ups, and referral deadlines." onView={() => { setCalendarCases(cases); setModal("calendar"); }} />
             </div>
             {(isAdmin || isLegal) && (
               <div className="col-12 col-sm-6 col-lg-4">
