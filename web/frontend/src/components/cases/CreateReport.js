@@ -2195,7 +2195,7 @@ export default function CreateReport({
               </div>
 
               {submissionError && (
-                <div className={`${styles.alertCard} ${styles.alertCardWarning}`}>
+                <div className={`${styles.alertCard} ${styles.alertCardWarning}`} role="alert">
                   <div className={styles.alertContent}>
                     <span className={styles.alertLabel}>Unable to submit report</span>
                     <p className={styles.alertText}>{submissionError}</p>

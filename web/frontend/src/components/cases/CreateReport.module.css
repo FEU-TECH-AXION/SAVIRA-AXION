@@ -1306,6 +1306,8 @@
 }
 
 .alertCardWarning {
+  margin: 0 2rem 1rem;
+  padding: 0.85rem 1rem;
   border-color: #fdba74;
   background: #fff7ed;
 }
@@ -1355,6 +1357,11 @@
   .alertCard {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .alertCardWarning {
+    margin-right: 1rem;
+    margin-left: 1rem;
   }
 
   .alertAction {

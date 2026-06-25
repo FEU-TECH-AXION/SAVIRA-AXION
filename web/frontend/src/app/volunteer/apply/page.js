@@ -1498,6 +1498,17 @@ export default function CreateApplication({
               )}
             </div>
 
+            {submitError && (
+              <div className={`${styles.alertCard} ${styles.alertCardWarning}`} role="alert">
+                <div className={styles.alertContent}>
+                  <span className={styles.alertLabel}>
+                    Unable to submit application
+                  </span>
+                  <p className={styles.alertText}>{submitError}</p>
+                </div>
+              </div>
+            )}
+
             {/* Navigation buttons */}
             <div className={styles.formNav}>
               {step > 0 ? (
@@ -1516,16 +1527,6 @@ export default function CreateApplication({
                 </button>
               )}
             </div>
-            {submitError && (
-              <div className={`${styles.alertCard} ${styles.alertCardWarning}`}>
-                <div className={styles.alertContent}>
-                  <span className={styles.alertLabel}>
-                    Unable to submit application
-                  </span>
-                  <p className={styles.alertText}>{submitError}</p>
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <div className={styles.successCard}>
