@@ -193,6 +193,26 @@ function Modal({ open, onClose, title, children }) {
 // ══════════════════════════════════════════════════════════════════
 // CREATE USER MODAL
 // ══════════════════════════════════════════════════════════════════
+// ── Validation helpers ────────────────────────────────────────────────────────
+
+const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
+
+
+
+function normalisePhone(raw) {
+
+  let digits = raw.replace(/[^\d]/g, "");
+
+  if (digits.startsWith("63")) digits = digits.slice(2);
+
+  if (digits.startsWith("0")) digits = digits.slice(1);
+
+  digits = digits.slice(0, 10);
+
+  return digits ? `+63${digits}` : "";
+
+}
+
 function CreateUserModal({ open, onClose, onSave, committees }) {
 
   const EMPTY = {
@@ -348,16 +368,38 @@ function CreateUserModal({ open, onClose, onSave, committees }) {
         </div>
 
         {/* Contact Number */}
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Contact Number</label>
-          <input
-            className={styles.formInput}
-            type="tel"
-            placeholder="e.g. 09171234567"
-            value={form.contact_number}
-            onChange={(e) => setForm({ ...form, contact_number: e.target.value })}
-          />
-        </div>
+<div className={styles.formGroup}>
+  <label className={styles.formLabel}>Contact Number</label>
+  <input
+    className={`${styles.formInput} ${errors.contact_number ? styles.inputError : ""}`}
+    type="tel"
+    placeholder="e.g. 09171234567"
+    value={form.contact_number}
+    onChange={(e) => {
+      // 1. Get raw input value
+      const rawValue = e.target.value;
+      
+      // 2. Normalise the text format dynamically (or you can do this onBlur)
+      const normalised = normalisePhone(rawValue);
+      
+      // 3. Update form state
+      setForm({ ...form, contact_number: normalised || rawValue });
+      
+      // 4. Clear the error once they resume typing
+      setErrors((p) => { 
+        const n = {...p}; 
+        delete n.contact_number; 
+        return n; 
+      });
+    }}
+    onBlur={(e) => {
+      // Final normalization cleanup when user clicks away
+      const finalVal = normalisePhone(e.target.value);
+      setForm({ ...form, contact_number: finalVal });
+    }}
+  />
+  {errors.contact_number && <span className={styles.errorMsg}>{errors.contact_number}</span>}
+</div>
 
         {/* Role */}
         <div className={styles.formGroup}>
