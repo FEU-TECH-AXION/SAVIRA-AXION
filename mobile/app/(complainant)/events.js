@@ -4,7 +4,7 @@ import HeaderAvatar from '../../components/HeaderAvatar';
 
 import {
   View, Text, ScrollView, Pressable, Image,
-  StyleSheet, TextInput, ImageBackground, Modal,
+  StyleSheet, TextInput, ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -12,8 +12,11 @@ import NavSearchButton from '../../components/NavSearchButton';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TEAL  = '#037F81';
+const TEAL_DARK = '#045F61';
 const ORANGE = '#E96433';
 const BORDER = '#e5e7eb';
+const INK = '#142224';
+const EVENT_HERO_BANNER = require('../../assets/event-hero-banner.png');
 
 
 
@@ -70,7 +73,7 @@ function EventCard({ image, tag, title, description, onPress }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const CATEGORIES = ['Awareness Campaigns', 'Workshops', 'Summits', 'Community'];
+const CATEGORIES = ['All', 'Awareness Campaigns', 'Workshops', 'Summits', 'Community'];
 
 export default function EventsScreen() {
   const router = useRouter();
@@ -144,8 +147,11 @@ export default function EventsScreen() {
       const q = search.toLowerCase();
       filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
     }
+    if (activeCategory !== 'All') {
+      filtered = filtered.filter(e => e.category?.toLowerCase().includes(activeCategory.replace(/s$/, '').toLowerCase()));
+    }
     return filtered;
-  }, [events, loading, search]);
+  }, [events, loading, search, activeCategory]);
 
   const ITEMS_PER_PAGE = 4;
   const totalPages = Math.max(1, Math.ceil(displayedEvents.length / ITEMS_PER_PAGE));
@@ -166,11 +172,15 @@ export default function EventsScreen() {
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
         {/* Hero */}
-        <View style={s.hero}>
+        <ImageBackground source={EVENT_HERO_BANNER} style={s.hero} imageStyle={s.heroImage}>
           <View style={s.heroOverlay}>
-            <Text style={s.heroSub}>SASHA Initiatives</Text>
+            <View style={s.heroTextWrap}>
+              <Text style={s.heroKicker}>SASHA Initiatives</Text>
+              <Text style={s.heroTitle}>Events for safer communities</Text>
+              <Text style={s.heroCopy}>Join advocacy campaigns, workshops, and chapter activities built around care, education, and action.</Text>
+            </View>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Intro */}
         <View style={s.section}>
@@ -182,6 +192,17 @@ export default function EventsScreen() {
           <Text style={s.pageDesc}>
             SASHA organizes awareness campaigns, educational forums, and advocacy-driven activities across various chapters nationwide. These initiatives aim to promote safe spaces, educate communities, and strengthen collective action against sexual harassment and abuse.
           </Text>
+          <View style={s.quickStats}>
+            <View style={s.statItem}>
+              <Text style={s.statValue}>{loading ? '-' : displayedEvents.length}</Text>
+              <Text style={s.statLabel}>Events</Text>
+            </View>
+            <View style={s.statDivider} />
+            <View style={s.statItem}>
+              <Text style={s.statValue}>4</Text>
+              <Text style={s.statLabel}>Focus areas</Text>
+            </View>
+          </View>
         </View>
 
         {/* Latest Events */}
@@ -192,27 +213,38 @@ export default function EventsScreen() {
             <View style={s.latestLine} />
           </View>
 
-          {/* Search & Category */}
-          <View style={s.filterRow}>
+          <View style={s.filterPanel}>
             <View style={s.searchBox}>
               <Text style={s.filterLabel}>Search</Text>
               <View style={s.searchInputWrap}>
+                <Feather name="search" size={16} color="#7b8a8c" />
                 <TextInput
                   style={s.searchInput}
-                  placeholder="Search"
-                  placeholderTextColor="#aaa"
+                  placeholder="Search events"
+                  placeholderTextColor="#8a9799"
                   value={search}
                   onChangeText={setSearch}
                 />
-                <Feather name="search" size={16} color="#aaa" />
               </View>
             </View>
-            <View style={s.categoryBox}>
-              <Text style={s.filterLabel}>Popular Category</Text>
-              <View style={s.categoryPill}>
-                <Text style={s.categoryPillText}>{activeCategory}</Text>
-              </View>
-            </View>
+            <Text style={s.filterLabel}>Popular Category</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.categoryScroll}
+            >
+              {CATEGORIES.map((category) => (
+                <Pressable
+                  key={category}
+                  style={[s.categoryPill, activeCategory === category && s.categoryPillActive]}
+                  onPress={() => setActiveCategory(category)}
+                >
+                  <Text style={[s.categoryPillText, activeCategory === category && s.categoryPillTextActive]}>
+                    {category}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Event Cards */}
@@ -262,7 +294,7 @@ export default function EventsScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f7f8' },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: 44 },
 
   navbar: {
     backgroundColor: TEAL,
@@ -283,68 +315,143 @@ const s = StyleSheet.create({
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   hero: {
-    height: 180,
+    minHeight: 300,
     backgroundColor: '#cde8e8',
     justifyContent: 'flex-end',
   },
+  heroImage: { resizeMode: 'cover' },
   heroOverlay: {
-    backgroundColor: 'rgba(3,127,129,0.5)',
-    padding: 16,
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(1,47,49,0.34)',
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 24,
   },
-  heroSub: { color: ORANGE, fontWeight: '800', fontSize: 16 },
+  heroTextWrap: {
+    maxWidth: 330,
+  },
+  heroKicker: {
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 999,
+    color: ORANGE,
+    fontWeight: '900',
+    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  heroTitle: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 34,
+    lineHeight: 38,
+    marginBottom: 10,
+  },
+  heroCopy: {
+    color: '#edfafa',
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '600',
+  },
 
-  section: { padding: 20 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  labelLine: { width: 24, height: 2, backgroundColor: ORANGE, borderRadius: 2 },
-  labelText: { fontSize: 13, color: '#6b7280', fontWeight: '600' },
-  pageTitle: { fontSize: 28, fontWeight: '900', color: TEAL, lineHeight: 34, marginBottom: 12 },
-  pageDesc: { fontSize: 14, color: '#444', lineHeight: 22 },
+  section: {
+    marginHorizontal: 16,
+    marginTop: -18,
+    padding: 18,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#eef2f2',
+    shadowColor: '#063f41',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  labelLine: { width: 28, height: 3, backgroundColor: ORANGE, borderRadius: 3 },
+  labelText: { fontSize: 12, color: TEAL_DARK, fontWeight: '900', textTransform: 'uppercase' },
+  pageTitle: { fontSize: 27, fontWeight: '900', color: TEAL_DARK, lineHeight: 33, marginBottom: 10 },
+  pageDesc: { fontSize: 14, color: '#435153', lineHeight: 22 },
+  quickStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+    padding: 14,
+    backgroundColor: '#f0fbfb',
+    borderRadius: 14,
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { color: TEAL, fontSize: 20, fontWeight: '900' },
+  statLabel: { color: '#627174', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  statDivider: { width: 1, height: 32, backgroundColor: '#cbe4e5' },
 
-  latestSection: { backgroundColor: '#f5f7f8', padding: 16 },
-  latestHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  latestSection: { backgroundColor: '#f5f7f8', padding: 16, paddingTop: 24 },
+  latestHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   latestLine: { flex: 1, height: 2, backgroundColor: ORANGE, opacity: 0.4, borderRadius: 2 },
-  latestTitle: { fontSize: 18, fontWeight: '900', color: TEAL },
+  latestTitle: { fontSize: 18, fontWeight: '900', color: TEAL_DARK },
 
-  filterRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  searchBox: { flex: 1 },
-  categoryBox: { flex: 1 },
-  filterLabel: { fontSize: 13, fontWeight: '700', color: '#1a1a1a', marginBottom: 6, borderLeftWidth: 3, borderLeftColor: ORANGE, paddingLeft: 6 },
+  filterPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#eef2f2',
+  },
+  searchBox: { marginBottom: 12 },
+  filterLabel: { fontSize: 12, fontWeight: '900', color: INK, marginBottom: 7 },
   searchInputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
-    backgroundColor: '#fff', paddingHorizontal: 10,
+    borderWidth: 1, borderColor: '#dbe7e8', borderRadius: 12,
+    backgroundColor: '#f8fbfb', paddingHorizontal: 12,
   },
-  searchInput: { flex: 1, height: 38, fontSize: 13, color: '#1a1a1a' },
+  searchInput: { flex: 1, height: 42, fontSize: 14, color: INK, marginLeft: 8 },
+  categoryScroll: { gap: 8, paddingRight: 4 },
   categoryPill: {
-    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
-    backgroundColor: '#fff', paddingHorizontal: 10, height: 38,
+    borderWidth: 1,
+    borderColor: '#dbe7e8',
+    borderRadius: 999,
+    backgroundColor: '#fff',
+    paddingHorizontal: 14,
+    height: 36,
     justifyContent: 'center',
   },
-  categoryPillText: { fontSize: 12, color: '#1a1a1a' },
+  categoryPillActive: { backgroundColor: TEAL, borderColor: TEAL },
+  categoryPillText: { fontSize: 12, color: '#435153', fontWeight: '800' },
+  categoryPillTextActive: { color: '#fff' },
 
   cardList: { gap: 16 },
   eventCard: {
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#edf1f1',
     overflow: 'hidden',
+    shadowColor: '#063f41',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
   eventImageWrap: { position: 'relative' },
-  eventImage: { width: '100%', height: 180 },
+  eventImage: { width: '100%', height: 190 },
   eventTag: {
-    position: 'absolute', bottom: 10, left: 10,
-    backgroundColor: TEAL, borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 4,
+    position: 'absolute', top: 12, left: 12,
+    backgroundColor: 'rgba(3,127,129,0.94)', borderRadius: 999,
+    paddingHorizontal: 11, paddingVertical: 5,
   },
   eventTagText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  eventBody: { padding: 14 },
-  eventTitle: { fontSize: 17, fontWeight: '800', color: TEAL, marginBottom: 6 },
-  eventDesc: { fontSize: 13, color: '#555', lineHeight: 20, marginBottom: 10 },
+  eventBody: { padding: 16 },
+  eventTitle: { fontSize: 18, fontWeight: '900', color: TEAL_DARK, marginBottom: 7, lineHeight: 23 },
+  eventDesc: { fontSize: 13, color: '#536264', lineHeight: 20, marginBottom: 14 },
   viewEventBtn: {
     alignSelf: 'flex-end',
     backgroundColor: ORANGE, borderRadius: 999,
-    paddingVertical: 7, paddingHorizontal: 18,
+    paddingVertical: 9, paddingHorizontal: 18,
   },
   viewEventBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 

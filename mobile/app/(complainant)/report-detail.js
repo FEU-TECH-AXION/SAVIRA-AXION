@@ -237,6 +237,26 @@ function isInterviewWilling(report) {
   return Boolean(value);
 }
 
+function toDateKey(value) {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthCells(year, monthIndex) {
+  const firstDay = new Date(year, monthIndex, 1).getDay();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  return [
+    ...Array.from({ length: firstDay }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+}
+
 function getReportId(report, paramId, caseId) {
   if (paramId) return paramId;
   const raw = report?.case_report_id || report?.id || caseId;
@@ -401,6 +421,12 @@ export default function ReportDetailScreen() {
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotSubmittingId, setSlotSubmittingId] = useState(null);
+  const [pendingSlot, setPendingSlot] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [selectedSlotDate, setSelectedSlotDate] = useState('');
   const [availabilityOpenFor, setAvailabilityOpenFor] = useState(null);
   const [availabilityReason, setAvailabilityReason] = useState('');
   const [availabilityPreferredDate, setAvailabilityPreferredDate] = useState('');
@@ -484,7 +510,7 @@ export default function ReportDetailScreen() {
       setSlots((body.data || []).map((slot) => ({
         ...slot,
         id: slot.slot_id || slot.id,
-        date: slot.slot_date,
+        date: toDateKey(slot.slot_date),
         time: slot.slot_time?.slice?.(0, 5) || slot.slot_time,
         duration: slot.duration_minutes,
       })));
@@ -531,6 +557,31 @@ export default function ReportDetailScreen() {
   ];
   const displayedActiveTab = activeTab === 'interview' && !showInterviewTab ? 'details' : activeTab;
   const currentInterview = interviews[0] || null;
+  const slotsByDate = useMemo(() => slots.reduce((map, slot) => {
+    const key = toDateKey(slot.date);
+    if (!key) return map;
+    return { ...map, [key]: [...(map[key] || []), slot] };
+  }, {}), [slots]);
+  const monthYear = calendarMonth.getFullYear();
+  const monthIndex = calendarMonth.getMonth();
+  const monthCells = useMemo(() => getMonthCells(monthYear, monthIndex), [monthYear, monthIndex]);
+  const selectedDateSlots = selectedSlotDate ? (slotsByDate[selectedSlotDate] || []) : [];
+
+  useEffect(() => {
+    if (!slots.length) {
+      setSelectedSlotDate('');
+      return;
+    }
+    const sortedDates = [...new Set(slots.map((slot) => toDateKey(slot.date)).filter(Boolean))].sort();
+    if (!selectedSlotDate || !slotsByDate[selectedSlotDate]) {
+      const firstDate = sortedDates[0];
+      setSelectedSlotDate(firstDate);
+      if (firstDate) {
+        const [year, month] = firstDate.split('-').map(Number);
+        setCalendarMonth(new Date(year, month - 1, 1));
+      }
+    }
+  }, [slots, selectedSlotDate, slotsByDate]);
 
   const openFollowUp = () => {
     setActionError('');
@@ -640,6 +691,7 @@ export default function ReportDetailScreen() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Failed to confirm interview slot.');
+      setPendingSlot(null);
       await loadInterviews();
       await loadSlots();
     } catch (err) {
@@ -995,30 +1047,96 @@ export default function ReportDetailScreen() {
                           <Text style={s.emptyText}>Loading available slots...</Text>
                         </View>
                       ) : slots.length ? (
-                        <View style={s.slotList}>
-                          {slots.map((slot) => (
+                        <View style={s.calendarCard}>
+                          <View style={s.calendarHeader}>
                             <Pressable
-                              key={slot.id}
-                              style={s.slotCard}
-                              disabled={slotSubmittingId === slot.id}
-                              onPress={() => selectInterviewSlot(currentInterview, slot)}
+                              style={s.calendarNavBtn}
+                              onPress={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
                             >
-                              <View style={s.slotIcon}>
-                                <Ionicons name="calendar-clear-outline" size={18} color={TEAL} />
-                              </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={s.slotDate}>{dateOf(slot.date)}</Text>
-                                <Text style={s.slotTime}>
-                                  {timeOf(slot.time)}{slot.duration ? ` · ${slot.duration} minutes` : ''}
-                                </Text>
-                              </View>
-                              {slotSubmittingId === slot.id ? (
-                                <ActivityIndicator color={TEAL} />
-                              ) : (
-                                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
-                              )}
+                              <Ionicons name="chevron-back" size={18} color={TEAL} />
                             </Pressable>
-                          ))}
+                            <Text style={s.calendarTitle}>
+                              {calendarMonth.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}
+                            </Text>
+                            <Pressable
+                              style={s.calendarNavBtn}
+                              onPress={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+                            >
+                              <Ionicons name="chevron-forward" size={18} color={TEAL} />
+                            </Pressable>
+                          </View>
+
+                          <View style={s.weekRow}>
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                              <Text key={day} style={s.weekDay}>{day}</Text>
+                            ))}
+                          </View>
+
+                          <View style={s.calendarGrid}>
+                            {monthCells.map((day, index) => {
+                              const dateKey = day ? `${monthYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
+                              const hasSlots = Boolean(slotsByDate[dateKey]?.length);
+                              const selected = selectedSlotDate === dateKey;
+                              return (
+                                <Pressable
+                                  key={`${dateKey || 'blank'}-${index}`}
+                                  disabled={!hasSlots}
+                                  style={[
+                                    s.calendarDay,
+                                    !day && s.calendarDayBlank,
+                                    hasSlots && s.calendarDayOpen,
+                                    selected && s.calendarDaySelected,
+                                  ]}
+                                  onPress={() => setSelectedSlotDate(dateKey)}
+                                >
+                                  {day ? (
+                                    <>
+                                      <Text style={[
+                                        s.calendarDayText,
+                                        hasSlots && s.calendarDayTextOpen,
+                                        selected && s.calendarDayTextSelected,
+                                      ]}>
+                                        {day}
+                                      </Text>
+                                      {hasSlots && <View style={[s.calendarDot, selected && s.calendarDotSelected]} />}
+                                    </>
+                                  ) : null}
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+
+                          <View style={s.slotPanel}>
+                            <Text style={s.slotPanelTitle}>
+                              {selectedSlotDate ? dateOf(selectedSlotDate) : 'Select a highlighted date'}
+                            </Text>
+                            {selectedDateSlots.length ? (
+                              <View style={s.timeChipList}>
+                                {selectedDateSlots.map((slot) => (
+                                  <Pressable
+                                    key={slot.id}
+                                    style={s.timeChip}
+                                    disabled={slotSubmittingId === slot.id}
+                                    onPress={() => {
+                                      setInterviewError('');
+                                      setPendingSlot(slot);
+                                    }}
+                                  >
+                                    {slotSubmittingId === slot.id ? (
+                                      <ActivityIndicator color="#fff" />
+                                    ) : (
+                                      <>
+                                        <Text style={s.timeChipText}>{timeOf(slot.time)}</Text>
+                                        {slot.duration ? <Text style={s.timeChipSub}>{slot.duration} min</Text> : null}
+                                      </>
+                                    )}
+                                  </Pressable>
+                                ))}
+                              </View>
+                            ) : (
+                              <Text style={s.slotPanelEmpty}>Choose a highlighted date to see available times.</Text>
+                            )}
+                          </View>
                         </View>
                       ) : (
                         <View style={s.followEmpty}>
@@ -1264,6 +1382,52 @@ export default function ReportDetailScreen() {
                 </Pressable>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(pendingSlot)} transparent animationType="fade" onRequestClose={() => !slotSubmittingId && setPendingSlot(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <View style={s.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.modalTitle}>Confirm Interview Slot</Text>
+                <Text style={s.modalSubtitle}>Please review the selected schedule before confirming.</Text>
+              </View>
+              <Pressable disabled={Boolean(slotSubmittingId)} onPress={() => setPendingSlot(null)}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </Pressable>
+            </View>
+            {pendingSlot && (
+              <View style={s.confirmSlotCard}>
+                <View style={s.confirmSlotIcon}>
+                  <Ionicons name="checkmark-circle-outline" size={24} color={TEAL} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.confirmSlotLabel}>Selected interview schedule</Text>
+                  <Text style={s.confirmSlotDate}>{dateOf(pendingSlot.date)}</Text>
+                  <Text style={s.confirmSlotTime}>
+                    {timeOf(pendingSlot.time)}{pendingSlot.duration ? ` · ${pendingSlot.duration} minutes` : ''}
+                  </Text>
+                </View>
+              </View>
+            )}
+            <Text style={s.confirmSlotNote}>
+              Once confirmed, your case officer will be notified and will send the meeting details shortly.
+            </Text>
+            {interviewError ? <Text style={s.modalError}>{interviewError}</Text> : null}
+            <View style={s.modalActions}>
+              <Pressable style={s.modalCancelBtn} disabled={Boolean(slotSubmittingId)} onPress={() => setPendingSlot(null)}>
+                <Text style={s.modalCancelText}>Back</Text>
+              </Pressable>
+              <Pressable
+                style={[s.modalPrimaryBtn, slotSubmittingId && { opacity: 0.7 }]}
+                disabled={Boolean(slotSubmittingId)}
+                onPress={() => pendingSlot && selectInterviewSlot(currentInterview, pendingSlot)}
+              >
+                {slotSubmittingId ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>Confirm Slot</Text>}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1726,6 +1890,120 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
   },
   interviewOutlineText: { color: TEAL, fontSize: 12, fontWeight: '900' },
+  calendarCard: {
+    borderWidth: 1,
+    borderColor: '#dbe7e7',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  calendarNavBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fafb',
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+  },
+  calendarTitle: { color: '#111827', fontSize: 15, fontWeight: '900' },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekDay: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    color: '#6b7280',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: 7,
+  },
+  calendarDay: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  calendarDayBlank: { opacity: 0 },
+  calendarDayOpen: {
+    backgroundColor: '#f0fafb',
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+  },
+  calendarDaySelected: {
+    backgroundColor: TEAL,
+    borderColor: TEAL,
+  },
+  calendarDayText: { color: '#9ca3af', fontSize: 12, fontWeight: '800' },
+  calendarDayTextOpen: { color: TEAL },
+  calendarDayTextSelected: { color: '#fff' },
+  calendarDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: TEAL,
+    marginTop: 3,
+  },
+  calendarDotSelected: { backgroundColor: '#fff' },
+  slotPanel: {
+    borderTopWidth: 1,
+    borderTopColor: '#eef2f2',
+    paddingTop: 12,
+    gap: 10,
+  },
+  slotPanelTitle: { color: '#111827', fontSize: 13, fontWeight: '900' },
+  slotPanelEmpty: { color: '#6b7280', fontSize: 12, lineHeight: 18 },
+  timeChipList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeChip: {
+    minWidth: 92,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  timeChipText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  timeChipSub: { color: '#d8f3f3', fontSize: 10, fontWeight: '800', marginTop: 2 },
+  confirmSlotCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#cde8e8',
+    borderRadius: 14,
+    backgroundColor: '#f0fafb',
+    padding: 13,
+  },
+  confirmSlotIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmSlotLabel: { color: '#6b7280', fontSize: 11, fontWeight: '900', marginBottom: 4 },
+  confirmSlotDate: { color: '#111827', fontSize: 15, fontWeight: '900' },
+  confirmSlotTime: { color: TEAL, fontSize: 13, fontWeight: '900', marginTop: 3 },
+  confirmSlotNote: { color: '#4b5563', fontSize: 12, lineHeight: 18, marginTop: 12 },
   slotList: { gap: 9 },
   slotCard: {
     flexDirection: 'row',
