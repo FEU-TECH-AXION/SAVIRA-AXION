@@ -231,7 +231,10 @@ function mapInterview(raw) {
 }
 
 function isInterviewWilling(report) {
-  return Boolean(report?.is_willing_for_interview ?? report?.is_willing_to_be_interviewed ?? report?.willing_for_interview);
+  const value = report?.is_willing_for_interview ?? report?.is_willing_to_be_interviewed ?? report?.willing_for_interview;
+  if (value === undefined || value === null || value === '') return true;
+  if (typeof value === 'string') return !['false', 'no', '0'].includes(value.trim().toLowerCase());
+  return Boolean(value);
 }
 
 function getReportId(report, paramId, caseId) {
