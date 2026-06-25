@@ -14,6 +14,16 @@ const PW_RULES = [
   { id: "special", label: "One special character (!@#$…)",  test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
+const NAME_PATTERN = /^\p{L}+(?:[ -]\p{L}+)*$/u;
+
+function validateName(value, label) {
+  const trimmed = value.trim();
+  if (!trimmed) return `${label} is required.`;
+  return NAME_PATTERN.test(trimmed)
+    ? ""
+    : `${label} can only contain letters with single spaces or hyphens between name parts.`;
+}
+
 function getStrength(pw) {
   const passed = PW_RULES.filter((r) => r.test(pw)).length;
   if (passed <= 1) return { level: 1, label: "Weak",        color: "#e53e3e" };
@@ -43,9 +53,9 @@ export default function SignUp() {
   const validate = (field, value) => {
     switch (field) {
       case "firstName":
-        return !value.trim() ? "First name is required." : "";
+        return validateName(value, "First name");
       case "lastName":
-        return !value.trim() ? "Last name is required." : "";
+        return validateName(value, "Last name");
       case "email":
         return !value.trim()
           ? "Email is required."
@@ -99,8 +109,8 @@ export default function SignUp() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          firstName: form.firstName,
-          lastName:  form.lastName,
+          firstName: form.firstName.trim(),
+          lastName:  form.lastName.trim(),
           email:     form.email,
           password:  form.password,
           agreed,

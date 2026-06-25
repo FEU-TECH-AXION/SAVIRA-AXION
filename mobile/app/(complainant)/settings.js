@@ -20,6 +20,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
+import PolicyMarkdown from '../../components/PolicyMarkdown';
+import { POLICIES } from '../../lib/policies';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -525,13 +527,8 @@ export default function SettingsScreen() {
                    <Pressable onPress={() => setPolicy('terms')} style={[styles.policyTabBtn, policy === 'terms' && styles.policyTabBtnActive]}><Text style={[styles.policyTabText, policy === 'terms' && styles.policyTabTextActive]}>Terms</Text></Pressable>
                    <Pressable onPress={() => setPolicy('privacy')} style={[styles.policyTabBtn, policy === 'privacy' && styles.policyTabBtnActive]}><Text style={[styles.policyTabText, policy === 'privacy' && styles.policyTabTextActive]}>Privacy</Text></Pressable>
                 </View>
-                <Text style={styles.sectionTitle}>{policy === 'terms' ? 'Terms & Conditions' : 'Privacy Policy'}</Text>
-                <Text style={styles.cardDesc}>Effective June 22, 2026</Text>
-                <Text style={[styles.prefDesc, {marginTop:10, lineHeight:20}]}>
-                  {policy === 'terms' 
-                    ? "Use Savira lawfully, provide accurate information, protect your account, and respect the safety and confidentiality of others. Do not misuse accounts, submit malicious reports, or access restricted records."
-                    : "Savira may collect account details, case reports, attachments, and preferences. Access is limited to authorized personnel and service providers with a legitimate purpose."}
-                </Text>
+                <Text style={styles.sectionTitle}>{POLICIES[policy].title}</Text>
+                <PolicyMarkdown markdown={POLICIES[policy].markdown} />
               </View>
             )}
 

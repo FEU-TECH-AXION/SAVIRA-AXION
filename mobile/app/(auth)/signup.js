@@ -15,6 +15,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './signup.style';
+import PolicyMarkdown from '../../components/PolicyMarkdown';
+import { POLICIES } from '../../lib/policies';
 
 // ── Password rules (mirrors web) ─────────────────────────────────────────────
 const PW_RULES = [
@@ -34,31 +36,9 @@ function getStrength(pw) {
   return              { level: 5, label: 'Very Strong',  color: '#276749' };
 }
 
-// ── Policy content ────────────────────────────────────────────────────────────
-const POLICY_CONTENT = {
-  terms: {
-    title: 'Terms & Conditions',
-    sections: [
-      ['Using Savira', 'Use Savira lawfully, provide accurate information, protect your account, and respect the confidentiality and safety of others.'],
-      ['Reports and interviews', 'Submit only relevant information you are authorized to provide. Interview schedules remain subject to availability and confirmation.'],
-      ['Acceptable conduct', 'Do not misuse accounts, submit malicious reports, access restricted records, disrupt the service, or disclose confidential information improperly.'],
-      ['Availability', 'Savira may be updated, interrupted, restricted, or suspended when needed for maintenance, safety, security, or legal compliance.'],
-    ],
-  },
-  privacy: {
-    title: 'Privacy Policy',
-    sections: [
-      ['Information collected', 'Savira may collect account details, reports, attachments, interview information, volunteer applications, preferences, and security logs.'],
-      ['How information is used', 'Information supports case services, interviews, volunteering, communications, safeguarding, platform security, and legal obligations.'],
-      ['Sharing and protection', 'Access is limited to authorized personnel and service providers with a legitimate purpose. Sensitive case information is not ordinary public content.'],
-      ['Your rights', 'Subject to applicable law, you may request access, correction, deletion or blocking, object to processing, or withdraw consent.'],
-    ],
-  },
-};
-
 // ── Policy Modal ──────────────────────────────────────────────────────────────
 function PolicyModal({ visible, policy, onClose }) {
-  const content = POLICY_CONTENT[policy];
+  const content = POLICIES[policy];
   if (!content) return null;
 
   return (
@@ -86,16 +66,7 @@ function PolicyModal({ visible, policy, onClose }) {
 
           {/* Body */}
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <Text style={styles.modalEffective}>Effective June 22, 2026</Text>
-            {content.sections.map(([title, text]) => (
-              <View key={title} style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>{title}</Text>
-                <Text style={styles.modalSectionText}>{text}</Text>
-              </View>
-            ))}
-            <Text style={styles.modalAck}>
-              By creating an account, you acknowledge that you have read and agree to this policy.
-            </Text>
+            <PolicyMarkdown markdown={content.markdown} />
           </ScrollView>
 
           {/* Footer */}

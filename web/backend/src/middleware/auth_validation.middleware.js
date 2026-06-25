@@ -1,5 +1,7 @@
 const { body, validationResult } = require('express-validator');
 
+const NAME_PATTERN = /^\p{L}+(?:[ -]\p{L}+)*$/u;
+
 // Define rules
 const loginRules = [
   body('email')
@@ -13,20 +15,18 @@ const loginRules = [
 
 const signupRules = [
 body('firstName')
+  .trim()
   .notEmpty().withMessage('First name is required')
   .isLength({ min: 2 }).withMessage('First name must be at least 2 characters')
   .isLength({ max: 50 }).withMessage('First name must not exceed 50 characters')
-  .matches(/^[a-zA-Z\-]+$/).withMessage('First name can only contain letters and hyphens')
-  .not().matches(/^-|-$/).withMessage('First name cannot start or end with a hyphen')
-  .not().matches(/--/).withMessage('First name cannot have consecutive hyphens'),
+  .matches(NAME_PATTERN).withMessage('First name can only contain letters with single spaces or hyphens between name parts'),
 
 body('lastName')
+  .trim()
   .notEmpty().withMessage('Last name is required')
   .isLength({ min: 2 }).withMessage('Last name must be at least 2 characters')
   .isLength({ max: 50 }).withMessage('Last name must not exceed 50 characters')
-  .matches(/^[a-zA-Z\-]+$/).withMessage('Last name can only contain letters and hyphens')
-  .not().matches(/^-|-$/).withMessage('Last name cannot start or end with a hyphen')
-  .not().matches(/--/).withMessage('Last name cannot have consecutive hyphens'),
+  .matches(NAME_PATTERN).withMessage('Last name can only contain letters with single spaces or hyphens between name parts'),
 
   body('email')
     .notEmpty().withMessage('Email is required')
