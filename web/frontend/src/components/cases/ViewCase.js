@@ -16,7 +16,8 @@ import {
   FiTrash2,
   FiPlus,
 } from "react-icons/fi";
-import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle } from "react-icons/io";
+import { MdAlert } from  "react-icons/md";
+import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle, IoIosAlert } from "react-icons/io";
 import { FaCheckCircle } from "react-icons/fa";
 import styles from "./ViewCase.module.css";
 import InterviewTab from "./interview/InterviewTab";
@@ -508,7 +509,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
     
           <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
             <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-              🏷️ Suggested Classification
+              Suggested Classification
             </h4>
 
             {/* Confidence tier disclaimer */}
@@ -585,7 +586,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
                   gap: 10,
                   alignItems: "flex-start",
               }}>
-                  <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>⚠️</span>
+                  <span style={{ fontSize: "1.1rem", flexShrink: 0, margin: 0, color: "#92400e"  }}><IoIosAlert /></span>
                   <div>
                       <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "#92400e" }}>
                           Report Needs Clarification
@@ -616,7 +617,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
                   border: "1px solid #e5e7eb",
               }}>
                   <h4 style={{ margin: "0 0 12px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>
-                      📋 Report Structure Assessment
+                      Report Structure Assessment
                   </h4>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {[

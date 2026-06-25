@@ -292,7 +292,7 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
         <FormGroup label="Duplicate report checked?" required error={errors.duplicateChecked}>
           <FSelect value={form.duplicateChecked} onChange={set("duplicateChecked")} error={errors.duplicateChecked}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — No duplicates found</option>
             <option>Yes — Possible duplicate identified (noted below)</option>
             <option>Not yet checked</option>
@@ -300,7 +300,7 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Immediate safety issues identified?" required error={errors.safetyIssues}>
           <FSelect value={form.safetyIssues} onChange={set("safetyIssues")} error={errors.safetyIssues}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>No immediate safety issues</option>
             <option>Possible safety concern (noted below)</option>
             <option>Urgent — survivor may be in immediate danger</option>
@@ -311,7 +311,7 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Survivor contacted for clarification?" required error={errors.survivorContacted}>
           <FSelect value={form.survivorContacted} onChange={set("survivorContacted")} error={errors.survivorContacted}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — clarification obtained</option>
             <option>Yes — awaiting response</option>
             <option>Not yet — pending</option>
@@ -352,7 +352,7 @@ function VerifiedTrueModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Report confirmed within SASHA's scope?" required error={errors.scopeConfirmed}>
           <FSelect value={form.scopeConfirmed} onChange={set("scopeConfirmed")} error={errors.scopeConfirmed}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — fully within scope</option>
             <option>Partially — some aspects require referral</option>
           </FSelect>
@@ -407,7 +407,7 @@ function VerifiedFalseModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Records handling confirmed?" required error={errors.recordsHandled}>
           <FSelect value={form.recordsHandled} onChange={set("recordsHandled")} error={errors.recordsHandled}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — records retained as controlled internal document</option>
             <option>Yes — records flagged for confidential archiving</option>
           </FSelect>
@@ -462,7 +462,7 @@ function CaseEvaluationModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Survivor informed of options?" required error={errors.survivorInformed}>
           <FSelect value={form.survivorInformed} onChange={set("survivorInformed")} error={errors.survivorInformed}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — survivor fully informed and consents to next steps</option>
             <option>Yes — survivor informed, awaiting decision</option>
             <option>Pending — schedule to inform survivor</option>
@@ -547,7 +547,7 @@ function InvestigationModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Survivor safety assessment" required error={errors.survivorSafety}>
           <FSelect value={form.survivorSafety} onChange={set("survivorSafety")} error={errors.survivorSafety}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Safe — no immediate risk identified</option>
             <option>Concern noted — monitoring ongoing</option>
             <option>Urgent concern — immediate action needed</option>
@@ -555,7 +555,7 @@ function InvestigationModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Procedural fairness observed?">
           <FSelect value={form.proceduralFairness} onChange={set("proceduralFairness")}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — process appears fair and proper</option>
             <option>Concern noted — possible procedural issue</option>
             <option>Unknown — monitoring</option>
@@ -595,7 +595,7 @@ function HearingModal({ open, onClose, caseData, onSubmit, actorName }) {
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
         <FormGroup label="Type of hearing / proceeding" required error={errors.hearingType}>
           <FSelect value={form.hearingType} onChange={set("hearingType")} error={errors.hearingType}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>CODI hearing / fact-finding</option>
             <option>Administrative inquiry</option>
             <option>Court hearing</option>
@@ -660,7 +660,7 @@ function DismissedModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Survivor notified of outcome?" required error={errors.survivorNotified}>
           <FSelect value={form.survivorNotified} onChange={set("survivorNotified")} error={errors.survivorNotified}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Yes — survivor informed and counseled</option>
             <option>Yes — survivor informed, no further support needed</option>
             <option>Pending — contact scheduled</option>
@@ -700,7 +700,7 @@ function ConvictedModal({ open, onClose, caseData, onSubmit, actorName }) {
         </FormGroup>
         <FormGroup label="Nature of conviction / finding" required error={errors.outcomeType}>
           <FSelect value={form.outcomeType} onChange={set("outcomeType")} error={errors.outcomeType}>
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             <option>Criminal conviction</option>
             <option>Administrative finding of guilt</option>
             <option>Civil liability established</option>

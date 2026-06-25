@@ -340,7 +340,7 @@
 
 .compareRow {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 150px minmax(0, calc(50% - 150px)) minmax(0, 50%);
   border-top: 1px solid var(--sasha-border);
   min-height: 48px;
 }
