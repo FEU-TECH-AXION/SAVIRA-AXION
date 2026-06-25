@@ -383,11 +383,13 @@ export default function CasesTable({
 
                     <td className={styles.td}>
                       {c.possibleDuplicates?.length ? (
-                        <span title={`${c.possibleDuplicates.length} possible duplicate match(es)`} style={{
-                          display: "inline-flex", borderRadius: 999, padding: "4px 9px",
-                          background: "#fff7ed", color: "#9a3412", fontSize: "0.72rem", fontWeight: 800,
-                        }}>
-                          Possible duplicate · {Math.max(...c.possibleDuplicates.map((item) => Number(item.similarity_score) || 0))}%
+                        <span
+                          className={styles.duplicateCheckBadge}
+                          title={`${c.possibleDuplicates.length} possible duplicate match(es)`}
+                        >
+                          <span className={styles.duplicateCheckDot} />
+                          Review matches
+                          <strong>{Math.max(...c.possibleDuplicates.map((item) => Number(item.similarity_score) || 0))}%</strong>
                         </span>
                       ) : (
                         <span className={styles.muted}>No match</span>

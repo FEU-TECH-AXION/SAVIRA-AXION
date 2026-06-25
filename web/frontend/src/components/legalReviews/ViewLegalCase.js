@@ -30,6 +30,7 @@ import {
   ParalegalSupportModal,
   EndorseModal,
   MonitoringModal,
+  PARALEGAL_EVIDENCE_LABELS,
 } from "./LegalReviewModals";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -306,7 +307,7 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
             <option>Urgent — survivor may be in immediate danger</option>
           </FSelect>
         </FormGroup>
-        <FormGroup label="Missing information identified" hint="List any incomplete or missing details in the report.">
+        <FormGroup label="Missing information identified?" hint="List any incomplete or missing details in the report.">
           <FTextarea placeholder="e.g. Respondent identity unknown, incident date unclear…" value={form.missingInfo} onChange={set("missingInfo")} />
         </FormGroup>
         <FormGroup label="Survivor contacted for clarification?" required error={errors.survivorContacted}>
@@ -878,6 +879,162 @@ function safeDocumentUrl(value) {
   }
 }
 
+const PARALEGAL_LEGACY_FIELD_MAP = {
+  "Sworn statement": "swornStatement",
+  "Incident timeline": "timeline",
+  "Screenshots / digital evidence": "screenshots",
+  "ID documents": "idDocuments",
+  "Medico-legal report": "medicoLegalReport",
+  "Witness statements": "witnessStatements",
+};
+
+function normalizeParalegalEvidence(record = {}) {
+  const knownStatuses = ["Not started", "In progress", "Obtained", "Survivor declined"];
+  const obtainedDocuments = new Set(typeof record.documents === "string" ? record.documents.split(", ").filter(Boolean) : []);
+
+  return PARALEGAL_EVIDENCE_LABELS.map((label) => {
+    const savedItem = record.evidenceItems?.[label] || {};
+    const legacyValue = record[PARALEGAL_LEGACY_FIELD_MAP[label]];
+    const legacyStatus = knownStatuses.includes(legacyValue) ? legacyValue : "";
+    const status = savedItem.status || (obtainedDocuments.has(label) ? "Obtained" : legacyStatus || (legacyValue ? "In progress" : "Not started"));
+
+    return {
+      label,
+      status,
+      notes: savedItem.notes || (!knownStatuses.includes(legacyValue) && legacyValue ? String(legacyValue) : ""),
+      fileLink: savedItem.fileLink || "",
+    };
+  });
+}
+
+function getParalegalStatusClass(status = "") {
+  const normalized = status.toLowerCase();
+  if (normalized === "obtained") return styles.paralegalStatusObtained;
+  if (normalized === "in progress") return styles.paralegalStatusProgress;
+  if (normalized === "survivor declined") return styles.paralegalStatusDeclined;
+  return styles.paralegalStatusIdle;
+}
+
+function formatLegalReviewDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("en-PH");
+}
+
+function ParalegalStatusPill({ status }) {
+  return (
+    <span className={`${styles.paralegalStatusPill} ${getParalegalStatusClass(status)}`}>
+      {status || "Not started"}
+    </span>
+  );
+}
+
+function ParalegalSupportDetails({ record, caseId }) {
+  const evidenceItems = normalizeParalegalEvidence(record);
+  const obtainedCount = evidenceItems.filter((item) => item.status === "Obtained").length;
+  const progressCount = evidenceItems.filter((item) => item.status === "In progress").length;
+  const declinedCount = evidenceItems.filter((item) => item.status === "Survivor declined").length;
+  const readyForLawyer = Boolean(record.readyForLawyerReview);
+  const completionPercent = evidenceItems.length > 0 ? Math.round((obtainedCount / evidenceItems.length) * 100) : 0;
+  const overviewItems = [
+    ["Case ID", caseId || "Not recorded"],
+    ["Organized By", record.organizedBy || "Not recorded"],
+    ["Last Updated", record.date || "Not recorded"],
+    ["Ready For Lawyer Review", readyForLawyer ? "Yes" : "No"],
+    ["Survivor Confirmed Understanding", record.survivorUnderstood ? "Yes" : "No"],
+    ...(record.readyAt ? [["Marked Ready On", formatLegalReviewDate(record.readyAt)]] : []),
+  ];
+
+  return (
+    <div className={styles.paralegalPanel}>
+      <div className={styles.paralegalOverviewGrid}>
+        <div className={`${styles.paralegalOverviewCard} ${readyForLawyer ? styles.paralegalOverviewReady : styles.paralegalOverviewPending}`}>
+          <p className={styles.paralegalOverviewLabel}>Review Readiness</p>
+          <div className={styles.paralegalOverviewValue}>
+            {readyForLawyer ? <FiCheck aria-hidden="true" /> : <FiClock aria-hidden="true" />}
+            <span>{readyForLawyer ? "Ready" : "Not ready"}</span>
+          </div>
+          <p className={styles.paralegalOverviewHint}>{obtainedCount} of {evidenceItems.length} evidence items obtained</p>
+        </div>
+
+        <div className={styles.paralegalOverviewCard}>
+          <p className={styles.paralegalOverviewLabel}>Evidence Progress</p>
+          <div className={styles.paralegalProgressTrack} aria-label={`${completionPercent}% evidence completion`}>
+            <span className={styles.paralegalProgressFill} style={{ width: `${completionPercent}%` }} />
+          </div>
+          <p className={styles.paralegalOverviewHint}>{completionPercent}% complete</p>
+        </div>
+
+        <div className={styles.paralegalOverviewCard}>
+          <p className={styles.paralegalOverviewLabel}>Needs Attention</p>
+          <p className={styles.paralegalOverviewValueText}>{progressCount + declinedCount}</p>
+          <p className={styles.paralegalOverviewHint}>{progressCount} in progress, {declinedCount} declined</p>
+        </div>
+      </div>
+
+      <div className={styles.detailGrid}>
+        {overviewItems.map(([key, value]) => (
+          <div key={key} className={styles.detailItem}>
+            <p className={styles.detailKey}>{key}</p>
+            <p className={styles.detailVal}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.paralegalTextGrid}>
+        {[
+          ["Key Incident Details", record.incidentDetails],
+          ["What Was Explained To The Survivor", record.explainedToSurvivor],
+          ["Additional Notes", record.otherNotes],
+        ].map(([key, value]) => (
+          <div key={key} className={styles.paralegalTextBlock}>
+            <p className={styles.detailKey}>{key}</p>
+            <p className={styles.descriptionVal}>{value || "Not recorded"}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.paralegalChecklistHeader}>
+        <h3>Evidence Checklist</h3>
+        <span>{obtainedCount}/{evidenceItems.length} obtained</span>
+      </div>
+
+      <div className={styles.paralegalChecklistGrid}>
+        {evidenceItems.map((item) => {
+          const safeUrl = safeDocumentUrl(item.fileLink);
+          return (
+            <article key={item.label} className={styles.paralegalChecklistCard}>
+              <div className={styles.paralegalChecklistTop}>
+                <h4>{item.label}</h4>
+                <ParalegalStatusPill status={item.status} />
+              </div>
+              <div className={styles.paralegalChecklistBody}>
+                <div>
+                  <p className={styles.detailKey}>Notes</p>
+                  <p className={styles.descriptionVal}>{item.notes || "No notes recorded"}</p>
+                </div>
+                <div>
+                  <p className={styles.detailKey}>Secure File Link</p>
+                  {item.fileLink ? (
+                    safeUrl ? (
+                      <a className={styles.paralegalFileLink} href={safeUrl} target="_blank" rel="noreferrer">Open secure file</a>
+                    ) : (
+                      <p className={styles.descriptionVal}>Saved link is invalid</p>
+                    )
+                  ) : (
+                    <p className={styles.descriptionVal}>No file linked</p>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function LegalReviewDetailsSection({ caseData }) {
   const hasParalegal = !!caseData.paralegalRecord;
   const hasLawyer = !!caseData.lawyerRecord;
@@ -894,6 +1051,16 @@ function LegalReviewDetailsSection({ caseData }) {
   ]
     .filter((item) => item.value && !Number.isNaN(new Date(item.value).getTime()))
     .sort((a, b) => new Date(a.value) - new Date(b.value));
+  const paralegalEvidence = hasParalegal ? normalizeParalegalEvidence(caseData.paralegalRecord) : [];
+  const paralegalObtainedCount = paralegalEvidence.filter((item) => item.status === "Obtained").length;
+  const paralegalSummary = hasParalegal
+    ? [
+        `${paralegalObtainedCount}/${paralegalEvidence.length} evidence items obtained`,
+        caseData.paralegalRecord.readyForLawyerReview ? "Ready for lawyer review" : "Not ready for lawyer review",
+        caseData.paralegalRecord.date,
+        caseData.paralegalRecord.organizedBy,
+      ].filter(Boolean).join(" - ")
+    : "";
 
   return (
     <section className={styles.section}>
@@ -908,26 +1075,10 @@ function LegalReviewDetailsSection({ caseData }) {
         <DetailAccordion
           title="Paralegal Support"
           style={{ order: 1 }}
-          summary={[caseData.paralegalRecord.date, caseData.paralegalRecord.organizedBy].filter(Boolean).join(" — ")}
+          summary={paralegalSummary}
+          defaultOpen
         >
-          <div className={styles.detailGrid}>
-            {[
-              ["Organized By", caseData.paralegalRecord.organizedBy],
-              ["Date", caseData.paralegalRecord.date],
-              ["Documents", caseData.paralegalRecord.documents],
-              ["Sworn Statement", caseData.paralegalRecord.swornStatement],
-              ["Identity Documents", caseData.paralegalRecord.idDocuments],
-              ["Digital Evidence", caseData.paralegalRecord.screenshots],
-              ["Incident Timeline", caseData.paralegalRecord.timeline],
-              ["Key Incident Details", caseData.paralegalRecord.incidentDetails],
-              ["Additional Notes", caseData.paralegalRecord.otherNotes],
-            ].map(([k, v]) => v ? (
-              <div key={k} className={styles.detailItem}>
-                <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v}</p>
-              </div>
-            ) : null)}
-          </div>
+          <ParalegalSupportDetails record={caseData.paralegalRecord} caseId={caseData.caseId || caseData.id} />
         </DetailAccordion>
       )}
 

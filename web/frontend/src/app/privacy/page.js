@@ -2,8 +2,8 @@ import Link from "next/link";
 import styles from "./privacy.module.css";
 
 export const metadata = {
-  title: "Privacy Policy | Savira",
-  description: "How Savira collects, uses, stores, and protects personal information.",
+  title: "Privacy Policy | SASHA",
+  description: "How SASHA collects, uses, stores, and protects personal information.",
 };
 
 export default function PrivacyPage() {
@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <main className={styles.page}>
       <div className={styles.hero}>
         <div className={styles.container}>
-          <p className={styles.eyebrow}>Savira Policies</p>
+          <p className={styles.eyebrow}>SASHA Policies</p>
           <h1>Privacy Policy</h1>
           <p>Effective June 22, 2026</p>
         </div>
@@ -26,14 +26,14 @@ export default function PrivacyPage() {
 
         <article className={styles.content}>
           <div className={styles.notice}>
-            Savira handles case-related information with heightened care because it may include
+            SASHA handles case-related information with heightened care because it may include
             sensitive personal information.
           </div>
 
           <section>
             <h2>1. Scope and privacy commitment</h2>
             <p>
-              This policy explains how Savira and SASHA process personal information when you use
+              This policy explains how SASHA process personal information when you use
               the website, create an account, submit a report, schedule an interview, volunteer,
               join an event, or communicate with us. We aim to follow the Philippine Data Privacy
               Act of 2012, its implementing rules, and applicable guidance.
@@ -107,7 +107,7 @@ export default function PrivacyPage() {
           <section>
             <h2>8. Cookies and third-party services</h2>
             <p>
-              Savira may use cookies or similar storage for sessions, preferences, security, and
+              SASHA may use cookies or similar storage for sessions, preferences, security, and
               functionality. Mapping, email, hosting, analytics, and meeting providers may process
               limited information under their own privacy terms and our service arrangements.
             </p>
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
           <section>
             <h2>11. Updates and contact</h2>
             <p>
-              We may revise this policy as Savira, legal requirements, or our practices change. The
+              We may revise this policy as SASHA, legal requirements, or our practices change. The
               effective date above identifies the latest version. For privacy questions or rights
               requests, use the <Link href="/contact">Contact page</Link> and identify the request as
               privacy-related.

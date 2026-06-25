@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle, FiCheck, FiClock, FiChevronDown, FiChevronUp } from "react-icons/fi";
-import { IoMdClose } from "react-icons/io";
+import { IoMdClose, IoIosInformationCircle } from "react-icons/io";
 import { GoDotFill } from "react-icons/go";
 import CasesTable from "./CasesTable";
 import FilterMenu from "./FilterMenu";
@@ -510,13 +510,13 @@ function ViewCaseModal({ open, onClose, caseData, isAdmin, isCaseOfficer }) {
         <div>
           {/* Disclaimer */}
           <div style={{
-            background: "#f5f3ff",
-            border: "1px solid #ddd6fe",
+            background: "#fff7ed",
+            border: "1px solid #fed7aa",
             borderRadius: 8,
             padding: "10px 14px",
             marginBottom: "1.25rem",
             fontSize: "0.82rem",
-            color: "#5b21b6",
+            color: "#9a3412",
             display: "flex",
             gap: 8,
             alignItems: "flex-start",
@@ -1873,6 +1873,21 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       onSubmit={(caseItem, proposedStatus, changeDetails) =>
         submitForApproval(caseItem, proposedStatus, changeDetails)
       }
+      onOpenDuplicateCheck={() => {
+        if (!selected?.id) return;
+        setModal(null);
+        router.push(`/cases/view?caseId=${selected.id}&tab=duplicates`);
+      }}
+      onOpenNlpAnalysis={() => {
+        if (!selected?.id) return;
+        setModal(null);
+        router.push(`/cases/view?caseId=${selected.id}&tab=nlp`);
+      }}
+      onRequestClarification={() => {
+        if (!selected?.id) return;
+        setModal(null);
+        router.push(`/cases/view?caseId=${selected.id}&tab=follow-ups`);
+      }}
     />
 
       {/* Admin approval */}

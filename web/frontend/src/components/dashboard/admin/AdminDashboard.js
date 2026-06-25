@@ -283,31 +283,22 @@ export default function AdminDashboard() {
             <div className={styles.headingLine} />
           </div>
 
-          <div className="row g-3">
+          <div className={styles.dashboardOverviewGrid}>
             {/* 2×2 overview cards */}
-            <div className="col-12 col-lg-8">
-              <div className="row g-3">
+            <div className={styles.dashboardMainColumn}>
+              <div className={styles.moduleOverviewGrid}>
                 {overviewCards.map((card, i) => (
-                  <div key={i} className="col-12 col-sm-6">
+                  <div key={i} className={styles.moduleOverviewItem}>
                     <OverviewCard {...card} />
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Calendar */}
-            <div className="col-12 col-lg-4">
-              <DashboardEventsCard />
-            </div>
-          </div>
-
-          {/* ── Bottom row ── */}
-          <div className="row g-3 mt-1">
-            <div className="col-12 col-lg-8">
               <DashboardHeatmapCard />
             </div>
 
-            <div className="col-12 col-lg-4">
+            {/* Calendar */}
+            <div className={styles.dashboardSideColumn}>
+              <DashboardEventsCard />
               <div className={styles.deadlinesCard}>
                 <h3 className={styles.deadlinesTitle}>Upcoming Deadlines</h3>
                 {deadlines.length === 0 ? (

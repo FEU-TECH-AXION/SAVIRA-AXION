@@ -20,6 +20,7 @@ import { MdAlert } from  "react-icons/md";
 import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle, IoIosAlert } from "react-icons/io";
 import { FaCheckCircle } from "react-icons/fa";
 import styles from "./ViewCase.module.css";
+import duplicateStyles from "./DuplicateCheckTab.module.css";
 import InterviewTab from "./interview/InterviewTab";
 import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals";
 import StatusDetailsSection from "./StatusDetailsSection";
@@ -833,7 +834,20 @@ function AssessmentActionGroup({ title, records, fields, emptyText }) {
   );
 }
 
-function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
+function CaseManagementTab({
+  caseData,
+  setCaseData,
+  isAdmin,
+  isCaseOfficer,
+  isLegal,
+  actorName,
+  userId,
+  userRole,
+  showToast,
+  onOpenDuplicateCheck,
+  onOpenNlpAnalysis,
+  onRequestClarification,
+}) {
   const [modal, setModal] = useState(null);
 
   function getAvailableTransitionsLocal() {
@@ -1215,7 +1229,30 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       <StatusHistorySection caseData={caseData} />
 
-      <UpdateStatusModal open={modal === "statusRouter"} caseData={caseData} onClose={() => setModal(null)} onSubmit={submitForApproval} actorName={actorName} isAdmin={isAdmin} isCaseOfficer={isCaseOfficer} isLegal={isLegal} viewCaseMode includeCurrentStatus />
+      <UpdateStatusModal
+        open={modal === "statusRouter"}
+        caseData={caseData}
+        onClose={() => setModal(null)}
+        onSubmit={submitForApproval}
+        actorName={actorName}
+        isAdmin={isAdmin}
+        isCaseOfficer={isCaseOfficer}
+        isLegal={isLegal}
+        viewCaseMode
+        includeCurrentStatus
+        onOpenDuplicateCheck={() => {
+          setModal(null);
+          onOpenDuplicateCheck?.();
+        }}
+        onOpenNlpAnalysis={() => {
+          setModal(null);
+          onOpenNlpAnalysis?.();
+        }}
+        onRequestClarification={() => {
+          setModal(null);
+          onRequestClarification?.();
+        }}
+      />
 
       {modal === "inviteInterview" && <InviteToInterviewModal open onClose={() => setModal(null)} caseData={caseData} actorName={actorName} userId={userId} userRole={userRole} showToast={showToast} />}
 
@@ -1557,7 +1594,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 // MAIN VIEWCASE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DuplicateComparePanel({ currentCase, compareCase, loading, error, onClose }) {
+function DuplicateComparePanel({ currentCase, compareCase, loading, error }) {
   const rows = [
     ["Complainant", currentCase?.name, compareCase?.name],
     ["Email", currentCase?.email, compareCase?.email],
@@ -1569,53 +1606,150 @@ function DuplicateComparePanel({ currentCase, compareCase, loading, error, onClo
   ];
 
   return (
-    <section className={styles.comparePanel}>
-      <div className={styles.compareHeader}>
+    <section className={duplicateStyles.comparePanel}>
+      <div className={duplicateStyles.compareHeader}>
         <div>
-          <p className={styles.compareEyebrow}>Duplicate comparison</p>
-          <h2 className={styles.compareTitle}>
+          <p className={duplicateStyles.compareEyebrow}>Duplicate comparison</p>
+          <h2 className={duplicateStyles.compareTitle}>
             {currentCase.caseId} vs {compareCase?.caseId || "matched case"}
           </h2>
         </div>
-        <button type="button" className={styles.compareCloseBtn} onClick={onClose}>
-          Close compare
-        </button>
       </div>
 
       {loading ? (
-        <p className={styles.compareState}>Loading matched case...</p>
+        <p className={duplicateStyles.compareState}>Loading matched case...</p>
       ) : error ? (
-        <p className={styles.compareState}>{error}</p>
+        <p className={duplicateStyles.compareState}>{error}</p>
       ) : compareCase ? (
         <>
-          <div className={styles.compareGrid}>
-            <div className={styles.compareCaseCard}>
-              <span className={styles.compareCaseLabel}>Current report</span>
+          <div className={duplicateStyles.compareGrid}>
+            <div className={duplicateStyles.compareCaseCard}>
+              <span className={duplicateStyles.compareCaseLabel}>Current report</span>
               <strong>{currentCase.caseId}</strong>
             </div>
-            <div className={styles.compareCaseCard}>
-              <span className={styles.compareCaseLabel}>Possible duplicate</span>
+            <div className={duplicateStyles.compareCaseCard}>
+              <span className={duplicateStyles.compareCaseLabel}>Possible duplicate</span>
               <strong>{compareCase.caseId}</strong>
             </div>
           </div>
 
-          <div className={styles.compareTable}>
+          <div className={duplicateStyles.compareTable}>
             {rows.map(([label, currentValue, compareValue]) => (
-              <div className={styles.compareRow} key={label}>
-                <div className={styles.compareField}>{label}</div>
-                <div className={styles.compareValue}>{currentValue || "Not provided"}</div>
-                <div className={styles.compareValue}>{compareValue || "Not provided"}</div>
+              <div className={duplicateStyles.compareRow} key={label}>
+                <div className={duplicateStyles.compareField}>{label}</div>
+                <div className={duplicateStyles.compareValue}>{currentValue || "Not provided"}</div>
+                <div className={duplicateStyles.compareValue}>{compareValue || "Not provided"}</div>
               </div>
             ))}
-            <div className={`${styles.compareRow} ${styles.compareDescriptionRow}`}>
-              <div className={styles.compareField}>Description</div>
-              <div className={styles.compareValue}>{currentCase.description || "Not provided"}</div>
-              <div className={styles.compareValue}>{compareCase.description || "Not provided"}</div>
+            <div className={`${duplicateStyles.compareRow} ${duplicateStyles.compareDescriptionRow}`}>
+              <div className={duplicateStyles.compareField}>Description</div>
+              <div className={duplicateStyles.compareValue}>{currentCase.description || "Not provided"}</div>
+              <div className={duplicateStyles.compareValue}>{compareCase.description || "Not provided"}</div>
             </div>
           </div>
         </>
       ) : null}
     </section>
+  );
+}
+
+function DuplicateCheckTab({
+  caseData,
+  compareCaseId,
+  compareCaseData,
+  compareLoading,
+  compareError,
+  onDismiss,
+  onViewCompare,
+  onCloseCompare,
+}) {
+  const matches = caseData.possibleDuplicates || [];
+
+  return (
+    <div className={duplicateStyles.reviewShell}>
+      <section className={duplicateStyles.summaryPanel}>
+        <div>
+          <p className={duplicateStyles.summaryEyebrow}>Duplicate check</p>
+          <h2 className={duplicateStyles.summaryTitle}>
+            Possible duplicate report{matches.length === 1 ? "" : "s"}
+          </h2>
+          <p className={duplicateStyles.summaryText}>
+            Review these matches before proceeding. This warning does not block case work.
+          </p>
+        </div>
+        <span className={duplicateStyles.summaryCount}>
+          {matches.length} match{matches.length === 1 ? "" : "es"}
+        </span>
+      </section>
+
+      {matches.length > 0 ? (
+        <div className={duplicateStyles.matchList}>
+          {matches.map((match) => {
+            const isComparing = String(compareCaseId) === String(match.matched_case_report_id);
+            return (
+              <article
+                key={match.duplicate_match_id}
+                className={`${duplicateStyles.matchCard} ${
+                  isComparing
+                    ? duplicateStyles.matchCardActive
+                    : ""
+                }`}
+              >
+                <div className={duplicateStyles.matchInfo}>
+                  <div className={duplicateStyles.matchMeta}>
+                    <a
+                      href={`/cases/view?caseId=${match.matched_case_report_id}`}
+                      className={duplicateStyles.matchCaseLink}
+                    >
+                      Case #{match.matched_case_report_id}
+                    </a>
+                    <span className={duplicateStyles.matchScore}>
+                      {Number(match.similarity_score)}% match
+                    </span>
+                  </div>
+                  <div className={duplicateStyles.fieldPills}>
+                    {(match.matched_fields || []).map((field) => (
+                      <span key={field}>{field}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className={duplicateStyles.matchActions}>
+                  <button
+                    type="button"
+                    className={duplicateStyles.primaryButton}
+                    onClick={() => isComparing ? onCloseCompare() : onViewCompare(match.matched_case_report_id)}
+                  >
+                    {isComparing ? "Close" : "View"}
+                  </button>
+                  <button
+                    type="button"
+                    className={duplicateStyles.secondaryButton}
+                    onClick={() => onDismiss(match.duplicate_match_id)}
+                  >
+                    Not a duplicate
+                  </button>
+                </div>
+                {isComparing && (
+                  <div className={duplicateStyles.inlineCompare}>
+                    <DuplicateComparePanel
+                      currentCase={caseData}
+                      compareCase={compareCaseData}
+                      loading={compareLoading}
+                      error={compareError}
+                    />
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <section className={duplicateStyles.emptyState}>
+          <strong>No active duplicate warnings</strong>
+          <p>All detected matches have been dismissed or no possible duplicate reports were found.</p>
+        </section>
+      )}
+    </div>
   );
 }
 
@@ -1627,6 +1761,7 @@ export default function ViewCase() {
   const caseId    = searchParams.get("caseId");
   const fromParam = searchParams.get("from");
   const compareCaseId = searchParams.get("compareCaseId");
+  const initialTab = compareCaseId ? "duplicates" : searchParams.get("tab") || "details";
 
   const [caseData, setCaseData] = useState(null);
   const [compareCaseData, setCompareCaseData] = useState(null);
@@ -1634,7 +1769,7 @@ export default function ViewCase() {
   const [compareError, setCompareError] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser]         = useState({ role: null });
   const [userLoaded, setUserLoaded] = useState(false);
   const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
@@ -1667,6 +1802,50 @@ export default function ViewCase() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
+
+  const goToDuplicateTab = () => {
+    setActiveTab("duplicates");
+    router.push(`/cases/view?caseId=${caseData.id}&tab=duplicates`);
+  };
+
+  const goToNlpAnalysisTab = () => {
+    setActiveTab("nlp");
+    router.push(`/cases/view?caseId=${caseData.id}&tab=nlp`);
+  };
+
+  const requestClarificationFromAnalysis = () => {
+    setActiveTab("follow-ups");
+    router.push(`/cases/view?caseId=${caseData.id}&tab=follow-ups`);
+    setFollowUpComposerOpen(true);
+  };
+
+  const viewDuplicateCompare = (matchedCaseId) => {
+    setActiveTab("duplicates");
+    router.push(`/cases/view?caseId=${caseData.id}&tab=duplicates&compareCaseId=${matchedCaseId}`);
+  };
+
+  const closeDuplicateCompare = () => {
+    router.push(`/cases/view?caseId=${caseData.id}&tab=duplicates`);
+  };
+
+  const dismissDuplicate = async (matchId) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+    const response = await fetch(
+      `${API_URL}/api/case_reports/${caseData.id}/duplicates/${matchId}/dismiss`,
+      { method: "PATCH", credentials: "include" }
+    );
+    if (response.ok) {
+      setCaseData((current) => ({
+        ...current,
+        possibleDuplicates: current.possibleDuplicates.filter(
+          (item) => item.duplicate_match_id !== matchId
+        ),
+      }));
+      showToast("Duplicate warning dismissed.");
+    } else {
+      showToast("Could not dismiss duplicate warning.", "danger");
+    }
+  };
 
   const handleWithdraw = async (id) => {
     if (!withdrawReason.trim()) {
@@ -1708,14 +1887,6 @@ export default function ViewCase() {
     }
     setUserLoaded(true);
   }, []);
-
-  // Set active tab from search params
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
@@ -1892,6 +2063,7 @@ export default function ViewCase() {
     { id: "follow-ups", label: "Follow-ups", tooltip: "View clarification requests, corrections, and replies.", staffOnly: false },
     ...(isStaff ? [
       { id: "management", label: "Case Management", tooltip: "Manage status, classification, referrals, and internal notes.", staffOnly: true },
+      { id: "duplicates", label: "Duplicate Check", tooltip: "Review possible duplicate report matches.", staffOnly: true },
       { id: "nlp", label: "NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true },
     ] : []),
   ];
@@ -1933,6 +2105,16 @@ export default function ViewCase() {
             <div className={styles.headerActions}>
               <StatusBadge status={caseData.status} />
               <FollowUpBadge summary={caseData.followUpSummary} />
+              {isStaff && caseData.possibleDuplicates?.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.duplicateHeaderButton}
+                  onClick={goToDuplicateTab}
+                >
+                  Duplicate Check
+                  <span>{caseData.possibleDuplicates.length}</span>
+                </button>
+              )}
               {(!isStaff || canManageFollowUps) &&
                 !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
                 <Tooltip text={
@@ -1970,79 +2152,6 @@ export default function ViewCase() {
             </div>
           </div>
         </div>
-
-        {isStaff && caseData.possibleDuplicates?.length > 0 && (
-          <section className={styles.duplicateWarning}>
-            <div className={styles.duplicateHeader}>
-              <div>
-                <strong>Possible duplicate report{caseData.possibleDuplicates.length > 1 ? "s" : ""}</strong>
-                <p>
-                  Review these matches before proceeding. This is a warning only and does not block the case.
-                </p>
-              </div>
-            </div>
-            <div className={styles.duplicateList}>
-              {caseData.possibleDuplicates.map((match) => (
-                <div key={match.duplicate_match_id} className={styles.duplicateItem}>
-                  <div className={styles.duplicateInfo}>
-                    <div className={styles.duplicateMeta}>
-                      <a href={`/cases/view?caseId=${match.matched_case_report_id}`} className={styles.duplicateCaseLink}>
-                        Case #{match.matched_case_report_id}
-                      </a>
-                      <span className={styles.duplicateScore}>{Number(match.similarity_score)}% match</span>
-                    </div>
-                    <div className={styles.duplicateFields}>
-                      {(match.matched_fields || []).map((field) => (
-                        <span key={field}>{field}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className={styles.duplicateActions}>
-                    <button
-                      type="button"
-                      className={styles.duplicatePrimaryBtn}
-                      onClick={() => router.push(`/cases/view?caseId=${caseData.id}&compareCaseId=${match.matched_case_report_id}`)}
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.duplicateSecondaryBtn}
-                      onClick={async () => {
-                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-                        const response = await fetch(
-                          `${API_URL}/api/case_reports/${caseData.id}/duplicates/${match.duplicate_match_id}/dismiss`,
-                          { method: "PATCH", credentials: "include" }
-                        );
-                        if (response.ok) {
-                          setCaseData((current) => ({
-                            ...current,
-                            possibleDuplicates: current.possibleDuplicates.filter(
-                              (item) => item.duplicate_match_id !== match.duplicate_match_id
-                            ),
-                          }));
-                          showToast("Duplicate warning dismissed.");
-                        }
-                      }}
-                    >
-                      Not a duplicate
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {isStaff && compareCaseId && (
-          <DuplicateComparePanel
-            currentCase={caseData}
-            compareCase={compareCaseData}
-            loading={compareLoading}
-            error={compareError}
-            onClose={() => router.push(`/cases/view?caseId=${caseData.id}`)}
-          />
-        )}
 
         {/* Content card with tabs */}
         <div className={styles.contentCard}>
@@ -2105,6 +2214,22 @@ export default function ViewCase() {
               userId={user.id}
               userRole={user.role}
               showToast={showToast}
+              onOpenDuplicateCheck={goToDuplicateTab}
+              onOpenNlpAnalysis={goToNlpAnalysisTab}
+              onRequestClarification={requestClarificationFromAnalysis}
+            />
+          )}
+
+          {displayedActiveTab === "duplicates" && isStaff && userLoaded && (
+            <DuplicateCheckTab
+              caseData={caseData}
+              compareCaseId={compareCaseId}
+              compareCaseData={compareCaseData}
+              compareLoading={compareLoading}
+              compareError={compareError}
+              onDismiss={dismissDuplicate}
+              onViewCompare={viewDuplicateCompare}
+              onCloseCompare={closeDuplicateCompare}
             />
           )}
 
@@ -2112,7 +2237,7 @@ export default function ViewCase() {
             <NLPAnalysisTab
               caseReportId={caseData.id}
               isAdmin={isAdmin}
-              onRequestClarification={() => setActiveTab("follow-ups")}
+              onRequestClarification={requestClarificationFromAnalysis}
             />
           )}
 
