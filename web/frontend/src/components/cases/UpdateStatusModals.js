@@ -296,11 +296,32 @@ function StatusChangeShell({ open, onClose, title, caseData, onSubmitForApproval
 
 // ─── Status-Specific Sub-Modals ───────────────────────────────────────────────
 
-function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
+function UndergReviewModal({
+  open,
+  onClose,
+  caseData,
+  onSubmit,
+  actorName,
+  onOpenDuplicateCheck,
+  onOpenNlpAnalysis,
+  onRequestClarification,
+  nlpClarification,
+  nlpClarificationLoading,
+}) {
   const [form, setForm] = useState({ duplicateChecked: "", safetyIssues: "", missingInfo: "", survivorContacted: "", notes: "" });
   const [errors, setErrors] = useState({});
   useEffect(() => { if (open) setForm({ duplicateChecked: "", safetyIssues: "", missingInfo: "", survivorContacted: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const duplicateCount = caseData?.possibleDuplicates?.length || 0;
+  const needsClarification = Boolean(
+    nlpClarification?.needsClarification ??
+    nlpClarification?.needs_clarification
+  );
+  const clarificationReason =
+    nlpClarification?.reason ||
+    nlpClarification?.clarificationReason ||
+    nlpClarification?.clarification_reason ||
+    "The NLP analysis flagged missing or unclear information in this report.";
 
   function validate() {
     const e = {};
@@ -327,7 +348,26 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
       <p className={styles.formDesc}>The intake team will review whether this report is within SASHA's scope. Please fill in the initial screening details.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
+
+        {/* ── Duplicate check: slim hint line above the select ── */}
         <FormGroup label="Duplicate report checked?" required error={errors.duplicateChecked}>
+          {duplicateCount > 0 && (
+            <div className={styles.duplicateHintRow}>
+              <FiAlertTriangle className={styles.duplicateHintIcon} />
+              <span className={styles.duplicateHintText}>
+                <span className={styles.duplicateHintBadge}>{duplicateCount}</span>
+                possible duplicate{duplicateCount > 1 ? "s" : ""} flagged.
+              </span>
+              <button
+                type="button"
+                className={styles.duplicateHintLink}
+                onClick={onOpenDuplicateCheck}
+                disabled={!onOpenDuplicateCheck}
+              >
+                Review →
+              </button>
+            </div>
+          )}
           <FSelect value={form.duplicateChecked} onChange={set("duplicateChecked")} error={errors.duplicateChecked}>
             <option value="">Select...</option>
             <option>Yes — No duplicates found</option>
@@ -335,6 +375,7 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
             <option>Not yet checked</option>
           </FSelect>
         </FormGroup>
+
         <FormGroup label="Immediate safety issues identified?" required error={errors.safetyIssues}>
           <FSelect value={form.safetyIssues} onChange={set("safetyIssues")} error={errors.safetyIssues}>
             <option value="">Select...</option>
@@ -343,9 +384,40 @@ function UndergReviewModal({ open, onClose, caseData, onSubmit, actorName }) {
             <option>Urgent — survivor may be in immediate danger</option>
           </FSelect>
         </FormGroup>
-        <FormGroup label="Missing information identified" hint="List any incomplete or missing details in the report.">
+
+        <FormGroup label="Missing information identified?" hint="List any incomplete or missing details in the report.">
+          {/* ── NLP clarification notice: slim strip matching duplicate hint style ── */}
+        {needsClarification && (
+          <div className={styles.clarificationStrip}>
+            <FiAlertTriangle className={styles.stripIcon} />
+            <span className={styles.stripText}>{clarificationReason}</span>
+            <div className={styles.stripActions}>
+              {/* {onOpenNlpAnalysis && (
+                <button
+                  type="button"
+                  className={styles.stripLink}
+                  onClick={onOpenNlpAnalysis}
+                >
+                  View analysis
+                </button>
+              )} */}
+              <button
+                type="button"
+                className={`${styles.stripLink} ${styles.stripLinkPrimary}`}
+                onClick={onRequestClarification || onOpenNlpAnalysis}
+                disabled={!onRequestClarification && !onOpenNlpAnalysis}
+              >
+                Request clarification →
+              </button>
+            </div>
+          </div>
+        )}
           <FTextarea placeholder="e.g. Respondent identity unknown, incident date unclear…" value={form.missingInfo} onChange={set("missingInfo")} />
+          {nlpClarificationLoading && !needsClarification && (
+            <p className={styles.inlineContextText}>Checking NLP clarification status...</p>
+          )}
         </FormGroup>
+
         <FormGroup label="Survivor contacted for clarification?" required error={errors.survivorContacted}>
           <FSelect value={form.survivorContacted} onChange={set("survivorContacted")} error={errors.survivorContacted}>
             <option value="">Select...</option>
@@ -1026,9 +1098,15 @@ export default function UpdateStatusModal({
   viewCaseMode = false,
   allowedStatuses,
   includeCurrentStatus = false,
+  onOpenDuplicateCheck,
+  onOpenNlpAnalysis,
+  onRequestClarification,
+  nlpClarification: providedNlpClarification,
 }) {
   const [activeModal, setActiveModal] = useState(null);
   const [nextStatus, setNextStatus]   = useState("");
+  const [fetchedNlpClarification, setFetchedNlpClarification] = useState(null);
+  const [nlpClarificationLoading, setNlpClarificationLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -1036,6 +1114,45 @@ export default function UpdateStatusModal({
       setNextStatus("");
     }
   }, [open, caseData?.id]);
+
+  useEffect(() => {
+    if (!open || activeModal !== "undergReview" || !caseData?.id || providedNlpClarification) return;
+
+    let cancelled = false;
+    const fetchClarification = async () => {
+      setNlpClarificationLoading(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+        const res = await fetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`, {
+          credentials: "include",
+        });
+
+        if (res.status === 404) {
+          if (!cancelled) setFetchedNlpClarification(null);
+          return;
+        }
+
+        if (!res.ok) return;
+
+        const body = await res.json();
+        const data = body.data || body;
+        if (!cancelled) {
+          setFetchedNlpClarification({
+            caseId: caseData.id,
+            needsClarification: Boolean(data.needs_clarification),
+            reason: data.clarification_reason || "",
+          });
+        }
+      } catch (_) {
+        if (!cancelled) setFetchedNlpClarification(null);
+      } finally {
+        if (!cancelled) setNlpClarificationLoading(false);
+      }
+    };
+
+    fetchClarification();
+    return () => { cancelled = true; };
+  }, [open, activeModal, caseData?.id, providedNlpClarification]);
 
   if (!open || !caseData) return null;
 
@@ -1060,10 +1177,21 @@ export default function UpdateStatusModal({
     setActiveModal(null);
   }
 
+  const effectiveNlpClarification =
+    providedNlpClarification ||
+    (String(fetchedNlpClarification?.caseId) === String(caseData?.id)
+      ? fetchedNlpClarification
+      : null);
+
   const subModalProps = {
     caseData,
     onSubmit: handleSubModalSubmit,
     actorName,
+    onOpenDuplicateCheck,
+    onOpenNlpAnalysis,
+    onRequestClarification,
+    nlpClarification: effectiveNlpClarification,
+    nlpClarificationLoading,
   };
 
   const routerOpen = open && activeModal === null;
@@ -1126,6 +1254,8 @@ export default function UpdateStatusModal({
                 console.warn("[UpdateStatusModal] No modal mapped for status:", nextStatus);
                 return;
               }
+              setFetchedNlpClarification(null);
+              setNlpClarificationLoading(false);
               setActiveModal(modalKey);
             }}
           >

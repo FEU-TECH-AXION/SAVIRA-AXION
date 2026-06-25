@@ -3,8 +3,12 @@ const supabase = require('../config/supabase')
 async function findOrCreateOrganization(complainant) {
   const isScoutOrg =
     complainant.organization === "Boy Scouts of the Philippines (BSP)" ||
-    complainant.organization === "Girl Scouts of the Philippines (GSP)";
-  const isOthers = complainant.organization === "Others";
+    complainant.organization === "Girl Scouts of the Philippines (GSP)" ||
+    complainant.organization === "BSP" ||
+    complainant.organization === "GSP";
+  const isOthers = complainant.organization === "Others" || complainant.organization === "Other";
+  const organizationName = complainant.organizationName ?? complainant.orgName ?? null;
+  const organizationCity = complainant.organizationCity ?? complainant.orgCity ?? null;
 
   // Build match query based on org type to prevent exact duplicates
   let matchQuery = supabase
@@ -19,8 +23,8 @@ async function findOrCreateOrganization(complainant) {
   if (isOthers) {
     matchQuery = matchQuery
       .eq("organization_type", complainant.organizationType ?? "")
-      .eq("organization_name",          complainant.organizationName          ?? "")
-      .eq("organization_city",          complainant.organizationCity          ?? "");
+      .eq("organization_name",          organizationName          ?? "")
+      .eq("organization_city",          organizationCity          ?? "");
   }
 
   const { data: existing } = await matchQuery.maybeSingle();
@@ -36,8 +40,8 @@ async function findOrCreateOrganization(complainant) {
       organization_type:       isOthers   ? complainant.organizationType       ?? null : null,
       organization_type_other: isOthers && complainant.organizationType === "Other"
                                           ? complainant.organizationTypeOther  ?? null : null,
-      organization_name:       isOthers   ? complainant.organizationName                ?? null : null,
-      organization_city:       isOthers   ? complainant.organizationCity                ?? null : null,
+      organization_name:       isOthers   ? organizationName                           : null,
+      organization_city:       isOthers   ? organizationCity                           : null,
       user_city:               isOthers   ? complainant.userCity               ?? null : null,
       council:                 isScoutOrg ? complainant.council                ?? null : null,
       region:                  isScoutOrg ? "National Capital Region (NCR)"          : null,

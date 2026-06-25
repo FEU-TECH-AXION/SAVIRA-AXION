@@ -99,6 +99,112 @@
 .formHint  { font-size: 0.76rem; color: var(--sasha-muted); margin-top: 2px; }
 .formDesc  { font-size: 0.88rem; color: var(--sasha-muted); line-height: 1.6; margin-bottom: 1rem; }
 
+/* ── Shared amber strip (duplicate hint + clarification notice) ── */
+.duplicateHintRow,
+.clarificationStrip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 6px 6px 0;
+  padding: 0.45rem 0.75rem;
+}
+
+.duplicateHintRow { margin-bottom: 0.3rem; }
+.clarificationStrip { flex-wrap: wrap; }
+
+.stripIcon,
+.duplicateHintIcon {
+  color: #d97706;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+}
+
+.duplicateHintText,
+.stripText {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #92400e;
+  min-width: 0;
+}
+
+.duplicateHintBadge {
+  display: inline-flex;
+  align-items: center;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  color: #92400e;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-right: 0.2rem;
+  padding: 0.15rem 0.42rem;
+}
+
+.stripActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.duplicateHintLink,
+.stripLink {
+  background: none;
+  border: none;
+  color: #b45309;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.duplicateHintLink:hover,
+.stripLink:hover { color: #92400e; }
+
+.duplicateHintLink:disabled,
+.stripLink:disabled { cursor: not-allowed; opacity: 0.45; }
+
+.stripLinkPrimary { color: #92400e; font-weight: 800; }
+.stripLinkPrimary:hover { color: #78350f; }
+
+/* ── Legacy clarification classes (kept for safety, visually hidden) ── */
+.inlineClarificationNotice,
+.inlineClarificationIcon,
+.inlineClarificationBody,
+.inlineClarificationTitle,
+.inlineClarificationText,
+.inlineClarificationActions,
+.inlineClarificationButton,
+.inlineSecondaryAction { display: none; }
+
+.inlineWarningButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.inlineWarningButton span {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  min-width: 1.35rem;
+  justify-content: center;
+  padding: 0.18rem 0.42rem;
+}
+
+.inlineContextText {
+  color: var(--sasha-muted);
+  font-size: 0.76rem;
+  margin: 0;
+}
+
 .formInput {
   padding: 0.55rem 0.85rem;
   border: 1px solid var(--sasha-border);

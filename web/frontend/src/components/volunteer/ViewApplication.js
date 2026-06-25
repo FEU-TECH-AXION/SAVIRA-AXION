@@ -207,8 +207,53 @@ function ApplicantScoresTab({ appData }) {
 function ApplicationDetailsTab({ appData, isStaff }) {
   const [showScreening, setShowScreening] = useState(false);
 
-  const isScoutOrg = appData.organization === "BSP" || appData.organization === "GSP";
-  const isOtherOrg = appData.organization === "Other";
+  const isBspOrg =
+    appData.organization === "BSP" ||
+    appData.organization === "Boy Scouts of the Philippines (BSP)";
+  const isGspOrg =
+    appData.organization === "GSP" ||
+    appData.organization === "Girl Scouts of the Philippines (GSP)";
+  const isScoutOrg = isBspOrg || isGspOrg;
+  const isOtherOrg =
+    appData.organization === "Other" ||
+    appData.organization === "Others" ||
+    Boolean(appData.organizationType);
+  const organizationLabel =
+    isBspOrg ? "Boy Scouts of the Philippines (BSP)" :
+    isGspOrg ? "Girl Scouts of the Philippines (GSP)" :
+    isOtherOrg ? "Other" :
+    appData.organization;
+  const affiliationRows = [
+    ["Organization", organizationLabel],
+    ...(isScoutOrg
+      ? [
+          ["Council", appData.council],
+          ["Region", appData.region],
+          ["Tenure in Scouting", appData.tenureInScouting],
+          ["Rank", appData.rank],
+          ["Scouting Membership Category", appData.scoutingMembership],
+        ]
+      : []
+    ),
+    ...(isOtherOrg
+      ? [
+          ["Organization Type", appData.organizationType],
+          ...(appData.organizationType === "Other"
+            ? [["Specified Type", appData.organizationTypeOther]]
+            : []
+          ),
+          ...(appData.organizationType && appData.organizationType !== "No Organization / Independent"
+            ? [
+                ["Organization Name", appData.orgName],
+                ["Organization City", appData.orgCity],
+              ]
+            : []
+          ),
+          ["Applicant's City / Municipality", appData.userCity],
+        ]
+      : []
+    ),
+  ].filter(([, value]) => value);
 
   return (
     <div>
@@ -225,47 +270,13 @@ function ApplicationDetailsTab({ appData, isStaff }) {
             appData.pronouns === "they" ? "They/Them/Theirs" :
             appData.pronouns
           ],
-          ["Organization",
-            appData.organization === "BSP" ? "Boy Scouts of the Philippines (BSP)" :
-            appData.organization === "GSP" ? "Girl Scouts of the Philippines (GSP)" :
-            appData.organization
-          ],
         ]} />
       </Section>
 
-      {/* Scout organization details */}
-      {isScoutOrg && (
-        <Section title="Scout Organization Details">
-          <DetailGrid rows={[
-            ["Council",                      appData.council],
-            ["Region",                       appData.region],
-            ["Tenure in Scouting",           appData.tenureInScouting],
-            ["Rank",                         appData.rank],
-            ["Scouting Membership Category", appData.scoutingMembership],
-          ].filter(([, v]) => v)} />
-        </Section>
-      )}
-
-      {/* Other org details */}
-      {isOtherOrg && (
-        <Section title="Affiliation Details">
-          <DetailGrid rows={[
-            ["Organization Type",   appData.organizationType],
-            ...(appData.organizationType === "Other"
-              ? [["Specified Type", appData.organizationTypeOther]]
-              : []
-            ),
-            ...(appData.organizationType && appData.organizationType !== "No Organization / Independent"
-              ? [
-                  ["Organization Name", appData.orgName],
-                  ["Organization City", appData.orgCity],
-                ]
-              : []
-            ),
-            ["Applicant's City / Municipality", appData.userCity],
-          ].filter(([, v]) => v)} />
-        </Section>
-      )}
+      {/* Affiliation and organization details */}
+      <Section title="Affiliation Details">
+        <DetailGrid rows={affiliationRows} />
+      </Section>
 
       {/* Contact & Consent */}
       <Section title="Contact & Consent">
@@ -1454,7 +1465,7 @@ export default function ViewApplication() {
           organizationTypeOther: data.organizations?.organization_type_other || null,
           orgName:               data.organizations?.organization_name || null,
           orgCity:               data.organizations?.organization_city || null,
-          userCity:              data.organizations?.user_city || null,
+          userCity:              data.organizations?.user_city || data.city || null,
 
           // ── Contact & Consent ──
           contactNumber:         data.contact_number || "Not Provided",

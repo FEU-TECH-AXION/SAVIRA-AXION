@@ -67,6 +67,38 @@
   border-color: #c44e24;
 }
 
+.duplicateCheckBadge {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  color: #9a3412;
+  display: inline-flex;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.42rem 0.62rem;
+  white-space: nowrap;
+}
+
+.duplicateCheckBadge strong {
+  background: #9a3412;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.68rem;
+  padding: 0.18rem 0.38rem;
+}
+
+.duplicateCheckDot {
+  background: #f97316;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px #ffedd5;
+  flex: 0 0 auto;
+  height: 0.45rem;
+  width: 0.45rem;
+}
+
 .bulkBtnDanger {
   background: #dc2626;
   border-color: #dc2626;
