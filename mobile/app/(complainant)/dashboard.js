@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,128 +10,18 @@ import {
   ImageBackground,
   ActivityIndicator,
 } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
 
-// ── Side Nav ─────────────────────────────────────────────────────────────────
-function SideNav({ open, onClose }) {
-  const router = useRouter();
-  const links = [
-    { label: 'Home',      href: '/(complainant)/dashboard', icon: 'home-outline' },
-    { label: 'Report',    href: '/(complainant)/reports',    icon: 'document-text-outline' },
-    { label: 'Volunteer', href: '/(complainant)/volunteer-application', icon: 'people-outline' },
-    { label: 'About',     href: '/(complainant)/about',     icon: 'information-circle-outline' },
-    { label: 'Contact',   href: '/(complainant)/contact',   icon: 'call-outline' },
-    { label: 'Events',    href: '/(complainant)/events',    icon: 'calendar-outline' },
-    { label: 'Settings',  href: '/(complainant)/settings',  icon: 'settings-outline' },
-  ];
-
-  return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        {/* Drawer */}
-        <View style={nav.drawer}>
-          <View style={nav.drawerHeader}>
-            <Image
-              source={require('../../assets/sasha-icon-teal.png')}
-              style={nav.drawerLogo}
-              resizeMode="contain"
-            />
-            <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color="#6b7280" />
-            </Pressable>
-          </View>
-
-          {links.map((l) => (
-            <Pressable
-              key={l.label}
-              style={nav.drawerItem}
-              onPress={() => { router.push(l.href); onClose(); }}
-            >
-              <Ionicons name={l.icon} size={20} color="#037F81" />
-              <Text style={nav.drawerItemText}>{l.label}</Text>
-            </Pressable>
-          ))}
-
-          <Pressable
-            style={nav.logoutBtn}
-            onPress={() => { router.replace('/(auth)/login'); onClose(); }}
-          >
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={nav.logoutText}>Log Out</Text>
-          </Pressable>
-        </View>
-
-        {/* Tap outside to close */}
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-      </View>
-    </Modal>
-  );
-}
-
-const nav = StyleSheet.create({
-  drawer: {
-    width: 260,
-    backgroundColor: '#fff',
-    paddingTop: 52,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  drawerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  drawerLogo: {
-    width: 50,
-    height: 50,
-  },
-  drawerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  drawerItemText: {
-    fontSize: 15,
-    color: '#1a1a1a',
-    fontWeight: '600',
-  },
-  logoutBtn: {
-    marginTop: 32,
-    backgroundColor: '#E96433',
-    borderRadius: 10,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  logoutText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-});
+import SideNav from '../../components/SideNav';
+import HeaderAvatar from '../../components/HeaderAvatar';
+import ncrCities from '../../assets/geojson/ncr-cities';
 
 // ── Top Navbar ────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, onNotifications, notifCount, user }) {
-  const getInitials = (firstName, lastName) => {
-    const first = firstName?.charAt(0)?.toUpperCase() || '';
-    const last = lastName?.charAt(0)?.toUpperCase() || '';
-    return `${first}${last}` || 'U';
-  };
-
-  const initials = getInitials(user?.firstName, user?.lastName);
 
   return (
     <View style={s.navbar}>
@@ -148,16 +38,7 @@ function Navbar({ onBurger, onNotifications, notifCount, user }) {
             </View>
           )}
         </Pressable>
-        {user?.profilePicture ? (
-          <Image
-            source={{ uri: user.profilePicture }}
-            style={s.avatarImage}
-          />
-        ) : (
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>{initials}</Text>
-          </View>
-        )}
+        <HeaderAvatar user={user} />
       </View>
     </View>
   );
@@ -197,11 +78,15 @@ function SectionHeading({ title }) {
 }
 
 // ── Action Card ───────────────────────────────────────────────────────────────
-function ActionCard({ iconSource, title, description, onPress }) {
+function ActionCard({ iconSource, ionicon, title, description, onPress }) {
   return (
     <View style={s.actionCard}>
       <View style={s.actionIconWrap}>
-        <Image source={iconSource} style={s.actionIconImg} resizeMode="contain" />
+        {ionicon ? (
+          <Ionicons name={ionicon} size={24} color="#037F81" />
+        ) : (
+          <Image source={iconSource} style={s.actionIconImg} resizeMode="contain" />
+        )}
       </View>
       <Text style={s.actionTitle}>{title}</Text>
       <Text style={s.actionDesc}>{description}</Text>
@@ -277,12 +162,101 @@ function NotificationsCard({ notifications, onView }) {
 }
 
 // ── Heatmap Preview ───────────────────────────────────────────────────────────
+const MAPBOX_TOKEN_DASH = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+const API_URL_DASH = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+
+const miniMapHtml = `
+<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"><\/script>
+<style>body{margin:0;padding:0;}#map{position:absolute;top:0;bottom:0;width:100%;}.mapboxgl-ctrl-top-right{display:none;}</style>
+</head><body><div id="map"></div><script>
+let map;
+function normaliseName(s){return(s||'').trim().toLowerCase().replace(/\\s+/g,' ');}
+function joinDensity(geojson,data){
+  const m=new Map();
+  (data||[]).forEach(d=>m.set(normaliseName(d.name),{density:d.density,intensity:d.intensity}));
+  return{...geojson,features:geojson.features.map(f=>({...f,properties:{...f.properties,...(m.get(normaliseName(f.properties.name))||{density:0,intensity:0})}}))}
+}
+function render(heatmapData,geo){
+  if(!map||!map.isStyleLoaded()){if(map)map.once('style.load',()=>render(heatmapData,geo));return;}
+  const src='cs';const fl='cf';const ll='cl';
+  try{if(map.getLayer(ll))map.removeLayer(ll);if(map.getLayer(fl))map.removeLayer(fl);if(map.getSource(src))map.removeSource(src);}catch(e){}
+  const gj=joinDensity(geo,heatmapData);
+  map.addSource(src,{type:'geojson',data:gj});
+  const layers=map.getStyle().layers;let water;for(let i=0;i<layers.length;i++){if(layers[i].id.includes('water')){water=layers[i].id;break;}}
+  map.addLayer({id:fl,type:'fill',source:src,paint:{'fill-color':['interpolate',['linear'],['get','intensity'],0,'rgba(219,234,254,0.55)',0.15,'rgba(34,197,94,0.60)',0.3,'rgba(234,179,8,0.68)',0.5,'rgba(249,115,22,0.75)',0.7,'rgba(239,68,68,0.82)',1,'rgba(185,28,28,0.90)'],'fill-opacity':1}},water);
+  map.addLayer({id:ll,type:'line',source:src,paint:{'line-color':'#ffffff','line-width':1,'line-opacity':0.7}},water);
+}
+document.addEventListener('message',function(e){try{const d=JSON.parse(e.data);if(d.type==='INIT'){mapboxgl.accessToken=d.token;map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[121.0376,14.5995],zoom:9.5,interactive:false});map.on('load',function(){if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage('MAP_READY');});}else if(d.type==='RENDER'){render(d.heatmapData,d.geojson);}}catch(err){}});
+window.addEventListener('message',function(e){try{const d=JSON.parse(e.data);if(d.type==='INIT'){mapboxgl.accessToken=d.token;map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[121.0376,14.5995],zoom:9.5,interactive:false});map.on('load',function(){if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage('MAP_READY');});}else if(d.type==='RENDER'){render(d.heatmapData,d.geojson);}}catch(err){}});
+<\/script></body></html>
+`;
+
 function HeatmapPreview() {
+  const router = useRouter();
+  const webRef = useRef(null);
+  const dataRef = useRef([]);
+
+  useEffect(() => {
+    fetch(`${API_URL_DASH}/api/case_reports/heatmap/data?aggregation=city`)
+      .then(r => r.ok ? r.json() : null)
+      .then(res => {
+        if (res?.data) {
+          dataRef.current = res.data;
+          if (webRef.current) {
+            webRef.current.postMessage(JSON.stringify({ type: 'RENDER', heatmapData: res.data, geojson: ncrCities }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const onMapReady = () => {
+    if (webRef.current) {
+      webRef.current.postMessage(JSON.stringify({ type: 'RENDER', heatmapData: dataRef.current, geojson: ncrCities }));
+    }
+  };
+
   return (
     <View style={s.heatmapCard}>
-      <Text style={s.heatmapTitle}>Heatmap Preview</Text>
-      <View style={s.heatmapPlaceholder}>
-        <Text style={s.heatmapPlaceholderText}>Heatmap Visualization (Coming Soon)</Text>
+      <View style={s.heatmapCardHeader}>
+        <View style={s.heatmapTitleRow}>
+          <Ionicons name="map" size={16} color="#037F81" style={{ marginRight: 6 }} />
+          <Text style={s.heatmapTitle}>Incident Heatmap</Text>
+        </View>
+        <Pressable onPress={() => router.push('/(complainant)/heatmap')} style={s.heatmapViewBtn}>
+          <Text style={s.heatmapViewBtnText}>View Full Map</Text>
+          <Ionicons name="arrow-forward" size={13} color="#037F81" />
+        </Pressable>
+      </View>
+      <View style={s.heatmapMapWrap}>
+        <WebView
+          ref={webRef}
+          source={{ html: miniMapHtml }}
+          style={s.heatmapMap}
+          onLoadEnd={() => {
+            if (webRef.current && MAPBOX_TOKEN_DASH) {
+              webRef.current.postMessage(JSON.stringify({ type: 'INIT', token: MAPBOX_TOKEN_DASH }));
+            }
+          }}
+          onMessage={e => { if (e.nativeEvent.data === 'MAP_READY') onMapReady(); }}
+          originWhitelist={['*']}
+          javaScriptEnabled
+          scrollEnabled={false}
+          bounces={false}
+          pointerEvents="none"
+        />
+        <View style={s.heatmapLegend}>
+          {[{c:'#ef4444',l:'High'},{c:'#f97316',l:'Med-High'},{c:'#eab308',l:'Med'},{c:'#22c55e',l:'Low'}].map(({c,l})=>(
+            <View key={l} style={s.heatmapLegendRow}>
+              <View style={[s.heatmapLegendDot,{backgroundColor:c}]} />
+              <Text style={s.heatmapLegendText}>{l}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -290,24 +264,75 @@ function HeatmapPreview() {
 
 // ── Events Card ───────────────────────────────────────────────────────────────
 function EventsCard({ events }) {
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const markedDates = useMemo(() => {
+    const marks = {};
+    events.forEach(e => {
+      if (e.date) {
+        // e.date might be '2026-03-01T00:00:00.000Z' or '2026-03-01'
+        const dateString = String(e.date).split('T')[0];
+        marks[dateString] = { marked: true, dotColor: ORANGE };
+      }
+    });
+    if (selectedDate) {
+      marks[selectedDate] = { ...marks[selectedDate], selected: true, selectedColor: TEAL };
+    }
+    return marks;
+  }, [events, selectedDate]);
+
+  const displayedEvents = useMemo(() => {
+    if (!selectedDate) return events;
+    return events.filter(e => {
+      if (!e.date) return false;
+      const d = String(e.date).split('T')[0];
+      return d === selectedDate;
+    });
+  }, [events, selectedDate]);
+
   return (
     <View style={s.statusCard}>
       <View style={s.cardHeader}>
         <Text style={s.cardHeaderText}>Your Events</Text>
       </View>
       <View style={s.cardBody}>
-        <Text style={s.upcomingTitle}>Upcoming Deadlines</Text>
-        {events.map((e) => (
-          <View key={e.id} style={s.eventItem}>
-            <View style={s.eventThumb}>
-              <Text style={s.eventThumbEmoji}>{e.emoji}</Text>
+        <Calendar
+          onDayPress={day => {
+            if (selectedDate === day.dateString) {
+              setSelectedDate(null);
+            } else {
+              setSelectedDate(day.dateString);
+            }
+          }}
+          markedDates={markedDates}
+          theme={{
+            selectedDayBackgroundColor: TEAL,
+            todayTextColor: ORANGE,
+            arrowColor: TEAL,
+            dotColor: ORANGE,
+          }}
+          style={{ marginBottom: 12, borderRadius: 8, borderWidth: 1, borderColor: BORDER }}
+        />
+        <Text style={s.upcomingTitle}>{selectedDate ? 'Events on Selected Date' : 'Upcoming Events'}</Text>
+        {displayedEvents.length === 0 ? (
+          <Text style={s.statusMeta}>No upcoming events available.</Text>
+        ) : (
+          displayedEvents.map((e) => (
+            <View key={e.id} style={s.eventItem}>
+              <View style={s.eventThumb}>
+                {e.image ? (
+                  <Image source={{ uri: e.image }} style={s.eventImageThumb} />
+                ) : (
+                  <Text style={s.eventThumbEmoji}>📅</Text>
+                )}
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={s.eventTitle}>{e.title}</Text>
+                <Text style={s.eventDate}>{e.date ? new Date(e.date).toLocaleDateString() : 'TBA'}</Text>
+              </View>
             </View>
-            <View>
-              <Text style={s.eventTitle}>{e.title}</Text>
-              <Text style={s.eventDate}>{e.date}</Text>
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </View>
     </View>
   );
@@ -323,6 +348,7 @@ export default function ComplainantDashboard() {
   const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '' });
   const [reports, setReports] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [dashEvents, setDashEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -353,17 +379,32 @@ export default function ComplainantDashboard() {
       const reportsData = await reportsRes.json();
 
       // 3. Fetch applications
-      const appsRes = await fetch(`${API_URL}/api/volunteer_applicants/my-application`, {
+      const appsRes = await fetch(`${API_URL}/api/volunteer_applications/my_applications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const appsData = await appsRes.json();
 
+      // 4. Fetch public events
+      const eventsRes = await fetch(`${API_URL}/api/projects?visibility=public&approval_status=approved`);
+      let fetchedEvents = [];
+      if (eventsRes.ok) {
+        const eventsData = await eventsRes.json();
+        const raw = Array.isArray(eventsData) ? eventsData : eventsData?.data || [];
+        fetchedEvents = raw.slice(0, 3).map(p => ({
+          id: p.id ?? p.project_id,
+          title: p.title || p.event_name || 'Untitled Event',
+          date: p.start_date || p.dateStart || '',
+          image: p.image || null,
+        }));
+      }
+
       if (reportsRes.ok && reportsData.data) {
         setReports(reportsData.data);
       }
-      if (appsRes.ok && appsData.data) {
-        setApplications(appsData.data);
+      if (appsRes.ok) {
+        setApplications(Array.isArray(appsData) ? appsData : appsData.data || []);
       }
+      setDashEvents(fetchedEvents);
 
     } catch (err) {
       console.error('[fetchData]', err);
@@ -408,12 +449,6 @@ export default function ComplainantDashboard() {
   };
 
   const notifications = getNotifications();
-
-  const events = [
-    { id: 1, emoji: '🌞', title: 'SASHA believes that...', date: 'March 1, 2026' },
-    { id: 2, emoji: '⭐', title: 'SASHA Awareness an...', date: 'August 18, 2026' },
-    { id: 3, emoji: '🎄', title: 'Youth Empowerment a...', date: 'April 1, 2026' },
-  ];
 
   return (
     <View style={s.container}>
@@ -463,14 +498,14 @@ export default function ComplainantDashboard() {
 
           {/* Render Case Reports Status */}
           {reports.length > 0 ? (
-            reports.map((rep) => {
+            reports.slice(0, 1).map((rep) => {
               const displayId = rep.case_report_id ? String(rep.case_report_id).slice(0, 8).toUpperCase() : '';
               // map case_status_id (1 -> 0, 2 -> 1, 3 -> 2)
               const currentStep = rep.case_status_id ? rep.case_status_id - 1 : 0;
               return (
                 <StatusCard
                   key={rep.case_report_id}
-                  title={`Report #${displayId} Status`}
+                  title="Latest Report"
                   email={user.email || 'N/A'}
                   contactNumber="Provided in Report"
                   dateApplied={rep.incident_date ? new Date(rep.incident_date).toLocaleDateString() : 'N/A'}
@@ -489,12 +524,12 @@ export default function ComplainantDashboard() {
 
           {/* Render Volunteer Applications Status */}
           {applications.length > 0 ? (
-            applications.map((app) => {
+            applications.slice(0, 1).map((app, idx) => {
               const currentStep = app.status === 'Approved' ? 2 : app.status === 'Reviewing' ? 1 : 0;
               return (
                 <StatusCard
-                  key={app.id}
-                  title="Your Volunteer Application Status"
+                  key={app.id || app.volunteer_application_id || `app-${idx}`}
+                  title="Latest Volunteer Application"
                   email={app.email || user.email || 'N/A'}
                   contactNumber={app.contact_number || 'N/A'}
                   dateApplied={app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A'}
@@ -512,7 +547,7 @@ export default function ComplainantDashboard() {
           )}
 
           <HeatmapPreview />
-          <EventsCard events={events} />
+          <EventsCard events={dashEvents} />
 
         </View>
       </ScrollView>
@@ -750,17 +785,34 @@ heroOverlay: {
     borderRadius: 14,
     borderWidth: 1,
     borderColor: BORDER,
-    padding: 14,
+    overflow: 'hidden',
   },
-  heatmapTitle: { fontSize: 15, fontWeight: '800', color: '#1a1a1a', marginBottom: 10 },
-  heatmapPlaceholder: {
-    height: 180,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
+  heatmapCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  heatmapPlaceholderText: { color: '#666', fontSize: 13 },
+  heatmapTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  heatmapTitle: { fontSize: 15, fontWeight: '800', color: '#1a1a1a' },
+  heatmapViewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  heatmapViewBtnText: { fontSize: 12, fontWeight: '700', color: TEAL },
+  heatmapMapWrap: { height: 200, position: 'relative' },
+  heatmapMap: { width: '100%', height: '100%', backgroundColor: '#e8f4f4' },
+  heatmapLegend: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 8,
+    padding: 6,
+    gap: 3,
+  },
+  heatmapLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  heatmapLegendDot: { width: 8, height: 8, borderRadius: 2 },
+  heatmapLegendText: { fontSize: 9, color: '#374151', fontWeight: '600' },
 
   // Events
   upcomingTitle: { fontSize: 14, fontWeight: '800', color: TEAL, marginBottom: 8 },
@@ -781,6 +833,7 @@ heroOverlay: {
     justifyContent: 'center',
   },
   eventThumbEmoji: { fontSize: 20 },
+  eventImageThumb: { width: '100%', height: '100%', borderRadius: 8 },
   eventTitle: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
   eventDate: { fontSize: 11, color: '#6b7280' },
   emptyCard: {

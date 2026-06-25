@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -48,127 +48,15 @@ const NCR_CITIES = [
 
 // ── Wizard steps ──────────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 0, label: "Complainant's\nInfo" },
-  { id: 1, label: "Incident\nDetails" },
-  { id: 2, label: "Supporting\nEvidence" },
-  { id: 3, label: "Review &\nSubmit" },
+  { id: 0, label: "Consent" },
+  { id: 1, label: "Complainant's\nInfo" },
+  { id: 2, label: "Incident\nDetails" },
+  { id: 3, label: "Supporting\nEvidence" },
+  { id: 4, label: "Review &\nSubmit" },
 ];
 
-// ── Side Nav ──────────────────────────────────────────────────────────────────
-function SideNav({ open, onClose }) {
-  const router = useRouter();
-  const links = [
-    { label: "Home", href: "/(complainant)/dashboard", icon: "home-outline" },
-    {
-      label: "Report",
-      href: "/(complainant)/reports",
-      icon: "document-text-outline",
-    },
-    {
-      label: "Volunteer",
-      href: "/(complainant)/volunteer-application",
-      icon: "people-outline",
-    },
-    {
-      label: "About",
-      href: "/(complainant)/about",
-      icon: "information-circle-outline",
-    },
-    { label: "Contact", href: "/(complainant)/contact", icon: "call-outline" },
-    {
-      label: "Events",
-      href: "/(complainant)/events",
-      icon: "calendar-outline",
-    },
-  ];
-  return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={{ flex: 1, flexDirection: "row" }}>
-        <View style={nav.drawer}>
-          <View style={nav.drawerHeader}>
-            <Image
-              source={require("../../assets/sasha-icon-teal.png")}
-              style={nav.drawerLogo}
-              resizeMode="contain"
-            />
-            <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color="#6b7280" />
-            </Pressable>
-          </View>
-          {links.map((l) => (
-            <Pressable
-              key={l.label}
-              style={nav.drawerItem}
-              onPress={() => {
-                router.push(l.href);
-                onClose();
-              }}
-            >
-              <Ionicons name={l.icon} size={20} color={TEAL} />
-              <Text style={nav.drawerItemText}>{l.label}</Text>
-            </Pressable>
-          ))}
-          <Pressable
-            style={nav.logoutBtn}
-            onPress={() => {
-              router.replace("/(auth)/login");
-              onClose();
-            }}
-          >
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={nav.logoutText}>Log Out</Text>
-          </Pressable>
-        </View>
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
-          onPress={onClose}
-        />
-      </View>
-    </Modal>
-  );
-}
-const nav = StyleSheet.create({
-  drawer: {
-    width: 260,
-    backgroundColor: "#fff",
-    paddingTop: 52,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-    elevation: 10,
-  },
-  drawerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  drawerLogo: { width: 100, height: 36 },
-  drawerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  drawerItemText: { fontSize: 15, color: "#1a1a1a", fontWeight: "600" },
-  logoutBtn: {
-    marginTop: 32,
-    backgroundColor: ORANGE,
-    borderRadius: 10,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  logoutText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});
+import SideNav from '../../components/SideNav';
+import HeaderAvatar from '../../components/HeaderAvatar';
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, notifCount = 0 }) {
@@ -187,9 +75,7 @@ function Navbar({ onBurger, notifCount = 0 }) {
             </View>
           )}
         </View>
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>U</Text>
-        </View>
+        <HeaderAvatar />
       </View>
     </View>
   );
@@ -331,6 +217,17 @@ function RadioGroup({ options, value, onChange, error }) {
   );
 }
 
+function Checkbox({ label, value, onChange, error }) {
+  return (
+    <Pressable style={s.checkboxRow} onPress={() => onChange(!value)}>
+      <View style={[s.checkboxOuter, error && { borderColor: ERROR }, value && s.checkboxOuterActive]}>
+        {value && <Ionicons name="checkmark" size={14} color="#fff" />}
+      </View>
+      <Text style={s.checkboxText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 // ── Status Stepper ────────────────────────────────────────────────────────────
 function StatusStepper({ steps, current }) {
   return (
@@ -407,7 +304,97 @@ function ReportStatusCard({ report, index, onView }) {
   );
 }
 
-// ── STEP 0: Complainant Info ──────────────────────────────────────────────────
+// ── STEP 0: Consent ─────────────────────────────────────────────────────────────
+function StepConsent({ complainant, onComplainantChange, consents, onConsentChange, errors }) {
+  const setConsent = (key) => (val) => onConsentChange(key, val);
+
+  return (
+    <View style={s.stepContainer}>
+      <Text style={s.stepTitle}>
+        <Text style={{ color: TEAL }}>Consent, Authorization </Text>& Disclaimers
+      </Text>
+      <Text style={s.stepDesc}>
+        Before continuing, please read and confirm the statements below. These steps are here to ensure your rights are protected, your privacy is safeguarded, and your report is handled with the utmost care and responsibility.
+      </Text>
+
+      <View style={s.noticePanel}>
+        <Text style={s.subSectionTitle}>Important Notices</Text>
+        <Text style={s.noticeItemTitle}>Response Time</Text>
+        <Text style={s.noticeItemDesc}>To give every report careful attention, the review and verification process may take up to 72 hours.</Text>
+        
+        <Text style={[s.noticeItemTitle, { marginTop: 12 }]}>If You Need Immediate Help</Text>
+        <Text style={s.noticeItemDesc}>
+          This platform is for case management and is not monitored for immediate crisis intervention. Your safety and well-being matter deeply to us. If you are in immediate danger, need urgent medical care, or need crisis safety assistance, please seek trusted emergency contacts who can help you right now.
+        </Text>
+      </View>
+
+      <View style={s.divider} />
+      <Text style={s.subSectionTitle}>How Your Report Will Be Handled</Text>
+      <Text style={s.stepDesc}>
+        These confirmations help us protect your information and use only anonymized details when improving case handling.
+      </Text>
+
+      <View style={{ marginBottom: 16 }}>
+        <Checkbox
+          label="I understand and agree that the information I have provided in this report will be collected, stored, and processed by the institution solely for the purpose of case management and resolution. All data will be handled in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173) and the institution's privacy policy. My information will not be shared with unauthorized third parties without my consent."
+          value={consents.dataPrivacy}
+          onChange={setConsent("dataPrivacy")}
+          error={errors.dataPrivacy}
+        />
+        {errors.dataPrivacy && <Text style={s.fieldError}>{errors.dataPrivacy}</Text>}
+      </View>
+
+      <View style={{ marginBottom: 16 }}>
+        <Checkbox
+          label="I agree that the narrative details of my report may be used to support ongoing efforts to improve case handling and outcomes. Any such use will be conducted on anonymized, de-identified data only. Personally identifiable information such as names, contact details, and age will be excluded and will not be retained or linked to any analysis."
+          value={consents.caseAnalysis}
+          onChange={setConsent("caseAnalysis")}
+          error={errors.caseAnalysis}
+        />
+        {errors.caseAnalysis && <Text style={s.fieldError}>{errors.caseAnalysis}</Text>}
+      </View>
+
+      <View style={s.divider} />
+      <Text style={s.subSectionTitle}>Your Communication Preferences</Text>
+      <Text style={s.stepDesc}>
+        Your comfort and safety are our priorities. Please let us know how you would like to proceed with your report.
+      </Text>
+      
+      <Field
+        label="Willingness to be interviewed"
+        required
+        hint="Would you be comfortable speaking with a SASHA Representative, together with a SASHA paralegal and/or lawyer, so your case can be reviewed with more care?"
+        error={errors.interview}
+      >
+        <RadioGroup
+          options={[
+            "Yes, I am open to an interview.",
+            "No, I prefer not to be interviewed at this time."
+          ]}
+          value={
+            complainant.interview === "Yes"
+              ? "Yes, I am open to an interview."
+              : complainant.interview === "No"
+              ? "No, I prefer not to be interviewed at this time."
+              : ""
+          }
+          onChange={(v) => {
+            onComplainantChange({
+              ...complainant,
+              interview: v.startsWith("Yes") ? "Yes" : "No",
+            });
+          }}
+          error={errors.interview}
+        />
+      </Field>
+      <Text style={s.fieldHint}>
+        You are in control of what happens next. Choose the option that feels safest and most supportive for you right now; whatever you choose, SASHA will still review your report with care.
+      </Text>
+    </View>
+  );
+}
+
+// ── STEP 1: Complainant Info ──────────────────────────────────────────────────
 function StepComplainantInfo({ data, onChange, errors }) {
   const set = (key) => (val) => onChange({ ...data, [key]: val });
   const isScoutOrg =
@@ -428,8 +415,22 @@ function StepComplainantInfo({ data, onChange, errors }) {
       </Text>
 
       <Field
+        label="Who is this report about?"
+        required
+        hint="Is this report about you, or someone else?"
+        error={errors.reporteeType}
+      >
+        <RadioGroup
+          options={["Me (Myself)", "Someone else"]}
+          value={data.reporteeType}
+          onChange={set("reporteeType")}
+          error={errors.reporteeType}
+        />
+      </Field>
+
+      <Field
         label="Name"
-        hint="Optional — you may leave this blank if you prefer."
+        hint="Optional — you may leave this blank if you prefer to remain anonymous."
       >
         <StyledInput
           placeholder="Full name"
@@ -623,24 +624,40 @@ function StepComplainantInfo({ data, onChange, errors }) {
       </Field>
 
       <View style={s.divider} />
-      <Text style={s.subSectionTitle}>Consent</Text>
+      <Text style={s.subSectionTitle}>Mode of Contact</Text>
       <Field
-        label="Willingness to be interviewed by a SASHA Representative and a SASHA paralegal and/or lawyer"
+        label="Contact Number"
         required
-        error={errors.interview}
+        hint="We will use this to reach you regarding your report."
+        error={errors.contactNumber}
       >
-        <RadioGroup
-          options={["Yes", "No"]}
-          value={data.interview}
-          onChange={set("interview")}
-          error={errors.interview}
+        <StyledInput
+          placeholder="+639XXXXXXXXX"
+          value={data.contactNumber}
+          onChangeText={set("contactNumber")}
+          keyboardType="phone-pad"
+          error={errors.contactNumber}
+        />
+      </Field>
+      <Field
+        label="Email"
+        required
+        hint="A confirmation and updates will be sent here."
+        error={errors.email}
+      >
+        <StyledInput
+          placeholder="sample@gmail.com"
+          value={data.email}
+          onChangeText={set("email")}
+          keyboardType="email-address"
+          error={errors.email}
         />
       </Field>
     </View>
   );
 }
 
-// ── STEP 1: Incident Details ──────────────────────────────────────────────────
+// ── STEP 2: Incident Details ──────────────────────────────────────────────────
 function StepIncidentDetails({ data, onChange, errors }) {
   const set = (key) => (val) => onChange({ ...data, [key]: val });
   const setTxt = (key) => (e) => onChange({ ...data, [key]: e });
@@ -914,7 +931,7 @@ function StepIncidentDetails({ data, onChange, errors }) {
   );
 }
 
-// ── STEP 2: Supporting Evidence ───────────────────────────────────────────────
+// ── STEP 3: Supporting Evidence ───────────────────────────────────────────────
 function StepEvidence({ data, onChange }) {
   const pickFiles = async () => {
     Alert.alert(
@@ -1029,7 +1046,7 @@ function StepEvidence({ data, onChange }) {
   );
 }
 
-// ── STEP 3: Review & Submit ───────────────────────────────────────────────────
+// ── STEP 4: Review & Submit ───────────────────────────────────────────────────
 function StepReview({ complainant, incident, evidence }) {
   const Row = ({ label, value }) => (
     <View style={s.reviewRow}>
@@ -1064,10 +1081,18 @@ function StepReview({ complainant, incident, evidence }) {
 
       <View style={s.reviewSection}>
         <Text style={s.reviewSectionTitle}>Complainant's Information</Text>
+        <Row label="Report Type" value={complainant.reporteeType} />
         <Row label="Name" value={complainant.name} />
         <Row label="Age" value={complainant.age} />
         <Row label="Gender Identity" value={complainant.gender} />
         <Row label="Organization" value={complainant.organization} />
+        {(complainant.organization === "Boy Scouts of the Philippines (BSP)" ||
+          complainant.organization === "Girl Scouts of the Philippines (GSP)") && (
+          <>
+            <Row label="Council" value={complainant.council} />
+            <Row label="Region" value={complainant.region} />
+          </>
+        )}
         {complainant.organization === "Others" && (
           <>
             <Row label="Organization Name" value={complainant.orgName} />
@@ -1149,8 +1174,17 @@ function StepReview({ complainant, incident, evidence }) {
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function validateStep0(data) {
+function validateStep0(complainant, consents) {
   const e = {};
+  if (!complainant.interview) e.interview = "Please select your interview preference.";
+  if (!consents.dataPrivacy) e.dataPrivacy = "Please confirm the data privacy agreement.";
+  if (!consents.caseAnalysis) e.caseAnalysis = "Please confirm the case analysis agreement.";
+  return e;
+}
+
+function validateStep1(data) {
+  const e = {};
+  if (!data.reporteeType) e.reporteeType = "Report type is required.";
   if (!data.age) e.age = "Age is required.";
   if (!data.gender) e.gender = "Gender identity is required.";
   if (!data.organization) e.organization = "Organization is required.";
@@ -1164,7 +1198,6 @@ function validateStep0(data) {
   } else if (!EMAIL_REGEX.test(data.email)) {
     e.email = "Enter a valid email address.";
   }
-  if (!data.interview) e.interview = "Consent to interview is required.";
   const isScoutOrg =
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
@@ -1184,7 +1217,7 @@ function validateStep0(data) {
   return e;
 }
 
-function validateStep1(data) {
+function validateStep2(data) {
   const e = {};
   if (!data.date) e.date = "Date is required.";
   if (!data.time) e.time = "Time is required.";
@@ -1209,19 +1242,39 @@ function validateStep1(data) {
   return e;
 }
 
+// ── Status badge colours ─────────────────────────────────────────────────────
+const STATUS_COLORS = {
+  Submitted:    { bg: '#e0f2f1', text: '#037F81' },
+  'Under Review': { bg: '#fff3e0', text: '#e96433' },
+  Resolved:     { bg: '#e8f5e9', text: '#2e7d32' },
+};
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ReportScreen() {
   const [navOpen, setNavOpen] = useState(false);
+  const { tab } = useLocalSearchParams();
+  const [activeTab, setActiveTab] = useState(tab === 'history' ? 'history' : 'submit'); // 'submit' | 'history'
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
+  // History search & filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterOpen, setFilterOpen] = useState(false);
+
   const [reports, setReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(true);
 
+  const [consents, setConsents] = useState({
+    dataPrivacy: false,
+    caseAnalysis: false,
+  });
+
   const [complainant, setComplainant] = useState({
+    reporteeType: "",
     name: "",
     age: "",
     gender: "",
@@ -1287,13 +1340,20 @@ export default function ReportScreen() {
     fetchReports();
   }, []);
 
+  // Sync tab when navigated from sidenav with ?tab=history
+  useEffect(() => {
+    if (tab === 'history') setActiveTab('history');
+    else if (tab === 'submit') setActiveTab('submit');
+  }, [tab]);
+
   // Notification count = number of reports
   const notifCount = reports.length;
 
   const handleNext = () => {
     let errs = {};
-    if (step === 0) errs = validateStep0(complainant);
-    if (step === 1) errs = validateStep1(incident);
+    if (step === 0) errs = validateStep0(complainant, consents);
+    if (step === 1) errs = validateStep1(complainant);
+    if (step === 2) errs = validateStep2(incident);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -1318,6 +1378,7 @@ export default function ReportScreen() {
       // 2. Format payload exactly as the backend's buildPayload expects
       const payload = {
         complainant: {
+          reporteeType: complainant.reporteeType,
           name: complainant.name,
           age: complainant.age,
           gender: complainant.gender,
@@ -1379,7 +1440,12 @@ export default function ReportScreen() {
   const handleReset = () => {
     setSubmitted(false);
     setStep(0);
+    setConsents({
+      dataPrivacy: false,
+      caseAnalysis: false,
+    });
     setComplainant({
+      reporteeType: "",
       name: "",
       age: "",
       gender: "",
@@ -1418,162 +1484,232 @@ export default function ReportScreen() {
     setEvidence({ files: [] });
   };
 
+  // ── Derived filtered reports for history tab ─────────────────────────────
+  const STATUS_LABELS = { 1: 'Submitted', 2: 'Under Review', 3: 'Resolved' };
+  const filteredReports = reports.filter((r) => {
+    const statusName = r.case_status?.status_name || STATUS_LABELS[r.case_status_id] || 'Submitted';
+    const matchesStatus = filterStatus === 'All' || statusName === filterStatus;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      (r.incident_description || '').toLowerCase().includes(q) ||
+      (r.incident_city || '').toLowerCase().includes(q) ||
+      (r.case_report_id ? String(r.case_report_id).toLowerCase().includes(q) : false);
+    return matchesStatus && matchesSearch;
+  });
+
   return (
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} notifCount={notifCount} />
 
-      {submitted ? (
-        <ScrollView contentContainerStyle={s.successContainer}>
-          <View style={s.successCard}>
-            <View style={s.successIcon}>
-              <Ionicons name="checkmark" size={36} color="#fff" />
+      {/* ── Tab Bar ── */}
+      <View style={s.tabBar}>
+        <Pressable
+          style={[s.tabItem, activeTab === 'submit' && s.tabItemActive]}
+          onPress={() => { setActiveTab('submit'); setSubmitted(false); setStep(0); }}
+        >
+          <Ionicons name="document-text-outline" size={16} color={activeTab === 'submit' ? TEAL : '#9ca3af'} />
+          <Text style={[s.tabLabel, activeTab === 'submit' && s.tabLabelActive]}>Submit Report</Text>
+        </Pressable>
+        <Pressable
+          style={[s.tabItem, activeTab === 'history' && s.tabItemActive]}
+          onPress={() => setActiveTab('history')}
+        >
+          <Ionicons name="time-outline" size={16} color={activeTab === 'history' ? TEAL : '#9ca3af'} />
+          <Text style={[s.tabLabel, activeTab === 'history' && s.tabLabelActive]}>Report History</Text>
+          {reports.length > 0 && (
+            <View style={s.tabBadge}><Text style={s.tabBadgeText}>{reports.length}</Text></View>
+          )}
+        </Pressable>
+      </View>
+
+      {/* ══════════════ SUBMIT TAB ══════════════ */}
+      {activeTab === 'submit' && (
+        submitted ? (
+          <ScrollView contentContainerStyle={s.successContainer}>
+            <View style={s.successCard}>
+              <View style={s.successIcon}>
+                <Ionicons name="checkmark" size={36} color="#fff" />
+              </View>
+              <Text style={s.successTitle}>Report Submitted!</Text>
+              <Text style={s.successDesc}>
+                Your report has been received. We will review it and get back to
+                you via your provided contact details. All information is handled
+                with strict confidentiality.
+              </Text>
+              <Pressable style={s.submitBtn} onPress={handleReset}>
+                <Text style={s.submitBtnText}>Submit Another Report</Text>
+              </Pressable>
+              <Pressable style={[s.backBtn, { marginTop: 10, borderColor: ORANGE }]} onPress={() => { handleReset(); setActiveTab('history'); }}>
+                <Text style={[s.backBtnText, { color: ORANGE }]}>View Report History →</Text>
+              </Pressable>
             </View>
-            <Text style={s.successTitle}>Report Submitted!</Text>
-            <Text style={s.successDesc}>
-              Your report has been received. We will review it and get back to
-              you via your provided contact details. All information is handled
-              with strict confidentiality.
-            </Text>
-            <Pressable style={s.submitBtn} onPress={handleReset}>
-              <Text style={s.submitBtnText}>Submit Another Report</Text>
+          </ScrollView>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <ScrollView style={s.scroll} contentContainerStyle={[s.scrollContent, { paddingTop: 0 }]}>
+              <View style={s.formHeader}>
+                <View style={s.heroLabel}>
+                  <View style={s.heroLabelLine} />
+                  <Text style={s.heroLabelText}>Submit a Report</Text>
+                </View>
+                <Text style={s.heroTitle}>
+                  <Text style={{ color: TEAL }}>We're Here </Text>
+                  <Text style={{ color: ORANGE }}>to Help</Text>
+                </Text>
+                <Text style={s.heroDesc}>
+                  Please provide accurate and detailed information. All reports are
+                  handled with strict confidentiality.
+                </Text>
+                <Text style={s.formCardTitle}>Report Submission Form</Text>
+              </View>
+
+              <WizardStepper current={step} />
+
+              {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} />}
+              {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
+              {step === 2 && <StepIncidentDetails data={incident} onChange={setIncident} errors={errors} />}
+              {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} />}
+              {step === 4 && <StepReview complainant={complainant} incident={incident} evidence={evidence} />}
+
+              {submitError && (
+                <View style={s.errorAlert}>
+                  <Ionicons name="alert-circle-outline" size={16} color={ERROR} />
+                  <Text style={s.errorAlertText}>{submitError}</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={s.formNav}>
+              {step > 0 ? (
+                <Pressable style={s.backBtn} onPress={handleBack}>
+                  <Text style={s.backBtnText}>← Back</Text>
+                </Pressable>
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+              {step < totalSteps - 1 ? (
+                <Pressable style={s.nextBtn} onPress={handleNext}>
+                  <Text style={s.nextBtnText}>Next →</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={[s.submitBtn, isSubmitting && { opacity: 0.7 }]}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Submit Report</Text>}
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )
+      )}
+
+      {/* ══════════════ HISTORY TAB ══════════════ */}
+      {activeTab === 'history' && (
+        <View style={{ flex: 1 }}>
+          {/* Search + Filter bar */}
+          <View style={s.historyToolbar}>
+            <View style={s.historySearchWrap}>
+              <Feather name="search" size={16} color="#9ca3af" style={{ marginRight: 8 }} />
+              <TextInput
+                style={s.historySearchInput}
+                placeholder="Search by description, city, ID…"
+                placeholderTextColor="#aaa"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="#aaa" />
+                </Pressable>
+              )}
+            </View>
+            <Pressable style={s.filterBtn} onPress={() => setFilterOpen(!filterOpen)}>
+              <Ionicons name="filter" size={16} color={filterStatus !== 'All' ? TEAL : '#6b7280'} />
+              <Text style={[s.filterBtnText, filterStatus !== 'All' && { color: TEAL }]}>
+                {filterStatus}
+              </Text>
             </Pressable>
           </View>
 
-          {/* Status after submit */}
-          <View style={s.statusSection}>
-            <Text style={s.statusSectionTitle}>Your Report Status</Text>
-            {loadingReports ? (
-              <ActivityIndicator color={TEAL} />
-            ) : (
-              reports.map((r, i) => (
-                <ReportStatusCard
-                  key={r.case_report_id || i}
-                  report={r}
-                  index={i}
-                  onView={() => {}}
-                />
-              ))
-            )}
-          </View>
-        </ScrollView>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {/* Page Header + Form Card Title */}
-          <View style={s.formHeader}>
-            <View style={s.heroLabel}>
-              <View style={s.heroLabelLine} />
-              <Text style={s.heroLabelText}>Submit a Report</Text>
+          {/* Filter dropdown */}
+          {filterOpen && (
+            <View style={s.filterDropdown}>
+              {['All', 'Submitted', 'Under Review', 'Resolved'].map((opt) => (
+                <Pressable
+                  key={opt}
+                  style={[s.filterOption, filterStatus === opt && s.filterOptionActive]}
+                  onPress={() => { setFilterStatus(opt); setFilterOpen(false); }}
+                >
+                  <Text style={[s.filterOptionText, filterStatus === opt && s.filterOptionTextActive]}>{opt}</Text>
+                  {filterStatus === opt && <Ionicons name="checkmark" size={16} color={TEAL} />}
+                </Pressable>
+              ))}
             </View>
-            <Text style={s.heroTitle}>
-              <Text style={{ color: TEAL }}>We're Here </Text>
-              <Text style={{ color: ORANGE }}>to Help</Text>
+          )}
+
+          {/* Results count */}
+          <View style={s.historyCountRow}>
+            <Text style={s.historyCount}>
+              {loadingReports ? 'Loading…' : `${filteredReports.length} report${filteredReports.length !== 1 ? 's' : ''} found`}
             </Text>
-            <Text style={s.heroDesc}>
-              Please provide accurate and detailed information. All reports are
-              handled with strict confidentiality.
-            </Text>
-            <Text style={s.formCardTitle}>Report Submission Form</Text>
+            {(searchQuery || filterStatus !== 'All') && (
+              <Pressable onPress={() => { setSearchQuery(''); setFilterStatus('All'); }}>
+                <Text style={s.historyClearText}>Clear filters</Text>
+              </Pressable>
+            )}
           </View>
 
-          {/* Wizard stepper */}
-          <WizardStepper current={step} />
-
-          {/* Step content */}
-          <ScrollView
-            style={s.scroll}
-            contentContainerStyle={[s.scrollContent, { paddingTop: 8 }]}
-          >
-            {step === 0 && (
-              <StepComplainantInfo
-                data={complainant}
-                onChange={setComplainant}
-                errors={errors}
-              />
-            )}
-            {step === 1 && (
-              <StepIncidentDetails
-                data={incident}
-                onChange={setIncident}
-                errors={errors}
-              />
-            )}
-            {step === 2 && (
-              <StepEvidence data={evidence} onChange={setEvidence} />
-            )}
-            {step === 3 && (
-              <StepReview
-                complainant={complainant}
-                incident={incident}
-                evidence={evidence}
-              />
-            )}
-
-            {/* Report Status below form */}
-            {step === 0 && (
-              <View style={s.statusSection}>
-                <Text style={s.statusSectionTitle}>Your Report Status</Text>
-                {loadingReports ? (
-                  <ActivityIndicator
-                    color={TEAL}
-                    style={{ marginVertical: 20 }}
-                  />
-                ) : reports.length === 0 ? (
-                  <View style={s.emptyState}>
-                    <Ionicons name="document-outline" size={40} color="#ccc" />
-                    <Text style={s.emptyStateText}>
-                      No reports submitted yet.
-                    </Text>
+          <ScrollView contentContainerStyle={s.historyList}>
+            {loadingReports ? (
+              <ActivityIndicator color={TEAL} style={{ marginTop: 40 }} />
+            ) : filteredReports.length === 0 ? (
+              <View style={s.emptyState}>
+                <Ionicons name="document-outline" size={48} color="#d1d5db" />
+                <Text style={s.emptyStateText}>
+                  {reports.length === 0 ? 'No reports submitted yet.' : 'No reports match your search.'}
+                </Text>
+              </View>
+            ) : (
+              filteredReports.map((r, i) => {
+                const statusName = r.case_status?.status_name || STATUS_LABELS[r.case_status_id] || 'Submitted';
+                const statusColor = STATUS_COLORS[statusName] || STATUS_COLORS['Submitted'];
+                const displayId = r.case_report_id ? String(r.case_report_id).slice(0, 8).toUpperCase() : `#${i + 1}`;
+                return (
+                  <View key={r.case_report_id || i} style={s.historyCard}>
+                    <View style={s.historyCardHeader}>
+                      <View>
+                        <Text style={s.historyCardId}>Report #{displayId}</Text>
+                        <Text style={s.historyCardDate}>
+                          {r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+                        </Text>
+                      </View>
+                      <View style={[s.historyStatusBadge, { backgroundColor: statusColor.bg }]}>
+                        <Text style={[s.historyStatusText, { color: statusColor.text }]}>{statusName}</Text>
+                      </View>
+                    </View>
+                    <View style={s.historyCardDivider} />
+                    <View style={s.historyCardBody}>
+                      <View style={s.historyDetailRow}>
+                        <Ionicons name="location-outline" size={14} color="#9ca3af" />
+                        <Text style={s.historyDetailText}>{r.incident_city || '—'}</Text>
+                      </View>
+                      <View style={s.historyDetailRow}>
+                        <Ionicons name="document-text-outline" size={14} color="#9ca3af" />
+                        <Text style={s.historyDetailText} numberOfLines={2}>
+                          {r.incident_description || '—'}
+                        </Text>
+                      </View>
+                    </View>
+                    <StatusStepper steps={['Submitted', 'Under Review', 'Resolved']} current={r.case_status_id ? r.case_status_id - 1 : 0} />
                   </View>
-                ) : (
-                  reports.map((r, i) => (
-                    <ReportStatusCard
-                      key={r.case_report_id || i}
-                      report={r}
-                      index={i}
-                      onView={() => {}}
-                    />
-                  ))
-                )}
-              </View>
-            )}
-
-            {submitError && (
-              <View style={s.errorAlert}>
-                <Ionicons name="alert-circle-outline" size={16} color={ERROR} />
-                <Text style={s.errorAlertText}>{submitError}</Text>
-              </View>
+                );
+              })
             )}
           </ScrollView>
-
-          {/* Navigation */}
-          <View style={s.formNav}>
-            {step > 0 ? (
-              <Pressable style={s.backBtn} onPress={handleBack}>
-                <Text style={s.backBtnText}>← Back</Text>
-              </Pressable>
-            ) : (
-              <View style={{ flex: 1 }} />
-            )}
-
-            {step < totalSteps - 1 ? (
-              <Pressable style={s.nextBtn} onPress={handleNext}>
-                <Text style={s.nextBtnText}>Next →</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                style={[s.submitBtn, isSubmitting && { opacity: 0.7 }]}
-                onPress={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={s.submitBtnText}>Submit Report</Text>
-                )}
-              </Pressable>
-            )}
-          </View>
         </View>
       )}
     </View>
@@ -1620,11 +1756,17 @@ const s = StyleSheet.create({
   // Form Header
   formHeader: {
     backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    marginBottom: 8,
   },
   heroLabel: {
     flexDirection: "row",
@@ -1633,10 +1775,10 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   heroLabelLine: {
-    width: 24,
-    height: 2,
+    width: 32,
+    height: 3,
     backgroundColor: ORANGE,
-    borderRadius: 2,
+    borderRadius: 3,
   },
   heroLabelText: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
   heroTitle: { fontSize: 22, fontWeight: "900", marginBottom: 4 },
@@ -1655,11 +1797,9 @@ const s = StyleSheet.create({
   // Wizard
   wizardRow: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    backgroundColor: "transparent",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   wizardItem: { flex: 1, alignItems: "center", position: "relative" },
   wizardLine: {
@@ -1694,7 +1834,19 @@ const s = StyleSheet.create({
   wizardLabelDone: { color: TEAL },
 
   // Step container
-  stepContainer: { padding: 16, gap: 2 },
+  stepContainer: {
+    padding: 20,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    gap: 2,
+  },
   stepTitle: { fontSize: 20, fontWeight: "900", marginBottom: 4 },
   stepDesc: {
     fontSize: 13,
@@ -1729,14 +1881,14 @@ const s = StyleSheet.create({
 
   // Input
   input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-    fontSize: 13,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    fontSize: 14,
     color: "#1a1a1a",
-    backgroundColor: "#fafafa",
+    backgroundColor: "#fff",
   },
   inputError: { borderColor: ERROR },
   inputReadonly: { backgroundColor: "#f0f0f0", color: "#888" },
@@ -1746,12 +1898,12 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-    backgroundColor: "#fafafa",
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    backgroundColor: "#fff",
   },
   selectBoxText: { fontSize: 13, color: "#aaa" },
   dropdown: {
@@ -1776,7 +1928,7 @@ const s = StyleSheet.create({
   dropdownItemText: { fontSize: 13, color: "#1a1a1a" },
 
   // Radio
-  radioRow: { flexDirection: "row", gap: 20 },
+  radioRow: { flexDirection: "column", gap: 12 },
   radioRowError: {
     borderWidth: 1,
     borderColor: ERROR,
@@ -1795,7 +1947,43 @@ const s = StyleSheet.create({
   },
   radioOuterActive: { borderColor: TEAL },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: TEAL },
-  radioText: { fontSize: 14, color: "#1a1a1a" },
+  radioText: { fontSize: 14, color: "#1a1a1a", flex: 1, flexWrap: "wrap", lineHeight: 20 },
+
+  // Checkbox
+  checkboxRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4 },
+  checkboxOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#aaa",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  checkboxOuterActive: { borderColor: TEAL, backgroundColor: TEAL },
+  checkboxText: { fontSize: 13, color: "#1a1a1a", flex: 1, lineHeight: 18 },
+
+  // Notice Panel
+  noticePanel: {
+    backgroundColor: "rgba(3, 127, 129, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(3, 127, 129, 0.2)",
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+  },
+  noticeItemTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: TEAL,
+    marginBottom: 4,
+  },
+  noticeItemDesc: {
+    fontSize: 13,
+    color: "#4b5563",
+    lineHeight: 20,
+  },
 
   // Credentials / Evidence
   credSection: {
@@ -1884,35 +2072,43 @@ const s = StyleSheet.create({
   formNav: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 16,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-    gap: 10,
+    padding: 20,
+    backgroundColor: "transparent",
+    gap: 12,
   },
   backBtn: {
     flex: 1,
     borderWidth: 1.5,
     borderColor: TEAL,
-    borderRadius: 999,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
   },
   backBtnText: { color: TEAL, fontWeight: "700", fontSize: 14 },
   nextBtn: {
     flex: 1,
     backgroundColor: TEAL,
-    borderRadius: 999,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
+    elevation: 3,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   submitBtn: {
     flex: 1,
     backgroundColor: ORANGE,
-    borderRadius: 999,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
+    elevation: 3,
+    shadowColor: ORANGE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   submitBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
 
@@ -2040,4 +2236,132 @@ const s = StyleSheet.create({
   // Empty state
   emptyState: { alignItems: "center", paddingVertical: 32, gap: 8 },
   emptyStateText: { fontSize: 14, color: "#aaa" },
+
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabItemActive: { borderBottomColor: TEAL },
+  tabLabel: { fontSize: 13, fontWeight: '600', color: '#9ca3af' },
+  tabLabelActive: { color: TEAL },
+  tabBadge: {
+    backgroundColor: ORANGE,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  tabBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
+  // History toolbar
+  historyToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  historySearchWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BG,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  historySearchInput: { flex: 1, fontSize: 13, color: '#1a1a1a', padding: 0 },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: BG,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  filterBtnText: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
+  filterDropdown: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    zIndex: 100,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  filterOptionActive: { backgroundColor: '#f0fafb' },
+  filterOptionText: { fontSize: 13, color: '#1a1a1a' },
+  filterOptionTextActive: { color: TEAL, fontWeight: '700' },
+
+  // History results info
+  historyCountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  historyCount: { fontSize: 12, color: '#6b7280' },
+  historyClearText: { fontSize: 12, color: ORANGE, fontWeight: '600' },
+
+  // History list
+  historyList: { paddingHorizontal: 16, paddingBottom: 32, gap: 12 },
+  historyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: 'hidden',
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 14,
+  },
+  historyCardId: { fontSize: 14, fontWeight: '800', color: '#1a1a1a' },
+  historyCardDate: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+  historyStatusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  historyStatusText: { fontSize: 11, fontWeight: '700' },
+  historyCardDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: 14 },
+  historyCardBody: { padding: 14, gap: 6 },
+  historyDetailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  historyDetailText: { flex: 1, fontSize: 12, color: '#4b5563', lineHeight: 18 },
 });

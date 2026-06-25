@@ -17,7 +17,7 @@ const SERVICE_COPY = {
     eyebrow: "Nearby Healthcare",
     title: "Find Hospitals",
     prompt: "Please enter location to find hospitals in that area",
-    searchPlaceholder: "Enter city, barangay, landmark, or address",
+    searchPlaceholder: "Enter Address or Landmark",
     // Comma-separated category slugs — Search Box supports multi-category
     categories: ["hospital", "clinic", "emergency_room_and_urgent_care_facility"],
     keyword: "hospital",
@@ -29,7 +29,7 @@ const SERVICE_COPY = {
     eyebrow: "Nearby Public Safety",
     title: "Find Police Stations",
     prompt: "Please enter location to find police stations in that area",
-    searchPlaceholder: "Enter city, barangay, landmark, or address",
+    searchPlaceholder: "Enter Address or Landmark",
     categories: ["police_station", "police"],
     keyword: "PNP",
     empty: "Search for a location to see nearby police stations.",
