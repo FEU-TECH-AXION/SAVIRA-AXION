@@ -1,26 +1,23 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import UserManagement from "@/components/users/UserManagement";
 
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-};
-
 export default function UsersPage() {
-  const [role, setRole] = useState(null);
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const userCookie = getCookie('user');
-    if (!userCookie) { router.push('/'); return; }
-    const user = JSON.parse(userCookie);
-    setRole(user.role_name?.toLowerCase());
-  }, []);
+    if (!loading && !user) {
+      router.push("/");
+    }
+  }, [loading, user, router]);
 
-  if (!role) return <p>Loading...</p>;
+  if (loading) return <p>Loading...</p>;
+  if (!user) return null;
+
+  const role = user.role_name?.toLowerCase();
   if (role === "admin") return <UserManagement />;
   return <p>Unauthorized</p>;
 }
