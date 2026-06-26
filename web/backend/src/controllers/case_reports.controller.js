@@ -1,14 +1,27 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports } = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 const { randomUUID } = require('crypto');
 const DuplicateCases = require('../services/duplicateCases.service');
+const supabase = require('../config/supabase');
 
 const IMMEDIATE_WITHDRAWAL_STATUSES = new Set([2, 3, 4, 6]);
 const APPROVAL_WITHDRAWAL_STATUSES = new Set([7, 8]);
 const AFFIDAVIT_REQUIRED_STATUS = 7;
+
+const ROLES = {};
+supabase
+  .from('roles')
+  .select('role_id, role_name')
+  .then(({ data, error }) => {
+    if (error) return console.error('[roles] Failed to load roles:', error.message);
+    for (const row of data) {
+      const key = row.role_name.toUpperCase().replace(/\s+/g, '_');
+      ROLES[key] = row.role_id;
+    }
+  });
 
 function formatErrorMessage(error, fallback = 'Failed to submit report. Please try again.') {
   if (!error) return fallback;
@@ -183,19 +196,26 @@ async function getUserReports(req, res) {
 }
 
 async function getAllCases(req, res) {
-  try {
-    const reports = await getAllReports();
+   try {
+    const { role, id: userId } = req.user; // use 'role', not 'role_id'
+
+    let reports;
+
+    if (role === 'Admin') {
+      reports = await getAllReports();
+    } else if (role === 'Case Officer') {
+      reports = await getReportsByAssignedOfficer(userId);
+    } else if (role === 'Legal Personnel') {
+      reports = await getReportsForLegal();
+    } else {
+      console.warn('[getAllCases] Access denied for role:', role);
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+
     return res.json({ data: reports });
   } catch (err) {
-    // Log the full error object so Supabase PostgREST details are visible
-    console.error('[getAllCases] Error details:', JSON.stringify(err, null, 2));
-    console.error('[getAllCases] message:', err?.message);
-    console.error('[getAllCases] hint:', err?.hint);
-    console.error('[getAllCases] details:', err?.details);
-    return res.status(500).json({ 
-      error: 'Failed to fetch cases.',
-      details: err?.message || String(err),
-    });
+    console.error('[getAllCases] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch cases.', details: err.message });
   }
 }
 
