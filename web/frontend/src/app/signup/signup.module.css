@@ -106,8 +106,9 @@
   margin-bottom: 1rem;
 }
 
-.nameField {
+.nameRow .fieldGroup {
   flex: 1;
+  margin-bottom: 0;
 }
 
 .fieldGroup {
@@ -301,6 +302,7 @@
 .fieldError {
   font-size: 0.82rem;
   color: #e53e3e;
+  margin: 0;
   margin-top: 0.25rem;
 }
 

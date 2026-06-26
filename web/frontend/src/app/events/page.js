@@ -130,6 +130,23 @@ export default async function EventsPage({ searchParams }) {
     );
   }
 
+  const ITEMS_PER_PAGE = 3;
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / ITEMS_PER_PAGE));
+  const parsedPage = parseInt(params?.page, 10);
+  const pageNumValue = isNaN(parsedPage) ? 1 : parsedPage;
+  const currentPage = Math.min(totalPages, Math.max(1, pageNumValue));
+  
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedEvents = filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageHref = (pageNumber) => {
+    const query = new URLSearchParams();
+    if (searchQuery) query.set("search", searchQuery);
+    activeCategories.forEach((cat) => query.append("category", cat));
+    query.set("page", pageNumber.toString());
+    return `/events?${query.toString()}`;
+  };
+
   const recentPosts = PUBLIC_EVENTS.slice(0, 3).map((p) => ({
     title: p.title,
     date: formatEventDate(p.dateStart),
@@ -175,10 +192,10 @@ export default async function EventsPage({ searchParams }) {
           <div className={styles.contentGrid}>
             {/* Events list */}
             <div className={styles.eventsList}>
-              {filteredEvents.length === 0 ? (
+              {paginatedEvents.length === 0 ? (
                 <p style={{ color: "#6b7280" }}>No public events available at this time.</p>
               ) : (
-                filteredEvents.map((ev) => {
+                paginatedEvents.map((ev) => {
                   const slug = ev.slug || toSlug(ev.title);
                   const isUpcoming = ev.status?.toLowerCase() === "upcoming";
                   const isActive = ev.status?.toLowerCase() === "active";
@@ -240,12 +257,44 @@ export default async function EventsPage({ searchParams }) {
                 })
               )}
 
-              {/* Pagination placeholder */}
-              <div className={styles.pagination}>
-                <button className={styles.pageBtn} aria-label="Previous">←</button>
-                <button className={`${styles.pageNum} ${styles.pageNumActive}`}>1</button>
-                <button className={styles.pageBtn} aria-label="Next">→</button>
-              </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className={styles.pagination}>
+                  {currentPage > 1 ? (
+                    <Link href={getPageHref(currentPage - 1)} className={styles.pageBtn} aria-label="Previous">
+                      ←
+                    </Link>
+                  ) : (
+                    <button className={styles.pageBtn} aria-label="Previous" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                      ←
+                    </button>
+                  )}
+                  
+                  {Array.from({ length: totalPages }, (_, i) => {
+                    const p = i + 1;
+                    const isActive = p === currentPage;
+                    return (
+                      <Link
+                        key={p}
+                        href={getPageHref(p)}
+                        className={`${styles.pageNum} ${isActive ? styles.pageNumActive : ""}`}
+                      >
+                        {p}
+                      </Link>
+                    );
+                  })}
+
+                  {currentPage < totalPages ? (
+                    <Link href={getPageHref(currentPage + 1)} className={styles.pageBtn} aria-label="Next">
+                      →
+                    </Link>
+                  ) : (
+                    <button className={styles.pageBtn} aria-label="Next" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                      →
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}

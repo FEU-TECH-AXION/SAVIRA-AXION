@@ -158,6 +158,7 @@
 .eventsList {
   --event-card-top-left-radius: 200px;
   --event-card-top-right-radius: 50px;
+  --event-image-height: 300px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -176,12 +177,15 @@
 
 .eventImageWrap {
   position: relative;
+  height: var(--event-image-height);
+  overflow: hidden;
   border-top-left-radius: var(--event-card-top-left-radius);
   border-top-right-radius: var(--event-card-top-right-radius);
 }
 
 .eventImage {
   width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
   background: var(--gray-200);
@@ -193,6 +197,7 @@
   .eventsList {
     --event-card-top-left-radius: 120px;
     --event-card-top-right-radius: 42px;
+    --event-image-height: 260px;
   }
 }
 
@@ -312,6 +317,9 @@
 }
 
 .pageBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -320,6 +328,7 @@
   color: var(--teal);
   font-size: 1rem;
   cursor: pointer;
+  text-decoration: none;
   transition: background 0.2s, color 0.2s;
 }
 
@@ -329,6 +338,9 @@
 }
 
 .pageNum {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -337,6 +349,7 @@
   color: var(--text);
   font-size: 0.95rem;
   cursor: pointer;
+  text-decoration: none;
   transition: background 0.2s;
 }
 
@@ -482,6 +495,7 @@
   .eventsList {
     --event-card-top-left-radius: 86px;
     --event-card-top-right-radius: 32px;
+    --event-image-height: 220px;
   }
 
   .footerInner {
@@ -494,6 +508,7 @@
   .eventsList {
     --event-card-top-left-radius: 48px;
     --event-card-top-right-radius: 22px;
+    --event-image-height: 180px;
   }
 }
 

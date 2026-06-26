@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import styles from "./contact.module.css";
 import { FaFacebook, FaInstagram} from "react-icons/fa6";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa6";
 
 
 export default function ContactPage() {
@@ -58,7 +58,7 @@ export default function ContactPage() {
           <div className={styles.formLeft}>
             {submitted ? (
               <div className={styles.successMsg}>
-                <span className={styles.successIcon}><FaCheckCircle /></span>
+                <span className={styles.successIcon}><FaCheck /></span>
                 <h3>Message Sent!</h3>
                 <p>Thank you for reaching out. We&apos;ll get back to you shortly.</p>
               </div>

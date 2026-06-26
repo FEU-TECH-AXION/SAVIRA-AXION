@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "./ApplyApplicationForm.module.css";
 import { useRouter } from "next/navigation";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa6";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
@@ -74,7 +74,7 @@ function WizardStepper({ current }) {
                 ${active ? styles.wizardDotActive : ""}
                 ${done   ? styles.wizardDotDone  : ""}`}
             >
-              {done ? <FaCheckCircle /> : i + 1}
+              {done ? <FaCheck /> : i + 1}
             </div>
             <span className={`${styles.wizardLabel} ${active ? styles.wizardLabelActive : ""} ${done ? styles.wizardLabelDone : ""}`}>
               {step.label}
@@ -1530,7 +1530,7 @@ export default function CreateApplication({
           </div>
         ) : (
           <div className={styles.successCard}>
-            <div className={styles.successIcon}><FaCheckCircle /></div>
+            <div className={styles.successIcon}><FaCheck /></div>
             <h2 className={styles.successTitle}>Application Submitted!</h2>
             <p className={styles.successDesc}>
               Your application has been received. We will review it and get back to you via your provided contact details.

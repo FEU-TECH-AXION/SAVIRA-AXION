@@ -126,6 +126,7 @@ export const TRANSITION_RULES = {
   // 4. Case is valid -> moves to evaluation
   "Verified - True": {
     case_officer: ["Under Case Evaluation"],
+    legal:        ["Under Case Evaluation"],
     admin:        ["Under Case Evaluation"],
   },
 

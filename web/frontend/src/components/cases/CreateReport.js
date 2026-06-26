@@ -1888,6 +1888,7 @@ export default function CreateReport({
   const [stepErrors, setStepErrors]       = useState({});
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
+  const formCardHeaderRef = useRef(null);
 
   const [consents, setConsents] = useState({
     dataPrivacy: false,
@@ -2009,12 +2010,18 @@ export default function CreateReport({
     }
 
     setStepErrors({});
-    if (step < totalSteps - 1) setStep((s) => s + 1);
+    if (step < totalSteps - 1) {
+      setStep((s) => s + 1);
+      formCardHeaderRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const handleBack = () => {
     setStepErrors({});
-    if (step > 0) setStep((s) => s - 1);
+    if (step > 0) {
+      setStep((s) => s - 1);
+      formCardHeaderRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const handleSubmit = async () => {
@@ -2151,7 +2158,7 @@ export default function CreateReport({
           )}
           {!submitted ? (
             <div className={styles.formCard}>
-              <div className={styles.formCardHeader}>
+              <div className={styles.formCardHeader} ref={formCardHeaderRef}>
                 <div className={styles.formCardHeaderLines}>
                   <div className={styles.formCardHeaderLine} />
                 </div>

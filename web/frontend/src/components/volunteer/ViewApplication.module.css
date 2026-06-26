@@ -104,17 +104,13 @@
 .headerTop {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 1rem;
-  padding-right: 10rem;
 }
 
 .headerActions {
-  position: absolute;
-  top: 0;
-  right: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: flex-end;
   gap: 0.55rem;
@@ -125,14 +121,20 @@
 }
 
 .withdrawBtn {
-  padding: 0.55rem 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 1rem;
   border: 1px solid #dc2626;
-  border-radius: 8px;
+  border-radius: 999px;
   background: #fff;
   color: #b91c1c;
-  font-size: 0.82rem;
+  font-size: .78rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -284,7 +286,6 @@
 }
 
 .screeningContent {
-  margin-top: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -300,7 +301,37 @@
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0 0 0.75rem;
+  margin: 0;
+  transition: color 0.12s;
+}
+
+.screeningGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: #6b7280;
+  padding: 0.45rem 0.75rem;
+  background: #eeeeee;
+  border-radius: 8px;
+  border: 1px solid #f1f3f5;
+  transition: color 0.12s;
+}
+
+.screeningGroupHeader:hover {
+  color: #037F81;
+}
+
+.screeningGroupHeader:hover .screeningGroupTitle {
+  color: #037F81;
+}
+
+.screeningGroupHeader svg {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .screeningDivider {
@@ -533,7 +564,7 @@
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
-  .pageWrap {
+  .pageWrapper {
     padding: 1rem 0.75rem 3rem;
   }
 
@@ -547,20 +578,14 @@
 
   .headerTop {
     flex-direction: column;
-    align-items: flex-start;
-    padding-right: 8.5rem;
-  }
-
-  .headerTop > div:first-child {
-    max-width: 100%;
+    align-items: flex-start; /* Stack the Title text and Buttons vertically */
+    gap: 1.25rem;
   }
 
   .headerActions {
-    top: 0;
-    right: 0;
-    width: auto;
-    align-items: flex-end;
-    justify-content: flex-end;
+    width: 100%;
+    justify-content: flex-start; /* Align elements to the left on small viewports */
+    flex-wrap: wrap; /* Allows them to wrap cleanly if the screen gets exceptionally thin */
   }
 
   .detailGrid {
@@ -587,8 +612,11 @@
 .statusBadgeDynamic {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 28px;
   gap: 5px;
-  padding: 4px 12px;
+  padding: 0 12px;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;

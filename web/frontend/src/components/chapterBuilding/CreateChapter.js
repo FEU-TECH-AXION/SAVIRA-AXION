@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiArrowLeft,
@@ -160,7 +160,7 @@ function Requirement({ done, title, detail }) {
   );
 }
 
-export default function ChapterFormationPage({ mode = "create" }) {
+function ChapterFormationPageContent({ mode = "create" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const chapterId = searchParams.get("id");
@@ -616,5 +616,13 @@ export default function ChapterFormationPage({ mode = "create" }) {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function ChapterFormationPage({ mode = "create" }) {
+  return (
+    <Suspense fallback={null}>
+      <ChapterFormationPageContent mode={mode} />
+    </Suspense>
   );
 }

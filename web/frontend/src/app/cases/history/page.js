@@ -90,6 +90,7 @@ export default function ReportHistoryPage() {
   const [withdrawAffidavit, setWithdrawAffidavit] = useState(null);
   const [actionError, setActionError] = useState("");
   const [followUpReport, setFollowUpReport] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function fetchReports() {
@@ -141,6 +142,22 @@ export default function ReportHistoryPage() {
     () => filterReports(reports, filters, search),
     [reports, filters, search]
   );
+
+  // Reset to page 1 whenever filters or search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, search]);
+
+  const ITEMS_PER_PAGE = 3;
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+  const activePage = Math.min(totalPages, Math.max(1, currentPage));
+
+  const startIndex = (activePage - 1) * ITEMS_PER_PAGE;
+  const paginatedReports = useMemo(
+    () => filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE),
+    [filteredReports, startIndex]
+  );
+
   const officerOptions = useMemo(
     () => [...new Set(reports.map((report) => report.assignedPersonnel).filter(Boolean))],
     [reports]
@@ -248,10 +265,10 @@ export default function ReportHistoryPage() {
               <p>No reports match the selected filters.</p>
             )}
 
-            {filteredReports.map((report, index) => (
+            {paginatedReports.map((report, index) => (
               <div className="col-12" key={report.id}>
                 <ReportStatusCard
-                  reportNumber={index + 1}
+                  reportNumber={startIndex + index + 1}
                   report={report}
                   onWithdraw={() => {
                     setActionError("");
@@ -261,6 +278,48 @@ export default function ReportHistoryPage() {
                 />
               </div>
             ))}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="col-12">
+                <div className={styles.pagination}>
+                  <button
+                    type="button"
+                    className={styles.pageBtn}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={activePage === 1}
+                    aria-label="Previous"
+                    style={activePage === 1 ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                  >
+                    ←
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => {
+                    const p = i + 1;
+                    const isActive = p === activePage;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setCurrentPage(p)}
+                        className={`${styles.pageNum} ${isActive ? styles.pageNumActive : ""}`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className={styles.pageBtn}
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={activePage === totalPages}
+                    aria-label="Next"
+                    style={activePage === totalPages ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
