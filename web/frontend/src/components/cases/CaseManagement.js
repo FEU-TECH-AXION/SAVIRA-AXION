@@ -1301,7 +1301,7 @@ const [nextStatus, setNextStatus] = useState("");
 const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false);
 const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
   const router = useRouter();
-  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const userCookie = getCookie("user");
@@ -1309,15 +1309,21 @@ const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
       try {
         const stored = JSON.parse(userCookie);
         setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name });
-      } catch (_) {}
+      } catch (_) {
+      // parsing failed — set empty user so fetch still runs
+        setUser({ role: "", firstName: "", lastName: "" });
+      }
+    } else {
+      // no cookie found — set empty user so fetch still runs
+      setUser({ role: "", firstName: "", lastName: "" });
     }
   }, []);
 
-  const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
-  const isAdmin   = user.role?.toLowerCase() === "admin";
-  const isCaseOfficer = user.role?.toLowerCase() === "case officer" || user.role?.toLowerCase() === "case_officer";
-  const isLegal   = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
-
+  const actorName     = `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Officer";
+  const isAdmin       = user?.role?.toLowerCase() === "admin";
+  const isCaseOfficer = user?.role?.toLowerCase() === "case officer" || user?.role?.toLowerCase() === "case_officer";
+  const isLegal       = user?.role?.toLowerCase() === "legal personnel" || user?.role?.toLowerCase() === "legal_personnel";
+  
   const [cases, setCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
 
@@ -1341,6 +1347,8 @@ const STATUS_STEP = {
 };
 
 useEffect(() => {
+  if (user === null) return; // wait for cookie to load
+
   const fetchCases = async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -1354,55 +1362,42 @@ useEffect(() => {
       }
       const { data } = await res.json();
 
-      // Map DB shape to the shape CaseManagement expects
-      let mapped = data.map((r, i) => {
+      const mapped = data.map((r) => {
         const year = new Date(r.created_at).getFullYear();
         return {
-        id:              r.case_report_id,
-        caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
-        reporterId:      String(r.complainant_id),
-        region:          r.incident_province || r.incident_city || "—",
-        city:            r.incident_city || "",
-        status:          STATUS_STEP[r.case_status_id] || "For Verification",
-        assignedOfficer: r.assigned_officer || null,
-        assignedOfficerIds: r.assigned_officer_id ? [r.assigned_officer_id] : [],
-        dateSubmitted:   new Date(r.created_at).toLocaleDateString('en-PH'),
-        caseType:        r.case_type || null,
-        caseCategory:    r.primary_category || null,
-        alsoInvolves:    r.additional_categories || [],
-        referralRequired: r.referral_required || false,
-        referralBody:    r.referral_body || null,
-        endorsementStatus: r.endorsement?.endorsed_to
-          ? `Endorsed to ${r.endorsement.endorsed_to}`
-          : null,
-        violenceType:    "—",  // not in DB yet
-        description:     r.incident_description || "—",
-        endorsedTo:      null,
-        endorsementDetails: null,
-        pendingApproval: null,
-        possibleDuplicates: r.possible_duplicates || [],
-        statusHistory: [
-          {
-            status: STATUS_STEP[r.case_status_id] || "For Verification",
-            date:   new Date(r.created_at).toLocaleDateString('en-PH'),
-            by:     r.assigned_officer || "System",
-            notes:  "Report received and logged.",
-          }
-        ],
+          id:              r.case_report_id,
+          caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
+          reporterId:      String(r.complainant_id),
+          region:          r.incident_province || r.incident_city || "—",
+          city:            r.incident_city || "",
+          status:          STATUS_STEP[r.case_status_id] || "For Verification",
+          assignedOfficer: r.assigned_officer || null,
+          assignedOfficerIds: r.assigned_officer_id ? [r.assigned_officer_id] : [],
+          dateSubmitted:   new Date(r.created_at).toLocaleDateString('en-PH'),
+          caseType:        r.case_type || null,
+          caseCategory:    r.primary_category || null,
+          alsoInvolves:    r.additional_categories || [],
+          referralRequired: r.referral_required || false,
+          referralBody:    r.referral_body || null,
+          endorsementStatus: r.endorsement?.endorsed_to
+            ? `Endorsed to ${r.endorsement.endorsed_to}`
+            : null,
+          violenceType:    "—",
+          description:     r.incident_description || "—",
+          endorsedTo:      null,
+          endorsementDetails: null,
+          pendingApproval: null,
+          possibleDuplicates: r.possible_duplicates || [],
+          statusHistory: [
+            {
+              status: STATUS_STEP[r.case_status_id] || "For Verification",
+              date:   new Date(r.created_at).toLocaleDateString('en-PH'),
+              by:     r.assigned_officer || "System",
+              notes:  "Report received and logged.",
+            }
+          ],
         };
       });
-
-      // Case officers only see cases assigned to them
-      if (isCaseOfficer && actorName) {
-        console.log('[CaseManagement] Case officer filter - actorName:', actorName);
-        console.log('[CaseManagement] Before filter - total cases:', mapped.length);
-        mapped = mapped.filter(c => {
-          const match = c.assignedOfficer === actorName;
-          if (!match) console.log('[CaseManagement] Filtered out case:', c.caseId, 'assigned to:', c.assignedOfficer);
-          return match;
-        });
-        console.log('[CaseManagement] After filter - visible cases:', mapped.length);
-      }
 
       setCases(mapped);
     } catch (err) {
@@ -1413,7 +1408,7 @@ useEffect(() => {
   };
 
   fetchCases();
-}, [isCaseOfficer, actorName]);
+}, [user]);
 
 // Fetch case officers from database
 useEffect(() => {

@@ -594,4 +594,267 @@ async function getHeatmapReports() {
   return normalizeSubmittedReportStatuses(data)
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports }
+async function getReportsByAssignedOfficer(userId) {
+  // Step 1: Find the case_officer_id for this user
+  const { data: officer, error: officerError } = await supabase
+    .from('case_officers')
+    .select('case_officer_id')
+    .eq('user_id', userId)  // adjust if your FK column name differs
+    .maybeSingle()
+  if (officerError) throw officerError
+  if (!officer) return [] // user has no officer profile, return empty
+
+  const caseOfficerId = officer.case_officer_id
+
+  // Step 2: Get only cases assigned to this officer
+  const { data: reports, error: reportsError } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      incident_description,
+      incident_city,
+      incident_province,
+      incident_date,
+      case_status_id,
+      created_at,
+      is_current,
+      case_assignments (
+        assignment_id,
+        case_officer_id,
+        is_active
+      ),
+      legal_case_assignments (
+        legal_case_assignment_id,
+        legal_personnel_id,
+        assignment_role,
+        is_active
+      )
+    `)
+    .eq('is_current', true)
+    .eq('case_assignments.case_officer_id', caseOfficerId)  // scope to this officer
+    .eq('case_assignments.is_active', true)
+    .order('created_at', { ascending: false })
+  if (reportsError) throw reportsError
+
+  // Step 3: Filter out reports where the join didn't match
+  // (Supabase returns all reports but with empty case_assignments if no match)
+  const assignedReports = (reports || []).filter(
+    r => r.case_assignments?.some(a => a.case_officer_id === caseOfficerId && a.is_active)
+  )
+
+  const normalizedReports = await normalizeSubmittedReportStatuses(assignedReports)
+  const reportIds = normalizedReports.map(r => r.case_report_id)
+  if (reportIds.length === 0) return []
+
+  // Step 4: Reuse the same assessment + duplicate enrichment from getAllReports
+  const assessmentMap = {}
+  const { data: assessments, error: assessmentsError } = await supabase
+    .from('case_assessments')
+    .select(`
+      case_report_id,
+      case_type,
+      primary_category,
+      additional_categories,
+      referral_required,
+      referral_body,
+      endorsement,
+      created_at
+    `)
+    .in('case_report_id', reportIds)
+    .order('created_at', { ascending: false })
+  if (assessmentsError) throw assessmentsError
+
+  for (const row of assessments || []) {
+    const merged = assessmentMap[row.case_report_id] || {
+      case_type: null, primary_category: null, additional_categories: null,
+      referral_required: false, referral_body: null, endorsement: null,
+    }
+    if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
+    if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
+    if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
+    if (!merged.referral_required && row.referral_required) merged.referral_required = row.referral_required
+    if (!merged.referral_body && row.referral_body) merged.referral_body = row.referral_body
+    if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
+    assessmentMap[row.case_report_id] = merged
+  }
+
+  const duplicateMatches = await getDuplicateMatches(reportIds)
+
+  return normalizedReports.map(report => ({
+    ...report,
+    assigned_officer: null,       // they know it's their own cases
+    assigned_officer_id: caseOfficerId,
+    assigned_legal_officer: null,
+    assigned_paralegal: null,
+    assigned_legal: (report.legal_case_assignments || [])
+      .filter(a => a.is_active)
+      .map(a => ({
+        legal_personnel_id: a.legal_personnel_id,
+        assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+        name: null,
+      })),
+    possible_duplicates: duplicateMatches[report.case_report_id] || [],
+    ...(assessmentMap[report.case_report_id] || {}),
+    case_assignments: undefined,
+    legal_case_assignments: undefined,
+  }))
+}
+
+async function getReportsForLegal() {
+  const LEGAL_VISIBLE_STATUS_IDS = [4, 6, 7, 8, 9, 10, 11, 12];
+  // 4=Verified-True, 6=Under Case Evaluation, 7=Case Filed,
+  // 8=Investigation Ongoing, 9=Hearing Ongoing, 10=Dismissed,
+  // 11=Perpetrator Convicted, 12=Resolved
+
+  const { data: reports, error: reportsError } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      incident_description,
+      incident_city,
+      incident_province,
+      incident_date,
+      case_status_id,
+      created_at,
+      is_current,
+      case_assignments (
+        assignment_id,
+        case_officer_id,
+        is_active
+      ),
+      legal_case_assignments (
+        legal_case_assignment_id,
+        legal_personnel_id,
+        assignment_role,
+        is_active
+      )
+    `)
+    .eq('is_current', true)
+    .in('case_status_id', LEGAL_VISIBLE_STATUS_IDS)
+    .order('created_at', { ascending: false })
+
+  if (reportsError) throw reportsError
+
+  const normalizedReports = await normalizeSubmittedReportStatuses(reports)
+  const reportIds = normalizedReports.map(r => r.case_report_id)
+  if (reportIds.length === 0) return []
+
+  // Fetch legal personnel names
+  const { data: legalPersonnels, error: legalError } = await supabase
+    .from('legal_personnels')
+    .select(`legal_personnel_id, users!inner(first_name, last_name)`)
+  if (legalError) throw legalError
+
+  const legalMap = {}
+  for (const lp of legalPersonnels || []) {
+    if (lp.users) {
+      legalMap[lp.legal_personnel_id] = `${lp.users.first_name || ''} ${lp.users.last_name || ''}`.trim()
+    }
+  }
+
+  const duplicateMatches = await getDuplicateMatches(reportIds)
+
+  return normalizedReports.map(report => {
+    const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
+    return {
+      ...report,
+      assigned_officer: null,
+      assigned_legal: activeLegal.map(a => ({
+        legal_personnel_id: a.legal_personnel_id,
+        assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+        name: legalMap[a.legal_personnel_id] || null,
+      })),
+      possible_duplicates: duplicateMatches[report.case_report_id] || [],
+      case_assignments: undefined,
+      legal_case_assignments: undefined,
+    }
+  })
+}
+
+async function getReportsByAssignedLegal(userId) {
+  // Step 1: Find the legal_personnel_id for this user
+  const { data: legalPersonnel, error: legalPersonnelError } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (legalPersonnelError) throw legalPersonnelError
+  if (!legalPersonnel) return [] // user has no legal personnel profile
+
+  const legalPersonnelId = legalPersonnel.legal_personnel_id
+
+  // Step 2: Get only cases assigned to this legal personnel
+  const { data: reports, error: reportsError } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      incident_description,
+      incident_city,
+      incident_province,
+      incident_date,
+      case_status_id,
+      created_at,
+      is_current,
+      case_assignments (
+        assignment_id,
+        case_officer_id,
+        is_active
+      ),
+      legal_case_assignments (
+        legal_case_assignment_id,
+        legal_personnel_id,
+        assignment_role,
+        is_active
+      )
+    `)
+    .eq('is_current', true)
+    .order('created_at', { ascending: false })
+  if (reportsError) throw reportsError
+
+  // Step 3: Filter to only cases where this legal personnel is actively assigned
+  const assignedReports = (reports || []).filter(r =>
+    r.legal_case_assignments?.some(
+      a => a.legal_personnel_id === legalPersonnelId && a.is_active
+    )
+  )
+
+  const normalizedReports = await normalizeSubmittedReportStatuses(assignedReports)
+  const reportIds = normalizedReports.map(r => r.case_report_id)
+  if (reportIds.length === 0) return []
+
+  // Step 4: Fetch legal personnel names for display
+  const { data: legalPersonnels, error: legalError } = await supabase
+    .from('legal_personnels')
+    .select(`legal_personnel_id, users!inner(first_name, last_name)`)
+  if (legalError) throw legalError
+
+  const legalMap = {}
+  for (const lp of legalPersonnels || []) {
+    if (lp.users) {
+      legalMap[lp.legal_personnel_id] = `${lp.users.first_name || ''} ${lp.users.last_name || ''}`.trim()
+    }
+  }
+
+  const duplicateMatches = await getDuplicateMatches(reportIds)
+
+  return normalizedReports.map(report => {
+    const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
+    return {
+      ...report,
+      assigned_officer: null,
+      assigned_legal: activeLegal.map(a => ({
+        legal_personnel_id: a.legal_personnel_id,
+        assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+        name: legalMap[a.legal_personnel_id] || null,
+      })),
+      possible_duplicates: duplicateMatches[report.case_report_id] || [],
+      case_assignments: undefined,
+      legal_case_assignments: undefined,
+    }
+  })
+}
+
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal }
