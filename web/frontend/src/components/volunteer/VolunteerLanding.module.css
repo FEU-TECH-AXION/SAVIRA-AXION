@@ -24,6 +24,8 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .sectionLabel {
@@ -279,11 +281,11 @@
 }
 
 .responsibilitiesSection .sectionLabel {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--white);
 }
 
 .responsibilitiesSection .sectionLabel::before {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--white);
 }
 
 .responsibilitiesSection .sectionTitle {
