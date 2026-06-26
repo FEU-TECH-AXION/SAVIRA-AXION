@@ -369,10 +369,63 @@
   opacity: 0.6;
 }
 
-/* ════════════════════════════════════════
-   RESPONSIVE
-   ════════════════════════════════════════ */
+/* ── Responsive overrides ── */
 @media (max-width: 767.98px) {
   .heroTitle    { font-size: 1.5rem; margin-bottom: 1.25rem; }
   .cardMetaGrid { grid-template-columns: 1fr; }
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0 1rem;
+}
+
+.pageBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--sasha-teal);
+  background: var(--sasha-white);
+  color: var(--sasha-teal);
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: var(--sasha-teal);
+  color: var(--sasha-white);
+}
+
+.pageNum {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--sasha-text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.pageNum:hover:not(.pageNumActive) {
+  background: var(--sasha-border);
+}
+
+.pageNumActive {
+  background: var(--sasha-teal) !important;
+  color: var(--sasha-white) !important;
 }
