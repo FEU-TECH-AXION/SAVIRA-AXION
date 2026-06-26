@@ -83,8 +83,8 @@ function YesNoBadge({ value }) {
   if (!value || value === "—") return <span className={styles.yesNoBadgeEmpty}>—</span>;
   return (
     <span className={styles.yesNoBadge} style={{
-      background: isYes ? "#d1fae5" : isNo ? "#fee2e2" : "#f3f4f6",
-      color:      isYes ? "#065f46" : isNo ? "#991b1b" : "#374151",
+      background: isYes ? "#d1fae5" : isNo ? "#fee2e2" : "#d1fae5",
+      color:      isYes ? "#065f46" : isNo ? "#991b1b" : "#065f46",
     }}>
       {isYes ? "Yes" : isNo ? "No" : value}
     </span>
@@ -205,7 +205,18 @@ function ApplicantScoresTab({ appData }) {
 // ─── Application Details Tab ──────────────────────────────────────────────────
 
 function ApplicationDetailsTab({ appData, isStaff }) {
-  const [showScreening, setShowScreening] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({
+    values: false,
+    advocacy: false,
+    learning: false,
+  });
+
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
 
   const isBspOrg =
     appData.organization === "BSP" ||
@@ -287,72 +298,90 @@ function ApplicationDetailsTab({ appData, isStaff }) {
         ]} />
       </Section>
 
-      {/* Screening Questions (collapsible) */}
+      {/* Expertise & Interest */}
+      <Section title="Expertise &amp; Interest">
+        <DetailGrid rows={[
+          ["Fields with Background", appData.fieldsWithBackground],
+          ["Fields of Interest",     appData.fieldsOfInterest],
+          ["Hours per Week",         appData.hoursPerWeek],
+        ]} />
+      </Section>
+
+      {/* Screening Questions (collapsible by group) */}
       <Section title="Screening Questions">
-      <section className={styles.section}>
-        <button
-          className={styles.screeningToggle}
-          onClick={() => setShowScreening(s => !s)}
-        >
-          {showScreening ? <FiChevronUp /> : <FiChevronDown />}
-          {showScreening ? "Hide" : "Show"} Screening Responses
-        </button>
-
-        {showScreening && (
-          <div className={styles.screeningContent}>
+        <div className={styles.screeningContent}>
 
             <div className={styles.screeningGroup}>
-              <h3 className={styles.screeningGroupTitle}>Values &amp; Conduct</h3>
-              <ScreeningGrid rows={[
-                ["Survivors deserve dignity & respect",                              appData.survivorDignity],
-                ["Follow confidentiality & safeguarding policies",                  appData.confidentialityPolicy],
-                ["Harassment, discrimination & victim-blaming are unacceptable",    appData.noHarassment],
-                ["Communicate respectfully regardless of background",               appData.respectfulComms],
-              ]} />
+              <button
+                type="button"
+                className={styles.screeningGroupHeader}
+                onClick={() => toggleGroup("values")}
+              >
+                <span className={styles.screeningGroupTitle}>Values &amp; Conduct</span>
+                {expandedGroups.values ? <FiChevronUp /> : <FiChevronDown />}
+              </button>
+              {expandedGroups.values && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <ScreeningGrid rows={[
+                    ["Survivors deserve dignity & respect",                              appData.survivorDignity],
+                    ["Follow confidentiality & safeguarding policies",                  appData.confidentialityPolicy],
+                    ["Harassment, discrimination & victim-blaming are unacceptable",    appData.noHarassment],
+                    ["Communicate respectfully regardless of background",               appData.respectfulComms],
+                  ]} />
+                </div>
+              )}
             </div>
 
             <div className={styles.screeningDivider} />
 
             <div className={styles.screeningGroup}>
-              <h3 className={styles.screeningGroupTitle}>Advocacy &amp; Participation</h3>
-              <ScreeningGrid rows={[
-                ["In favor of safer environments",   appData.saferEnvironments],
-                ["Support advocacy efforts",         appData.advocacySupport],
-                ["Enthusiastic to contribute",       appData.enthusiasm],
-                ["Committed to professionalism",     appData.professionalism],
-              ]} />
+              <button
+                type="button"
+                className={styles.screeningGroupHeader}
+                onClick={() => toggleGroup("advocacy")}
+              >
+                <span className={styles.screeningGroupTitle}>Advocacy &amp; Participation</span>
+                {expandedGroups.advocacy ? <FiChevronUp /> : <FiChevronDown />}
+              </button>
+              {expandedGroups.advocacy && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <ScreeningGrid rows={[
+                    ["In favor of safer environments",   appData.saferEnvironments],
+                    ["Support advocacy efforts",         appData.advocacySupport],
+                    ["Enthusiastic to contribute",       appData.enthusiasm],
+                    ["Committed to professionalism",     appData.professionalism],
+                  ]} />
+                </div>
+              )}
             </div>
 
             <div className={styles.screeningDivider} />
 
             <div className={styles.screeningGroup}>
-              <h3 className={styles.screeningGroupTitle}>Learning &amp; Awareness</h3>
-              <ScreeningGrid rows={[
-                ["Familiar with gender equality issues",     appData.genderAwareness],
-                ["Stays informed on social issues",          appData.stayInformed],
-                ["Open to learning",                         appData.openToLearn],
-                ["Comfortable with diverse teams",           appData.diverseTeams],
-                ["Willing for orientations/trainings",       appData.orientationWilling],
-                ["Able to dedicate time consistently",       appData.timeCommitment],
-                ["Open to constructive feedback",            appData.feedbackWilling],
-              ]} />
+              <button
+                type="button"
+                className={styles.screeningGroupHeader}
+                onClick={() => toggleGroup("learning")}
+              >
+                <span className={styles.screeningGroupTitle}>Learning &amp; Awareness</span>
+                {expandedGroups.learning ? <FiChevronUp /> : <FiChevronDown />}
+              </button>
+              {expandedGroups.learning && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <ScreeningGrid rows={[
+                    ["Familiar with gender equality issues",     appData.genderAwareness],
+                    ["Stays informed on social issues",          appData.stayInformed],
+                    ["Open to learning",                         appData.openToLearn],
+                    ["Comfortable with diverse teams",           appData.diverseTeams],
+                    ["Willing for orientations/trainings",       appData.orientationWilling],
+                    ["Able to dedicate time consistently",       appData.timeCommitment],
+                    ["Open to constructive feedback",            appData.feedbackWilling],
+                  ]} />
+                </div>
+              )}
             </div>
 
-            <div className={styles.screeningDivider} />
-
-            
-
-          </div>
-        )}
-        <div className={styles.screeningGroup}>
-              <h3 className={styles.screeningGroupTitle}>Expertise &amp; Interest</h3>
-              <DetailGrid rows={[
-                ["Fields with Background", appData.fieldsWithBackground],
-                ["Fields of Interest",     appData.fieldsOfInterest],
-                ["Hours per Week",         appData.hoursPerWeek],
-              ]} />
-            </div>
-      </section>
+        </div>
       </Section>
 
       {/* Essay */}

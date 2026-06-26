@@ -286,7 +286,6 @@
 }
 
 .screeningContent {
-  margin-top: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -302,7 +301,37 @@
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0 0 0.75rem;
+  margin: 0;
+  transition: color 0.12s;
+}
+
+.screeningGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: #6b7280;
+  padding: 0.45rem 0.75rem;
+  background: #eeeeee;
+  border-radius: 8px;
+  border: 1px solid #f1f3f5;
+  transition: color 0.12s;
+}
+
+.screeningGroupHeader:hover {
+  color: #037F81;
+}
+
+.screeningGroupHeader:hover .screeningGroupTitle {
+  color: #037F81;
+}
+
+.screeningGroupHeader svg {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .screeningDivider {

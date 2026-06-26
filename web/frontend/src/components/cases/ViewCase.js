@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import { MdAlert } from  "react-icons/md";
 import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle, IoIosAlert } from "react-icons/io";
+import { FaCheck } from "react-icons/fa6";
 import { FaCheckCircle } from "react-icons/fa";
 import styles from "./ViewCase.module.css";
 import duplicateStyles from "./DuplicateCheckTab.module.css";
