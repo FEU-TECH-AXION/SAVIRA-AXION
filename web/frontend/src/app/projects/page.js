@@ -1,26 +1,15 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 import ProjectManagement from "@/components/projects/ProjectManagement";
 
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-};
-
 export default function ProjectsPage() {
-  const [role, setRole] = useState(null);
-  const router = useRouter();
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const userCookie = getCookie('user');
-    if (!userCookie) { router.push('/'); return; }
-    const user = JSON.parse(userCookie);
-    setRole(user.role_name?.toLowerCase());
-  }, []);
+  if (loading) return <p>Loading...</p>;
+  if (!user) return null;
 
-  if (!role) return <p>Loading...</p>;
+  const role = user.role_name?.toLowerCase();
+
   if (role === "admin") return <ProjectManagement />;
   if (role === "staff") return <ProjectManagement />;
   return <p>Unauthorized</p>;
