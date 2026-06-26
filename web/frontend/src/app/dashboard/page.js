@@ -9,7 +9,6 @@ import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficer
 import LegalPersonnelDashboard from "@/components/dashboard/legalPersonnel/LegalPersonnelDashboard";
 import ComplainantDashboard from "@/components/dashboard/complainant/ComplainantDashboard";
 import { useAuth, authFetch } from "@/lib/AuthContext";
-
 export default function DashboardPage() {
   const [userReports, setUserReports] = useState([]);
   const [latestApplication, setLatestApplication] = useState(null);

@@ -91,6 +91,22 @@ const ALL_STATUSES = [
   "Withdrawn"
 ];
 
+const STATUS_STEP = {
+  1:  "Submitted",
+  2:  "For Verification",
+  3:  "Undergoing Review",
+  4:  "Verified - True",
+  5:  "Verified - False",
+  6:  "Under Case Evaluation",
+  7:  "Case Filed",
+  8:  "Investigation Ongoing",
+  9:  "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn"
+};
+
 // Which statuses a Case Officer is responsible for initiating
 const CASE_OFFICER_STATUSES = [
   "For Verification",
@@ -1160,9 +1176,35 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
 function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   if (!caseData || !caseData.pendingApproval) return null;
 
   const pa = caseData.pendingApproval;
+
+  async function approve() {
+    setSaving(true);
+    try {
+      await onApprove(caseData);
+      onClose();
+    } catch {
+      // Parent action shows the toast; keep the modal open for retry.
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reject() {
+    setSaving(true);
+    try {
+      await onReject(caseData, rejectReason);
+      onClose();
+    } catch {
+      // Parent action shows the toast; keep the modal open for retry.
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Modal open={open} onClose={onClose} title="Review Pending Status Change" wide>
@@ -1199,16 +1241,18 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
             <FTextarea placeholder="Explain why this status change is being rejected…" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
           </FormGroup>
           <div className={styles.modalFooter}>
-            <button className={styles.btnSecondary} onClick={() => setShowReject(false)}>Back</button>
-            <button className={styles.btnDanger} onClick={() => { onReject(caseData, rejectReason); onClose(); }} disabled={!rejectReason.trim()}>Confirm Rejection</button>
+            <button className={styles.btnSecondary} onClick={() => setShowReject(false)} disabled={saving}>Back</button>
+            <button className={styles.btnDanger} onClick={reject} disabled={!rejectReason.trim() || saving}>
+              {saving ? "Saving..." : "Confirm Rejection"}
+            </button>
           </div>
         </div>
       ) : (
         <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-          <button className={styles.btnDanger} onClick={() => setShowReject(true)}>Reject</button>
-          <button className={styles.btnSuccess} onClick={() => { onApprove(caseData); onClose(); }}>
-            <FiCheck size={14} /> Approve &amp; Apply
+          <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
+          <button className={styles.btnDanger} onClick={() => setShowReject(true)} disabled={saving}>Reject</button>
+          <button className={styles.btnSuccess} onClick={approve} disabled={saving}>
+            <FiCheck size={14} /> {saving ? "Applying..." : "Approve & Apply"}
           </button>
         </div>
       )}
@@ -1287,6 +1331,24 @@ const STATUS_MODAL_MAP = {
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
+function mergeStatusHistory(caseData, history = []) {
+  const statusHistory = history.length > 0 ? history : caseData.statusHistory || [];
+  const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
+
+  return {
+    ...caseData,
+    pendingApproval: pending ? {
+      historyId: pending.historyId,
+      proposedStatus: pending.status,
+      submittedBy: pending.by,
+      date: pending.date,
+      notes: pending.notes,
+      formData: pending.formData,
+    } : null,
+    statusHistory,
+  };
+}
+
 export default function CaseManagement() {
   const [selectedCase, setSelectedCase] = useState(null);
 const [nextStatus, setNextStatus] = useState("");
@@ -1297,6 +1359,7 @@ const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
   const router = useRouter();
   const { user: authUser, loading: authLoading } = useAuth();
   const user = authLoading ? null : {
+    id: authUser?.user_id || authUser?.id || null,
     role: authUser?.role_name || authUser?.role || "",
     firstName: authUser?.first_name || "",
     lastName: authUser?.last_name || "",
@@ -1314,24 +1377,8 @@ const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
   // Dynamic officers list (try backend, fallback to deriving from cases)
   const [officers, setOfficers] = useState([]);
 
-const STATUS_STEP = {
-  1:  "Submitted",
-  2:  "For Verification",
-  3:  "Undergoing Review",
-  4:  "Verified - True",
-  5:  "Verified - False",
-  6:  "Under Case Evaluation",
-  7:  "Case Filed",
-  8:  "Investigation Ongoing",
-  9:  "Hearing Ongoing",
-  10: "Dismissed",
-  11: "Perpetrator Convicted",
-  12: "Resolved",
-  13: "Withdrawn"
-};
-
 useEffect(() => {
-  if (user === null) return; // wait for cookie to load
+  if (authLoading) return; // wait for cookie to load
 
   const fetchCases = async () => {
     try {
@@ -1383,7 +1430,21 @@ useEffect(() => {
         };
       });
 
-      setCases(mapped);
+      const synced = await Promise.all(mapped.map(async (caseItem) => {
+        try {
+          const historyRes = await fetch(`${API_URL}/api/case_status_history/${caseItem.id}?staffView=true`, {
+            credentials: "include",
+          });
+          if (!historyRes.ok) return caseItem;
+
+          const historyPayload = await historyRes.json().catch(() => ({}));
+          return mergeStatusHistory(caseItem, historyPayload.data || []);
+        } catch {
+          return caseItem;
+        }
+      }));
+
+      setCases(synced);
     } catch (err) {
       console.error('[CaseManagement] fetch error:', err);
     } finally {
@@ -1392,7 +1453,7 @@ useEffect(() => {
   };
 
   fetchCases();
-}, [user]);
+}, [authLoading, authUser?.user_id, authUser?.id, authUser?.role_name, authUser?.role]);
 
 // Fetch case officers from database
 useEffect(() => {
@@ -1527,51 +1588,146 @@ const stats = useMemo(() => {
 const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── Status change — submit for approval ──
-  function submitForApproval(caseData, proposedStatus, changeDetails) {
-    setCases((prev) => prev.map((c) => c.id === caseData.id
-      ? { ...c, pendingApproval: { proposedStatus, ...changeDetails } }
-      : c
-    ));
-    showToast(`Status change for ${caseData.caseId} submitted for admin approval.`);
-    closeModal();
+  async function submitForApproval(caseData, proposedStatus, changeDetails) {
+    const actorId = authUser?.user_id || authUser?.id || user?.id || null;
+    if (!actorId) {
+      showToast("Your user account could not be identified. Please sign in again.", "danger");
+      return;
+    }
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_URL}/api/case_status_history`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          case_report_id: caseData.id,
+          proposed_status: proposedStatus,
+          changed_by_id: actorId,
+          changed_by_role: authUser?.role_name || authUser?.role || user?.role || "Case Officer",
+          notes: changeDetails.notes,
+          form_data: changeDetails.formData || {},
+          assessment_type: proposedStatus,
+          findings: changeDetails.notes,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to submit status change.");
+
+      const historyId = payload.historyRow?.history_id;
+      const historyEntry = {
+        historyId,
+        status: proposedStatus,
+        date: changeDetails.date || new Date().toLocaleDateString("en-PH"),
+        by: changeDetails.submittedBy || actorName,
+        notes: changeDetails.notes,
+        formData: changeDetails.formData,
+        approvalStatus: payload.requiresApproval ? "pending" : "approved",
+      };
+
+      setCases((prev) => prev.map((c) => c.id === caseData.id
+        ? {
+            ...c,
+            status: payload.requiresApproval ? c.status : proposedStatus,
+            pendingApproval: payload.requiresApproval ? {
+              historyId,
+              proposedStatus,
+              ...changeDetails,
+            } : null,
+            statusHistory: [...(c.statusHistory || []), historyEntry],
+          }
+        : c
+      ));
+      showToast(payload.message || `Status change for ${caseData.caseId} submitted for admin approval.`);
+      closeModal();
+    } catch (error) {
+      showToast(error.message, "danger");
+    }
   }
 
   // ── Admin: approve ──
-  function approveChange(caseData) {
+  async function approveChange(caseData) {
     const pa = caseData.pendingApproval;
-    setCases((prev) => prev.map((c) => c.id === caseData.id
-      ? {
-          ...c,
-          status: pa.proposedStatus,
-          pendingApproval: null,
-          statusHistory: [...(c.statusHistory || []), {
+    const approverId = authUser?.user_id || authUser?.id || user?.id || null;
+    if (!pa?.historyId || !approverId) {
+      const message = "Unable to approve this status change. Please refresh and try again.";
+      showToast(message, "danger");
+      throw new Error(message);
+    }
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_URL}/api/case_status_history/${pa.historyId}/approve`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved_by_id: approverId }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to approve status change.");
+
+      setCases((prev) => prev.map((c) => c.id === caseData.id
+        ? {
+            ...c,
             status: pa.proposedStatus,
-            date: pa.date,
-            by: pa.submittedBy,
-            notes: pa.notes,
-          }],
-        }
-      : c
-    ));
-    showToast(`Case ${caseData.caseId} status updated to "${pa.proposedStatus}".`);
+            pendingApproval: null,
+            statusHistory: (c.statusHistory || []).map((entry) =>
+              entry.historyId === pa.historyId
+                ? { ...entry, approvalStatus: "approved" }
+                : entry
+            ),
+          }
+        : c
+      ));
+      showToast(payload.message || `Case ${caseData.caseId} status updated to "${pa.proposedStatus}".`);
+    } catch (error) {
+      showToast(error.message, "danger");
+      throw error;
+    }
   }
 
   // ── Admin: reject ──
-  function rejectChange(caseData, reason) {
-    setCases((prev) => prev.map((c) => c.id === caseData.id
-      ? {
-          ...c,
-          pendingApproval: null,
-          statusHistory: [...(c.statusHistory || []), {
-            status: c.status,
-            date: new Date().toLocaleDateString(),
-            by: "Admin",
-            notes: `Status change REJECTED. Reason: ${reason}`,
-          }],
-        }
-      : c
-    ));
-    showToast(`Status change for ${caseData.caseId} rejected.`, "danger");
+  async function rejectChange(caseData, reason) {
+    const pa = caseData.pendingApproval;
+    const approverId = authUser?.user_id || authUser?.id || user?.id || null;
+    if (!pa?.historyId || !approverId) {
+      const message = "Unable to reject this status change. Please refresh and try again.";
+      showToast(message, "danger");
+      throw new Error(message);
+    }
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_URL}/api/case_status_history/${pa.historyId}/reject`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approved_by_id: approverId,
+          rejection_reason: reason,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to reject status change.");
+
+      setCases((prev) => prev.map((c) => c.id === caseData.id
+        ? {
+            ...c,
+            pendingApproval: null,
+            statusHistory: (c.statusHistory || []).map((entry) =>
+              entry.historyId === pa.historyId
+                ? { ...entry, approvalStatus: "rejected", rejectionReason: reason }
+                : entry
+            ),
+          }
+        : c
+      ));
+      showToast(payload.message || `Status change for ${caseData.caseId} rejected.`, "danger");
+    } catch (error) {
+      showToast(error.message, "danger");
+      throw error;
+    }
   }
 
   // ── Assign officer (admin) — modal handles API, this just updates local state ──
