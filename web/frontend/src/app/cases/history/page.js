@@ -14,6 +14,7 @@ import {
   getWithdrawalCopy,
   WITHDRAWAL_ACTION,
 } from "@/lib/caseWithdrawal";
+import { authFetch } from "@/lib/AuthContext";
 
 const INITIAL_FILTERS = {
   status: "",
@@ -65,9 +66,7 @@ async function fetchReportDetails(API_URL, report) {
   if (!id) return report;
 
   try {
-    const res = await fetch(`${API_URL}/api/case_reports/${id}`, {
-      credentials: "include",
-    });
+    const res = await authFetch(`${API_URL}/api/case_reports/${id}`);
 
     if (!res.ok) return report;
 
@@ -96,9 +95,7 @@ export default function ReportHistoryPage() {
     async function fetchReports() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
-          credentials: "include",
-        });
+        const res = await authFetch(`${API_URL}/api/case_reports/my-reports`);
 
         if (!res.ok) {
           const body = await res.json().catch(() => null);
@@ -182,9 +179,8 @@ export default function ReportHistoryPage() {
       const form = new FormData();
       form.append("reason", withdrawReason.trim());
       if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);
-      const res = await fetch(`${API_URL}/api/case_reports/${withdrawReport.id}/withdraw`, {
+      const res = await authFetch(`${API_URL}/api/case_reports/${withdrawReport.id}/withdraw`, {
         method: "POST",
-        credentials: "include",
         body: form,
       });
       const body = await res.json().catch(() => ({}));
