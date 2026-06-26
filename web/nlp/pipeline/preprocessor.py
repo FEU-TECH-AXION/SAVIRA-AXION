@@ -6,7 +6,13 @@ from spellchecker import SpellChecker
 from langdetect import detect, LangDetectException
 
 # Load spaCy model
-nlp = spacy.load("en_core_web_sm")
+_nlp = None
+
+def get_nlp():
+    global _nlp
+    if _nlp is None:
+        _nlp = spacy.load("en_core_web_sm")
+    return _nlp
 
 # Download NLTK data if not already downloaded
 nltk.download("stopwords", quiet=True)
@@ -42,7 +48,13 @@ LEGAL_TERMS_TO_KEEP = {
 CUSTOM_STOPWORDS = BASE_STOPWORDS - LEGAL_TERMS_TO_KEEP
 
 # ── Spell checker ─────────────────────────────────────────────────
-spell = SpellChecker()
+_spell = None
+
+def get_spell():
+    global _spell
+    if _spell is None:
+        _spell = SpellChecker()
+    return _spell
 
 def detect_language(text):
     """Detect if text is English, Filipino, or mixed (Taglish)."""
@@ -69,12 +81,12 @@ def correct_spelling(text):
         if word in LEGAL_TERMS_TO_KEEP or len(word) <= 3:
             corrected.append(word)
         else:
-            corrected.append(spell.correction(word) or word)
+            corrected.append(get_spell().correction(word) or word)
     return " ".join(corrected)
 
 def tokenize_and_lemmatize(text):
     """Tokenize, remove stopwords, and lemmatize using spaCy."""
-    doc = nlp(text)
+    doc = get_nlp()(text)
     tokens = []
     for token in doc:
         # Skip stopwords, punctuation, spaces, and very short tokens
