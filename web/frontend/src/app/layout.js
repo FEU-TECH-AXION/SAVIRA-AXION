@@ -14,8 +14,8 @@ import NotificationsInit from '@/components/notification/notificationsInit';
 // import NavbarWrapper from '@/components/navbar/NavbarWrapper';
 
 export const metadata = {
-  title: 'Savira',
-  description: 'Savira Web App',
+  title: 'SASHA',
+  description: 'SASHA Web App',
 };
 
 export default function RootLayout({ children }) {
