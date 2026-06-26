@@ -1,6 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal } = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 const { randomUUID } = require('crypto');
@@ -206,7 +206,7 @@ async function getAllCases(req, res) {
     } else if (role === 'Case Officer') {
       reports = await getReportsByAssignedOfficer(userId);
     } else if (role === 'Legal Personnel') {
-      reports = await getReportsForLegal();
+      reports = await getReportsByAssignedLegal(userId);
     } else {
       console.warn('[getAllCases] Access denied for role:', role);
       return res.status(403).json({ error: 'Access denied.' });

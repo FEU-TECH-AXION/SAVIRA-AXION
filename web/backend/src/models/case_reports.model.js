@@ -773,4 +773,88 @@ async function getReportsForLegal() {
   })
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal }
+async function getReportsByAssignedLegal(userId) {
+  // Step 1: Find the legal_personnel_id for this user
+  const { data: legalPersonnel, error: legalPersonnelError } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (legalPersonnelError) throw legalPersonnelError
+  if (!legalPersonnel) return [] // user has no legal personnel profile
+
+  const legalPersonnelId = legalPersonnel.legal_personnel_id
+
+  // Step 2: Get only cases assigned to this legal personnel
+  const { data: reports, error: reportsError } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      incident_description,
+      incident_city,
+      incident_province,
+      incident_date,
+      case_status_id,
+      created_at,
+      is_current,
+      case_assignments (
+        assignment_id,
+        case_officer_id,
+        is_active
+      ),
+      legal_case_assignments (
+        legal_case_assignment_id,
+        legal_personnel_id,
+        assignment_role,
+        is_active
+      )
+    `)
+    .eq('is_current', true)
+    .order('created_at', { ascending: false })
+  if (reportsError) throw reportsError
+
+  // Step 3: Filter to only cases where this legal personnel is actively assigned
+  const assignedReports = (reports || []).filter(r =>
+    r.legal_case_assignments?.some(
+      a => a.legal_personnel_id === legalPersonnelId && a.is_active
+    )
+  )
+
+  const normalizedReports = await normalizeSubmittedReportStatuses(assignedReports)
+  const reportIds = normalizedReports.map(r => r.case_report_id)
+  if (reportIds.length === 0) return []
+
+  // Step 4: Fetch legal personnel names for display
+  const { data: legalPersonnels, error: legalError } = await supabase
+    .from('legal_personnels')
+    .select(`legal_personnel_id, users!inner(first_name, last_name)`)
+  if (legalError) throw legalError
+
+  const legalMap = {}
+  for (const lp of legalPersonnels || []) {
+    if (lp.users) {
+      legalMap[lp.legal_personnel_id] = `${lp.users.first_name || ''} ${lp.users.last_name || ''}`.trim()
+    }
+  }
+
+  const duplicateMatches = await getDuplicateMatches(reportIds)
+
+  return normalizedReports.map(report => {
+    const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
+    return {
+      ...report,
+      assigned_officer: null,
+      assigned_legal: activeLegal.map(a => ({
+        legal_personnel_id: a.legal_personnel_id,
+        assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+        name: legalMap[a.legal_personnel_id] || null,
+      })),
+      possible_duplicates: duplicateMatches[report.case_report_id] || [],
+      case_assignments: undefined,
+      legal_case_assignments: undefined,
+    }
+  })
+}
+
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal }
