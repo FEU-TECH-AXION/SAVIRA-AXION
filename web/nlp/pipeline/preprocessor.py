@@ -6,7 +6,7 @@ from spellchecker import SpellChecker
 from langdetect import detect, LangDetectException
 
 # Load spaCy model
-nlp = spacy.load("en_core_web_lg")
+nlp = spacy.load("en_core_web_sm")
 
 # Download NLTK data if not already downloaded
 nltk.download("stopwords", quiet=True)
