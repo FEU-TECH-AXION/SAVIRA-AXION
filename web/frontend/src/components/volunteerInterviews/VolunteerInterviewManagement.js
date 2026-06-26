@@ -9,6 +9,7 @@ import FilterMenu from "./FilterMenu";
 import AddMeetingLinkModal from "./AddMeetingLinkModal";
 import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import { MdEdit, MdCancel } from "react-icons/md";
+import { useAuth } from "@/lib/AuthContext";
 
 const PAGE_SIZE = 10;
 
@@ -359,6 +360,7 @@ function InterviewSlotCalendar({ slots, onCreateSlot, onEditSlot, onDisableSlot 
 
 export default function VolunteerApplicationInterviewManagement() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [interviews, setInterviews] = useState([]);
   const [slots, setSlots] = useState([]);
   const [selectedInterviews, setSelectedInterviews] = useState([]);
@@ -372,7 +374,6 @@ export default function VolunteerApplicationInterviewManagement() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingData, setLoadingData] = useState(true);
-  const [user, setUser] = useState(null);
   const [removeAssignedDialog, setRemoveAssignedDialog] = useState(null);
   const [removingAssigned, setRemovingAssigned] = useState(false);
 
@@ -380,28 +381,18 @@ export default function VolunteerApplicationInterviewManagement() {
   const [editingSlot, setEditingSlot]       = useState(null);
   const [disablingSlot, setDisablingSlot]   = useState(null);
 
-  // ── Read user from cookie ──
-  useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const stored = JSON.parse(userCookie);
-        setUser(stored);
-      } catch (_) {}
-    }
-  }, []);
-
   // ── Fetch slots and interviews ──
   useEffect(() => {
-    if (!user) return;
+    if (authLoading || !user) return;
     const fetchAll = async () => {
       setLoadingData(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
+        const userId = user.user_id || user.id;
 
         const slotsRes = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=volunteer${isAdmin ? "" : `&created_by=${user.user_id}`}`,
+          `${API_URL}/api/interview_slots?slot_type=volunteer${isAdmin ? "" : `&created_by=${userId}`}`,
           { credentials: "include" }
         );
         const slotsJson = await slotsRes.json();
@@ -418,7 +409,7 @@ export default function VolunteerApplicationInterviewManagement() {
         );
 
         const interviewsRes = await fetch(
-          `${API_URL}/api/interviews?type=volunteer${isAdmin ? "" : `&interviewer_user_id=${user.user_id}`}`,
+          `${API_URL}/api/interviews?type=volunteer${isAdmin ? "" : `&interviewer_user_id=${userId}`}`,
           { credentials: "include" }
         );
         const interviewsJson = await interviewsRes.json();
@@ -450,7 +441,7 @@ export default function VolunteerApplicationInterviewManagement() {
       }
     };
     fetchAll();
-  }, [user]);
+  }, [authLoading, user]);
 
   const filteredInterviews = useMemo(() => {
     let result = interviews;
@@ -497,7 +488,7 @@ export default function VolunteerApplicationInterviewManagement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slot_type: "volunteer",
-          created_by: user.user_id,
+          created_by: user.user_id || user.id,
           slot_date: formData.date,
           slot_time: formData.time,
           duration_minutes: Number(formData.duration),
@@ -827,12 +818,4 @@ export default function VolunteerApplicationInterviewManagement() {
       />
     </div>
   );
-}
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2)
-    return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
 }

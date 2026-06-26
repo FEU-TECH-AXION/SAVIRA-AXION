@@ -39,6 +39,7 @@ import {
   getWithdrawalCopy,
   WITHDRAWAL_ACTION,
 } from "@/lib/caseWithdrawal";
+import { useAuth } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1758,6 +1759,7 @@ export default function ViewCase() {
   
   const router      = useRouter();
   const searchParams = useSearchParams();
+  const { user: authUser, loading: authLoading } = useAuth();
 
   const caseId    = searchParams.get("caseId");
   const fromParam = searchParams.get("from");
@@ -1771,8 +1773,6 @@ export default function ViewCase() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [user, setUser]         = useState({ role: null });
-  const [userLoaded, setUserLoaded] = useState(false);
   const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
   const [interviewsChecked, setInterviewsChecked] = useState(false);
   const [toast, setToast]       = useState(null);
@@ -1784,9 +1784,17 @@ export default function ViewCase() {
   const [followUpComposerOpen, setFollowUpComposerOpen] = useState(false);
   const [caseRefreshKey, setCaseRefreshKey] = useState(0);
 
-  const isAdmin      = user.role?.toLowerCase() === "admin";
-  const isCaseOfficer = user.role?.toLowerCase() === "case officer" || user.role?.toLowerCase() === "case_officer";
-  const isLegal      = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
+  const user = {
+    role: authUser?.role_name || authUser?.role || null,
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+    id: authUser?.user_id || authUser?.id || null,
+  };
+  const userLoaded = !authLoading;
+  const normalizedRole = user.role?.toLowerCase();
+  const isAdmin      = normalizedRole === "admin";
+  const isCaseOfficer = normalizedRole === "case officer" || normalizedRole === "case_officer";
+  const isLegal      = normalizedRole === "legal personnel" || normalizedRole === "legal_personnel";
   const isStaff      = isAdmin || isCaseOfficer || isLegal;
   const canManageFollowUps = isAdmin || isCaseOfficer;
 
@@ -1877,17 +1885,6 @@ export default function ViewCase() {
       setWithdrawing(false);
     }
   };
-
-  useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const stored = JSON.parse(userCookie);
-        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name, id: stored.user_id, });
-      } catch (_) {}
-    }
-    setUserLoaded(true);
-  }, []);
 
   useEffect(() => {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
@@ -2309,12 +2306,4 @@ export default function ViewCase() {
       </div>
     </div>
   );
-}
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2)
-    return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
 }

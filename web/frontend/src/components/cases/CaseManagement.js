@@ -13,6 +13,7 @@ import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
+import { useAuth } from "@/lib/AuthContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -1266,13 +1267,6 @@ function AllCasesModal({ open, onClose, cases, onView, onAction }) {
 // COOKIES
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS CHANGE ROUTER — decides which modal to show based on target status
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1301,28 +1295,18 @@ const [nextStatus, setNextStatus] = useState("");
 const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false);
 const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
   const router = useRouter();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const stored = JSON.parse(userCookie);
-        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name });
-      } catch (_) {
-      // parsing failed — set empty user so fetch still runs
-        setUser({ role: "", firstName: "", lastName: "" });
-      }
-    } else {
-      // no cookie found — set empty user so fetch still runs
-      setUser({ role: "", firstName: "", lastName: "" });
-    }
-  }, []);
+  const { user: authUser, loading: authLoading } = useAuth();
+  const user = authLoading ? null : {
+    role: authUser?.role_name || authUser?.role || "",
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+  };
 
   const actorName     = `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Officer";
-  const isAdmin       = user?.role?.toLowerCase() === "admin";
-  const isCaseOfficer = user?.role?.toLowerCase() === "case officer" || user?.role?.toLowerCase() === "case_officer";
-  const isLegal       = user?.role?.toLowerCase() === "legal personnel" || user?.role?.toLowerCase() === "legal_personnel";
+  const normalizedRole = user?.role?.toLowerCase();
+  const isAdmin       = normalizedRole === "admin";
+  const isCaseOfficer = normalizedRole === "case officer" || normalizedRole === "case_officer";
+  const isLegal       = normalizedRole === "legal personnel" || normalizedRole === "legal_personnel";
   
   const [cases, setCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
@@ -1926,3 +1910,4 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     </>
   );
 }
+

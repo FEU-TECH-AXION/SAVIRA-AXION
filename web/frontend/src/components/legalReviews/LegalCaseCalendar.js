@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FiArrowLeft, FiCalendar, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { getLegalCaseDeadlines } from "./legalReviewCalendar";
 import styles from "./LegalCaseCalendar.module.css";
+import { useAuth } from "@/lib/AuthContext";
 
 const STATUS_STEP = {
   4: "Verified - True",
@@ -26,16 +27,10 @@ const EVENT_STYLE = {
   referral: { background: "#ede9fe", color: "#5b21b6", borderColor: "#c4b5fd", label: "Referral follow-up" },
 };
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}
-
 export default function LegalCaseCalendar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const requestedIds = useMemo(() => new Set((searchParams.get("caseIds") || "").split(",").filter(Boolean)), [searchParams]);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -44,8 +39,8 @@ export default function LegalCaseCalendar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userCookie = getCookie("user");
-    if (!userCookie) {
+    if (authLoading) return;
+    if (!user) {
       router.push("/login");
       return;
     }
@@ -88,7 +83,7 @@ export default function LegalCaseCalendar() {
       }
     }
     load();
-  }, [requestedIds, router]);
+  }, [authLoading, requestedIds, router, user]);
 
   const eventsByDate = useMemo(() => {
     const grouped = {};

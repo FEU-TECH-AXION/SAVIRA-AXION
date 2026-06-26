@@ -9,16 +9,9 @@ import InterviewTab from "../volunteerInterviews/InterviewTab";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
+import { useAuth } from "@/lib/AuthContext";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}
 
 function capitalizeStatus(raw) {
   if (!raw) return "Pending";
@@ -1382,6 +1375,7 @@ function NLPEssayTab({ appId, isAdmin }) {
 export default function ViewApplication() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { user: authUser, loading: authLoading } = useAuth();
   const appId        = searchParams.get("id");
   const requestedTab = searchParams.get("tab");
 
@@ -1390,23 +1384,16 @@ export default function ViewApplication() {
   const [error,       setError]       = useState(null);
   const [toast,       setToast]       = useState(null);
   const [modal,       setModal]       = useState(null);
-  const [user,        setUser]        = useState({ role: null });
-  const [userLoaded,  setUserLoaded]  = useState(false);
   const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
   const [withdrawing, setWithdrawing] = useState(false);
 
-  // ── Read user from cookie ─────────────────────────────────────────────────
-
-  useEffect(() => {
-    const c = getCookie("user");
-    if (c) {
-      try {
-        const u = JSON.parse(c);
-        setUser({ id: u.user_id, role: u.role_name, firstName: u.first_name, lastName: u.last_name });
-      } catch (_) {}
-    }
-    setUserLoaded(true);
-  }, []);
+  const user = {
+    id: authUser?.user_id || authUser?.id || null,
+    role: authUser?.role_name || authUser?.role || null,
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+  };
+  const userLoaded = !authLoading;
 
   // ── Fetch application ─────────────────────────────────────────────────────
 

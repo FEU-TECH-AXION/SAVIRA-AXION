@@ -12,16 +12,11 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
+import { useAuth } from "@/lib/AuthContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
 // ─────────────────────────────────────────────────────────────────────────────
-
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
 
 function capitalizeStatus(raw) {
   if (!raw) return "Pending";
@@ -626,25 +621,16 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
 
 export default function VolunteerManagement() {
   const router = useRouter();
-  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+  const { user: authUser, loading: authLoading } = useAuth();
+  const user = {
+    id: authUser?.user_id || authUser?.id || null,
+    role: authUser?.role_name || authUser?.role || "",
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+  };
 
   const isAdmin   = user.role?.toLowerCase() === "admin";
   const isStaff = user.role?.toLowerCase() === "staff";
-
-  useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const parsedUser = JSON.parse(userCookie);
-        setUser({
-           id: parsedUser.user_id,
-          role: parsedUser.role_name,
-          firstName: parsedUser.first_name,
-          lastName: parsedUser.last_name,
-        });
-      } catch (_) {}
-    }
-  }, []);
 
   const [applicants, setApplicants] = useState([]);
   const [membershipStaff, setMembershipStaff] = useState([]);
@@ -669,16 +655,14 @@ export default function VolunteerManagement() {
 
     useEffect(() => {
       // Wait until user is loaded before fetching
-      if (!user.role) return;
+      if (authLoading || !user.role) return;
 
       async function fetchApplicants() {
           try {
-              const token = getCookie("token");
               const res = await fetch(
                   `${process.env.NEXT_PUBLIC_API_URL || ""}/api/volunteer_applications`,
                   {
                       credentials: "include",
-                      headers: token ? { Authorization: `Bearer ${token}` } : {},
                   }
               );
 
@@ -734,7 +718,7 @@ export default function VolunteerManagement() {
       }
 
       fetchApplicants();
-  }, [user.role, user.id, isStaff]); 
+  }, [authLoading, user.role, user.id, isStaff]); 
 
   useEffect(() => {
     async function fetchMembershipStaff() {
@@ -1182,7 +1166,6 @@ export default function VolunteerManagement() {
         }}
         applicants={selectedApplicant}
         onSave={async ({ applicants: selectedApps, status, notes }) => {
-          const token = getCookie("token");
           const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
           const updatedApplicants = [];
 
@@ -1190,10 +1173,7 @@ export default function VolunteerManagement() {
             const res = await fetch(`${API_URL}/api/volunteer_applications/${applicant.id}`, {
               method: "PUT",
               credentials: "include",
-              headers: {
-                "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 application_status: status.toLowerCase().replace(" ", "_"),
                 notes,
