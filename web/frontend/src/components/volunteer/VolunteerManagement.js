@@ -507,7 +507,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
                 position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
                 background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
                 boxShadow: "0 4px 12px rgba(0,0,0,0.08)", zIndex: 100,
-                maxHeight: 200, overflowY: "auto",
+                maxHeight: 80, overflowY: "auto",
               }}>
                 {searchResults.map(s => (
                   <button

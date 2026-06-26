@@ -1033,7 +1033,7 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
                 borderRadius: 8,
                 boxShadow:    "0 4px 12px rgba(0,0,0,0.08)",
                 zIndex:       100,
-                maxHeight:    "200px",
+                maxHeight:    "80px",
                 overflowY:    "auto",
               }}>
                 {searchResults.map(o => {

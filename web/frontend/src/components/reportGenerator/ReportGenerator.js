@@ -18,6 +18,10 @@ import {
   FiX,
   FiSearch,
   FiMapPin,
+  FiTag,
+  FiClock,
+  FiUserCheck,
+  FiFlag,
 } from "react-icons/fi";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,6 +110,10 @@ const CASE_STATUS_BY_ID = {
 const DONUT_COLORS_STATUS   = ["#037F81","#E8663A","#4f46e5","#16a34a","#f59e0b","#ef4444","#8b5cf6","#14b8a6","#f97316","#06b6d4","#ec4899","#a3e635","#64748b"];
 const DONUT_COLORS_LEGAL    = ["#4f46e5","#7c3aed","#a78bfa","#818cf8","#c4b5fd"];
 const DONUT_COLORS_VOLUNTEER= ["#fbbf24","#60a5fa","#34d399","#f87171","#a78bfa"];
+const DONUT_COLORS_CASETYPE = ["#E8663A","#f59e0b","#ef4444","#8b5cf6","#14b8a6","#f97316","#06b6d4","#ec4899","#64748b"];
+const DONUT_COLORS_PROJECT  = ["#16a34a","#0ea5e9","#f59e0b","#8b5cf6","#ef4444","#64748b"];
+const DONUT_COLORS_USER     = ["#E8663A","#037F81","#4f46e5","#f59e0b","#64748b","#06b6d4"];
+const DONUT_COLORS_BINARY   = ["#16a34a","#ef4444"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATE HELPERS
@@ -245,6 +253,24 @@ function normalizeUser(row) {
     role_name: row.role_name || row.roleName || row.role || row.roles?.role_name || null,
     is_active: row.is_active ?? row.isActive ?? row.status !== "Inactive",
     created_at: row.created_at || row.createdAt || row.date_created || null,
+    city: row.city || row.location_city || null,
+    province: row.province || row.location_province || null,
+    gender_identity: row.gender_identity || row.genderIdentity || row.gender || null,
+  };
+}
+
+function normalizeProject(row) {
+  return {
+    id: row.id || row.project_id,
+    status: row.status || row.project_status || row.projectStatus || null,
+    category: row.category || null,
+    visibility: row.visibility || null,
+    approval_status: row.approval_status || row.approvalStatus || null,
+    start_date: row.start_date || row.dateStart || null,
+    end_date: row.end_date || row.dateEnd || null,
+    due_date: row.due_date || row.dueDate || null,
+    actual_end_date: row.actual_end_date || row.actualEndDate || null,
+    created_at: row.created_at || row.createdAt || null,
   };
 }
 
@@ -382,6 +408,8 @@ function buildLegalSummary(legalCases = []) {
   const legalStatuses = ["Case Filed", "Investigation Ongoing", "Hearing Ongoing", "Dismissed", "Perpetrator Convicted"];
   const byStatus = {};
   legalStatuses.forEach((s) => { byStatus[s] = 0; });
+  const cityCounts = {};
+  const typeCounts = {};
   let totalDays = 0, daysCount = 0, referralSuggested = 0, casesFiled = 0, casesResolved = 0;
 
   for (const c of legalCases) {
@@ -395,11 +423,22 @@ function buildLegalSummary(legalCases = []) {
     if (c.referral_suggested || c.referralSuggested) referralSuggested++;
     if (c.status === "Case Filed") casesFiled++;
     if (["Perpetrator Convicted", "Dismissed"].includes(c.status)) casesResolved++;
+
+    const city = c.city || c.site;
+    if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
+    if (c.case_type) typeCounts[c.case_type] = (typeCounts[c.case_type] || 0) + 1;
   }
+
+  const referralBreakdown = legalCases.length
+    ? { "Referral Suggested": referralSuggested, "No Referral": legalCases.length - referralSuggested }
+    : {};
 
   return {
     total: legalCases.length,
     byStatus: Object.fromEntries(Object.entries(byStatus).filter(([, v]) => v > 0)),
+    byCity: Object.fromEntries(topEntries(cityCounts, 6)),
+    byType: Object.fromEntries(topEntries(typeCounts, 6)),
+    referralBreakdown,
     avgDaysInLegal: daysCount ? Math.round(totalDays / daysCount) : 0,
     casesFiled,
     casesResolved,
@@ -444,25 +483,57 @@ function buildVolunteerSummary(applications = []) {
 function buildProjectSummary(projects = []) {
   const byStatus = {};
   PROJECT_STATUSES.forEach((s) => { byStatus[s] = 0; });
+  const byCategory = {};
+  const byVisibility = {};
+  const byApproval = {};
   let completedOnTime = 0;
+  let onTime = 0, delayed = 0, overdue = 0;
+  const now = new Date();
 
   for (const p of projects) {
     const s = p.status || p.project_status;
     if (s) byStatus[s] = (byStatus[s] || 0) + 1;
     if (s === "Completed") completedOnTime++;
+
+    if (p.category) byCategory[p.category] = (byCategory[p.category] || 0) + 1;
+    if (p.visibility) byVisibility[p.visibility] = (byVisibility[p.visibility] || 0) + 1;
+    if (p.approval_status) byApproval[p.approval_status] = (byApproval[p.approval_status] || 0) + 1;
+
+    if (s === "Completed") {
+      const end    = p.end_date && new Date(p.end_date);
+      const actual = p.actual_end_date && new Date(p.actual_end_date);
+      if (end && actual && !isNaN(end) && !isNaN(actual)) {
+        if (actual <= end) onTime++; else delayed++;
+      }
+    } else if (s !== "Cancelled" && p.due_date) {
+      const due = new Date(p.due_date);
+      if (!isNaN(due) && due < now) overdue++;
+    }
   }
+
+  const timeliness = {};
+  if (onTime)  timeliness["On Time"] = onTime;
+  if (delayed) timeliness["Delayed"] = delayed;
+  if (overdue) timeliness["Overdue (Ongoing)"] = overdue;
 
   return {
     total: projects.length,
     byStatus: Object.fromEntries(Object.entries(byStatus).filter(([, v]) => v > 0)),
+    byCategory: Object.fromEntries(topEntries(byCategory, 6)),
+    byVisibility,
+    byApproval,
+    timeliness,
     activeProjects: byStatus["Active"] || 0,
     completedOnTime,
+    overdueCount: overdue,
   };
 }
 
 function buildUserSummary(users = []) {
   const byRole = {};
   USER_ROLES.forEach((r) => { byRole[r] = 0; });
+  const cityCounts = {};
+  const genderCounts = {};
   let active = 0, deactivated = 0, newThisMonth = 0;
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -473,11 +544,18 @@ function buildUserSummary(users = []) {
     if (u.is_active) active++; else deactivated++;
     const created = recordDate(u, "created_at");
     if (created && created >= monthStart) newThisMonth++;
+
+    const city = u.city || u.province;
+    if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
+    if (u.gender_identity) genderCounts[u.gender_identity] = (genderCounts[u.gender_identity] || 0) + 1;
   }
 
   return {
     total: users.length,
     byRole: Object.fromEntries(Object.entries(byRole).filter(([, v]) => v > 0)),
+    byCity: Object.fromEntries(topEntries(cityCounts, 6)),
+    byGender: genderCounts,
+    activeBreakdown: users.length ? { Active: active, Deactivated: deactivated } : {},
     activeUsers: active,
     deactivated,
     newThisMonth,
@@ -1187,7 +1265,7 @@ export default function ReportGenerator() {
       rawRef.current = {
         cases:      toArray(casesRaw).map(normalizeCaseReport),
         volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
-        projects:   toArray(projectsRaw),
+        projects:   toArray(projectsRaw).map(normalizeProject),
         users:      toArray(usersRaw).map(normalizeUser),
       };
 
@@ -1421,7 +1499,7 @@ export default function ReportGenerator() {
                           k.length > 28 ? k.slice(0, 28) + "…" : k, v,
                         ])
                       )}
-                      colors={["#E8663A","#f59e0b","#ef4444","#8b5cf6","#14b8a6","#f97316","#06b6d4","#ec4899","#64748b"]}
+                      colors={DONUT_COLORS_CASETYPE}
                     />
                   </div>
 
@@ -1442,10 +1520,61 @@ export default function ReportGenerator() {
                 <StatCard label="Referrals Suggested"  value={legalData.referralSuggested} sub="NLP-flagged" />
               </div>
 
-              <div className={styles.chartsRow}>
-                <div className={`${styles.chartCard} ${styles.chartCardFull}`}>
-                  <h3 className={styles.chartTitle}>Legal Case Status Distribution</h3>
-                  <DonutChart data={legalData.byStatus} colors={DONUT_COLORS_LEGAL} />
+              {/* BREAKDOWNS */}
+              <div className={styles.breakdownSection}>
+                <div className={styles.breakdownHeader}>
+                  <h3 className={styles.breakdownTitle}>Breakdowns</h3>
+                  <span className={styles.breakdownSub}>Status distribution and concentration by city, case type, and referral outcome</span>
+                </div>
+                <div className={styles.breakdownGrid}>
+
+                  {/* Legal Cases by City */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiMapPin size={12} style={{ marginRight: 4 }} />
+                      Legal Cases by City
+                    </h4>
+                    <HorizontalBarList
+                      entries={Object.entries(legalData.byCity)}
+                      color="#4f46e5"
+                      total={legalData.total}
+                    />
+                  </div>
+
+                  {/* Legal Case Status Distribution */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiBarChart2 size={12} style={{ marginRight: 4 }} />
+                      Legal Case Status Distribution
+                    </h4>
+                    <DonutChart data={legalData.byStatus} colors={DONUT_COLORS_LEGAL} />
+                  </div>
+
+                  {/* Legal Case Types */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiTag size={12} style={{ marginRight: 4 }} />
+                      Legal Case Types
+                    </h4>
+                    <DonutChart
+                      data={Object.fromEntries(
+                        Object.entries(legalData.byType).map(([k, v]) => [
+                          k.length > 28 ? k.slice(0, 28) + "…" : k, v,
+                        ])
+                      )}
+                      colors={DONUT_COLORS_CASETYPE}
+                    />
+                  </div>
+
+                  {/* Referral Outcome */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiFlag size={12} style={{ marginRight: 4 }} />
+                      Referral Outcome
+                    </h4>
+                    <DonutChart data={legalData.referralBreakdown} colors={DONUT_COLORS_BINARY} />
+                  </div>
+
                 </div>
               </div>
             </ReportSection>
@@ -1484,12 +1613,16 @@ export default function ReportGenerator() {
                 <StatCard label="Total Projects"   value={projectData.total}          accent />
                 <StatCard label="Active Projects"  value={projectData.activeProjects} sub="Currently running" />
                 <StatCard label="Completed"        value={projectData.completedOnTime} sub="Marked as completed" />
+                <StatCard label="Overdue (Ongoing)" value={projectData.overdueCount}   sub="Past due date, not yet completed" />
               </div>
 
-              <div className={styles.chartsRow}>
-                <div className={`${styles.chartCard} ${styles.chartCardFull}`}>
-                  <h3 className={styles.chartTitle}>Projects by Status</h3>
-                  <BarChart data={projectData.byStatus} color="#16a34a" />
+              <div className={styles.breakdownGrid}>
+                <div className={styles.breakdownCard}>
+                  <h4 className={styles.breakdownCardTitle}>
+                    <FiBarChart2 size={12} style={{ marginRight: 4 }} />
+                    Projects by Status
+                  </h4>
+                  <DonutChart data={projectData.byStatus} colors={DONUT_COLORS_PROJECT} />
                 </div>
               </div>
             </ReportSection>
@@ -1505,10 +1638,58 @@ export default function ReportGenerator() {
                 <StatCard label="Deactivated"     value={userData.deactivated} />
               </div>
 
-              <div className={styles.chartsRow}>
-                <div className={`${styles.chartCard} ${styles.chartCardFull}`}>
-                  <h3 className={styles.chartTitle}>Users by Role</h3>
-                  <BarChart data={userData.byRole} color="#E8663A" />
+              {/* BREAKDOWNS */}
+              <div className={styles.breakdownSection}>
+                <div className={styles.breakdownHeader}>
+                  <h3 className={styles.breakdownTitle}>Breakdowns</h3>
+                  <span className={styles.breakdownSub}>Distribution by role, location, gender, and account status</span>
+                </div>
+                <div className={styles.breakdownGrid}>
+
+                  {/* Users by Role */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiBarChart2 size={12} style={{ marginRight: 4 }} />
+                      Users by Role
+                    </h4>
+                    <DonutChart data={userData.byRole} colors={DONUT_COLORS_USER} />
+                  </div>
+
+                  {/* Users by City */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiMapPin size={12} style={{ marginRight: 4 }} />
+                      Users by City
+                    </h4>
+                    {Object.keys(userData.byCity).length > 0 ? (
+                      <HorizontalBarList
+                        entries={Object.entries(userData.byCity)}
+                        color="#E8663A"
+                        total={userData.total}
+                      />
+                    ) : (
+                      <p className={styles.noData}>No location data available.</p>
+                    )}
+                  </div>
+
+                  {/* Users by Gender
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiUsers size={12} style={{ marginRight: 4 }} />
+                      Users by Gender
+                    </h4>
+                    <DonutChart data={userData.byGender} colors={DONUT_COLORS_USER} />
+                  </div> */}
+
+                  {/* Active vs Deactivated */}
+                  <div className={styles.breakdownCard}>
+                    <h4 className={styles.breakdownCardTitle}>
+                      <FiUserCheck size={12} style={{ marginRight: 4 }} />
+                      Active vs. Deactivated
+                    </h4>
+                    <DonutChart data={userData.activeBreakdown} colors={DONUT_COLORS_BINARY} />
+                  </div>
+
                 </div>
               </div>
             </ReportSection>
