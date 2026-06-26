@@ -15,6 +15,8 @@ export default function Footer() {
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  if (loading) return null;
+
   return (
     <footer className={styles.footer}>
       <div className={styles.footerInner}>
