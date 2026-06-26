@@ -16,6 +16,8 @@ import { PUBLIC_LINKS, ROLE_LABELS } from "@/components/navigation/navigationLin
 import styles from "./navbar.module.css";
 import { useNotificationStore, markAllRead } from '@/lib/notificationStore';
 
+// ── Component ──────────────────────────────────────────────
+
 export default function Navbar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openPublicMenu, setOpenPublicMenu] = useState(null);
@@ -45,8 +47,6 @@ export default function Navbar() {
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
-    if (loading) return null;
-
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
@@ -58,12 +58,10 @@ export default function Navbar() {
       <nav className={styles.navbar}>
         <div className={styles.navInner}>
 
-          {loading ? (
-            /* ── LOADING: neutral placeholder so nav doesn't flash wrong state ── */
-            <div className={styles.navSpacer} />
-          ) : user ? (
-            /* ── LOGGED-IN layout ── */
+          {user ? (
+            /* ── LOGGED-IN layout: hamburger | logo | (spacer) | search | bell | help | avatar ── */
             <>
+              {/* Hamburger */}
               <button
                 className={styles.hamburgerBtn}
                 onClick={() => setSidebarOpen(true)}
@@ -73,12 +71,15 @@ export default function Navbar() {
                 <FiMenu size={22} />
               </button>
 
+              {/* Logo */}
               <Link href="/dashboard" className={styles.navLogo}>
                 <img src="/sasha-logo-white.png" alt="SASHA logo" />
               </Link>
 
+              {/* Spacer pushes everything after it to the right */}
               <div className={styles.navSpacer} />
 
+              {/* Search bar — right-aligned */}
               <div className={styles.searchWrapper}>
                 <FiSearch className={styles.searchIcon} size={15} />
                 <input
@@ -89,6 +90,7 @@ export default function Navbar() {
                 />
               </div>
 
+              {/* Right icons */}
               <div className={styles.navRight}>
                 <div className={styles.notifWrapper}>
                   <button
@@ -128,8 +130,9 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            /* ── LOGGED-OUT layout ── */
+            /* ── LOGGED-OUT layout: logo | public links | Log In (mirrors V1) ── */
             <>
+              {/* Logo */}
               <button
                 className={styles.publicMenuBtn}
                 onClick={() => setSidebarOpen(true)}
@@ -143,6 +146,7 @@ export default function Navbar() {
                 <img src="/sasha-logo-white.png" alt="SASHA logo" />
               </Link>
 
+              {/* Desktop public links */}
               <ul className={styles.navLinks} ref={publicNavRef}>
                 {PUBLIC_LINKS.map((item) => {
                   const { href, label, children } = item;
@@ -223,6 +227,7 @@ export default function Navbar() {
                 })}
               </ul>
 
+              {/* Right slot */}
               <div className={styles.navRight}>
                 <Link href="/login" className={styles.navLoginBtn}>
                   Log In
@@ -234,10 +239,13 @@ export default function Navbar() {
         </div>
       </nav>
 
+      {/* Sidebar — rendered outside nav so it overlays the full page */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </>
   );
 }
+
+// ── UserMenu ──────────────────────────────────────────────
 
 function UserMenu({ user, logout }) {
   const [open, setOpen] = useState(false);
