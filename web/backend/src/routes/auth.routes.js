@@ -5,7 +5,7 @@ const { signup, login, logout, me } = require('../controllers/auth.controller');
 const { loginRules, signupRules, validateInput } = require('../middleware/auth_validation.middleware');
 const { verifyToken, authorize } = require('../middleware/auth.middleware');
 
-router.get('/api/debug-env', (req, res) => {
+router.get('/debug-env', (req, res) => {
   res.json({ NODE_ENV: process.env.NODE_ENV });
 });
 router.post('/signup', signupRules, validateInput, signup);
