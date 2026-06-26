@@ -266,13 +266,13 @@ export default function VolunteerLanding() {
       <WhatYouWillDo />
       <HowToApply />
       {/* Apply Now CTA Section */}
-      <section className={styles.ctaSection}>
+      {/* <section className={styles.ctaSection}>
         <div className={styles.sectionInner}>
           <button onClick={handleApplyClick} className={styles.btnPrimary}>
             {user ? "Apply Now" : "Log In to Apply"}
           </button>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 }
