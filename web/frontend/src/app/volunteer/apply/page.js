@@ -5,8 +5,68 @@ import styles from "./ApplyApplicationForm.module.css";
 import { useRouter } from "next/navigation";
 import { FaCheck } from "react-icons/fa6";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
+import { useAuth } from "@/lib/AuthContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
+
+// ── Data Privacy Modal ────────────────────────────────────────────────────────
+function DataPrivacyModal({ onClose }) {
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h4 className={styles.modalTitle}>Data Privacy Notice</h4>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className={styles.modalBody}>
+          <h5>1. What Information We Collect</h5>
+          <p>
+            When you submit a volunteer application, we collect personal information you provide, including but not limited to: your full name, birthday, contact number, email address, city or municipality of residence, and any other details entered in the application form. Some fields may be pre-filled from your existing SASHA account profile.
+          </p>
+          <h5>2. Purpose of Collection</h5>
+          <p>
+            The personal data you provide through this form is used exclusively for the purpose of processing your volunteer application with SASHA. Specifically, it allows us to: evaluate your eligibility and suitability as a volunteer; communicate with you regarding the status of your application; coordinate onboarding, training, and scheduling if your application is accepted; and maintain accurate volunteer records in compliance with institutional requirements.
+          </p>
+          <h5>3. Legal Basis</h5>
+          <p>
+            All personal information is collected and processed in accordance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> of the Philippines and its Implementing Rules and Regulations (IRR). SASHA acts as a Personal Information Controller (PIC) and is committed to upholding the rights of data subjects under this law.
+          </p>
+          <h5>4. Confidentiality and Access</h5>
+          <p>
+            Your personal data is kept <strong>strictly confidential</strong>. Access to your application information is limited exclusively to authorized SASHA staff members directly involved in the volunteer recruitment and management process, such as human resources personnel, program coordinators, and organizational supervisors. No unauthorized personnel will have access to your data.
+          </p>
+          <h5>5. No Sharing with Third Parties</h5>
+          <p>
+            Your personal data will not be sold, rented, disclosed, or transferred to any third party without your explicit prior consent, except as required by applicable law or a valid court order.
+          </p>
+          <h5>6. Pre-filled Information</h5>
+          <p>
+            To streamline the application process, certain fields — such as your name, birthday, contact number, and email address — may be automatically populated from information already saved in your SASHA account profile settings. No additional data beyond what you have previously provided is collected through this mechanism. You may update your profile details at any time through your account settings.
+          </p>
+          <h5>7. Data Retention</h5>
+          <p>
+            Your application data will be retained for as long as necessary to fulfill the purposes outlined above, or as required by applicable law. If your application is unsuccessful, your data will be retained for a reasonable period in accordance with SASHA&apos;s data retention policy, after which it will be securely deleted or anonymized.
+          </p>
+          <h5>8. Data Security</h5>
+          <p>
+            SASHA implements appropriate technical, administrative, and organizational security measures to protect your personal data from unauthorized access, loss, misuse, alteration, or destruction. These measures are regularly reviewed and updated in line with best practices and legal requirements.
+          </p>
+          <h5>9. Your Rights as a Data Subject</h5>
+          <p>
+            Under the Data Privacy Act of 2012, you have the following rights: the right to be informed about how your data is being used; the right to access your personal data; the right to correct inaccurate or incomplete data; the right to erasure or blocking of data where processing is unlawful; the right to object to the processing of your data; and the right to lodge a complaint with the National Privacy Commission (NPC) if you believe your rights have been violated.
+          </p>
+          <h5>10. Contact</h5>
+          <p>
+            If you have questions or concerns about how your personal data is handled, or if you wish to exercise any of your rights as a data subject, please contact SASHA&apos;s Data Protection Officer through the official SASHA communication channels.
+          </p>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.modalCloseBtn} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function humanizeCategory(value) {
   return String(value || "Screening Questions")
@@ -176,6 +236,34 @@ function calcAgeFromBirthday(birthday) {
   return age;
 }
 
+function getApplicantFieldsFromUser(user) {
+  if (!user) {
+    return {
+      name: "",
+      birthday: "",
+      age: "",
+      gender: "",
+      contactNumber: "",
+      email: "",
+      userCity: "",
+    };
+  }
+
+  const birthday = user.birthday ? String(user.birthday).slice(0, 10) : "";
+
+  return {
+    name: [user.first_name, user.middle_name, user.last_name, user.extension_name]
+      .filter(Boolean)
+      .join(" "),
+    birthday,
+    age: birthday ? String(calcAgeFromBirthday(birthday) ?? "") : "",
+    gender: user.gender_identity || "",
+    contactNumber: user.contact_number ? normalisePhone(user.contact_number) : "",
+    email: user.email || "",
+    userCity: user.city || user.user_city || "",
+  };
+}
+
 function formatDateInput(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -267,6 +355,7 @@ function validateStep0(data) {
 
 
 function StepApplicantInfo({ data, onChange, errors, clearError }) {
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const set = (key) => (e) => {
     clearError(key);
     onChange({ ...data, [key]: e.target.value });
@@ -300,8 +389,22 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
         <span className={styles.infoNoticeIcon}><IoIosInformationCircle /></span>
         <p className={styles.infoNoticeText}>
           Applicants below 13 years old cannot apply through the online form. Please contact SASHA directly for guidance regarding provisional membership.
+          <br /><br />
+          <strong>Why are some fields already filled in?</strong><br />
+          To make this application easier to complete, certain personal details — such as your name, birthday, contact number, and email address — are automatically pulled from your <strong>account profile settings</strong>. No extra data is being collected; the form only reads what you have already saved in your account.<br /><br />
+          <strong>Data Privacy Notice:</strong> The information you provide here is used solely for processing your volunteer application with SASHA. Your personal data is kept <strong>strictly confidential</strong> and is only accessible to authorized SASHA staff involved in the volunteer recruitment process.{" "}
+          <button
+            type="button"
+            className={styles.readMoreBtn}
+            onClick={() => setShowPrivacyModal(true)}
+          >
+            Read more…
+          </button>
         </p>
       </div>
+
+      {showPrivacyModal && <DataPrivacyModal onClose={() => setShowPrivacyModal(false)} />}
+
 
       <div className={styles.formGrid}>
         <Field label="Name" required error={errors.name}>
@@ -1150,10 +1253,12 @@ export default function CreateApplication({
   notifications   = [],
   events          = [],
 }) {
+  const { user: authUser, loading: authLoading } = useAuth();
   const [step, setStep]   = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [stepErrors, setStepErrors] = useState({});
   const [draftNotice, setDraftNotice] = useState("");
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const [myApplications, setMyApplications] = useState([])
   const [appsLoading, setAppsLoading] = useState(true)
@@ -1247,6 +1352,8 @@ export default function CreateApplication({
   const totalSteps = STEPS.length;
 
   const isDirty = useRef(false);
+  const hasLoadedDraft = useRef(false);
+  const hasHydratedProfile = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1260,10 +1367,33 @@ export default function CreateApplication({
         if (draft.essay) setEssay(draft.essay);
         setDraftNotice("You have an unfinished volunteer application draft. It has been loaded so you can continue.");
         isDirty.current = true;
-      } catch (_) {}
+        hasLoadedDraft.current = true;
+      } catch (_) {
+      } finally {
+        setDraftChecked(true);
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (authLoading || !draftChecked || hasLoadedDraft.current || hasHydratedProfile.current) return;
+    if (!authUser) return;
+
+    const profileFields = getApplicantFieldsFromUser(authUser);
+    const hasProfileDetails = Object.values(profileFields).some(Boolean);
+    if (!hasProfileDetails) return;
+
+    setApplicant((current) => {
+      const hasStartedApplication = Object.values(current).some(Boolean);
+      if (hasStartedApplication) return current;
+      hasHydratedProfile.current = true;
+      return {
+        ...current,
+        ...profileFields,
+      };
+    });
+  }, [authLoading, authUser, draftChecked]);
 
   useEffect(() => {
     if (submitted) return;
