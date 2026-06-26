@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
@@ -47,8 +47,8 @@ export default function CaseOfficerDashboard() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
         const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
         const [caseRes, interviewsRes] = await Promise.all([
-          fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' }),
-          fetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { credentials: 'include', cache: 'no-store' }),
+          authFetch(`${API_URL}/api/case_reports/all`, { cache: 'no-store' }),
+          authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
         ]);
         if (caseRes.ok) {
           const json = await caseRes.json();

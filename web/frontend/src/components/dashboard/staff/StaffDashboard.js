@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
@@ -57,11 +57,11 @@ export default function StaffDashboard() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
         const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
         const [volunteerRes, taskRows, projectRows, staffData, interviewsRes] = await Promise.all([
-          fetch(`${API_URL}/api/volunteer_applications`, { credentials: 'include', cache: 'no-store' }),
+          authFetch(`${API_URL}/api/volunteer_applications`, { cache: 'no-store' }),
           fetchAllProjectTasks(),
           fetchProjects(),
           fetchStaff(),
-          fetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { credentials: 'include', cache: 'no-store' }),
+          authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
         ]);
         if (volunteerRes.ok) {
           const json = await volunteerRes.json();

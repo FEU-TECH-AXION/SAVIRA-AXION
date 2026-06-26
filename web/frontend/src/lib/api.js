@@ -1,7 +1,17 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+function authHeaders(headers = {}) {
+  if (typeof window === 'undefined') return headers;
+  const token = window.localStorage.getItem('token');
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+}
+
 export async function fetchUsers() {
-    const res = await fetch(`${API_URL}/api/users`, { cache: 'no-store' });
+    const res = await fetch(`${API_URL}/api/users`, {
+        credentials: 'include',
+        headers: authHeaders(),
+        cache: 'no-store',
+    });
     if (!res.ok) throw new Error('Failed to fetch users');
     return res.json();
 }
@@ -10,6 +20,7 @@ export async function signupUser(form) {
     const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(form),
     });
 
@@ -30,6 +41,7 @@ export async function loginUser(form) {
     const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(form),
     });
     const data = await res.json();
@@ -43,6 +55,7 @@ export async function fetchCommittees() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const response = await fetch(`${API_URL}/api/committees`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   if (!response.ok) throw new Error('Failed to fetch committees');
@@ -50,7 +63,11 @@ export async function fetchCommittees() {
 }
 
 export async function fetchProjects() {
-  const res = await fetch(`${API_URL}/api/projects`, { cache: 'no-store' });
+  const res = await fetch(`${API_URL}/api/projects`, {
+    credentials: 'include',
+    headers: authHeaders(),
+    cache: 'no-store',
+  });
   if (!res.ok) {
     throw new Error('Failed to fetch projects');
   }
@@ -60,7 +77,8 @@ export async function fetchProjects() {
 export async function createProject(payload) {
   const res = await fetch(`${API_URL}/api/projects`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json();
@@ -75,6 +93,8 @@ export async function uploadProjectImage(file) {
   form.append('image', file);
   const res = await fetch(`${API_URL}/api/projects/upload-image`, {
     method: 'POST',
+    credentials: 'include',
+    headers: authHeaders(),
     body: form,
   });
   const data = await res.json();
@@ -87,7 +107,8 @@ export async function uploadProjectImage(file) {
 export async function updateProject(id, payload) {
   const res = await fetch(`${API_URL}/api/projects/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json();
@@ -100,6 +121,8 @@ export async function updateProject(id, payload) {
 export async function deleteProject(id) {
   const res = await fetch(`${API_URL}/api/projects/${id}`, {
     method: 'DELETE',
+    credentials: 'include',
+    headers: authHeaders(),
   });
   const data = await res.json();
   if (!res.ok) {
@@ -111,7 +134,8 @@ export async function deleteProject(id) {
 export async function deleteProjects(ids) {
   const res = await fetch(`${API_URL}/api/projects/bulk-delete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ ids }),
   });
   const data = await res.json();
@@ -124,6 +148,7 @@ export async function deleteProjects(ids) {
 export async function fetchProject(id) {
   const res = await fetch(`${API_URL}/api/projects/${id}`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({}));
@@ -134,6 +159,7 @@ export async function fetchProject(id) {
 export async function fetchProjectTasks(projectId) {
   const res = await fetch(`${API_URL}/api/project-tasks/project/${projectId}`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({}));
@@ -144,6 +170,7 @@ export async function fetchProjectTasks(projectId) {
 export async function fetchAllProjectTasks() {
   const res = await fetch(`${API_URL}/api/project-tasks`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({}));
@@ -155,7 +182,7 @@ export async function createProjectTask(projectId, payload) {
   const res = await fetch(`${API_URL}/api/project-tasks/project/${projectId}`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -167,7 +194,7 @@ export async function updateProjectTask(taskId, payload) {
   const res = await fetch(`${API_URL}/api/project-tasks/${taskId}`, {
     method: 'PATCH',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -179,6 +206,7 @@ export async function cancelProjectTask(taskId) {
   const res = await fetch(`${API_URL}/api/project-tasks/${taskId}`, {
     method: 'DELETE',
     credentials: 'include',
+    headers: authHeaders(),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Failed to cancel task');
@@ -188,6 +216,7 @@ export async function cancelProjectTask(taskId) {
 export async function fetchTaskActivity(taskId) {
   const res = await fetch(`${API_URL}/api/project-tasks/${taskId}/activity`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({}));
@@ -198,6 +227,7 @@ export async function fetchTaskActivity(taskId) {
 export async function fetchStaffAvailability() {
   const res = await fetch(`${API_URL}/api/availability`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ([]));
@@ -208,6 +238,7 @@ export async function fetchStaffAvailability() {
 export async function fetchStaff() {
   const res = await fetch(`${API_URL}/api/staff`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ([]));
@@ -219,7 +250,7 @@ export async function updateStaffAvailability(staffId, payload) {
   const res = await fetch(`${API_URL}/api/availability/${staffId}`, {
     method: 'PATCH',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -230,6 +261,7 @@ export async function updateStaffAvailability(staffId, payload) {
 export async function fetchChapters() {
   const res = await fetch(`${API_URL}/api/chapters`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({}));
@@ -240,6 +272,7 @@ export async function fetchChapters() {
 export async function fetchChapter(id) {
   const res = await fetch(`${API_URL}/api/chapters/${id}`, {
     credentials: 'include',
+    headers: authHeaders(),
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({}));
@@ -251,7 +284,7 @@ export async function createChapter(payload) {
   const res = await fetch(`${API_URL}/api/chapters`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -263,7 +296,7 @@ export async function updateChapter(id, payload) {
   const res = await fetch(`${API_URL}/api/chapters/${id}`, {
     method: 'PUT',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -275,6 +308,7 @@ export async function deleteChapter(id) {
   const res = await fetch(`${API_URL}/api/chapters/${id}`, {
     method: 'DELETE',
     credentials: 'include',
+    headers: authHeaders(),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Failed to delete chapter');

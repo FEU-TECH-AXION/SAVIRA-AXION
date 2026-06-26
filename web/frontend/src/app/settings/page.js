@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef } from "react";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiCamera, FiUser, FiLock, FiHelpCircle, FiSliders, FiFlag } from "react-icons/fi";
 import styles from "./profile.module.css";
@@ -106,9 +106,9 @@ function SettingsPageContent() {
     formData.append("profile_img", file);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res   = await fetch(
+      const res   = await authFetch(
         `${API_URL}/api/users/${user.user_id}/avatar`,
-        { method: "POST", credentials: "include", body: formData }
+        { method: "POST", body: formData }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed.");

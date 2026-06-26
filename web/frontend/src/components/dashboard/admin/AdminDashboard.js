@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
@@ -53,7 +53,7 @@ function unwrapList(payload, preferredKey) {
 }
 
 async function fetchList(url, preferredKey) {
-  const response = await fetch(url, { credentials: "include", cache: "no-store" });
+  const response = await authFetch(url, { cache: "no-store" });
   if (!response.ok) {
     const message = await response.text().catch(() => "");
     console.error(`[AdminDashboard] Failed to fetch ${url}: ${response.status}`, message);
