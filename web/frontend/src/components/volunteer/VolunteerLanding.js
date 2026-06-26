@@ -70,26 +70,40 @@ function WhoCanJoin() {
   return (
     <section className={styles.whoSection}>
       <div className={styles.sectionInner}>
-        <div className={styles.sectionLabel}>Who Can Join?</div>
         <div className={styles.whoCard}>
-          <div className={styles.whoImageWrapper}>
-            <img
-              src="/sasha-bg-1.png"
-              alt="SASHA volunteers"
-              className={styles.whoImage}
-            />
-            <div className={styles.whoImagePlaceholder}>
-              <span className={styles.whoPlaceholderLogo}>SASHA</span>
-            </div>
+          <div className={styles.whoHeader}>
+            <span className={styles.whoHeaderLine} />
+            <h2 className={styles.whoTitle}>Who Can Join?</h2>
+            <span className={styles.whoHeaderLine} />
           </div>
-          <ul className={styles.whoList}>
-            {WHO_ITEMS.map((item) => (
-              <li key={item} className={styles.whoItem}>
-                <span className={styles.whoDot} />
-                {item}
-              </li>
-            ))}
-          </ul>
+          <div className={styles.whoContent}>
+            <div className={styles.whoImageWrapper}>
+              <img
+                src="/sasha-bg-1.png"
+                alt="SASHA volunteers"
+                className={styles.whoImage}
+              />
+              <div className={styles.whoImageOverlay} />
+            </div>
+            <ul className={styles.whoList}>
+              {WHO_ITEMS.map((item) => (
+                <li key={item} className={styles.whoItem}>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={styles.whoBulletIcon}
+                  >
+                    <circle cx="9" cy="12" r="6" fill="#e86c2c" />
+                    <circle cx="14" cy="12" r="6" fill="#1a6b5a" />
+                  </svg>
+                  <span className={styles.whoItemText}>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </section>
