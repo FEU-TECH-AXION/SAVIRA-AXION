@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaFacebook, FaInstagram} from "react-icons/fa6";
+import { FaFacebook, FaInstagram } from "react-icons/fa6";
 import styles from "./footer.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import { getFooterQuickLinks } from "@/components/navigation/navigationLinks";
 
 export default function Footer() {
-  const { user } = useAuth();
-  const quickLinks = getFooterQuickLinks(user);
+  const { user, loading } = useAuth();
+  const quickLinks = loading ? [] : getFooterQuickLinks(user);
   const pathname = usePathname();
 
   const isActive = (href) =>
@@ -29,15 +29,13 @@ export default function Footer() {
           </p>
           <div className={styles.footerSocials}>
             <a href="https://www.facebook.com/PHsasha" target="_blank"
-    rel="noopener noreferrer" aria-label="Facebook"><FaFacebook /></a>
+              rel="noopener noreferrer" aria-label="Facebook"><FaFacebook /></a>
             <a href="https://www.instagram.com/phsasha_official/?g=5" target="_blank"
-    rel="noopener noreferrer" aria-label="Instagram"><FaInstagram /></a>
-            {/* <a href="#" aria-label="YouTube"><FaYoutube /></a>
-            <a href="#" aria-label="LinkedIn"><FaLinkedin /></a> */}
+              rel="noopener noreferrer" aria-label="Instagram"><FaInstagram /></a>
           </div>
         </div>
 
-        {/* Quick links */}
+        {/* ── Quick links ── */}
         <div className={styles.footerCol}>
           <h4 className={styles.footerColTitle}>Quick Links</h4>
           <ul className={`${styles.footerList} ${styles.quickLinksGrid}`}>
