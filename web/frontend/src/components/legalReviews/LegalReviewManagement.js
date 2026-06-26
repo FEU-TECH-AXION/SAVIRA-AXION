@@ -11,7 +11,7 @@ import { ConfirmDialog } from "../ui/Dialog";
 import RemoveAssignedStaffDialog from "../ui/RemoveAssignedStaffDialog";
 import { getLegalCaseDeadlines, normalizeLegalList } from "./legalReviewCalendar";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 import {
   Modal,
   FormGroup,
@@ -1154,7 +1154,7 @@ export default function LegalReviewManagement() {
     const fetchCases = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/case_reports/all`);
         if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
         const { data } = await res.json();
 
@@ -1228,7 +1228,7 @@ export default function LegalReviewManagement() {
     const fetchPersonnels = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/legal_personnels`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/legal_personnels`);
         if (res.ok) {
           const data = await res.json();
           setLegalPersonnels(Array.isArray(data) ? data : data.data || []);
