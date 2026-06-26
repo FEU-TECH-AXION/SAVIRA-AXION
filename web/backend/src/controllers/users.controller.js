@@ -1,7 +1,7 @@
 const UserModel = require('../models/users.model')
 const supabase = require('../config/supabase')
 const bcrypt = require('bcrypt')
-const { v4: uuidv4 } = require('uuid')
+const { randomUUID } = require('crypto')
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -46,7 +46,7 @@ const createItem = async (req, res) => {
 
     const item = await UserModel.create({
       ...rest,
-      user_id: uuidv4(),
+      user_id: randomUUID(),
       password: hashedPassword,
       role_id,
     })

@@ -1,6 +1,6 @@
 const ProjectsModel = require('../models/projects.model')
 const supabase = require('../config/supabase')
-const { v4: uuidv4 } = require('uuid')
+const { randomUUID } = require('crypto')
 
 const getItems = async (req, res) => {
   try {
@@ -108,7 +108,7 @@ const uploadImage = async (req, res) => {
   try {
     if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'No file uploaded' })
     const bucket = 'project-images'
-    const filename = `${uuidv4()}-${req.file.originalname}`
+    const filename = `${randomUUID()}-${req.file.originalname}`
     const { data, error } = await supabase.storage.from(bucket).upload(filename, req.file.buffer, {
       contentType: req.file.mimetype,
       upsert: false,
