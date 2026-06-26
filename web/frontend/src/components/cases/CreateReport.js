@@ -6,6 +6,7 @@ import Link from "next/link";
 import styles from "./CreateReport.module.css";
 import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
+import { useAuth } from "@/lib/AuthContext";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -349,6 +350,7 @@ function getSelfReportFields(user) {
       gender: "",
       contactNumber: "",
       email: "",
+      userCity: "",
     };
   }
   return {
@@ -359,6 +361,7 @@ function getSelfReportFields(user) {
     gender: user.gender_identity || "",
     contactNumber: user.contact_number || "",
     email: user.email || "",
+    userCity: user.city || user.user_city || "",
   };
 }
 
@@ -630,6 +633,9 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
               clearError("reporteeType");
               const isMe = v === "Me (Myself)";
               const currentUser = isMe ? await getCurrentUser() : null;
+              if (isMe) {
+                ["name", "age", "gender", "contactNumber", "email", "userCity"].forEach(clearError);
+              }
               onChange({
                 ...data,
                 reporteeType: v,
@@ -641,6 +647,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
                       gender: "",
                       contactNumber: "",
                       email: "",
+                      userCity: "",
                     }),
               });
             }}
@@ -1883,6 +1890,7 @@ export default function CreateReport({
   notifications   = [],
   events          = [],
 }) {
+  const { user: authUser } = useAuth();
   const [step, setStep]                   = useState(0);
   const [submitted, setSubmitted]         = useState(false);
   const [stepErrors, setStepErrors]       = useState({});
@@ -1918,6 +1926,7 @@ export default function CreateReport({
   const totalSteps = STEPS.length;
 
   const getCurrentUser = async () => {
+    if (authUser) return authUser;
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const response = await fetch(`${API_URL}/api/auth/me`, {
