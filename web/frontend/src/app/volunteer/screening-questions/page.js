@@ -31,17 +31,8 @@ const ANSWER_PRESETS = {
   in_favor: ["In Favor", "Not in Favor"],
 };
 
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const parts = `; ${document.cookie}`.split(`; ${name}=`);
-  return parts.length === 2
-    ? decodeURIComponent(parts.pop().split(";").shift())
-    : null;
-}
-
 function headers(extra = {}) {
-  const token = getCookie("token");
-  return { ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { ...extra };
 }
 
 async function readResponse(response, fallback) {

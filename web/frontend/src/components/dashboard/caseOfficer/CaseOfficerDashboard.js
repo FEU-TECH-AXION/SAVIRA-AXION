@@ -28,17 +28,20 @@ function OverviewCard({ category, label, count, showView = false }) {
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function CaseOfficerDashboard() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [cases, setCases] = useState([]);
   const [interviews, setInterviews] = useState([]);
 
-  const user = authUser ? {
-    role: authUser.role_name,
-    firstName: authUser.first_name,
-    lastName: authUser.last_name,
-  } : { role: "case officer", firstName: "Case Officer", lastName: "User" };
+  const user = authUser
+    ? {
+        role: authUser.role_name,
+        firstName: authUser.first_name,
+        lastName: authUser.last_name,
+      }
+    : { role: "", firstName: "", lastName: "" };
 
   useEffect(() => {
+    if (authLoading || !authUser?.user_id) return;
     async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -60,7 +63,7 @@ export default function CaseOfficerDashboard() {
       }
     }
     fetchDashboardData();
-  }, [authUser?.user_id]);
+  }, [authLoading, authUser?.user_id]);
 
   const actorName = getActorName(user);
 
@@ -92,6 +95,9 @@ export default function CaseOfficerDashboard() {
     userId: authUser?.user_id,
     actorName,
   }), [actorName, authUser?.user_id, interviews]);
+  if (authLoading) return <p>Loading...</p>;
+  if (!authUser) return null;
+
   return (
     <>
       <Navbar user={user} />

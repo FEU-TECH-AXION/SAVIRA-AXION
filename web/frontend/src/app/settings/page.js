@@ -46,7 +46,7 @@ function calcCompletion(user) {
 }
 
 function SettingsPageContent() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, loading } = useAuth();
   const router  = useRouter();
   const searchParams = useSearchParams();
   const fileRef = useRef(null);
@@ -73,6 +73,7 @@ function SettingsPageContent() {
 
   // ── Fetch current user on mount ───────────────────────────
   useEffect(() => {
+    if (loading) return;
     if (!user) { router.push("/login"); return; }
     setForm({
       first_name:      user.first_name      || "",
@@ -88,7 +89,7 @@ function SettingsPageContent() {
       birthday:        user.birthday        || "",
       gender_identity: user.gender_identity || "",
     });
-  }, [user]);
+  }, [loading, user, router]);
 
   // ── Derived ───────────────────────────────────────────────
   const completion    = calcCompletion(user);
@@ -125,6 +126,7 @@ function SettingsPageContent() {
     router.replace(`/settings?tab=${id}`, { scroll: false });
   };
 
+  if (loading) return null;
   if (!user) return null;
 
   return (

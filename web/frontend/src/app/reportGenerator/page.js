@@ -1,26 +1,20 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ReportGenerator from "@/components/reportGenerator/ReportGenerator";
-
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-};
+import { useAuth } from "@/lib/AuthContext";
 
 export default function ReportGeneratorPage() {
-  const [role, setRole] = useState(null);
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const role = user?.role_name?.toLowerCase();
 
   useEffect(() => {
-    const userCookie = getCookie('user');
-    if (!userCookie) { router.push('/'); return; }
-    const user = JSON.parse(userCookie);
-    setRole(user.role_name?.toLowerCase());
-  }, []);
+    if (!loading && !user) router.push("/");
+  }, [loading, router, user]);
 
-  if (!role) return <p>Loading...</p>;
+  if (loading) return <p>Loading...</p>;
+  if (!user) return null;
   if (role === "admin")          return <ReportGenerator />;
 
   return <p>Unauthorized</p>;

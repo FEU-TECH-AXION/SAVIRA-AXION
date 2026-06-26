@@ -6,12 +6,6 @@ import FilterMenu from "./FilterMenu";
 import styles from "./volunteerRanking.module.css";
 import { FiArrowLeft } from "react-icons/fi";
 
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
 function formatScore(value, suffix = "") {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
@@ -37,7 +31,6 @@ export default function VolunteerRanking() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(`${API_URL}/api/volunteer_applications/rankings/list`, {
           credentials: "include",
-          headers: { Authorization: `Bearer ${getCookie("token")}` },
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Failed to load rankings.");

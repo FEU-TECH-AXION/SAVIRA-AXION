@@ -35,20 +35,23 @@ function OverviewCard({ category, label, count, showView = false }) {
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function StaffDashboard() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [volunteers, setVolunteers] = useState([]);
   const [projectTasks, setProjectTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [staffRows, setStaffRows] = useState([]);
   const [interviews, setInterviews] = useState([]);
 
-  const user = authUser ? {
-    role: authUser.role_name,
-    firstName: authUser.first_name,
-    lastName: authUser.last_name,
-  } : { role: "staff", firstName: "Staff", lastName: "User" };
+  const user = authUser
+    ? {
+        role: authUser.role_name,
+        firstName: authUser.first_name,
+        lastName: authUser.last_name,
+      }
+    : { role: "", firstName: "", lastName: "" };
 
   useEffect(() => {
+    if (authLoading || !authUser?.user_id) return;
     async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -76,7 +79,7 @@ export default function StaffDashboard() {
       }
     }
     fetchDashboardData();
-  }, [authUser?.user_id]);
+  }, [authLoading, authUser?.user_id]);
 
   const actorName = getActorName(user);
   const currentStaff = useMemo(() => {
@@ -127,6 +130,9 @@ export default function StaffDashboard() {
       limit: Infinity,
     }) : []),
   ]), [actorName, authUser?.user_id, committeeName, interviews, projectTasks, projects]);
+  if (authLoading) return <p>Loading...</p>;
+  if (!authUser) return null;
+
   return (
     <>
       <Navbar user={user} />

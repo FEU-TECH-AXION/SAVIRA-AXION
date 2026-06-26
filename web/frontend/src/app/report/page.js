@@ -1,9 +1,13 @@
-import { getUserRole } from "@/lib/auth";
+"use client";
+
 import CreateReport from "@/components/cases/CreateReport";
+import { useAuth } from "@/lib/AuthContext";
 
-export default async function ReportPage() {
-  const role = await getUserRole();
+export default function ReportPage() {
+  const { user, loading } = useAuth();
+  const role = user?.role_name?.toLowerCase();
 
+  if (loading) return <p>Loading...</p>;
   if (role === "user") return <CreateReport />;
   if (role === "complainant") return <CreateReport />;
 

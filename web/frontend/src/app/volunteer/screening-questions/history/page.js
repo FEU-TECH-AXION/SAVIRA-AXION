@@ -19,17 +19,8 @@ import styles from "./VersionHistory.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const parts = `; ${document.cookie}`.split(`; ${name}=`);
-  return parts.length === 2
-    ? decodeURIComponent(parts.pop().split(";").shift())
-    : null;
-}
-
 function headers(extra = {}) {
-  const token = getCookie("token");
-  return { ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { ...extra };
 }
 
 async function readResponse(response, fallback) {
