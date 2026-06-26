@@ -1,7 +1,8 @@
-
 // ── AuthContext: Global authentication state management ──
 // Manages user login/logout using httpOnly cookies and provides auth context to all pages.
-// Reads user data from cookies and makes it available via useAuth() hook throughout the app.
+// Verifies the session via /api/auth/me on mount (the browser sends the httpOnly
+// cookie automatically on cross-domain requests; we can't read it via document.cookie
+// since the backend lives on a different domain than the frontend).
 
 "use client";
 
@@ -9,12 +10,6 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-};
 
 const AuthContext = createContext(null);
 
@@ -33,13 +28,25 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true); // true while we check session
   const router                = useRouter();
 
-  // ── On mount: check if user cookie exists ──
+  // ── On mount: verify session with the backend ──
   useEffect(() => {
-    const userCookie = getCookie('user');
-    if (userCookie) {
-      setUser(JSON.parse(userCookie));
-    }
-    setLoading(false);
+    let mounted = true;
+
+    fetch(`${API_URL}/api/auth/me`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (mounted) setUser(data.user);
+      })
+      .catch(() => {
+        if (mounted) setUser(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // ── Login ────────────────────────────────────────────────
