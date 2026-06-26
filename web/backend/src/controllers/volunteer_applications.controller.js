@@ -583,33 +583,39 @@ const updateItem = async (req, res) => {
 
         // ── Validation: approved requires completed evaluation ──
         if (normalizedStatus === 'approved') {
-            const { data: evaluation, error: evalError } = await supabase
+            // Use a regular array query — there can be multiple evaluation rows (one per evaluator)
+            const { data: evaluations, error: evalError } = await supabase
                 .from('volunteer_application_evaluations')
                 .select('alignment, maturity, commitment, clarity, experience, interview_score')
                 .eq('volunteer_application_id', parseInt(id))
-                .maybeSingle()
 
             if (evalError) throw evalError
 
-            // Check if evaluation row exists
-            if (!evaluation) {
+            // Check if at least one evaluation row exists
+            if (!evaluations || evaluations.length === 0) {
                 return res.status(400).json({
                     error: 'Cannot approve. Essay rubric and interview score have not been completed yet.'
                 })
             }
 
-            // Check if all essay criteria are scored
+            // Check if all essay criteria are scored in at least one evaluation
             const essayFields = ['alignment', 'maturity', 'commitment', 'clarity', 'experience']
-            const missingEssay = essayFields.some(f => !evaluation[f] || evaluation[f] === 0)
+            const hasCompleteEssay = evaluations.some(ev =>
+                essayFields.every(f => ev[f] && Number(ev[f]) !== 0)
+            )
 
-            if (missingEssay) {
+            if (!hasCompleteEssay) {
                 return res.status(400).json({
                     error: 'Cannot approve. Essay rubric is incomplete. All 5 criteria must be scored.'
                 })
             }
 
-            // Check if interview score exists
-            if (!evaluation.interview_score || evaluation.interview_score === 0) {
+            // Check if at least one interview score exists across all evaluations
+            const hasInterviewScore = evaluations.some(ev =>
+                ev.interview_score && Number(ev.interview_score) !== 0
+            )
+
+            if (!hasInterviewScore) {
                 return res.status(400).json({
                     error: 'Cannot approve. Interview score has not been submitted yet.'
                 })
