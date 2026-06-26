@@ -32,7 +32,7 @@ export default function Login() {
       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, sendEmailVerification: true }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -50,7 +50,6 @@ export default function Login() {
       const role = (data.user?.role_name || data.user?.roles?.role_name || '').toLowerCase();
 
       if (role === 'user' || role === 'complainant') {
-        Alert.alert('Email sent', 'A sign-in verification email has been sent to your inbox.');
         router.replace('/(complainant)/dashboard');
       } else {
         Alert.alert('Unauthorized', 'This app is for complainants only.');

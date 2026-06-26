@@ -44,25 +44,4 @@ async function sendWelcomeEmail(to, firstName) {
   return data;
 }
 
-async function sendSignInEmail(to, firstName) {
-  const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to,
-    subject: 'SAVIRA sign-in verification',
-    html: `
-      <p>Hi ${firstName || 'there'},</p>
-      <p>Your SAVIRA account was just signed in on the mobile app.</p>
-      <p>If this was you, no further action is needed.</p>
-      <p>If you did not sign in, please reset your password or contact SAVIRA support immediately.</p>
-    `,
-  });
-
-  if (error) {
-    console.error('Resend error (sign-in email):', error);
-    throw error;
-  }
-
-  return data;
-}
-
-module.exports = { sendResetPasswordEmail, sendWelcomeEmail, sendSignInEmail };
+module.exports = { sendResetPasswordEmail, sendWelcomeEmail };

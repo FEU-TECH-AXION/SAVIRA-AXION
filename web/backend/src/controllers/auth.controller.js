@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const UserModel = require('../models/users.model');
 const supabase = require('../config/supabase');
-const { sendWelcomeEmail, sendSignInEmail } = require('../config/mailer');
+const { sendWelcomeEmail } = require('../config/mailer');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -98,7 +98,7 @@ const signup = async (req, res) => {
 // ── Login ────────────────────────────────────────────────────────────────────
 const login = async (req, res) => {
   try {
-    const { email, password, sendEmailVerification } = req.body;
+    const { email, password } = req.body;
 
     // 1. Find user with role name
     const { data: user, error } = await supabase
@@ -125,12 +125,6 @@ const login = async (req, res) => {
       role_name: safeUser.roles?.role_name || null,
     };
     delete flatUser.roles;
-
-    if (sendEmailVerification) {
-      sendSignInEmail(user.email, user.first_name).catch((err) => {
-        console.error('Failed to send sign-in email:', err);
-      });
-    }
 
     res
       .cookie('token', token, COOKIE_OPTIONS)
