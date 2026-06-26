@@ -1309,7 +1309,13 @@ const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
       try {
         const stored = JSON.parse(userCookie);
         setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name });
-      } catch (_) {}
+      } catch (_) {
+      // parsing failed — set empty user so fetch still runs
+        setUser({ role: "", firstName: "", lastName: "" });
+      }
+    } else {
+      // no cookie found — set empty user so fetch still runs
+      setUser({ role: "", firstName: "", lastName: "" });
     }
   }, []);
 
