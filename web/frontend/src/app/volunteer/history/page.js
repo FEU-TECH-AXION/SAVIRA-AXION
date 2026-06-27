@@ -229,9 +229,8 @@ export default function ApplicationHistoryPage() {
               <div className={styles.infoBanner}>
                 <span><IoIosInformationCircle /></span>
                 <span>
-                  You already have an active application under review. You must{" "}
-                  <strong>withdraw your current application</strong> before submitting
-                  a new one.
+                  You already have an active application under review. You can't submit a new application unless you {" "}
+                  <strong>withdraw your current application</strong>.
                 </span>
               </div>
             ) : (
