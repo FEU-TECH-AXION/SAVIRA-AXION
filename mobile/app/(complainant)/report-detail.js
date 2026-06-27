@@ -17,6 +17,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { API_URL } from '../../lib/config';
+import SideNav from '../../components/SideNav';
+import HeaderAvatar from '../../components/HeaderAvatar';
+import NavSearchButton from '../../components/NavSearchButton';
+import NotificationBell from '../../components/NotificationBell';
 
 const TEAL = '#037F81';
 const ORANGE = '#E96433';
@@ -70,6 +74,21 @@ const STATUS_COPY = {
 const TERMINAL_STATUSES = ['Dismissed', 'Perpetrator Convicted', 'Resolved', 'Withdrawn'];
 const WITHDRAWAL_ALLOWED = ['For Verification', 'Undergoing Review', 'Verified - True', 'Under Case Evaluation'];
 const WITHDRAWAL_REQUIRES_APPROVAL = ['Case Filed', 'Investigation Ongoing'];
+const STATUS_COLORS = {
+  Submitted: { bg: '#e0f2f1', text: TEAL, border: '#b7dddd' },
+  'For Verification': { bg: '#e0f2f1', text: TEAL, border: '#b7dddd' },
+  'Undergoing Review': { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+  'Verified - True': { bg: '#ecfdf5', text: '#047857', border: '#bbf7d0' },
+  'Verified - False': { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
+  'Under Case Evaluation': { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+  'Case Filed': { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+  'Investigation Ongoing': { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+  'Hearing Ongoing': { bg: '#fefce8', text: '#a16207', border: '#fde68a' },
+  Dismissed: { bg: '#f3f4f6', text: '#4b5563', border: '#e5e7eb' },
+  'Perpetrator Convicted': { bg: '#ecfdf5', text: '#047857', border: '#bbf7d0' },
+  Resolved: { bg: '#e8f5e9', text: '#2e7d32', border: '#bbf7d0' },
+  Withdrawn: { bg: '#fef3c7', text: '#92400e', border: '#fde68a' },
+};
 const FOLLOW_UP_REASON_OPTIONS = [
   {
     value: 'Correction needed',
@@ -193,6 +212,10 @@ function getEvidenceKind(evidence) {
 
 function getStatusName(report) {
   return report?.case_status?.status_name || report?.status || STATUS_BY_ID[report?.case_status_id] || 'Submitted';
+}
+
+function getStatusColors(status) {
+  return STATUS_COLORS[status] || STATUS_COLORS.Submitted;
 }
 
 function formatInterviewStatus(status) {
@@ -383,6 +406,21 @@ function ActionButton({ icon, label, tone = 'plain', disabled, onPress }) {
   );
 }
 
+function Navbar({ onBurger }) {
+  return (
+    <View style={s.navbar}>
+      <Pressable onPress={onBurger} style={s.navIconBtn}>
+        <Ionicons name="menu" size={26} color="#fff" />
+      </Pressable>
+      <View style={s.navRight}>
+        <NavSearchButton />
+        <NotificationBell />
+        <HeaderAvatar />
+      </View>
+    </View>
+  );
+}
+
 function getRequestTitle(request) {
   return request?.type === 'officer_clarification_request' ? 'Clarification Request' : 'Change Request';
 }
@@ -417,6 +455,7 @@ function getFollowUpEntries(request) {
 export default function ReportDetailScreen() {
   const router = useRouter();
   const { caseId, displayId } = useLocalSearchParams();
+  const [navOpen, setNavOpen] = useState(false);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -553,6 +592,7 @@ export default function ReportDetailScreen() {
 
   const statusName = getStatusName(report);
   const reportId = getReportId(report, displayId, caseId);
+  const statusColors = getStatusColors(statusName);
   const statusCopy = STATUS_COPY[statusName] || STATUS_COPY.Submitted;
   const location = [report?.incident_location || report?.incident_venue, report?.incident_city].filter(Boolean).join(', ');
   const requestedActions = parseMaybeArray(report?.action_requested || report?.requested_outcome || report?.outcome);
@@ -841,12 +881,8 @@ export default function ReportDetailScreen() {
 
   return (
     <View style={s.container}>
-      <View style={s.topBar}>
-        <Pressable style={s.backButton} onPress={() => router.push('/(complainant)/reports?tab=history')}>
-          <Ionicons name="arrow-back" size={17} color="#fff" />
-          <Text style={s.backText}>Back to Report History</Text>
-        </Pressable>
-      </View>
+      <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
+      <Navbar onBurger={() => setNavOpen(true)} />
 
       {loading ? (
         <View style={s.centerState}>
@@ -858,31 +894,53 @@ export default function ReportDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-          <View style={s.hero}>
-            <View>
-              <Text style={s.reportId}>{reportId}</Text>
-              <Text style={s.submittedText}>Submitted: {dateOf(report?.created_at || report?.incident_date)}</Text>
-            </View>
-            <View style={s.statusPill}>
-              <Text style={s.statusText}>{statusName}</Text>
-            </View>
-          </View>
+          <Pressable style={s.backButton} onPress={() => router.push('/(complainant)/reports?tab=history')}>
+            <Ionicons name="arrow-back" size={17} color={TEAL} />
+            <Text style={s.backText}>Back to Report History</Text>
+          </Pressable>
 
-          <View style={s.actions}>
-            <ActionButton
-              icon="chatbubble-ellipses-outline"
-              label="Follow Up"
-              disabled={!canFollowUp}
-              onPress={openFollowUp}
-            />
-            {canWithdraw && (
+          <View style={s.hero}>
+            <View style={s.heroAccent} />
+            <View style={s.heroTop}>
+              <View style={s.heroTextBlock}>
+                <Text style={s.heroEyebrow}>Case report</Text>
+                <Text style={s.reportId}>{reportId}</Text>
+                <Text style={s.submittedText}>Submitted {dateOf(report?.created_at || report?.incident_date)}</Text>
+              </View>
+              <View style={[s.statusPill, { backgroundColor: statusColors.bg, borderColor: statusColors.border }]}>
+                <Text style={[s.statusText, { color: statusColors.text }]}>{statusName}</Text>
+              </View>
+            </View>
+            <Text style={s.heroSubtitle}>
+              Review your submitted report, case updates, evidence, and follow-up requests in one protected record.
+            </Text>
+            <View style={s.heroMetaGrid}>
+              <View style={s.heroMetaItem}>
+                <Text style={s.heroMetaLabel}>Incident date</Text>
+                <Text style={s.heroMetaValue}>{dateOf(report?.incident_date, true)}</Text>
+              </View>
+              <View style={s.heroMetaItem}>
+                <Text style={s.heroMetaLabel}>Location</Text>
+                <Text style={s.heroMetaValue} numberOfLines={2}>{location || 'Not provided'}</Text>
+              </View>
+            </View>
+
+            <View style={s.actions}>
               <ActionButton
-                icon="archive-outline"
-                label={withdrawalCopy.buttonLabel}
-                tone="danger"
-                onPress={openWithdraw}
+                icon="chatbubble-ellipses-outline"
+                label="Follow Up"
+                disabled={!canFollowUp}
+                onPress={openFollowUp}
               />
-            )}
+              {canWithdraw && (
+                <ActionButton
+                  icon="archive-outline"
+                  label={withdrawalCopy.buttonLabel}
+                  tone="danger"
+                  onPress={openWithdraw}
+                />
+              )}
+            </View>
           </View>
 
           <View style={s.tabs}>
@@ -1625,38 +1683,88 @@ export default function ReportDetailScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-  topBar: {
+  navbar: {
     backgroundColor: TEAL,
-    paddingTop: 44,
-    paddingBottom: 12,
+    height: 84,
+    paddingTop: 34,
     paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
+  navIconBtn: { padding: 4 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backButton: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    paddingVertical: 6,
+    paddingVertical: 4,
+    marginBottom: 2,
   },
-  backText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  backText: { color: TEAL, fontSize: 13, fontWeight: '900' },
   centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { color: ERROR, textAlign: 'center', fontWeight: '700' },
-  content: { padding: 16, paddingBottom: 32, gap: 12 },
+  content: { padding: 16, paddingBottom: 32, gap: 14 },
   hero: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 18,
+    padding: 18,
+    paddingTop: 20,
+    gap: 14,
     borderWidth: 1,
     borderColor: '#dbe7e7',
-    padding: 18,
-    gap: 12,
     elevation: 3,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
+    overflow: 'hidden',
   },
-  reportId: { color: '#111827', fontSize: 28, fontWeight: '900' },
-  submittedText: { color: '#6b7280', fontSize: 12, fontWeight: '700', marginTop: 3 },
+  heroAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 7,
+    backgroundColor: TEAL,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroTextBlock: { flex: 1 },
+  heroEyebrow: {
+    color: ORANGE,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+    marginBottom: 5,
+  },
+  reportId: { color: '#111827', fontSize: 30, lineHeight: 36, fontWeight: '900' },
+  submittedText: { color: '#6b7280', fontSize: 12, fontWeight: '700', marginTop: 4 },
+  heroSubtitle: { color: '#4b5563', fontSize: 13, lineHeight: 20 },
+  heroMetaGrid: { flexDirection: 'row', gap: 10 },
+  heroMetaItem: {
+    flex: 1,
+    borderRadius: 13,
+    backgroundColor: '#f7fbfb',
+    borderWidth: 1,
+    borderColor: '#d7ecec',
+    padding: 11,
+  },
+  heroMetaLabel: {
+    color: TEAL,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+    marginBottom: 4,
+  },
+  heroMetaValue: { color: '#111827', fontSize: 13, lineHeight: 18, fontWeight: '900' },
   statusPill: {
     alignSelf: 'flex-start',
     backgroundColor: '#f0fafb',
@@ -1695,6 +1803,11 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER,
     padding: 4,
+    elevation: 1,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
   },
   tab: { flex: 1, alignItems: 'center', borderRadius: 9, paddingVertical: 10 },
   tabActive: { backgroundColor: '#f0fafb' },
