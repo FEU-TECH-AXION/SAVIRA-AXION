@@ -1,11 +1,13 @@
 import os
 import json
+from json import JSONDecodeError
 from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = "llama-3.3-70b-versatile"
+MAX_TOKENS = 2500
 
 # ── Initialize Groq client (lazy-loaded on first use) ──────────────
 _client = None
@@ -18,6 +20,45 @@ def get_client():
             raise ValueError("GROQ_API_KEY not set in environment")
         _client = Groq(api_key=api_key)
     return _client
+
+
+def _strip_code_fence(raw_text):
+    text = raw_text.strip()
+    if not text.startswith("```"):
+        return text
+
+    parts = text.split("```")
+    if len(parts) < 2:
+        return text
+
+    fenced = parts[1].strip()
+    if fenced.startswith("json"):
+        fenced = fenced[4:].strip()
+    return fenced
+
+
+def _extract_json_object(raw_text):
+    text = _strip_code_fence(raw_text)
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return text
+    return text[start:end + 1]
+
+
+def parse_json_response(raw_text, task_name="Groq"):
+    """Parse model JSON and include a compact snippet when the model returns invalid JSON."""
+    json_text = _extract_json_object(raw_text)
+    try:
+        return json.loads(json_text)
+    except JSONDecodeError as err:
+        snippet_start = max(err.pos - 120, 0)
+        snippet_end = min(err.pos + 120, len(json_text))
+        snippet = json_text[snippet_start:snippet_end].replace("\n", "\\n")
+        raise ValueError(
+            f"{task_name} returned invalid JSON: {err.msg} at line {err.lineno} "
+            f"column {err.colno}. Near: {snippet}"
+        ) from err
 
 # ── Category and case type definitions ───────────────────────────
 PRIMARY_CATEGORIES = ["Physical", "Verbal", "Virtual"]
@@ -200,38 +241,36 @@ Respond ONLY with a valid JSON object, no explanation, no markdown, no extra tex
 
 
 # ── Groq API caller ───────────────────────────────────────────────
-def call_groq(prompt):
+def call_groq(prompt, task_name="Groq"):
     """Send a prompt to Groq and return parsed JSON response."""
     client = get_client()
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,   # low temperature = more consistent outputs
-        max_tokens=1000,
+        max_tokens=MAX_TOKENS,
     )
 
     raw_text = response.choices[0].message.content.strip()
-
-    # Strip markdown code fences if present
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```")[1]
-        if raw_text.startswith("json"):
-            raw_text = raw_text[4:]
-        raw_text = raw_text.strip()
-
-    return json.loads(raw_text)
+    return parse_json_response(raw_text, task_name)
 
 
 # ── Main analysis function ────────────────────────────────────────
 def analyze(processed_text, anonymized_text):
     # Task 1 — Classification + quality assessment
-    classification = call_groq(build_classification_prompt(processed_text))
+    classification = call_groq(
+        build_classification_prompt(processed_text),
+        "Case classification",
+    )
 
     primary_categories = classification.get("primary_categories", [])
     case_types         = classification.get("case_types", [])
 
     # Task 2 — Summary
-    summary_result = call_groq(build_summary_prompt(anonymized_text))
+    summary_result = call_groq(
+        build_summary_prompt(anonymized_text),
+        "Case summary",
+    )
 
     # Task 3 — Recommendations
     # Extract just the category/type names for the recommendation prompt
@@ -239,7 +278,8 @@ def analyze(processed_text, anonymized_text):
     type_names     = [t.get("type", t)     if isinstance(t, dict) else t for t in case_types]
 
     recommendation_result = call_groq(
-        build_recommendation_prompt(anonymized_text, category_names, type_names)
+        build_recommendation_prompt(anonymized_text, category_names, type_names),
+        "Case recommendation",
     )
 
     return {
