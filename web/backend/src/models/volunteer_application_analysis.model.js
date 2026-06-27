@@ -34,6 +34,32 @@ async function updateAnalysisByApplicationId(volunteerApplicationId, updates) {
     return data;
 }
 
+function getAnalysisPrimaryKey(row = {}) {
+    return [
+        'analysis_id',
+        'volunteer_application_analysis_id',
+        'application_analysis_id',
+        'id',
+    ].find((key) => row[key] !== undefined && row[key] !== null);
+}
+
+async function updateAnalysisByPrimaryKey(row, updates) {
+    const primaryKey = getAnalysisPrimaryKey(row);
+    if (!primaryKey) {
+        return updateAnalysisByApplicationId(row.volunteer_application_id, updates);
+    }
+
+    const { data, error } = await supabase
+        .from('volunteer_application_analysis')
+        .update(updates)
+        .eq(primaryKey, row[primaryKey])
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
 async function getAnalysisByApplicationId(volunteerApplicationId) {
     const { data, error } = await supabase
         .from('volunteer_application_analysis')
@@ -45,4 +71,4 @@ async function getAnalysisByApplicationId(volunteerApplicationId) {
     return data;
 }
 
-module.exports = { getAll, createAnalysis, updateAnalysisByApplicationId, getAnalysisByApplicationId }
+module.exports = { getAll, createAnalysis, updateAnalysisByApplicationId, updateAnalysisByPrimaryKey, getAnalysisByApplicationId }

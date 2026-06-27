@@ -156,5 +156,6 @@ def grade_essay(processed_essay: str) -> dict:
         "strengths":               result.get("strengths", []),
         "concerns":                result.get("concerns", []),
         "recommendation":          result.get("recommendation_notes", ""),
+        "recommendation_notes":    result.get("recommendation_notes", ""),
         "recommend_approve":       result.get("recommend_approve", False),
     }

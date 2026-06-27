@@ -63,4 +63,16 @@ async function updateAnalysisByReportId(caseReportId, updates) {
     return data;
 }
 
-module.exports = { getAll, create, getAnalysisByReportId, updateAnalysisStatus, updateAnalysisByReportId }
+async function updateAnalysisById(analysisId, updates) {
+    const { data, error } = await supabase
+        .from('case_report_analysis')
+        .update(updates)
+        .eq('analysis_id', analysisId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+module.exports = { getAll, create, getAnalysisByReportId, updateAnalysisStatus, updateAnalysisByReportId, updateAnalysisById }
