@@ -1,7 +1,7 @@
 import json
 from pipeline.groq_client import MAX_TOKENS, get_client, parse_json_response
 
-MODEL = "openai/gpt-oss-20b"
+MODEL = "llama-3.3-70b-versatile"
 
 CRITERIA = {
     "mission_alignment": {

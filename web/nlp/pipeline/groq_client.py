@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MODEL = "openai/gpt-oss-20b"
+MODEL = "llama-3.3-70b-versatile"
 MAX_TOKENS = 2500
 
 # ── Initialize Groq client (lazy-loaded on first use) ──────────────
