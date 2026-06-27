@@ -287,7 +287,6 @@ export default StyleSheet.create({
     fontWeight: '800',
     color: '#037F81',
   },
-
   modalCloseBtn: {
     padding: 4,
   },
@@ -295,6 +294,7 @@ export default StyleSheet.create({
   modalBody: {
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 80,
   },
 
   modalEffective: {

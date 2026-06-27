@@ -54,7 +54,7 @@ const NAV_SECTIONS = [
     children: [
       { label: 'Nearby Hospitals',       icon: 'medical-outline',    href: '/(complainant)/support?tab=Hospitals' },
       { label: 'Nearby Police Stations', icon: 'shield-outline',     href: '/(complainant)/support?tab=Police' },
-      { label: 'Helplines',              icon: 'call-outline',       href: '/(complainant)/support?tab=Helplines' },
+      { label: 'Helplines',              icon: 'call-outline',       href: '/(complainant)/helplines' },
     ],
   },
   { type: 'divider' },
@@ -68,6 +68,12 @@ const NAV_SECTIONS = [
       { label: 'Display & Accessibility', icon: 'contrast-outline',      href: { pathname: '/(complainant)/settings', params: { tab: 'Display' } } },
       { label: 'Report a Problem',        icon: 'bug-outline',           href: { pathname: '/(complainant)/settings', params: { tab: 'Report' } } },
     ],
+  },
+  {
+    type: 'link',
+    label: 'Privacy & Terms',
+    icon: 'shield-checkmark-outline',
+    href: '/(complainant)/privacy-terms',
   },
 ];
 

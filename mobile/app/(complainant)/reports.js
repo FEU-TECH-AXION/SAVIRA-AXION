@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   NativeModules,
@@ -81,6 +82,29 @@ const NCR_CITIES = [
   "Valenzuela",
 ];
 
+// ── Outcome Options ───────────────────────────────────────────────────────────
+const OUTCOME_OPTIONS = [
+  "Safety planning and support",
+  "Counseling or psychosocial support",
+  "Legal advice or legal action",
+  "Mediation or restorative process",
+  "Referral to police or another agency",
+  "Financial support",
+  "Medical support",
+  "Documentation only",
+  "I am not sure yet",
+];
+
+function normalizeOutcome(value) {
+  if (Array.isArray(value)) return value.filter((v) => OUTCOME_OPTIONS.includes(v));
+  return [];
+}
+
+function formatOutcome(value) {
+  return normalizeOutcome(value).join(", ") || "—";
+}
+
+
 // ── Wizard steps ──────────────────────────────────────────────────────────────
 const STEPS = [
   { id: 0, label: "Consent" },
@@ -95,6 +119,64 @@ import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 import { fetchNotifications, getUnreadNotificationCount } from '../../lib/notifications';
+
+const CONSENT_DETAILS = {
+  dataPrivacy: {
+    title: "Data Privacy Consent",
+    sections: [
+      ["Collection and Purpose of Data", "The information you provide, including your personal details, contact information, and incident narrative, will be collected, stored, and processed only for case management, documentation, and resolution."],
+      ["Legal Basis", "All personal data is handled in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173), its Implementing Rules and Regulations, and the institution's privacy policy."],
+      ["Data Storage and Security", "Your information will be stored securely in the case management system and protected against unauthorized access, accidental loss, alteration, or disclosure."],
+      ["Authorized Access", "Only authorized personnel involved in case management and resolution, such as assigned case workers, paralegals, and legal officers, will have access to your report and personal data."],
+      ["Your Rights", "You may exercise your rights as a data subject, including access, correction, objection to processing, and withdrawal of consent, through the institution's Data Protection Officer."],
+    ],
+  },
+  caseAnalysis: {
+    title: "Case Analysis & Research Use Consent",
+    sections: [
+      ["Purpose of Use", "The narrative and contextual details of your report may be used to support internal research, analysis, and ongoing improvement of case handling procedures and outcomes."],
+      ["Anonymization", "Any use of your report for analysis will be conducted only on anonymized and de-identified data. Personally identifiable information will be removed before analysis."],
+      ["Non-Linkability", "The anonymized data will not be linked back to you or to any identifiable individual, and no re-identification will be attempted or permitted."],
+      ["Scope of Analysis", "The analysis is limited to improving internal case management and victim support. Data will not be sold, used commercially, or made public in identifiable form."],
+      ["Voluntary Consent", "Declining this consent will not affect the handling of your report. Your case will receive the same level of care regardless of this choice."],
+    ],
+  },
+};
+
+function ConsentDetailsModal({ visible, type, onClose }) {
+  const content = CONSENT_DETAILS[type];
+  if (!content) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      <Pressable style={s.modalBackdrop} onPress={onClose} />
+      <View style={s.modalSheet}>
+        <View style={s.modalCard}>
+          <View style={s.modalHeader}>
+            <View>
+              <Text style={s.modalSuperTitle}>Report Consent</Text>
+              <Text style={s.modalTitle}>{content.title}</Text>
+            </View>
+            <Pressable onPress={onClose} style={s.modalCloseBtn}>
+              <Ionicons name="close" size={22} color="#333" />
+            </Pressable>
+          </View>
+          <ScrollView style={s.modalBody} showsVerticalScrollIndicator={false}>
+            {content.sections.map(([heading, body]) => (
+              <View key={heading} style={s.consentModalSection}>
+                <Text style={s.consentModalHeading}>{heading}</Text>
+                <Text style={s.consentModalText}>{body}</Text>
+              </View>
+            ))}
+          </ScrollView>
+          <Pressable style={s.modalCloseFooterBtn} onPress={onClose}>
+            <Text style={s.modalCloseFooterText}>Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, notifCount = 0 }) {
@@ -717,8 +799,9 @@ function ReportStatusCard({ report, index, onView }) {
 }
 
 // ── STEP 0: Consent ─────────────────────────────────────────────────────────────
-function StepConsent({ complainant, onComplainantChange, consents, onConsentChange, errors }) {
+function StepConsent({ complainant, onComplainantChange, consents, onConsentChange, errors, onOpenHelplines }) {
   const setConsent = (key) => (val) => onConsentChange(key, val);
+  const [openConsentDetails, setOpenConsentDetails] = useState(null);
 
   return (
     <View style={s.stepContainer}>
@@ -730,45 +813,63 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
       </Text>
 
       <View style={s.noticePanel}>
-        <Text style={s.subSectionTitle}>Important Notices</Text>
-        <Text style={s.noticeItemTitle}>Response Time</Text>
-        <Text style={s.noticeItemDesc}>To give every report careful attention, the review and verification process may take up to 72 hours.</Text>
-        
-        <Text style={[s.noticeItemTitle, { marginTop: 12 }]}>If You Need Immediate Help</Text>
-        <Text style={s.noticeItemDesc}>
-          This platform is for case management and is not monitored for immediate crisis intervention. Your safety and well-being matter deeply to us. If you are in immediate danger, need urgent medical care, or need crisis safety assistance, please seek trusted emergency contacts who can help you right now.
-        </Text>
+        <Text style={s.noticeTitle}>Important Notices</Text>
+        <View style={s.noticeList}>
+          <View style={s.noticeItem}>
+            <Text style={s.noticeItemTitle}>Response Time</Text>
+            <Text style={s.noticeItemDesc}>
+              To give every report careful attention, the review and verification process may take up to <Text style={s.noticeStrong}>72 hours</Text>.
+            </Text>
+          </View>
+
+          <View style={[s.noticeItem, s.noticeEmergencyItem]}>
+            <Text style={s.noticeItemTitle}>If You Need Immediate Help</Text>
+            <Text style={s.noticeItemDesc}>
+              This platform is for case management and is not monitored for immediate crisis intervention. Your safety and well-being matter deeply to us. If you are in immediate danger, need urgent medical care, or need crisis safety assistance, please visit our <Text style={s.noticeLink} onPress={onOpenHelplines}>Helplines page</Text> for trusted emergency contacts who can help you right now.
+            </Text>
+          </View>
+        </View>
       </View>
 
       <View style={s.divider} />
-      <Text style={s.subSectionTitle}>How Your Report Will Be Handled</Text>
-      <Text style={s.stepDesc}>
-        These confirmations help us protect your information and use only anonymized details when improving case handling.
-      </Text>
+      <View style={s.consentSection}>
+        <Text style={s.sectionKicker}>Consent & acknowledgement</Text>
+        <Text style={s.subSectionTitle}>How Your Report Will Be Handled</Text>
+        <Text style={s.sectionIntro}>
+          These confirmations help us protect your information and use only anonymized details when improving case handling.
+        </Text>
 
-      <View style={{ marginBottom: 16 }}>
+      <View style={s.consentOption}>
         <Checkbox
-          label="I understand and agree that the information I have provided in this report will be collected, stored, and processed by the institution solely for the purpose of case management and resolution. All data will be handled in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173) and the institution's privacy policy. My information will not be shared with unauthorized third parties without my consent."
+          label={<>I understand and agree that the information I provide will be collected and processed solely for case management, in accordance with the <Text style={s.inlineStrong}>Data Privacy Act of 2012 (RA 10173)</Text>. My data will not be shared without my consent.</>}
           value={consents.dataPrivacy}
           onChange={setConsent("dataPrivacy")}
           error={errors.dataPrivacy}
         />
+        <Pressable onPress={() => setOpenConsentDetails("dataPrivacy")} style={s.readMoreWrap}>
+          <Text style={s.readMoreLink}>Read More</Text>
+        </Pressable>
         {errors.dataPrivacy && <Text style={s.fieldError}>{errors.dataPrivacy}</Text>}
       </View>
 
-      <View style={{ marginBottom: 16 }}>
+      <View style={s.consentOption}>
         <Checkbox
-          label="I agree that the narrative details of my report may be used to support ongoing efforts to improve case handling and outcomes. Any such use will be conducted on anonymized, de-identified data only. Personally identifiable information such as names, contact details, and age will be excluded and will not be retained or linked to any analysis."
+          label={<>I agree that <Text style={s.inlineStrong}>anonymized, de-identified</Text> details of my report may be used to improve case handling and outcomes. No personally identifiable information will be retained or linked to any analysis.</>}
           value={consents.caseAnalysis}
           onChange={setConsent("caseAnalysis")}
           error={errors.caseAnalysis}
         />
+        <Pressable onPress={() => setOpenConsentDetails("caseAnalysis")} style={s.readMoreWrap}>
+          <Text style={s.readMoreLink}>Read More</Text>
+        </Pressable>
         {errors.caseAnalysis && <Text style={s.fieldError}>{errors.caseAnalysis}</Text>}
+      </View>
       </View>
 
       <View style={s.divider} />
+      <View style={[s.consentSection, s.communicationPanel]}>
       <Text style={s.subSectionTitle}>Your Communication Preferences</Text>
-      <Text style={s.stepDesc}>
+      <Text style={s.sectionIntro}>
         Your comfort and safety are our priorities. Please let us know how you would like to proceed with your report.
       </Text>
       
@@ -802,6 +903,8 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
       <Text style={s.fieldHint}>
         You are in control of what happens next. Choose the option that feels safest and most supportive for you right now; whatever you choose, SASHA will still review your report with care.
       </Text>
+      </View>
+      <ConsentDetailsModal visible={!!openConsentDetails} type={openConsentDetails} onClose={() => setOpenConsentDetails(null)} />
     </View>
   );
 }
@@ -1042,6 +1145,20 @@ function StepComplainantInfo({ data, onChange, errors }) {
 function StepIncidentDetails({ data, onChange, errors }) {
   const set = (key) => (val) => onChange({ ...data, [key]: val });
   const setTxt = (key) => (e) => onChange({ ...data, [key]: e });
+  const setPerpetratorKnown = (value) => {
+    onChange({
+      ...data,
+      perpetratorKnown: value,
+      ...(value === "Yes"
+        ? { perpetratorUnknownGender: "", perpetratorUnknownAppearance: "" }
+        : {
+            perpetratorName: "",
+            perpetratorOccupation: "",
+            perpetratorRelationship: "",
+            perpetratorGender: "",
+          }),
+    });
+  };
 
   return (
     <View style={s.stepContainer}>
@@ -1081,19 +1198,34 @@ function StepIncidentDetails({ data, onChange, errors }) {
       <View style={s.divider} />
       <Text style={s.subSectionTitle}>Location of Incident</Text>
       <Field
-        label="City / Municipality"
+        label="Incident Location Type"
         required
-        hint="Select the city where the incident occurred."
-        error={errors.incidentCity}
+        hint="Did this happen in person or online?"
+        error={errors.locationType}
       >
-        <SelectBox
-          value={data.incidentCity || ""}
-          placeholder="Select city / municipality"
-          options={NCR_CITIES}
-          onSelect={set("incidentCity")}
-          error={errors.incidentCity}
+        <RadioGroup
+          options={["Physical Location", "Online"]}
+          value={data.locationType}
+          onChange={set("locationType")}
+          error={errors.locationType}
         />
       </Field>
+      {data.locationType === "Physical Location" && (
+        <Field
+          label="City / Municipality"
+          required
+          hint="Select the city where the incident occurred."
+          error={errors.incidentCity}
+        >
+          <SelectBox
+            value={data.incidentCity || ""}
+            placeholder="Select city / municipality"
+            options={NCR_CITIES}
+            onSelect={set("incidentCity")}
+            error={errors.incidentCity}
+          />
+        </Field>
+      )}
       <Field
         label="Specific Place / Venue"
         hint="e.g. school campus, community center, online — do not include your home address."
@@ -1126,13 +1258,27 @@ function StepIncidentDetails({ data, onChange, errors }) {
         label="What action or outcome are you seeking?"
         hint="Optional — let us know what resolution or support you are looking for."
       >
-        <StyledInput
-          placeholder="e.g. legal action, mediation, counseling support..."
-          value={data.outcome || ""}
-          onChangeText={set("outcome")}
-          multiline
-          numberOfLines={3}
-        />
+        {OUTCOME_OPTIONS.map((option) => {
+          const selected = normalizeOutcome(data.outcome);
+          const isChecked = selected.includes(option);
+          return (
+            <Pressable
+              key={option}
+              style={s.checkboxRow}
+              onPress={() => {
+                const next = isChecked
+                  ? selected.filter((o) => o !== option)
+                  : [...selected, option];
+                set("outcome")(next);
+              }}
+            >
+              <View style={[s.checkboxOuter, isChecked && s.checkboxOuterActive]}>
+                {isChecked && <Ionicons name="checkmark" size={13} color="#fff" />}
+              </View>
+              <Text style={s.checkboxText}>{option}</Text>
+            </Pressable>
+          );
+        })}
       </Field>
 
       <View style={s.divider} />
@@ -1145,7 +1291,7 @@ function StepIncidentDetails({ data, onChange, errors }) {
         <RadioGroup
           options={["Yes", "No"]}
           value={data.perpetratorKnown}
-          onChange={set("perpetratorKnown")}
+          onChange={setPerpetratorKnown}
           error={errors.perpetratorKnown}
         />
       </Field>
@@ -1206,6 +1352,40 @@ function StepIncidentDetails({ data, onChange, errors }) {
         </>
       )}
 
+      {data.perpetratorKnown === "No" && (
+        <>
+          <Field
+            label="Gender of Perpetrator (as you perceive it)"
+            hint="Optional. Share only what you remember or feel comfortable noting."
+          >
+            <SelectBox
+              value={data.perpetratorUnknownGender || ""}
+              placeholder="Select if remembered"
+              options={[
+                "Male",
+                "Female",
+                "Non-binary",
+                "Unable to tell",
+                "Prefer not to say",
+              ]}
+              onSelect={set("perpetratorUnknownGender")}
+            />
+          </Field>
+          <Field
+            label="Appearance or identifying details"
+            hint="Optional. Any detail you remember may help, but it is okay to leave this blank."
+          >
+            <StyledInput
+              placeholder="Clothing, approximate age, build, height, voice, marks, or other details you remember"
+              value={data.perpetratorUnknownAppearance || ""}
+              onChangeText={set("perpetratorUnknownAppearance")}
+              multiline
+              numberOfLines={3}
+            />
+          </Field>
+        </>
+      )}
+
       <View style={s.divider} />
       <Text style={s.subSectionTitle}>Witnesses</Text>
       <Field label="Are there any witnesses?" required error={errors.witnesses}>
@@ -1220,8 +1400,7 @@ function StepIncidentDetails({ data, onChange, errors }) {
         <>
           <Field
             label="Name of Witness"
-            required
-            hint="Full name if known."
+            hint="Full name if known. Optional."
             error={errors.witnessName}
           >
             <StyledInput
@@ -1384,7 +1563,7 @@ function StepEvidence({ data, onChange }) {
           onPress: async () => {
             try {
               const result = await DocumentPicker.getDocumentAsync({
-                type: ["application/pdf", "image/jpeg", "image/png", "video/mp4"],
+                type: ["application/pdf", "image/jpeg", "image/png", "image/jpg", "video/mp4", "video/*", "image/*"],
                 multiple: true,
                 copyToCacheDirectory: true,
               });
@@ -1595,13 +1774,9 @@ function StepReview({ complainant, incident, evidence }) {
   const userAddress = [complainant.userCity, "National Capital Region (NCR)"]
     .filter(Boolean)
     .join(", ");
-  const incidentLocation = [
-    incident.incidentVenue,
-    incident.incidentCity,
-    "NCR",
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const incidentLocation = incident.locationType === "Physical Location"
+    ? [incident.incidentVenue, incident.incidentCity, "NCR"].filter(Boolean).join(", ")
+    : incident.locationType || "";
 
   return (
     <View style={s.stepContainer}>
@@ -1648,7 +1823,7 @@ function StepReview({ complainant, incident, evidence }) {
         <Row label="Time" value={incident.time} />
         <Row label="Location" value={incidentLocation} />
         <Row label="Description" value={incident.description} />
-        <Row label="Outcome sought" value={incident.outcome} />
+        <Row label="Outcome sought" value={Array.isArray(incident.outcome) && incident.outcome.length > 0 ? incident.outcome.join(", ") : "Not provided"} />
         <Row label="Perpetrator known" value={incident.perpetratorKnown} />
         {incident.perpetratorKnown === "Yes" && (
           <>
@@ -1665,6 +1840,12 @@ function StepReview({ complainant, incident, evidence }) {
               label="Perpetrator gender"
               value={incident.perpetratorGender}
             />
+          </>
+        )}
+        {incident.perpetratorKnown === "No" && (
+          <>
+            <Row label="Perpetrator unknown gender" value={incident.perpetratorUnknownGender} />
+            <Row label="Perpetrator appearance" value={incident.perpetratorUnknownAppearance} />
           </>
         )}
         <Row label="Witnesses" value={incident.witnesses} />
@@ -1754,8 +1935,14 @@ function validateStep2(data) {
   const e = {};
   if (!data.date) e.date = "Date is required.";
   if (!data.time) e.time = "Time is required.";
-  if (!data.incidentCity) e.incidentCity = "Incident city is required.";
-  if (!data.description) e.description = "Description of incident is required.";
+  if (!data.locationType) e.locationType = "Please select whether the incident was physical or online.";
+  if (data.locationType === "Physical Location" && !data.incidentCity)
+    e.incidentCity = "Incident city is required.";
+  if (!data.description) {
+    e.description = "Description of incident is required.";
+  } else if (data.description.trim().split(/\s+/).length < 50) {
+    e.description = "Description must be at least 50 words.";
+  }
   if (!data.perpetratorKnown)
     e.perpetratorKnown = "Please indicate if the perpetrator is known.";
   if (!data.witnesses) e.witnesses = "Please indicate if there are witnesses.";
@@ -1769,8 +1956,7 @@ function validateStep2(data) {
       e.perpetratorGender = "Perpetrator gender is required.";
   }
   if (data.witnesses === "Yes") {
-    if (!data.witnessName) e.witnessName = "Witness name is required.";
-    if (!data.witnessContact) e.witnessContact = "Witness contact is required.";
+    // witness name and contact are optional — no validation required
   }
   return e;
 }
@@ -1956,6 +2142,7 @@ export default function ReportScreen() {
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const [consents, setConsents] = useState({
     dataPrivacy: false,
@@ -1981,15 +2168,18 @@ export default function ReportScreen() {
   const [incident, setIncident] = useState({
     date: "",
     time: "",
+    locationType: "",
     incidentCity: "",
     incidentVenue: "",
     description: "",
-    outcome: "",
+    outcome: [],
     perpetratorKnown: "",
     perpetratorName: "",
     perpetratorOccupation: "",
     perpetratorRelationship: "",
     perpetratorGender: "",
+    perpetratorUnknownGender: "",
+    perpetratorUnknownAppearance: "",
     witnesses: "",
     witnessName: "",
     witnessContact: "",
@@ -2002,6 +2192,17 @@ export default function ReportScreen() {
   const [evidence, setEvidence] = useState({ files: [] });
 
   const totalSteps = STEPS.length;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     formScrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -2231,7 +2432,13 @@ export default function ReportScreen() {
       const userToken = await AsyncStorage.getItem("user_token");
       const formData = new FormData();
       formData.append("complainant", JSON.stringify(complainant));
-      formData.append("incident", JSON.stringify(incident));
+      
+      const formattedIncident = {
+        ...incident,
+        outcome: Array.isArray(incident.outcome) ? incident.outcome.join(", ") : incident.outcome
+      };
+      formData.append("incident", JSON.stringify(formattedIncident));
+      
       formData.append("evidence", JSON.stringify({ anonymous: false }));
       (evidence.files || []).forEach((file) => {
         formData.append("files", {
@@ -2289,15 +2496,18 @@ export default function ReportScreen() {
     setIncident({
       date: "",
       time: "",
+      locationType: "",
       incidentCity: "",
       incidentVenue: "",
       description: "",
-      outcome: "",
+      outcome: [],
       perpetratorKnown: "",
       perpetratorName: "",
       perpetratorOccupation: "",
       perpetratorRelationship: "",
       perpetratorGender: "",
+      perpetratorUnknownGender: "",
+      perpetratorUnknownAppearance: "",
       witnesses: "",
       witnessName: "",
       witnessContact: "",
@@ -2392,7 +2602,7 @@ export default function ReportScreen() {
         ) : (
           <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
           >
             <ScrollView
@@ -2419,7 +2629,7 @@ export default function ReportScreen() {
 
               <WizardStepper current={step} />
 
-              {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} />}
+              {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} onOpenHelplines={() => router.push('/(complainant)/helplines')} />}
               {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
               {step === 2 && <StepIncidentDetails data={incident} onChange={setIncident} errors={errors} />}
               {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} />}
@@ -2433,7 +2643,7 @@ export default function ReportScreen() {
               )}
             </ScrollView>
 
-            <View style={[s.formNav, { paddingBottom: Math.max(insets.bottom + 16, 34) }]}>
+            <View style={[s.formNav, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 12) }]}>
               {step > 0 ? (
                 <Pressable style={s.backBtn} onPress={handleBack}>
                   <Ionicons name="chevron-back" size={17} color={TEAL} />
@@ -3200,23 +3410,100 @@ const s = StyleSheet.create({
 
   // Notice Panel
   noticePanel: {
-    backgroundColor: "rgba(3, 127, 129, 0.05)",
+    backgroundColor: "#f7fbfb",
     borderWidth: 1,
-    borderColor: "rgba(3, 127, 129, 0.2)",
-    borderRadius: 12,
-    padding: 16,
+    borderColor: "#d7ecec",
+    borderRadius: 8,
+    padding: 14,
     marginVertical: 16,
   },
-  noticeItemTitle: {
-    fontSize: 14,
-    fontWeight: "700",
+  noticeTitle: {
+    fontSize: 15,
+    fontWeight: "900",
     color: TEAL,
+    marginBottom: 12,
+  },
+  noticeList: {
+    gap: 10,
+  },
+  noticeItem: {
+    backgroundColor: "#fff",
+    borderLeftWidth: 3,
+    borderLeftColor: TEAL,
+    borderRadius: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+  },
+  noticeEmergencyItem: {
+    backgroundColor: "#fff7ed",
+    borderLeftColor: ORANGE,
+  },
+  noticeItemTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#111827",
     marginBottom: 4,
   },
   noticeItemDesc: {
     fontSize: 13,
     color: "#4b5563",
     lineHeight: 20,
+  },
+  noticeStrong: {
+    color: "#111827",
+    fontWeight: "900",
+  },
+  noticeLink: {
+    color: TEAL,
+    fontWeight: "900",
+    textDecorationLine: "underline",
+  },
+  consentSection: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 16,
+  },
+  communicationPanel: {
+    backgroundColor: "#fffdfb",
+    borderColor: "#fed7aa",
+  },
+  sectionKicker: {
+    color: ORANGE,
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 0,
+    marginBottom: 4,
+  },
+  sectionIntro: {
+    color: "#6b7280",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  consentOption: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#eef2f2",
+  },
+  readMoreWrap: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  readMoreLink: {
+    color: TEAL,
+    textDecorationLine: "underline",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  inlineStrong: {
+    color: "#111827",
+    fontWeight: "900",
   },
 
   // Credentials / Evidence
@@ -3917,6 +4204,66 @@ const s = StyleSheet.create({
   },
   actionModalTitle: { fontSize: 19, fontWeight: '900', color: '#111827' },
   actionModalSubtitle: { fontSize: 12, lineHeight: 18, color: '#6b7280', marginTop: 4 },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(17,24,39,0.55)',
+  },
+  modalSheet: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    maxHeight: '86%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 14,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  modalSuperTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: TEAL,
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+    marginBottom: 3,
+  },
+  modalTitle: { fontSize: 19, fontWeight: '900', color: '#111827', flexShrink: 1 },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: { marginTop: 14, marginBottom: 12 },
+  modalCloseFooterBtn: {
+    minHeight: 42,
+    borderRadius: 12,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseFooterText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  consentModalSection: {
+    paddingBottom: 14,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eef2f2',
+  },
+  consentModalHeading: { fontSize: 14, fontWeight: '900', color: '#111827', marginBottom: 5 },
+  consentModalText: { fontSize: 13, color: '#4b5563', lineHeight: 20 },
   modalLabel: { fontSize: 12, fontWeight: '800', color: '#374151', marginBottom: 8, marginTop: 10 },
   reasonBox: {
     borderWidth: 1,
