@@ -39,7 +39,7 @@ import {
   getWithdrawalCopy,
   WITHDRAWAL_ACTION,
 } from "@/lib/caseWithdrawal";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -389,7 +389,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
       setNlpLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`);
         if (res.status === 404) { setNlpStatus("processing"); return; }
         if (!res.ok) { setNlpStatus("error"); return; }
         const json = await res.json();
@@ -723,9 +723,8 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
         interviewer_user_id: userId,
       });
       
-      const interviewRes = await fetch(`${API_URL}/api/interviews`, {
+      const interviewRes = await authFetch(`${API_URL}/api/interviews`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "case_report",
@@ -859,9 +858,8 @@ function CaseManagementTab({
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/case_status_history`, {
+      const res = await authFetch(`${API_URL}/api/case_status_history`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           case_report_id: caseData.id,
@@ -956,7 +954,7 @@ function CaseManagementTab({
       setNotesLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_report_logs/case/${caseData.id}`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/case_report_logs/case/${caseData.id}`);
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Failed to load notes.");
         setNoteLogs((body.data || []).filter((log) => log.action_type === "internal_note"));
@@ -981,9 +979,7 @@ function CaseManagementTab({
       setNlpSuggestionLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`, {
-          credentials: "include",
-        });
+        const res = await authFetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`);
         if (!res.ok) return;
 
         const body = await res.json();
@@ -1020,9 +1016,8 @@ function CaseManagementTab({
     if (!trimmed) return showToast("Please enter a note before saving.", "error");
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/case_report_logs`, {
+      const res = await authFetch(`${API_URL}/api/case_report_logs`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ case_report_id: caseData.id, action_type: "internal_note", remarks: trimmed, performed_by_user_id: userId }),
       });
@@ -1044,9 +1039,8 @@ function CaseManagementTab({
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const id = getLogId(log);
-      const res = await fetch(`${API_URL}/api/case_report_logs/${id}`, {
+      const res = await authFetch(`${API_URL}/api/case_report_logs/${id}`, {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ remarks: trimmed }),
       });
@@ -1065,7 +1059,7 @@ function CaseManagementTab({
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const id = getLogId(log);
-      const res = await fetch(`${API_URL}/api/case_report_logs/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await authFetch(`${API_URL}/api/case_report_logs/${id}`, { method: "DELETE" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to delete note.");
       setNoteLogs((prev) => prev.filter((item) => getLogId(item) !== id));
@@ -1080,9 +1074,8 @@ function CaseManagementTab({
   async function saveAssessment(payload, onSuccess) {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
+      const res = await authFetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, case_officer_id: userId }),
       });
@@ -1839,9 +1832,9 @@ export default function ViewCase() {
 
   const dismissDuplicate = async (matchId) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-    const response = await fetch(
+    const response = await authFetch(
       `${API_URL}/api/case_reports/${caseData.id}/duplicates/${matchId}/dismiss`,
-      { method: "PATCH", credentials: "include" }
+      { method: "PATCH" }
     );
     if (response.ok) {
       setCaseData((current) => ({
@@ -1867,9 +1860,8 @@ export default function ViewCase() {
       const form = new FormData();
       form.append("reason", withdrawReason.trim());
       if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);
-      const res = await fetch(`${API_URL}/api/case_reports/${id}/withdraw`, {
+      const res = await authFetch(`${API_URL}/api/case_reports/${id}/withdraw`, {
         method: "POST",
-        credentials: "include",
         body: form,
       });
       const body = await res.json().catch(() => ({}));
@@ -1891,7 +1883,7 @@ export default function ViewCase() {
     const fetchCase = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/case_reports/${caseId}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Case not found");
@@ -1899,7 +1891,7 @@ export default function ViewCase() {
         const { data } = await res.json();
         setCaseData(mapCaseReportToViewData(data));
 
-        const asmRes = await fetch(`${API_URL}/api/case_assessments/case/${data.case_report_id}`, { credentials: "include" });
+        const asmRes = await authFetch(`${API_URL}/api/case_assessments/case/${data.case_report_id}`);
         if (asmRes.ok) {
           const asmJson = await asmRes.json();
           const assessments = asmJson.data || [];
@@ -1929,7 +1921,7 @@ export default function ViewCase() {
           }
         }
 
-        const historyRes = await fetch(`${API_URL}/api/case_status_history/${data.case_report_id}?staffView=true`, { credentials: "include" });
+        const historyRes = await authFetch(`${API_URL}/api/case_status_history/${data.case_report_id}?staffView=true`);
         if (historyRes.ok) {
           const historyJson = await historyRes.json().catch(() => ({}));
           const statusHistory = historyJson.data || [];
@@ -1953,9 +1945,9 @@ export default function ViewCase() {
           }
         }
 
-        const followUpsRes = await fetch(
+        const followUpsRes = await authFetch(
           `${API_URL}/api/case_reports/${data.case_report_id}/follow-ups`,
-          { credentials: "include", cache: "no-store" }
+          { cache: "no-store" }
         );
         if (followUpsRes.ok) {
           const followUpsJson = await followUpsRes.json().catch(() => ({}));
@@ -1970,7 +1962,7 @@ export default function ViewCase() {
         if (compareCaseId && String(compareCaseId) !== String(data.case_report_id)) {
           try {
             setCompareLoading(true);
-            const compareRes = await fetch(`${API_URL}/api/case_reports/${compareCaseId}`, { credentials: "include" });
+            const compareRes = await authFetch(`${API_URL}/api/case_reports/${compareCaseId}`);
             if (!compareRes.ok) {
               const body = await compareRes.json().catch(() => ({}));
               throw new Error(body.error || "Matched case not found");
@@ -2001,10 +1993,7 @@ export default function ViewCase() {
       setInterviewsChecked(false);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(
-          `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
-          { credentials: "include" }
-        );
+        const res = await authFetch(`${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`);
         if (!res.ok) throw new Error("Failed to check interview invitation");
         const json = await res.json();
         if (!cancelled) {
