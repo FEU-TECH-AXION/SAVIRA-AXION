@@ -16,7 +16,7 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
-import { useAuth, authFetch } from "@/hooks/useAuth";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 import FollowUpFieldEditor, {
   AMENDMENT_GROUPS,
   buildAmendmentValues,
@@ -189,7 +189,6 @@ export function FollowUpComposer({
   reportData,
   onCreated,
 }) {
-  const { authFetch } = useAuth();
   const [reason, setReason] = useState("Correction needed");
   const [message, setMessage] = useState(() =>
     suggestedFollowUpMessage({
@@ -1114,7 +1113,6 @@ export default function FollowUpsPanel({
   onSummaryChange,
   onCaseChanged,
 }) {
-  const { authFetch } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
