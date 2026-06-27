@@ -16,10 +16,10 @@ export const SUPPORT_RESOURCE_LINKS = [
 ];
 
 export const SETTINGS_LINKS = [
-  { href: "/settings?tab=lock", label: "Account & Privacy",},
-  { href: "/settings?tab=help", label: "Help Center",},
-  { href: "/settings?tab=display", label: "Display & Accessibility",},
-  { href: "/settings?tab=report", label: "Report a Problem"},
+  { href: "/settings?tab=lock", label: "Account & Privacy" },
+  { href: "/settings?tab=help", label: "Help Center" },
+  { href: "/settings?tab=display", label: "Display & Accessibility" },
+  { href: "/settings?tab=report", label: "Report a Problem" },
 ];
 
 export const PUBLIC_LINKS = [
@@ -116,13 +116,16 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-    { label: "Support & Resources", icon: "handsHelping",
+    {
+      label: "Support & Resources",
+      icon: "handsHelping",
       children: SUPPORT_RESOURCE_LINKS,
-     },
-     { label: "Settings", icon: "settings",
-        children: SETTINGS_LINKS,
-     }
-
+    },
+    {
+      label: "Settings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
   ],
   // CASE OFFICER
   case_officer: [
@@ -130,9 +133,11 @@ export const SIDEBAR_LINKS = {
     { href: "/cases", label: "Cases", icon: "folder" },
     { href: "/caseInterviews", label: "Interviews", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-     { label: "Settings", icon: "settings",
-        children: SETTINGS_LINKS,
-     }
+    {
+      label: "Settings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
   ],
   // STAFF
   staff: [
@@ -158,23 +163,30 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "event" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-     { label: "Settings", icon: "settings",
-        children: SETTINGS_LINKS,
-     }
+    {
+      label: "Settings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
   ],
   // LEGAL PERSONNEL
   legal_personnel: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
     { href: "/legalReviews", label: "Legal Review", icon: "gavel" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-     { label: "Settings", icon: "settings",
-        children: SETTINGS_LINKS,
-     }
+    {
+      label: "Settings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
   ],
   // ADMIN
   admin: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
-    { href: "/users", label: "Users", icon: "people",
+    {
+      href: "/users",
+      label: "Users",
+      icon: "people",
       children: [
         { href: "/users", label: "All Users" },
         { href: "/staffAvailability", label: "Staff Availability" },
@@ -214,19 +226,16 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
     { href: "/reportGenerator", label: "Report Generator", icon: "assessment" },
-     { label: "Settings", icon: "settings",
-        children: SETTINGS_LINKS,
-     }
-    
+    {
+      label: "Settings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
   ],
 };
 
-// export const SIDEBAR_FOOTER_LINKS = [
-//   { href: "/settings?tab=lock", label: "Account & Privacy", icon: "lock" },
-//   { href: "/settings?tab=help", label: "Help Center", icon: "help" },
-//   { href: "/settings?tab=display", label: "Display & Accessibility", icon: "accessibility" },
-//   { href: "/settings?tab=report", label: "Report a Problem", icon: "flag" },
-// ];
+// ── Committee access control ──────────────────────────────────────────────────
+const MEMBERSHIP_COMMITTEE_ID = 2;
 
 export function normalizeRole(roleName) {
   const role = roleName?.toLowerCase();
@@ -236,12 +245,29 @@ export function normalizeRole(roleName) {
   return role || "public";
 }
 
-export function getFooterQuickLinks(user) {
-  const role = normalizeRole(user?.role_name);
-  return FOOTER_QUICK_LINKS[role] || FOOTER_QUICK_LINKS.public;
-}
-
 export function getSidebarLinks(user) {
   const role = normalizeRole(user?.role_name);
+
+  if (role === "staff") {
+    const isMembershipCommittee = user?.committee_id === MEMBERSHIP_COMMITTEE_ID;
+    if (!isMembershipCommittee) {
+      return SIDEBAR_LINKS.staff.filter((link) => link.label !== "Volunteers");
+    }
+    return SIDEBAR_LINKS.staff;
+  }
+
   return SIDEBAR_LINKS[role] || [];
+}
+
+export function getFooterQuickLinks(user) {
+  const role = normalizeRole(user?.role_name);
+
+  if (role === "staff") {
+    const isMembershipCommittee = user?.committee_id === MEMBERSHIP_COMMITTEE_ID;
+    if (!isMembershipCommittee) {
+      return FOOTER_QUICK_LINKS.staff.filter((link) => link.href !== "/volunteer");
+    }
+  }
+
+  return FOOTER_QUICK_LINKS[role] || FOOTER_QUICK_LINKS.public;
 }

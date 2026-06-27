@@ -10,14 +10,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',  // 'lax' works over HTTP in dev
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  sameSite: isProduction ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 const USER_COOKIE_OPTIONS = {
-  httpOnly: false, // Allow client-side access to user data
+  httpOnly: false,
   secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',  // 'lax' works over HTTP in dev
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -116,7 +116,11 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
 
     // 3. Generate JWT
-    const token = jwt.sign({ id: user.user_id, role: user.roles?.role_name }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user.user_id, role: user.roles?.role_name },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     // 4. Flatten and return safe user
     const { password: _, ...safeUser } = user;
@@ -125,6 +129,16 @@ const login = async (req, res) => {
       role_name: safeUser.roles?.role_name || null,
     };
     delete flatUser.roles;
+
+    // 5. If staff, attach committee_id from the staff table
+    if (flatUser.role_name?.toLowerCase() === 'staff') {
+      const { data: staffRecord } = await supabase
+        .from('staff')
+        .select('committee_id')
+        .eq('user_id', flatUser.user_id)
+        .single();
+      flatUser.committee_id = staffRecord?.committee_id ?? null;
+    }
 
     res
       .cookie('token', token, COOKIE_OPTIONS)
@@ -164,6 +178,16 @@ const me = async (req, res) => {
       role_name: safeUser.roles?.role_name || null,
     };
     delete flatUser.roles;
+
+    // If staff, attach committee_id from the staff table
+    if (flatUser.role_name?.toLowerCase() === 'staff') {
+      const { data: staffRecord } = await supabase
+        .from('staff')
+        .select('committee_id')
+        .eq('user_id', flatUser.user_id)
+        .single();
+      flatUser.committee_id = staffRecord?.committee_id ?? null;
+    }
 
     res.status(200).json({ user: flatUser });
 
