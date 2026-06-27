@@ -32,6 +32,7 @@ import {
   MonitoringModal,
   PARALEGAL_EVIDENCE_LABELS,
 } from "./LegalReviewModals";
+import { useAuth } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -861,15 +862,6 @@ function mergeLegalReviewData(caseData, review) {
   };
 }
 
-function getUserDataFromCookie() {
-  try {
-    const userCookie = getCookie("user");
-    return userCookie ? JSON.parse(userCookie) : {};
-  } catch {
-    return {};
-  }
-}
-
 function safeDocumentUrl(value) {
   try {
     const url = new URL(value);
@@ -1215,7 +1207,7 @@ function LegalReviewDetailsSection({ caseData }) {
   );
 }
 
-function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, showToast }) {
+function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
   const [modal, setModal] = useState(null);
 
   // Determine available status transitions
@@ -1227,11 +1219,8 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   async function saveCase(updated) {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-    const userData = getUserDataFromCookie();
-    const performedByUserId = userData.user_id || userData.id;
-
     let body = {
-      performed_by_user_id: performedByUserId,
+      performed_by_user_id: userId || null,
       action_type: "legal_review_updated",
       remarks: `Legal review updated for case ${caseData.caseId || caseData.id}.`,
     };
@@ -1284,10 +1273,6 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
-      // Get user info from cookie for changed_by fields
-      const userCookie = getCookie('user')
-      const userData = userCookie ? JSON.parse(userCookie) : {}
-
       const res = await fetch(`${API_URL}/api/case_status_history`, {
         method:      'POST',
         headers:     { 'Content-Type': 'application/json' },
@@ -1295,8 +1280,8 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         body: JSON.stringify({
           case_report_id:   caseData.id,
           proposed_status:  proposedStatus,
-          changed_by_id:    userData.user_id   || null,
-          changed_by_role:  userData.role_name  || 'legal personnel',
+          changed_by_id:    userId || null,
+          changed_by_role:  userRole || 'legal personnel',
           notes:            changeDetails.notes || null,
           form_data:        changeDetails.formData ?? null,
         }),
@@ -1817,6 +1802,7 @@ function CaseDetailsTab({ caseData, isStaff }) {
 export default function ViewCase() {
   const router      = useRouter();
   const searchParams = useSearchParams();
+  const { user: authUser, loading: authLoading } = useAuth();
 
   const caseId    = searchParams.get("caseId");
   const fromParam = searchParams.get("from");
@@ -1825,13 +1811,19 @@ export default function ViewCase() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
   const [activeTab, setActiveTab] = useState("details");
-  const [user, setUser]         = useState({ role: null });
-  const [userLoaded, setUserLoaded] = useState(false);
   const [toast, setToast]       = useState(null);
 
-  const isAdmin      = user.role?.toLowerCase() === "admin";
-  const isCaseOfficer = user.role?.toLowerCase() === "case officer" || user.role?.toLowerCase() === "case_officer";
-  const isLegal      = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
+  const user = {
+    role: authUser?.role_name || authUser?.role || null,
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+    id: authUser?.user_id || authUser?.id || null,
+  };
+  const userLoaded = !authLoading;
+  const normalizedRole = user.role?.toLowerCase();
+  const isAdmin      = normalizedRole === "admin";
+  const isCaseOfficer = normalizedRole === "case officer" || normalizedRole === "case_officer";
+  const isLegal      = normalizedRole === "legal personnel" || normalizedRole === "legal_personnel";
   const isStaff      = isAdmin || isCaseOfficer || isLegal;
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
@@ -1847,22 +1839,6 @@ export default function ViewCase() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
-
-  useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const stored = JSON.parse(userCookie);
-        setUser({
-          role: stored.role_name,
-          firstName: stored.first_name,
-          lastName: stored.last_name,
-          id: stored.user_id,
-        });
-      } catch (_) {}
-    }
-    setUserLoaded(true);
-  }, []);
 
   useEffect(() => {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
@@ -2136,6 +2112,7 @@ export default function ViewCase() {
               isLegal={isLegal}
               actorName={actorName}
               userId={user.id}
+              userRole={user.role}
               showToast={showToast}
             />
           )}
@@ -2150,10 +2127,3 @@ export default function ViewCase() {
   );
 }
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2)
-    return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}

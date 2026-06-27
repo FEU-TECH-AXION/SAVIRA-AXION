@@ -30,7 +30,7 @@ import { RiPoliceBadgeFill } from "react-icons/ri";
 import { FaHandsHelping } from "react-icons/fa";
 import {
   getSidebarLinks,
-  SIDEBAR_FOOTER_LINKS,
+  // SIDEBAR_FOOTER_LINKS,
 } from "@/components/navigation/navigationLinks";
 import styles from "./sidebar.module.css";
 
@@ -112,14 +112,14 @@ function SidebarFooter({ logout }) {
       <hr className={styles.footerDivider} />
 
       <ul className={styles.navList}>
-        {withIcons(SIDEBAR_FOOTER_LINKS).map(({ href, label, icon }) => (
+        {/* {withIcons(SIDEBAR_FOOTER_LINKS).map(({ href, label, icon }) => (
           <li key={href}>
             <Link href={href} className={styles.sidebarItem}>
               {icon && <span className={styles.sidebarIcon}>{icon}</span>}
               <span className={styles.sidebarLabel}>{label}</span>
             </Link>
           </li>
-        ))}
+        ))} */}
 
         <li>
           <button

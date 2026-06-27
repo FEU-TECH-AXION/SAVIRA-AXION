@@ -16,17 +16,11 @@ import {
   deleteProjects,
 } from "@/lib/api";
 import { uploadProjectImage } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
 
 const PAGE_SIZE = 10;
 
 // ── Cookies ───────────────────────────────────────────────────────────────────
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}
-
 // ── Date range helpers ────────────────────────────────────────────────────────
 function getDateRangeFromFilter(filterVal) {
   if (!filterVal || filterVal === "") return null;
@@ -197,7 +191,12 @@ function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defau
 // ══════════════════════════════════════════════════════════════════
 export default function ProjectManagement() {
   const router = useRouter();
-  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
+  const { user: authUser } = useAuth();
+  const user = {
+    role: authUser?.role_name || authUser?.role || "",
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+  };
 
   // ── State ──────────────────────────────────────────────────────
   const [projects, setProjects] = useState([]);
@@ -211,24 +210,6 @@ export default function ProjectManagement() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [sortField, setSortField] = useState("id");
   const [sortDir, setSortDir]     = useState("asc");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const userCookie = getCookie("user");
-      if (!userCookie) return;
-      try {
-        const storedUser = JSON.parse(userCookie);
-        setUser({
-          role: storedUser.role_name,
-          firstName: storedUser.first_name,
-          lastName: storedUser.last_name,
-        });
-      } catch {
-        setUser({ role: "", firstName: "", lastName: "" });
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     async function loadProjects() {

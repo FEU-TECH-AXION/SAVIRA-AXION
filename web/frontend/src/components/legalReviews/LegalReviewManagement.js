@@ -11,6 +11,7 @@ import { ConfirmDialog } from "../ui/Dialog";
 import RemoveAssignedStaffDialog from "../ui/RemoveAssignedStaffDialog";
 import { getLegalCaseDeadlines, normalizeLegalList } from "./legalReviewCalendar";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 import {
   Modal,
   FormGroup,
@@ -1093,25 +1094,9 @@ function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, f
 // COOKIES
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
-  return null;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-
-function getUserDataFromCookie() {
-  try {
-    const userCookie = getCookie("user");
-    return userCookie ? JSON.parse(userCookie) : {};
-  } catch {
-    return {};
-  }
-}
 
 function mergeLegalReviewData(caseData, review) {
   if (!review) return caseData;
@@ -1147,21 +1132,17 @@ function mergeStatusHistory(caseData, history = []) {
 
 export default function LegalReviewManagement() {
   const router = useRouter();
-  const [user, setUser] = useState({ role: "", firstName: "", lastName: "" });
-
-  useEffect(() => {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      try {
-        const stored = JSON.parse(userCookie);
-        setUser({ role: stored.role_name, firstName: stored.first_name, lastName: stored.last_name });
-      } catch (_) {}
-    }
-  }, []);
+  const { user: authUser } = useAuth();
+  const user = {
+    role: authUser?.role_name || authUser?.role || "",
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+  };
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Legal Personnel";
-  const isAdmin   = user.role?.toLowerCase() === "admin";
-  const isLegal   = user.role?.toLowerCase() === "legal personnel" || user.role?.toLowerCase() === "legal_personnel";
+  const normalizedRole = user.role?.toLowerCase();
+  const isAdmin   = normalizedRole === "admin";
+  const isLegal   = normalizedRole === "legal personnel" || normalizedRole === "legal_personnel";
 
   const [cases, setCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
@@ -1173,7 +1154,7 @@ export default function LegalReviewManagement() {
     const fetchCases = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/case_reports/all`);
         if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
         const { data } = await res.json();
 
@@ -1247,7 +1228,7 @@ export default function LegalReviewManagement() {
     const fetchPersonnels = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/legal_personnels`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/legal_personnels`);
         if (res.ok) {
           const data = await res.json();
           setLegalPersonnels(Array.isArray(data) ? data : data.data || []);
@@ -1309,8 +1290,7 @@ export default function LegalReviewManagement() {
     }
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-    const userData = getUserDataFromCookie();
-    const performedByUserId = userData.user_id || userData.id;
+    const performedByUserId = authUser?.user_id || authUser?.id || null;
 
     let body = {
       performed_by_user_id: performedByUserId,
@@ -1448,7 +1428,6 @@ export default function LegalReviewManagement() {
 
   async function submitForApproval(caseData, proposedStatus, changeDetails) {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-    const userData = getUserDataFromCookie();
     try {
       const res = await fetch(`${API_URL}/api/case_status_history`, {
         method: "POST",
@@ -1457,8 +1436,8 @@ export default function LegalReviewManagement() {
         body: JSON.stringify({
           case_report_id: caseData.id,
           proposed_status: proposedStatus,
-          changed_by_id: userData.user_id || userData.id,
-          changed_by_role: userData.role_name || user.role || "Legal Personnel",
+          changed_by_id: authUser?.user_id || authUser?.id || null,
+          changed_by_role: authUser?.role_name || authUser?.role || user.role || "Legal Personnel",
           notes: changeDetails.notes,
           form_data: changeDetails.formData || {},
           assessment_type: proposedStatus,
@@ -1496,13 +1475,12 @@ export default function LegalReviewManagement() {
   async function approveChange(caseData) {
     const pa = caseData.pendingApproval;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-    const userData = getUserDataFromCookie();
     try {
       const res = await fetch(`${API_URL}/api/case_status_history/${pa.historyId}/approve`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ approved_by_id: userData.user_id || userData.id }),
+        body: JSON.stringify({ approved_by_id: authUser?.user_id || authUser?.id || null }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload.error || "Failed to approve status change.");
@@ -1522,14 +1500,13 @@ export default function LegalReviewManagement() {
   async function rejectChange(caseData, reason) {
     const pa = caseData.pendingApproval;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-    const userData = getUserDataFromCookie();
     try {
       const res = await fetch(`${API_URL}/api/case_status_history/${pa.historyId}/reject`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          approved_by_id: userData.user_id || userData.id,
+          approved_by_id: authUser?.user_id || authUser?.id || null,
           rejection_reason: reason,
         }),
       });

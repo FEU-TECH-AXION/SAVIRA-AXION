@@ -23,6 +23,7 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog, TextInputDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
+import { authFetch } from "@/lib/AuthContext";
 import styles from "./ScreeningQuestions.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
@@ -31,17 +32,8 @@ const ANSWER_PRESETS = {
   in_favor: ["In Favor", "Not in Favor"],
 };
 
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const parts = `; ${document.cookie}`.split(`; ${name}=`);
-  return parts.length === 2
-    ? decodeURIComponent(parts.pop().split(";").shift())
-    : null;
-}
-
 function headers(extra = {}) {
-  const token = getCookie("token");
-  return { ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { ...extra };
 }
 
 async function readResponse(response, fallback) {
@@ -593,8 +585,7 @@ export default function ScreeningQuestionsPage() {
     setLoading(true);
     setError("");
     try {
-      const questionsResponse = await fetch(`${API}/api/screening_questions`, {
-        credentials: "include",
+      const questionsResponse = await authFetch(`${API}/api/screening_questions`, {
         headers: headers(),
       });
       const current = await readResponse(
@@ -803,9 +794,8 @@ export default function ScreeningQuestionsPage() {
 
     setPublishing(true);
     try {
-      const response = await fetch(`${API}/api/screening_question_set`, {
+      const response = await authFetch(`${API}/api/screening_question_set`, {
         method: "POST",
-        credentials: "include",
         headers: headers({ "Content-Type": "application/json" }),
         body: JSON.stringify({ questions: cleaned }),
       });
@@ -840,11 +830,10 @@ export default function ScreeningQuestionsPage() {
     setConfirmDialog(null);
     setRestoringId(version.screening_question_set_id);
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API}/api/screening_question_set/${version.screening_question_set_id}/restore`,
         {
           method: "POST",
-          credentials: "include",
           headers: headers(),
         }
       );

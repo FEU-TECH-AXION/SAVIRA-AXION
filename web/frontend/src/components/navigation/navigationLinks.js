@@ -15,6 +15,13 @@ export const SUPPORT_RESOURCE_LINKS = [
   { href: "/helplines", label: "Helplines" },
 ];
 
+export const SETTINGS_LINKS = [
+  { href: "/settings?tab=lock", label: "Account & Privacy",},
+  { href: "/settings?tab=help", label: "Help Center",},
+  { href: "/settings?tab=display", label: "Display & Accessibility",},
+  { href: "/settings?tab=report", label: "Report a Problem"},
+];
+
 export const PUBLIC_LINKS = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
@@ -112,6 +119,9 @@ export const SIDEBAR_LINKS = {
     { label: "Support & Resources", icon: "handsHelping",
       children: SUPPORT_RESOURCE_LINKS,
      },
+     { label: "Settings", icon: "settings",
+        children: SETTINGS_LINKS,
+     }
 
   ],
   // CASE OFFICER
@@ -120,6 +130,9 @@ export const SIDEBAR_LINKS = {
     { href: "/cases", label: "Cases", icon: "folder" },
     { href: "/caseInterviews", label: "Interviews", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
+     { label: "Settings", icon: "settings",
+        children: SETTINGS_LINKS,
+     }
   ],
   // STAFF
   staff: [
@@ -145,12 +158,18 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "event" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
+     { label: "Settings", icon: "settings",
+        children: SETTINGS_LINKS,
+     }
   ],
   // LEGAL PERSONNEL
   legal_personnel: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
     { href: "/legalReviews", label: "Legal Review", icon: "gavel" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
+     { label: "Settings", icon: "settings",
+        children: SETTINGS_LINKS,
+     }
   ],
   // ADMIN
   admin: [
@@ -195,15 +214,19 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
     { href: "/reportGenerator", label: "Report Generator", icon: "assessment" },
+     { label: "Settings", icon: "settings",
+        children: SETTINGS_LINKS,
+     }
+    
   ],
 };
 
-export const SIDEBAR_FOOTER_LINKS = [
-  { href: "/settings?tab=lock", label: "Account & Privacy", icon: "lock" },
-  { href: "/settings?tab=help", label: "Help Center", icon: "help" },
-  { href: "/settings?tab=display", label: "Display & Accessibility", icon: "accessibility" },
-  { href: "/settings?tab=report", label: "Report a Problem", icon: "flag" },
-];
+// export const SIDEBAR_FOOTER_LINKS = [
+//   { href: "/settings?tab=lock", label: "Account & Privacy", icon: "lock" },
+//   { href: "/settings?tab=help", label: "Help Center", icon: "help" },
+//   { href: "/settings?tab=display", label: "Display & Accessibility", icon: "accessibility" },
+//   { href: "/settings?tab=report", label: "Report a Problem", icon: "flag" },
+// ];
 
 export function normalizeRole(roleName) {
   const role = roleName?.toLowerCase();

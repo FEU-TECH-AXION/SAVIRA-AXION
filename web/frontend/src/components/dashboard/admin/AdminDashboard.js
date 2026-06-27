@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
@@ -53,7 +53,7 @@ function unwrapList(payload, preferredKey) {
 }
 
 async function fetchList(url, preferredKey) {
-  const response = await fetch(url, { credentials: "include", cache: "no-store" });
+  const response = await authFetch(url, { cache: "no-store" });
   if (!response.ok) {
     const message = await response.text().catch(() => "");
     console.error(`[AdminDashboard] Failed to fetch ${url}: ${response.status}`, message);
@@ -133,16 +133,19 @@ function getCreatedAt(record) {
 }
 
 export default function AdminDashboard() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [statsData, setStatsData] = useState(null);
 
-  const user = authUser ? {
-    role: authUser.role_name,
-    firstName: authUser.first_name,
-    lastName: authUser.last_name,
-  } : { role: "admin", firstName: "Admin", lastName: "User" };
+  const user = authUser
+    ? {
+        role: authUser.role_name,
+        firstName: authUser.first_name,
+        lastName: authUser.last_name,
+      }
+    : { role: "", firstName: "", lastName: "" };
 
   useEffect(() => {
+    if (authLoading || !authUser) return;
     let isMounted = true;
 
     async function fetchDashboardStats() {
@@ -174,7 +177,7 @@ export default function AdminDashboard() {
       isMounted = false;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [authLoading, authUser?.user_id]);
 
   // hasNew drives the orange dot — set to false to hide it
   const stats = useMemo(() => {
@@ -245,6 +248,9 @@ export default function AdminDashboard() {
       ...buildLegalCaseDeadlines(statsData.legalDeadlines, { limit: Infinity }),
     ], Infinity);
   }, [statsData]);
+
+  if (authLoading) return <p>Loading...</p>;
+  if (!authUser) return null;
 
   return (
     <>

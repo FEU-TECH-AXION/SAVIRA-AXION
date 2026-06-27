@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/lib/AuthContext";
 import UserManagement from "@/components/users/UserManagement";
 
 export default function UsersPage() {

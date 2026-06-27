@@ -8,24 +8,9 @@ import Tooltip from "@/components/ui/Tooltip"
 import TaskStatusBadge from "./TaskStatusBadge"
 import TaskFilterMenu from "./TaskFilterMenu"
 import styles from "./ProjectTaskWorkspace.module.css"
+import { useAuth } from "@/lib/AuthContext"
 
 const PAGE_SIZE = 10
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift())
-  return null
-}
-
-function getUser() {
-  try {
-    const raw = getCookie("user")
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
 
 function normalizeRole(role) {
   return String(role || "").toLowerCase().replaceAll(" ", "_")
@@ -99,7 +84,7 @@ const EMPTY_FILTERS = { status: "", priority: "", dueDate: "", scope: "", create
 
 export default function ProjectTaskWorkspace({ scope = "mine" }) {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const { user, loading: authLoading } = useAuth()
   const [tasks, setTasks] = useState([])
   const [staff, setStaff] = useState([])
   const [search, setSearch] = useState("")
@@ -109,16 +94,11 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
   const [page, setPage] = useState(1)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setUser(getUser()), 0)
-    return () => window.clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    if (!user) return
+    if (authLoading || !user) return
     const role = normalizeRole(user?.role_name)
     if (scope === "all" && role && role !== "admin") router.replace("/projectTasks")
     if (scope === "mine" && role === "admin") router.replace("/projectTasks/admin")
-  }, [router, scope, user])
+  }, [authLoading, router, scope, user])
 
   useEffect(() => {
     let cancelled = false

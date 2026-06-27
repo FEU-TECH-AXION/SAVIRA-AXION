@@ -1386,3 +1386,123 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ── Read More button (inline in consent text) ── */
+.readMoreBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--sasha-teal);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  display: inline;
+}
+.readMoreBtn:hover {
+  color: var(--sasha-teal-dark);
+}
+
+/* ── Consent / Privacy Modal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.modalBox {
+  background: var(--sasha-white);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--sasha-border);
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--sasha-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  line-height: 1;
+}
+.modalClose:hover {
+  background: var(--sasha-offwhite);
+  color: var(--sasha-text);
+}
+
+.modalBody {
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--sasha-text);
+  flex: 1;
+}
+.modalBody h5 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--sasha-teal);
+  margin: 1.25rem 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.modalBody h5:first-child {
+  margin-top: 0;
+}
+.modalBody p {
+  margin: 0 0 0.5rem;
+  color: var(--sasha-text);
+}
+
+.modalFooter {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--sasha-border);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.modalCloseBtn {
+  background: var(--sasha-teal);
+  color: var(--sasha-white);
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.modalCloseBtn:hover {
+  background: var(--sasha-teal-dark);
+}

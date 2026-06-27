@@ -1,4 +1,5 @@
 import { getLegalCaseDeadlines } from "@/components/legalReviews/legalReviewCalendar";
+import { authFetch } from "@/lib/AuthContext";
 
 export function unwrapList(payload, preferredKey) {
   if (Array.isArray(payload)) return payload;
@@ -14,7 +15,7 @@ export function unwrapList(payload, preferredKey) {
 }
 
 export async function fetchList(url, preferredKey) {
-  const response = await fetch(url, { credentials: "include", cache: "no-store" });
+  const response = await authFetch(url, { cache: "no-store" });
   if (!response.ok) {
     const message = await response.text().catch(() => "");
     console.error(`[dashboardDeadlines] Failed to fetch ${url}: ${response.status}`, message);
@@ -188,8 +189,8 @@ export async function fetchLegalDeadlinesForCases(API_URL, cases) {
       const id = caseItem.case_report_id || caseItem.id;
       if (!id) return null;
       const [reviewResponse, historyResponse] = await Promise.all([
-        fetch(`${API_URL}/api/legal_reviews/case/${id}`, { credentials: "include", cache: "no-store" }),
-        fetch(`${API_URL}/api/case_status_history/${id}?staffView=true`, { credentials: "include", cache: "no-store" }),
+        authFetch(`${API_URL}/api/legal_reviews/case/${id}`, { cache: "no-store" }),
+        authFetch(`${API_URL}/api/case_status_history/${id}?staffView=true`, { cache: "no-store" }),
       ]);
       const reviewPayload = reviewResponse.ok ? await reviewResponse.json().catch(() => ({})) : {};
       const historyPayload = historyResponse.ok ? await historyResponse.json().catch(() => ({})) : {};

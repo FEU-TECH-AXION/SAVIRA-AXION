@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 import FilterMenu from "./FilterMenu";
 import styles from "./volunteerRanking.module.css";
 import { FiArrowLeft } from "react-icons/fi";
-
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
+import { authFetch } from "@/lib/AuthContext";
 
 function formatScore(value, suffix = "") {
   const n = Number(value);
@@ -35,10 +30,7 @@ export default function VolunteerRanking() {
     async function fetchRankings() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/volunteer_applications/rankings/list`, {
-          credentials: "include",
-          headers: { Authorization: `Bearer ${getCookie("token")}` },
-        });
+        const res = await authFetch(`${API_URL}/api/volunteer_applications/rankings/list`);
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Failed to load rankings.");
         setRows(body.data || []);

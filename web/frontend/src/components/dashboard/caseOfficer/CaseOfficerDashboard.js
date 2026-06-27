@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
@@ -28,24 +28,27 @@ function OverviewCard({ category, label, count, showView = false }) {
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function CaseOfficerDashboard() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [cases, setCases] = useState([]);
   const [interviews, setInterviews] = useState([]);
 
-  const user = authUser ? {
-    role: authUser.role_name,
-    firstName: authUser.first_name,
-    lastName: authUser.last_name,
-  } : { role: "case officer", firstName: "Case Officer", lastName: "User" };
+  const user = authUser
+    ? {
+        role: authUser.role_name,
+        firstName: authUser.first_name,
+        lastName: authUser.last_name,
+      }
+    : { role: "", firstName: "", lastName: "" };
 
   useEffect(() => {
+    if (authLoading || !authUser?.user_id) return;
     async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
         const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
         const [caseRes, interviewsRes] = await Promise.all([
-          fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' }),
-          fetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { credentials: 'include', cache: 'no-store' }),
+          authFetch(`${API_URL}/api/case_reports/all`, { cache: 'no-store' }),
+          authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
         ]);
         if (caseRes.ok) {
           const json = await caseRes.json();
@@ -60,7 +63,7 @@ export default function CaseOfficerDashboard() {
       }
     }
     fetchDashboardData();
-  }, [authUser?.user_id]);
+  }, [authLoading, authUser?.user_id]);
 
   const actorName = getActorName(user);
 
@@ -92,6 +95,9 @@ export default function CaseOfficerDashboard() {
     userId: authUser?.user_id,
     actorName,
   }), [actorName, authUser?.user_id, interviews]);
+  if (authLoading) return <p>Loading...</p>;
+  if (!authUser) return null;
+
   return (
     <>
       <Navbar user={user} />

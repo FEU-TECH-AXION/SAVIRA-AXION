@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FiCheck, FiAlertCircle } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import { authFetch } from "@/lib/AuthContext";
 import { validateBirthday } from "@/utils/birthdayValidation";
 import styles from "./ProfileTab.module.css";
 
@@ -136,9 +137,8 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
     setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/users/${user.user_id}`, {
+      const res = await authFetch(`${API_URL}/api/users/${user.user_id}`, {
         method: "PATCH",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

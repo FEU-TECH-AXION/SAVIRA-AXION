@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
@@ -33,23 +33,26 @@ function OverviewCard({ category, label, count, showView = false }) {
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function LegalPersonnelDashboard() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [cases, setCases] = useState([]);
   const [legalDeadlines, setLegalDeadlines] = useState([]);
 
-  const user = authUser ? {
-    role: authUser.role_name,
-    firstName: authUser.first_name,
-    lastName: authUser.last_name,
-  } : { role: "legal personnel", firstName: "Legal", lastName: "User" };
+  const user = authUser
+    ? {
+        role: authUser.role_name,
+        firstName: authUser.first_name,
+        lastName: authUser.last_name,
+      }
+    : { role: "", firstName: "", lastName: "" };
 
   const actorName = getActorName(user);
 
   useEffect(() => {
+    if (authLoading || !authUser) return;
     async function fetchCases() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await fetch(`${API_URL}/api/case_reports/all`, { credentials: 'include', cache: 'no-store' });
+        const res = await authFetch(`${API_URL}/api/case_reports/all`, { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           const list = Array.isArray(json) ? json : json?.data || [];
@@ -62,7 +65,7 @@ export default function LegalPersonnelDashboard() {
       }
     }
     fetchCases();
-  }, [actorName]);
+  }, [actorName, authLoading, authUser?.user_id]);
 
   const assignedCases = useMemo(() => {
     return cases.filter(c => samePerson(c.assigned_legal_officer, actorName) || samePerson(c.assigned_paralegal, actorName));
@@ -90,6 +93,9 @@ export default function LegalPersonnelDashboard() {
   }, [assignedCases]);
 
   const deadlines = useMemo(() => buildLegalCaseDeadlines(legalDeadlines), [legalDeadlines]);
+  if (authLoading) return <p>Loading...</p>;
+  if (!authUser) return null;
+
   return (
     <>
       <Navbar user={user} />

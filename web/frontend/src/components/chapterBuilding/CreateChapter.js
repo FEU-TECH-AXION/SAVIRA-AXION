@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import { createChapter, fetchChapter, fetchUsers, updateChapter } from "@/lib/api";
 import styles from "./CreateChapter.module.css";
+import { useAuth } from "@/lib/AuthContext";
 
 const DRAFT_KEY = "savira_chapter_formation_workspace";
 
@@ -163,6 +164,7 @@ function Requirement({ done, title, detail }) {
 function ChapterFormationPageContent({ mode = "create" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user: authUser } = useAuth();
   const chapterId = searchParams.get("id");
   const isEdit = mode === "edit";
   const [form, setForm] = useState(initialState);
@@ -352,18 +354,6 @@ function ChapterFormationPageContent({ mode = "create" }) {
     return "Formation in Progress";
   }
 
-  function getCurrentUserId() {
-    try {
-      const raw = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("user="))
-        ?.split("=")[1];
-      return raw ? JSON.parse(decodeURIComponent(raw))?.user_id || "" : "";
-    } catch {
-      return "";
-    }
-  }
-
   async function saveDraft() {
     if (isEdit && !chapterId) {
       setSaveError("No chapter was selected for editing.");
@@ -382,7 +372,7 @@ function ChapterFormationPageContent({ mode = "create" }) {
     const record = {
       ...form,
       members: cleanedMembers,
-      createdByUserId: getCurrentUserId(),
+      createdByUserId: authUser?.user_id || authUser?.id || "",
     };
 
     record.status = getChapterStatus(record);

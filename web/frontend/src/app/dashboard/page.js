@@ -8,8 +8,7 @@ import StaffDashboard from "@/components/dashboard/staff/StaffDashboard";
 import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficerDashboard";
 import LegalPersonnelDashboard from "@/components/dashboard/legalPersonnel/LegalPersonnelDashboard";
 import ComplainantDashboard from "@/components/dashboard/complainant/ComplainantDashboard";
-import { useAuth } from "@/lib/AuthContext";
-
+import { useAuth, authFetch } from "@/lib/AuthContext";
 export default function DashboardPage() {
   const [userReports, setUserReports] = useState([]);
   const [latestApplication, setLatestApplication] = useState(null);
@@ -22,8 +21,8 @@ export default function DashboardPage() {
     async function fetchLatestRecords() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       const [reportsResult, applicationsResult] = await Promise.allSettled([
-        fetch(`${API_URL}/api/case_reports/my-reports`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/volunteer_applications/my_applications`, { credentials: 'include' }),
+        authFetch(`${API_URL}/api/case_reports/my-reports`),
+        authFetch(`${API_URL}/api/volunteer_applications/my_applications`),
       ]);
 
       if (reportsResult.status === "fulfilled" && reportsResult.value.ok) {

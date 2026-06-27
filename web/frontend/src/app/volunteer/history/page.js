@@ -7,6 +7,7 @@ import styles from "./VolunteerHistory.module.css";
 import { IoIosInformationCircle, IoIosWarning } from "react-icons/io";
 import VolunteerApplicationStatusCard from "@/components/volunteer/VolunteerApplicationStatusCard";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import { authFetch } from "@/lib/AuthContext";
 
 // ── Status badge colors ───────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -128,9 +129,8 @@ export default function ApplicationHistoryPage() {
     async function fetchApplications() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(
-          `${API_URL}/api/volunteer_applications/my_applications`,
-          { credentials: "include" }
+        const res = await authFetch(
+          `${API_URL}/api/volunteer_applications/my_applications`
         );
         if (!res.ok) throw new Error("Failed to load application history.");
         const json = await res.json();
@@ -150,9 +150,8 @@ export default function ApplicationHistoryPage() {
     setActionError("");
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/withdraw`, {
-        method: "POST",
-        credentials: "include"
+      const res = await authFetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/withdraw`, {
+        method: "POST"
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to withdraw application.");
@@ -178,9 +177,8 @@ export default function ApplicationHistoryPage() {
     setActionError("");
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/undo_withdraw`, {
-        method: "POST",
-        credentials: "include"
+      const res = await authFetch(`${API_URL}/api/volunteer_applications/${selectedAppId}/undo_withdraw`, {
+        method: "POST"
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to undo withdrawal.");
@@ -231,9 +229,8 @@ export default function ApplicationHistoryPage() {
               <div className={styles.infoBanner}>
                 <span><IoIosInformationCircle /></span>
                 <span>
-                  You already have an active application under review. You must{" "}
-                  <strong>withdraw your current application</strong> before submitting
-                  a new one.
+                  You already have an active application under review. You can't submit a new application unless you {" "}
+                  <strong>withdraw your current application</strong>.
                 </span>
               </div>
             ) : (

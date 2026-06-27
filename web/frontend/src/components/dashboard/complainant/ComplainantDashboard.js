@@ -105,13 +105,18 @@ export default function ComplainantDashboard({
   totalNotifications = 0,
 }) {
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
 
-  const user = authUser ? {
-    role: authUser.role_name,
-    firstName: authUser.first_name,
-    lastName: authUser.last_name,
-  } : { role: "complainant", firstName: "Complainant", lastName: "User" };
+  const user = authUser
+    ? {
+        role: authUser.role_name,
+        firstName: authUser.first_name,
+        lastName: authUser.last_name,
+      }
+    : { role: "", firstName: "", lastName: "" };
+
+  if (authLoading) return <p>Loading...</p>;
+  if (!authUser) return null;
 
   // Normalise whatever shape the parent passes into what the card expects
   const normalisedReports = userReports.map(normalizeReport).filter(Boolean);

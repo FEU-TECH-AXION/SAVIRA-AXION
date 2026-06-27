@@ -16,6 +16,7 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 import FollowUpFieldEditor, {
   AMENDMENT_GROUPS,
   buildAmendmentValues,
@@ -304,9 +305,8 @@ export function FollowUpComposer({
       }
       if (file) form.append("file", file);
 
-      const response = await fetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, {
+      const response = await authFetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, {
         method: "POST",
-        credentials: "include",
         body: form,
       });
       const body = await response.json().catch(() => ({}));
@@ -578,6 +578,7 @@ function relativeDate(value) {
 }
 
 function Thread({ request, currentUserId, isStaff, onChanged }) {
+  const { authFetch } = useAuth();
   const [reply, setReply] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -627,9 +628,8 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
       form.append("follow_up_request_id", String(request.id));
       form.append("changes", JSON.stringify(changes));
       if (evidenceFile) form.append("file", evidenceFile);
-      const response = await fetch(`${API_URL}/api/case_reports/${request.case_id}/fields`, {
+      const response = await authFetch(`${API_URL}/api/case_reports/${request.case_id}/fields`, {
         method: "PATCH",
-        credentials: "include",
         body: form,
       });
       const body = await response.json().catch(() => ({}));
@@ -652,9 +652,8 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
       const form = new FormData();
       form.append("message", reply);
       if (file) form.append("file", file);
-      const response = await fetch(`${API_URL}/api/follow-ups/${request.id}/messages`, {
+      const response = await authFetch(`${API_URL}/api/follow-ups/${request.id}/messages`, {
         method: "POST",
-        credentials: "include",
         body: form,
       });
       const body = await response.json().catch(() => ({}));
@@ -673,9 +672,8 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`${API_URL}/api/follow-ups/${request.id}`, {
+      const response = await authFetch(`${API_URL}/api/follow-ups/${request.id}`, {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
@@ -694,9 +692,8 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`${API_URL}/api/follow-ups/${request.id}`, {
+      const response = await authFetch(`${API_URL}/api/follow-ups/${request.id}`, {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "cancelled" }),
       });
@@ -1178,8 +1175,7 @@ export default function FollowUpsPanel({
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, {
-        credentials: "include",
+      const response = await authFetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, {
         cache: "no-store",
       });
       const body = await response.json().catch(() => ({}));
@@ -1203,7 +1199,6 @@ export default function FollowUpsPanel({
 
   useEffect(() => {
     queueMicrotask(load);
-    // Loading is keyed by caseId; load intentionally reads the latest component state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
 

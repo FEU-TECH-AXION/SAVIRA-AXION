@@ -13,6 +13,33 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const AuthContext = createContext(null);
 
+function getStoredToken() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("token");
+}
+
+function setStoredToken(token) {
+  if (typeof window === "undefined") return;
+  if (token) {
+    window.localStorage.setItem("token", token);
+  } else {
+    window.localStorage.removeItem("token");
+  }
+}
+
+export function authHeaders(headers = {}) {
+  const token = getStoredToken();
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+}
+
+export function authFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    credentials: options.credentials || "include",
+    headers: authHeaders(options.headers || {}),
+  });
+}
+
 // ── Role → dashboard route map ───────────────────────────
 const ROLE_REDIRECT = {
   "user":             "/dashboard",
@@ -32,7 +59,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    fetch(`${API_URL}/api/auth/me`, { credentials: "include" })
+    fetch(`${API_URL}/api/auth/me`, {
+      credentials: "include",
+      headers: authHeaders(),
+    })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         if (mounted) setUser(data.user);
@@ -66,6 +96,7 @@ export function AuthProvider({ children }) {
     }
 
     setUser(data.user);
+    setStoredToken(data.token);
 
     // Redirect based on role
     const role     = data.user?.role_name?.toLowerCase() ?? "user";
@@ -79,9 +110,11 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await fetch(`${API_URL}/api/auth/logout`, {
       method:      "POST",
+      headers:     authHeaders(),
       credentials: "include",
     });
     setUser(null);
+    setStoredToken(null);
     router.push("/");
   };
 

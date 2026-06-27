@@ -15,21 +15,13 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog, TextInputDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
+import { authFetch } from "@/lib/AuthContext";
 import styles from "./VersionHistory.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const parts = `; ${document.cookie}`.split(`; ${name}=`);
-  return parts.length === 2
-    ? decodeURIComponent(parts.pop().split(";").shift())
-    : null;
-}
-
 function headers(extra = {}) {
-  const token = getCookie("token");
-  return { ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { ...extra };
 }
 
 async function readResponse(response, fallback) {
@@ -150,8 +142,7 @@ export default function ScreeningQuestionHistoryPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API}/api/screening_question_set`, {
-        credentials: "include",
+      const response = await authFetch(`${API}/api/screening_question_set`, {
         headers: headers(),
       });
       const versions = await readResponse(
@@ -224,11 +215,10 @@ export default function ScreeningQuestionHistoryPage() {
   async function restoreOrCopy(version, endpoint, successMessage) {
     setBusy(true);
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API}/api/screening_question_set/${version.screening_question_set_id}/${endpoint}`,
         {
           method: "POST",
-          credentials: "include",
           headers: headers(),
         }
       );
@@ -246,11 +236,10 @@ export default function ScreeningQuestionHistoryPage() {
   async function renameVersion(name) {
     setBusy(true);
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API}/api/screening_question_set/${nameDialog.screening_question_set_id}/name`,
         {
           method: "PUT",
-          credentials: "include",
           headers: headers({ "Content-Type": "application/json" }),
           body: JSON.stringify({ version: name }),
         }

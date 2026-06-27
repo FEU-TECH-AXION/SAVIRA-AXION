@@ -6,6 +6,7 @@ import Link from "next/link";
 import styles from "./CreateReport.module.css";
 import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
+import { useAuth, authFetch, authHeaders } from "@/lib/AuthContext";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -349,6 +350,7 @@ function getSelfReportFields(user) {
       gender: "",
       contactNumber: "",
       email: "",
+      userCity: "",
     };
   }
   return {
@@ -359,6 +361,7 @@ function getSelfReportFields(user) {
     gender: user.gender_identity || "",
     contactNumber: user.contact_number || "",
     email: user.email || "",
+    userCity: user.city || user.user_city || "",
   };
 }
 
@@ -473,8 +476,30 @@ export function validateStep1(data) {
   return errors;
 }
 
+// ── Consent Modal ─────────────────────────────────────────────────────────────
+function ConsentModal({ title, children, onClose }) {
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h4 className={styles.modalTitle}>{title}</h4>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className={styles.modalBody}>
+          {children}
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.modalCloseBtn} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page 1 — Complainant's Information ───────────────────────────────────────
 function StepConsent({ complainant, onComplainantChange, consents, onConsentChange, errors, clearError }) {
+  const [modal, setModal] = useState(null); // "dataPrivacy" | "caseAnalysis" | null
+
   const setConsent = (key, checked) => {
     clearError(key);
     onConsentChange(key, checked);
@@ -530,10 +555,15 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
                 data-error={errors?.dataPrivacy ? "true" : "false"}
               />
               <span>
-                I understand and agree that the information I have provided in this report will be collected,
-                stored, and processed by the institution solely for the purpose of case management and resolution.
-                All data will be handled in accordance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> and the institution&apos;s
-                privacy policy. My information will not be shared with unauthorized third parties without my consent.
+                I understand and agree that the information I provide will be collected and processed solely for case management,
+                in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>. My data will not be shared without my consent.{" "}
+                <button
+                  type="button"
+                  className={styles.readMoreBtn}
+                  onClick={(e) => { e.preventDefault(); setModal("dataPrivacy"); }}
+                >
+                  Read more…
+                </button>
               </span>
             </label>
             {errors?.dataPrivacy && <p className={styles.fieldError}>{errors.dataPrivacy}</p>}
@@ -547,9 +577,15 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
                 data-error={errors?.caseAnalysis ? "true" : "false"}
               />
               <span>
-                I agree that the narrative details of my report may be used to support ongoing efforts to improve case handling and outcomes.
-                Any such use will be conducted on <strong>anonymized, de-identified data only</strong>. Personally identifiable information such as names,
-                contact details, and age will be excluded and will not be retained or linked to any analysis.
+                I agree that <strong>anonymized, de-identified</strong> details of my report may be used to improve case handling and outcomes.
+                No personally identifiable information will be retained or linked to any analysis.{" "}
+                <button
+                  type="button"
+                  className={styles.readMoreBtn}
+                  onClick={(e) => { e.preventDefault(); setModal("caseAnalysis"); }}
+                >
+                  Read more…
+                </button>
               </span>
             </label>
             {errors?.caseAnalysis && <p className={styles.fieldError}>{errors.caseAnalysis}</p>}
@@ -591,6 +627,79 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
         </p>
       </section>
       </div>
+
+      {/* ── Consent Modals ── */}
+      {modal === "dataPrivacy" && (
+        <ConsentModal title="Data Privacy Consent" onClose={() => setModal(null)}>
+          <p>By submitting this report, you acknowledge and agree to the following:</p>
+          <h5>1. Collection and Purpose of Data</h5>
+          <p>
+            The information you provide — including your personal details, contact information, and the narrative of the incident — will be collected, stored, and processed by the institution. This data is used exclusively for the purpose of case management, documentation, and resolution of the reported matter.
+          </p>
+          <h5>2. Legal Basis</h5>
+          <p>
+            All personal data is handled in strict accordance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> of the Philippines, its Implementing Rules and Regulations (IRR), and the privacy policy of the institution. The institution acts as a Personal Information Controller (PIC) under the terms of this law.
+          </p>
+          <h5>3. Data Storage and Security</h5>
+          <p>
+            Your information will be stored securely in the institution&apos;s case management system. Appropriate technical and organizational measures are in place to protect your data against unauthorized access, accidental loss, alteration, or disclosure.
+          </p>
+          <h5>4. Disclosure to Third Parties</h5>
+          <p>
+            Your personal information will not be disclosed to, shared with, or transferred to any unauthorized third party without your explicit prior consent, except as required by law or by a competent authority (e.g., court order or law enforcement request).
+          </p>
+          <h5>5. Authorized Access</h5>
+          <p>
+            Only authorized personnel involved in the case management and resolution process — such as assigned case workers, paralegals, and legal officers of the institution — will have access to your report and personal data.
+          </p>
+          <h5>6. Data Retention</h5>
+          <p>
+            Your personal data will be retained for only as long as is necessary for the purpose for which it was collected, or as required by applicable law. After this period, it will be securely disposed of in accordance with institutional data retention policies.
+          </p>
+          <h5>7. Your Rights as a Data Subject</h5>
+          <p>
+            Under the Data Privacy Act of 2012, you have the right to be informed, the right to access, the right to rectify inaccurate data, the right to erasure or blocking of data, the right to object to processing, and the right to data portability. To exercise any of these rights, please contact the institution&apos;s Data Protection Officer.
+          </p>
+          <h5>8. Withdrawal of Consent</h5>
+          <p>
+            You may withdraw your consent at any time by notifying the institution in writing. Please note that withdrawal of consent may affect our ability to continue processing or managing your case.
+          </p>
+        </ConsentModal>
+      )}
+
+      {modal === "caseAnalysis" && (
+        <ConsentModal title="Case Analysis & Research Use Consent" onClose={() => setModal(null)}>
+          <p>By checking this box, you are providing your voluntary consent for the following:</p>
+          <h5>1. Purpose of Use</h5>
+          <p>
+            The narrative and contextual details of your report may be used by the institution to support internal research, analysis, and the ongoing improvement of case handling procedures and outcomes. This includes identifying trends, patterns, and gaps in current case management practices.
+          </p>
+          <h5>2. Anonymization and De-identification</h5>
+          <p>
+            Any use of your report for analysis purposes will be conducted exclusively on <strong>anonymized and de-identified data</strong>. This means that all personally identifiable information (PII) — including but not limited to your name, age, contact number, email address, home address, and any other information that could reasonably identify you — will be permanently removed or obscured before any analysis is conducted.
+          </p>
+          <h5>3. Non-Linkability</h5>
+          <p>
+            The anonymized data derived from your report will not be linked back to you or to any identifiable individual. No re-identification of the data will be attempted or permitted. The institution takes all reasonable steps to ensure that the anonymization is irreversible.
+          </p>
+          <h5>4. Scope of Analysis</h5>
+          <p>
+            The analysis is limited to improving internal processes for case management and victim support. Data will not be used for commercial purposes, sold to third parties, or made available to the public in any identifiable form.
+          </p>
+          <h5>5. Voluntary Consent</h5>
+          <p>
+            Your consent to this clause is entirely voluntary. Declining to check this box will not affect the processing or handling of your report in any way. Your case will receive the same level of care and attention regardless of your choice here.
+          </p>
+          <h5>6. Retention of Anonymized Data</h5>
+          <p>
+            Anonymized data used for analytical purposes may be retained for a longer period than personally identifiable data, as it no longer constitutes personal data under the Data Privacy Act of 2012 once all identifying elements have been removed.
+          </p>
+          <h5>7. Oversight and Accountability</h5>
+          <p>
+            All analysis activities are subject to internal review and oversight by the institution&apos;s Data Protection Officer and leadership team. Any findings or insights derived from this analysis will be used solely to enhance the services and support provided to individuals who come forward with reports.
+          </p>
+        </ConsentModal>
+      )}
     </div>
   );
 }
@@ -630,6 +739,9 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
               clearError("reporteeType");
               const isMe = v === "Me (Myself)";
               const currentUser = isMe ? await getCurrentUser() : null;
+              if (isMe) {
+                ["name", "age", "gender", "contactNumber", "email", "userCity"].forEach(clearError);
+              }
               onChange({
                 ...data,
                 reporteeType: v,
@@ -641,6 +753,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
                       gender: "",
                       contactNumber: "",
                       email: "",
+                      userCity: "",
                     }),
               });
             }}
@@ -1883,6 +1996,7 @@ export default function CreateReport({
   notifications   = [],
   events          = [],
 }) {
+  const { user: authUser } = useAuth();
   const [step, setStep]                   = useState(0);
   const [submitted, setSubmitted]         = useState(false);
   const [stepErrors, setStepErrors]       = useState({});
@@ -1918,6 +2032,7 @@ export default function CreateReport({
   const totalSteps = STEPS.length;
 
   const getCurrentUser = async () => {
+    if (authUser) return authUser;
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const response = await fetch(`${API_URL}/api/auth/me`, {
@@ -2053,8 +2168,9 @@ export default function CreateReport({
 
         const response = await fetch(`${API_URL}/api/case_reports/submit`, {
           method: 'POST',
-          credentials: 'include', // sends the token cookie
-          body: formData, // do NOT set Content-Type — browser sets the multipart boundary
+          credentials: 'include',
+          headers: authHeaders(),
+          body: formData,
         });
         if (!response.ok) {
           const errorBody = await response.json().catch(() => null);
@@ -2100,9 +2216,7 @@ export default function CreateReport({
   const fetchUserReports = async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
-        credentials: 'include',
-      });
+      const res = await authFetch(`${API_URL}/api/case_reports/my-reports`);
       if (!res.ok) throw new Error('Failed to fetch reports');
       const { data } = await res.json();
       setUserReports(data);
