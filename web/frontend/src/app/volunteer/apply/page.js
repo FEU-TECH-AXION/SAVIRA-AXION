@@ -5,7 +5,7 @@ import styles from "./ApplyApplicationForm.module.css";
 import { useRouter } from "next/navigation";
 import { FaCheck } from "react-icons/fa6";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -1271,9 +1271,7 @@ export default function CreateApplication({
   useEffect(() => {
       const fetchMyApplications = async () => {
           try {
-              const res = await fetch(`${API}/api/volunteer_applications/my_applications`, {
-                  credentials: 'include',
-              })
+              const res = await authFetch(`${API}/api/volunteer_applications/my_applications`)
               if (res.ok) {
                   const data = await res.json()
                   setMyApplications(data)
@@ -1292,9 +1290,7 @@ export default function CreateApplication({
       setScreeningLoading(true);
       setScreeningLoadError("");
       try {
-        const res = await fetch(`${API}/api/screening_questions`, {
-          credentials: "include",
-        });
+        const res = await authFetch(`${API}/api/screening_questions`);
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(body.error || "Screening questions could not be loaded.");
@@ -1480,16 +1476,15 @@ export default function CreateApplication({
       try {
           setSubmitError(null)
 
-          const res = await fetch(`${API}/api/volunteer_applications/submit`, {
-              method:      'POST',
-              headers:     { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                applicant,
-                screeningQuestions,
-                screeningAnswers,
-                screening_question_set_id: screeningQuestionSetId,
-                essay,
+          const res = await authFetch(`${API}/api/volunteer_applications/submit`, {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                  applicant,
+                  screeningQuestions,
+                  screeningAnswers,
+                  screening_question_set_id: screeningQuestionSetId,
+                  essay,
               }),
           })
 

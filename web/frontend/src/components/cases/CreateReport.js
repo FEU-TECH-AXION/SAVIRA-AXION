@@ -6,7 +6,7 @@ import Link from "next/link";
 import styles from "./CreateReport.module.css";
 import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth, authFetch, authHeaders } from "@/lib/AuthContext";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -2168,8 +2168,9 @@ export default function CreateReport({
 
         const response = await fetch(`${API_URL}/api/case_reports/submit`, {
           method: 'POST',
-          credentials: 'include', // sends the token cookie
-          body: formData, // do NOT set Content-Type — browser sets the multipart boundary
+          credentials: 'include',
+          headers: authHeaders(),
+          body: formData,
         });
         if (!response.ok) {
           const errorBody = await response.json().catch(() => null);
@@ -2215,9 +2216,7 @@ export default function CreateReport({
   const fetchUserReports = async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${API_URL}/api/case_reports/my-reports`, {
-        credentials: 'include',
-      });
+      const res = await authFetch(`${API_URL}/api/case_reports/my-reports`);
       if (!res.ok) throw new Error('Failed to fetch reports');
       const { data } = await res.json();
       setUserReports(data);
