@@ -12,13 +12,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 import { fetchNotifications as fetchSharedNotifications, getUnreadNotificationCount } from '../../lib/notifications';
+import { API_URL } from '../../lib/config';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
 const BORDER = '#e5e7eb';
 const BG     = '#f5f7f8';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 
 

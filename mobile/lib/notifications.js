@@ -1,13 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
-
-export async function getAuthToken() {
-  return (
-    (await AsyncStorage.getItem('user_token')) ||
-    (await AsyncStorage.getItem('token'))
-  );
-}
+import { API_URL } from './config';
+import { getAuthToken } from './session';
 
 export function normalizeNotifications(payload) {
   const list = Array.isArray(payload)

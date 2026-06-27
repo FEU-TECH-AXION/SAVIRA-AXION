@@ -16,13 +16,13 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
+import { API_URL } from '../../lib/config';
 
 const TEAL = '#037F81';
 const ORANGE = '#E96433';
 const BORDER = '#e5e7eb';
 const BG = '#f5f7f8';
 const ERROR = '#dc2626';
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 const STATUS_BY_ID = {
   1: 'Submitted',

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "SAVIRA Mobile",
+    "name": "SAVIRA",
     "slug": "savira-mobile",
     "scheme": "savira",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app-icon-savira.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,20 +13,30 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "platforms": ["android"],
+    "platforms": [
+      "android"
+    ],
     "android": {
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/app-icon-savira.png",
         "backgroundColor": "#037F81"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.axion.savira"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "./plugins/withDeviceFilePicker"
+    ],
+    "extra": {
+      "router": {},
+      "apiUrl": "https://www.saviraphilippines.org",
+      "eas": {
+        "projectId": "ac9c2835-a599-4eef-ae82-7ddb9defc235"
+      }
+    }
   }
 }

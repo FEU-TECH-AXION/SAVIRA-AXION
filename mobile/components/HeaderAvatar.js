@@ -3,6 +3,7 @@ import { View, Text, Pressable, Image, StyleSheet, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { clearSession } from '../lib/session';
 
 export default function HeaderAvatar({ user: propUser }) {
   const [user, setUser] = useState(propUser || null);
@@ -38,8 +39,7 @@ export default function HeaderAvatar({ user: propUser }) {
   const handleLogout = async () => {
     setModalVisible(false);
     try {
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('token');
+      await clearSession();
       router.replace('/(auth)/login');
     } catch (e) {
       console.log('Logout error', e);

@@ -82,6 +82,7 @@ export default StyleSheet.create({
     fontSize: 14,
     borderWidth: 1.5,
     borderColor: 'transparent',
+    color: '#1f2937',
   },
 
   inputError: {
@@ -112,6 +113,7 @@ export default StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 14,
+    color: '#1f2937',
   },
 
   /* STRENGTH BAR */

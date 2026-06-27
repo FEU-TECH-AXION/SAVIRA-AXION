@@ -24,8 +24,11 @@ import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
+import { API_URL } from '../../lib/config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+const INPUT_PLACEHOLDER_COLOR = '#64748b';
+TextInput.defaultProps = TextInput.defaultProps || {};
+TextInput.defaultProps.placeholderTextColor = INPUT_PLACEHOLDER_COLOR;
 
 const COLORS = {
   primary: '#037F81',

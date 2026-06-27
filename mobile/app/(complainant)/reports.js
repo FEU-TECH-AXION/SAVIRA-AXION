@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  NativeModules,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons, Feather } from "@expo/vector-icons";
@@ -17,6 +20,10 @@ import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { API_URL } from "../../lib/config";
+
+const { DeviceFilePicker } = NativeModules;
 
 const TEAL = "#037F81";
 const ORANGE = "#E96433";
@@ -26,14 +33,13 @@ const ERROR = "#dc2626";
 const HISTORY_PAGE_SIZE = 5;
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_EVIDENCE_FILE_SIZE_LABEL = "50 MB";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+const INPUT_PLACEHOLDER_COLOR = "#6b7280";
 
 function formatErrorMessage(error, fallback = "Failed to submit report.") {
   if (!error) return fallback;
   if (typeof error === "string") return error;
   if (error?.message === "Network request failed") {
-    return "Network request failed. If you are using Expo Go on a phone, set EXPO_PUBLIC_API_URL to your computer's LAN IP address, for example http://192.168.1.10:5000, not localhost.";
+    return "Network request failed. Please check your internet connection and try again.";
   }
   if (Array.isArray(error)) {
     return error.map((item) => formatErrorMessage(item, "")).filter(Boolean).join("\n");
@@ -172,7 +178,7 @@ function StyledInput({ error, multiline, numberOfLines, ...props }) {
           paddingTop: 10,
         },
       ]}
-      placeholderTextColor="#aaa"
+      placeholderTextColor={INPUT_PLACEHOLDER_COLOR}
       multiline={multiline}
       numberOfLines={numberOfLines}
       {...props}
@@ -1308,6 +1314,21 @@ function StepIncidentDetails({ data, onChange, errors }) {
 function StepEvidence({ data, onChange }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const askUploadAccess = ({ title, message }) =>
+    new Promise((resolve) => {
+      Alert.alert(title, message, [
+        {
+          text: "Don't Allow",
+          style: "cancel",
+          onPress: () => resolve(false),
+        },
+        {
+          text: "Allow",
+          onPress: () => resolve(true),
+        },
+      ]);
+    });
+
   const appendValidFiles = (files) => {
     const oversizedFiles = files.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
     const validFiles = files.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
@@ -1341,6 +1362,7 @@ function StepEvidence({ data, onChange }) {
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images', 'videos'],
                 allowsMultipleSelection: true,
+                legacy: Platform.OS === "android",
                 quality: 1,
               });
               if (!result.canceled && result.assets) {
@@ -1385,6 +1407,12 @@ function StepEvidence({ data, onChange }) {
   const pickFromGallery = async () => {
     setPickerOpen(false);
     try {
+      const allowed = await askUploadAccess({
+        title: "Allow access to photos and videos?",
+        message: "SAVIRA needs access to your phone's photo and video gallery so you can attach evidence to your report.",
+      });
+      if (!allowed) return;
+
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission Denied", "We need permission to access your local gallery to attach evidence.");
@@ -1393,6 +1421,7 @@ function StepEvidence({ data, onChange }) {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
         allowsMultipleSelection: true,
+        legacy: Platform.OS === "android",
         quality: 1,
       });
       if (!result.canceled && result.assets) {
@@ -1412,11 +1441,19 @@ function StepEvidence({ data, onChange }) {
   const pickFromFiles = async () => {
     setPickerOpen(false);
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["application/pdf", "image/jpeg", "image/png", "video/mp4"],
-        multiple: true,
-        copyToCacheDirectory: true,
+      const allowed = await askUploadAccess({
+        title: "Allow access to device files?",
+        message: "SAVIRA needs permission to open your phone's file picker so you can attach documents or saved media.",
       });
+      if (!allowed) return;
+
+      const result = DeviceFilePicker && Platform.OS === "android"
+        ? await DeviceFilePicker.openFiles()
+        : await DocumentPicker.getDocumentAsync({
+            type: "*/*",
+            multiple: true,
+            copyToCacheDirectory: true,
+          });
       if (!result.canceled && result.assets) {
         appendValidFiles(result.assets);
       }
@@ -1530,7 +1567,7 @@ function StepEvidence({ data, onChange }) {
               <View style={s.uploadOptionTextWrap}>
                 <Text style={s.uploadOptionTitle}>Device Files</Text>
                 <Text style={s.uploadOptionDesc}>
-                  Attach PDFs or saved media using your phone's file picker.
+                  Opens Android's file picker for documents and saved media.
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
@@ -1888,6 +1925,8 @@ function getWithdrawalCopy(status) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ReportScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const formScrollRef = useRef(null);
   const [navOpen, setNavOpen] = useState(false);
   const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(tab === 'history' ? 'history' : 'submit'); // 'submit' | 'history'
@@ -1963,6 +2002,10 @@ export default function ReportScreen() {
   const [evidence, setEvidence] = useState({ files: [] });
 
   const totalSteps = STEPS.length;
+
+  useEffect(() => {
+    formScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step]);
 
   const fetchReports = async () => {
     try {
@@ -2171,7 +2214,7 @@ export default function ReportScreen() {
     setSubmitError(null);
     if (!API_URL || API_URL.includes("localhost") || API_URL.includes("127.0.0.1")) {
       setSubmitError(
-        "The mobile app is pointed at localhost. On Expo Go, use your computer's LAN IP for EXPO_PUBLIC_API_URL, for example http://192.168.1.10:5000."
+        "The mobile app is not pointed at the online backend. Please rebuild the APK with the public API URL."
       );
       return;
     }
@@ -2347,8 +2390,17 @@ export default function ReportScreen() {
             </View>
           </ScrollView>
         ) : (
-          <View style={{ flex: 1 }}>
-            <ScrollView style={s.scroll} contentContainerStyle={[s.scrollContent, { paddingTop: 0 }]}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <ScrollView
+              ref={formScrollRef}
+              style={s.scroll}
+              contentContainerStyle={[s.scrollContent, { paddingTop: 0, paddingBottom: 120 }]}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={s.formHeader}>
                 <View style={s.heroLabel}>
                   <View style={s.heroLabelLine} />
@@ -2381,17 +2433,19 @@ export default function ReportScreen() {
               )}
             </ScrollView>
 
-            <View style={s.formNav}>
+            <View style={[s.formNav, { paddingBottom: Math.max(insets.bottom + 16, 34) }]}>
               {step > 0 ? (
                 <Pressable style={s.backBtn} onPress={handleBack}>
-                  <Text style={s.backBtnText}>← Back</Text>
+                  <Ionicons name="chevron-back" size={17} color={TEAL} />
+                  <Text style={s.backBtnText}>Back</Text>
                 </Pressable>
               ) : (
-                <View style={{ flex: 1 }} />
+                <View style={s.navSpacer} />
               )}
               {step < totalSteps - 1 ? (
                 <Pressable style={s.nextBtn} onPress={handleNext}>
-                  <Text style={s.nextBtnText}>Next →</Text>
+                  <Text style={s.nextBtnText}>Next</Text>
+                  <Ionicons name="chevron-forward" size={17} color="#fff" />
                 </Pressable>
               ) : (
                 <Pressable
@@ -2403,7 +2457,7 @@ export default function ReportScreen() {
                 </Pressable>
               )}
             </View>
-          </View>
+          </KeyboardAvoidingView>
         )
       )}
 
@@ -3357,48 +3411,66 @@ const s = StyleSheet.create({
   formNav: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 20,
+    paddingHorizontal: 18,
+    paddingTop: 10,
     backgroundColor: "transparent",
-    gap: 12,
+    gap: 10,
+  },
+  navSpacer: {
+    flex: 1,
   },
   backBtn: {
     flex: 1,
+    minHeight: 38,
+    maxHeight: 40,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 4,
     borderWidth: 1.5,
-    borderColor: TEAL,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    borderColor: "#b7dddd",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     alignItems: "center",
+    backgroundColor: "#fff",
   },
-  backBtnText: { color: TEAL, fontWeight: "700", fontSize: 14, textAlign: "center", flexShrink: 1 },
+  backBtnText: { color: TEAL, fontWeight: "800", fontSize: 12, textAlign: "center", flexShrink: 1 },
   nextBtn: {
     flex: 1,
+    minHeight: 38,
+    maxHeight: 40,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 4,
     backgroundColor: TEAL,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     alignItems: "center",
-    elevation: 3,
+    elevation: 2,
     shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 7,
   },
-  nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, textAlign: "center", flexShrink: 1 },
+  nextBtnText: { color: "#fff", fontWeight: "800", fontSize: 12, textAlign: "center", flexShrink: 1 },
   submitBtn: {
     flex: 1,
+    minHeight: 38,
+    maxHeight: 40,
     backgroundColor: ORANGE,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     alignItems: "center",
-    elevation: 3,
+    justifyContent: "center",
+    elevation: 2,
     shadowColor: ORANGE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 7,
   },
-  submitBtnText: { color: "#fff", fontWeight: "800", fontSize: 14, textAlign: "center", flexShrink: 1 },
+  submitBtnText: { color: "#fff", fontWeight: "800", fontSize: 12, textAlign: "center", flexShrink: 1 },
 
   // Error alert
   errorAlert: {
@@ -3947,3 +4019,4 @@ const s = StyleSheet.create({
   },
   filePickText: { flex: 1, color: TEAL, fontSize: 13, fontWeight: '800' },
 });
+

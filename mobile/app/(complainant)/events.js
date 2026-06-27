@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
+import { API_URL } from '../../lib/config';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TEAL  = '#037F81';
@@ -84,8 +85,6 @@ export default function EventsScreen() {
   const [page, setPage] = useState(1);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     let mounted = true;

@@ -9,6 +9,7 @@ import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
+import { API_URL } from '../../lib/config';
 
 const TEAL = '#037F81';
 const ORANGE = '#E96433';
@@ -83,7 +84,6 @@ export default function EventDetailScreen() {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     let mounted = true;

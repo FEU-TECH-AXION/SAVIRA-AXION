@@ -8,10 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import SideNav from '../../components/SideNav';
+import { MAPBOX_TOKEN } from '../../lib/config';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 
 const HELPLINES = [
   { name: 'National Emergency Hotline',         number: '911',       desc: '24/7 emergency response' },

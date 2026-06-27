@@ -9,9 +9,13 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './login.style';
+import { API_URL } from '../../lib/config';
+import { saveSession } from '../../lib/session';
+import AppLoadingOverlay from '../../components/AppLoadingOverlay';
+
+const PLACEHOLDER_COLOR = '#6b7280';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -29,23 +33,27 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        Alert.alert('Error', 'The server returned an unexpected response. Please check the API URL.');
+        return;
+      }
 
       if (!res.ok) {
         Alert.alert('Error', data.error || 'Login failed.');
         return;
       }
 
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
-      if (data.token) {
-        await AsyncStorage.setItem('user_token', data.token);
-      }
+      await saveSession(data.user, data.token);
 
       const role = (data.user?.role_name || data.user?.roles?.role_name || '').toLowerCase();
 
@@ -55,7 +63,7 @@ export default function Login() {
         Alert.alert('Unauthorized', 'This app is for complainants only.');
       }
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong.');
+      Alert.alert('Error', `Unable to connect to the server at ${API_URL}.`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -92,8 +100,11 @@ export default function Login() {
         <TextInput
           style={styles.input}
           placeholder="E-mail"
+          placeholderTextColor={PLACEHOLDER_COLOR}
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <Text style={styles.label}>Password</Text>
@@ -101,9 +112,11 @@ export default function Login() {
           <TextInput
             style={styles.passwordInput}
             placeholder="Password"
+            placeholderTextColor={PLACEHOLDER_COLOR}
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
+            autoCapitalize="none"
           />
 
           <Pressable onPress={() => setShowPassword(!showPassword)}>
@@ -120,7 +133,7 @@ export default function Login() {
             style={[styles.checkbox, rememberDevice && styles.checkboxChecked]}
             onPress={() => setRememberDevice(!rememberDevice)}
           >
-            {rememberDevice && <Text style={styles.checkmark}>✓</Text>}
+            {rememberDevice && <Ionicons name="checkmark" size={14} color="#fff" />}
           </Pressable>
           <Text style={styles.checkLabel}>
             Recognize this device for 30 days
@@ -128,15 +141,19 @@ export default function Login() {
         </View>
 
         <Pressable
-          style={styles.btn}
+          style={[styles.btn, loading && styles.btnDisabled]}
           onPress={handleSubmit}
           disabled={loading}
         >
-          <Text style={styles.btnText}>
-            {loading ? 'Logging in...' : 'Log In'}
-          </Text>
+          <Text style={styles.btnText}>Log In</Text>
         </Pressable>
       </View>
+      <AppLoadingOverlay
+        visible={loading}
+        title="Logging you in"
+        message="We're checking your account and opening your SAVIRA space."
+      />
     </ScrollView>
   );
 }
+

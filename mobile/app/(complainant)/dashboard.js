@@ -26,6 +26,7 @@ import {
   getImportantNotifications,
   getUnreadNotificationCount,
 } from '../../lib/notifications';
+import { API_URL, MAPBOX_TOKEN } from '../../lib/config';
 
 // ── Top Navbar ────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, onNotifications, notifCount, user }) {
@@ -167,8 +168,8 @@ function NotificationsCard({ notifications, onView }) {
 }
 
 // ── Heatmap Preview ───────────────────────────────────────────────────────────
-const MAPBOX_TOKEN_DASH = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
-const API_URL_DASH = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+const MAPBOX_TOKEN_DASH = MAPBOX_TOKEN;
+const API_URL_DASH = API_URL;
 
 const miniMapHtml = `
 <!DOCTYPE html><html><head>
@@ -343,7 +344,6 @@ function EventsCard({ events }) {
   );
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ComplainantDashboard() {

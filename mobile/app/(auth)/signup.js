@@ -17,6 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import styles from './signup.style';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
+import { API_URL } from '../../lib/config';
+
+const PLACEHOLDER_COLOR = '#6b7280';
 
 // ── Password rules (mirrors web) ─────────────────────────────────────────────
 const PW_RULES = [
@@ -160,7 +163,7 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/signup`, {
+      const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -178,7 +181,7 @@ export default function Signup() {
         data = JSON.parse(text);
       } catch {
         console.error('Non-JSON response:', text);
-        Alert.alert('Error', 'Server returned an unexpected response. Please try again.');
+        Alert.alert('Error', 'Server returned an unexpected response. Please check the API URL.');
         return;
       }
 
@@ -192,7 +195,7 @@ export default function Signup() {
       router.replace('/(auth)/login');
 
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert('Error', `Unable to connect to the server at ${API_URL}.`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -243,6 +246,7 @@ export default function Signup() {
           <TextInput
             style={[styles.input, getError('firstName') ? styles.inputError : null]}
             placeholder="First Name"
+            placeholderTextColor={PLACEHOLDER_COLOR}
             value={form.firstName}
             onChangeText={(v) => handleChange('firstName', v)}
             onBlur={() => handleBlur('firstName')}
@@ -254,6 +258,7 @@ export default function Signup() {
           <TextInput
             style={[styles.input, getError('lastName') ? styles.inputError : null]}
             placeholder="Last Name"
+            placeholderTextColor={PLACEHOLDER_COLOR}
             value={form.lastName}
             onChangeText={(v) => handleChange('lastName', v)}
             onBlur={() => handleBlur('lastName')}
@@ -265,6 +270,7 @@ export default function Signup() {
           <TextInput
             style={[styles.input, getError('email') ? styles.inputError : null]}
             placeholder="you@example.com"
+            placeholderTextColor={PLACEHOLDER_COLOR}
             value={form.email}
             onChangeText={(v) => handleChange('email', v)}
             onBlur={() => handleBlur('email')}
@@ -279,6 +285,7 @@ export default function Signup() {
             <TextInput
               style={styles.passwordInput}
               placeholder="Create a password"
+              placeholderTextColor={PLACEHOLDER_COLOR}
               secureTextEntry={!show.password}
               value={form.password}
               onChangeText={(v) => handleChange('password', v)}
@@ -339,6 +346,7 @@ export default function Signup() {
             <TextInput
               style={styles.passwordInput}
               placeholder="Repeat your password"
+              placeholderTextColor={PLACEHOLDER_COLOR}
               secureTextEntry={!show.confirm}
               value={form.confirmPassword}
               onChangeText={(v) => handleChange('confirmPassword', v)}

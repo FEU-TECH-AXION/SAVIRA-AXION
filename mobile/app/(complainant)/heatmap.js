@@ -5,13 +5,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import SideNav from '../../components/SideNav';
+import { API_URL, MAPBOX_TOKEN } from '../../lib/config';
 
 // Import geojson data as JS objects
 import ncrCities from '../../assets/geojson/ncr-cities';
 
 const TEAL = '#037F81';
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 
 // The HTML template containing Mapbox GL JS and the exact choropleth rendering logic
 const mapboxHtml = `

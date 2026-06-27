@@ -49,12 +49,14 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 6,
     fontWeight: '600',
+    color: '#333',
   },
   input: {
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     padding: 14,
     marginBottom: 16,
+    color: '#1f2937',
   },
   passwordWrap: {
     flexDirection: 'row',
@@ -67,6 +69,7 @@ const styles = StyleSheet.create({
   passwordInput: {
     flex: 1,
     paddingVertical: 14,
+    color: '#1f2937',
   },
   checkRow: {
     flexDirection: 'row',
@@ -97,6 +100,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  btnDisabled: {
+    opacity: 0.8,
   },
   btnText: {
     color: '#fff',

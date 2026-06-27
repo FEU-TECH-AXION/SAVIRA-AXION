@@ -1,16 +1,28 @@
 import { useEffect } from 'react';
 import { View, Image, StyleSheet, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
+import { restoreSession } from '../lib/session';
 
 export default function Splash() {
   const router = useRouter();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/(auth)/login');
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+    let mounted = true;
+
+    const routeAfterSplash = async () => {
+      const session = await restoreSession();
+      setTimeout(() => {
+        if (!mounted) return;
+        router.replace(session ? '/(complainant)/dashboard' : '/(auth)/login');
+      }, 1200);
+    };
+
+    routeAfterSplash();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   return (
     <ImageBackground

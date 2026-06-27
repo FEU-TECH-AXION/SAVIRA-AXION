@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearSession } from '../lib/session';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
@@ -84,7 +84,7 @@ export default function SideNav({ open, onClose }) {
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['user', 'user_token', 'token']);
+    await clearSession();
     router.replace('/(auth)/login');
     onClose();
   };
