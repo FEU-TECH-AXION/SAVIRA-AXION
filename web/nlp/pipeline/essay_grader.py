@@ -1,7 +1,7 @@
 import json
-from pipeline.groq_client import get_client
+from pipeline.groq_client import MAX_TOKENS, get_client, parse_json_response
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = "openai/gpt-oss-20b"
 
 CRITERIA = {
     "mission_alignment": {
@@ -116,18 +116,11 @@ def grade_essay(processed_essay: str) -> dict:
         model=MODEL,
         messages=[{"role": "user", "content": build_essay_grading_prompt(processed_essay)}],
         temperature=0.2,
-        max_tokens=1000,
+        max_tokens=MAX_TOKENS,
     )
 
     raw_text = response.choices[0].message.content.strip()
-
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```")[1]
-        if raw_text.startswith("json"):
-            raw_text = raw_text[4:]
-        raw_text = raw_text.strip()
-
-    result = json.loads(raw_text)
+    result = parse_json_response(raw_text, "Essay grading")
 
     scores = result.get("scores", {})
 
@@ -136,6 +129,8 @@ def grade_essay(processed_essay: str) -> dict:
 
     # Build the flat response shape that NLPEssayTab expects
     return {
+        "model_used":              getattr(response, "model", None) or MODEL,
+
         # Scores
         "scores":                  scores,
         "notes":                   result.get("notes", {}),

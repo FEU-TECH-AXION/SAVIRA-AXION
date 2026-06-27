@@ -225,7 +225,7 @@ async def analyze_essay(request: EssayRequest):
             threshold_passed          = threshold_passed,
             anonymized_essay          = clean_essay,  # ← store clean essay, not mangled one
             language_detected         = preprocessed["language"],
-            model_used                = "llama-3.1-8b-instant",
+            model_used                = result.get("model_used", "unknown"),
         )
 
     except HTTPException:
