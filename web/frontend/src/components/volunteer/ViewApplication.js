@@ -9,7 +9,7 @@ import InterviewTab from "../volunteerInterviews/InterviewTab";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth, authFetch } from "@/lib/AuthContext";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -109,8 +109,8 @@ function ApplicantScoresTab({ appData }) {
       try {
         const API = process.env.NEXT_PUBLIC_API_URL || "";
         const [essayRes, interviewRes] = await Promise.all([
-          fetch(`${API}/api/volunteer_applications/${appData.id}/essay_evaluation`, { credentials: "include" }),
-          fetch(`${API}/api/volunteer_applications/${appData.id}/interview_evaluation`, { credentials: "include" }),
+          authFetch(`${API}/api/volunteer_applications/${appData.id}/essay_evaluation`),
+          authFetch(`${API}/api/volunteer_applications/${appData.id}/interview_evaluation`),
         ]);
         const essayJson     = essayRes.ok     ? await essayRes.json()     : {};
         const interviewJson = interviewRes.ok ? await interviewRes.json() : {};
@@ -497,10 +497,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     if (!appData?.id) return;
     async function fetchQuant() {
       try {
-        const res = await fetch(
-          `${API_URL}/api/volunteer_applications/${appData.id}/scores`,
-          { credentials: "include" }
-        );
+        const res = await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/scores`);
         if (res.ok) {
           const json = await res.json();
           setQuantScores(json.data || json);
@@ -517,10 +514,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     if (!appData?.id) return;
     async function fetchEssay() {
       try {
-        const res = await fetch(
-          `${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`,
-          { credentials: "include" }
-        );
+        const res = await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`);
         if (res.ok) {
           const json = await res.json();
           const d = json.data || json;
@@ -544,7 +538,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     if (!appData?.id) return;
     async function fetchNlp() {
       try {
-        const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}/nlp`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/nlp`);
         if (!res.ok) return;
         const json = await res.json();
         const d = json.data || json;
@@ -560,10 +554,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     if (!appData?.id) return;
     async function fetchInterview() {
       try {
-        const res = await fetch(
-          `${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`,
-          { credentials: "include" }
-        );
+        const res = await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`);
         if (res.ok) {
           const json = await res.json();
           const d = json.data || json;
@@ -585,15 +576,11 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     }
     setEssaySaving(true);
     try {
-      await fetch(
-        `${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ ...essayScores, notes: essayNotes }),
-        }
-      );
+      await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...essayScores, notes: essayNotes }),
+      });
       setEssaySaved(true);
       setTimeout(() => setEssaySaved(false), 2500);
     } catch (_) {
@@ -610,15 +597,11 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     }
     setInterviewSaving(true);
     try {
-      await fetch(
-        `${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ score: interviewScore, notes: interviewNotes }),
-        }
-      );
+      await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ score: interviewScore, notes: interviewNotes }),
+      });
       setInterviewSaved(true);
       setTimeout(() => setInterviewSaved(false), 2500);
     } catch (_) {
@@ -1072,12 +1055,11 @@ function VolunteerStatusHistorySection({ applicationId, isStaff }) {
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const loadHistory = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await window.fetch(
-          `${API_URL}/api/volunteer_applications/${applicationId}/status-history`,
-          { credentials: "include" }
+        const res = await authFetch(
+          `${API_URL}/api/volunteer_applications/${applicationId}/status-history`
         );
         if (!res.ok) throw new Error("Failed to load history");
         const json = await res.json();
@@ -1088,7 +1070,7 @@ function VolunteerStatusHistorySection({ applicationId, isStaff }) {
         setLoading(false);
       }
     };
-    fetch();
+    loadHistory();
   }, [applicationId]);
 
   const STATUS_COLORS = {
@@ -1179,9 +1161,7 @@ function NLPEssayTab({ appId, isAdmin }) {
       setNlpLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/volunteer_applications/${appId}/nlp`, {
-          credentials: "include",
-        });
+        const res = await authFetch(`${API_URL}/api/volunteer_applications/${appId}/nlp`);
         if (res.status === 404) { setNlpStatus("processing"); return; }
         if (!res.ok)            { setNlpStatus("error");      return; }
         const json = await res.json();
@@ -1403,9 +1383,7 @@ export default function ViewApplication() {
     async function fetchApp() {
       try {
         const API = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API}/api/volunteer_applications/${appId}`, {
-          credentials: "include",
-        });
+        const res = await authFetch(`${API}/api/volunteer_applications/${appId}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Application not found.");
@@ -1541,9 +1519,8 @@ export default function ViewApplication() {
     setWithdrawing(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}/withdraw`, {
+      const res = await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}/withdraw`, {
         method: "POST",
-        credentials: "include",
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to withdraw application.");
@@ -1731,9 +1708,8 @@ export default function ViewApplication() {
         }
         onSave={async ({ status, notes }) => {
           const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-          const res = await fetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
+          const res = await authFetch(`${API_URL}/api/volunteer_applications/${appData.id}`, {
             method: "PUT",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               application_status: status.toLowerCase().replace(" ", "_"),
