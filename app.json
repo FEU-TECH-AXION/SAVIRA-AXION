@@ -1,5 +1,16 @@
 {
   "plugins": [
     "expo-router"
-  ]
+  ],
+  "extra": {
+    "router": {},
+    "eas": {
+      "projectId": "0839efc6-df05-47e3-a48b-5d2163e49c09"
+    }
+  },
+  "expo": {
+    "android": {
+      "package": "com.axion.savira"
+    }
+  }
 }

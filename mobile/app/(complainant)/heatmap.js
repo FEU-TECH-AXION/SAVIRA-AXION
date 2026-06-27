@@ -328,6 +328,7 @@ export default function HeatmapScreen() {
 
   const webViewRef = useRef(null);
   const heatmapDataRef = useRef([]); // always hold latest data for MAP_READY callback
+  const hasMapboxToken = Boolean(MAPBOX_TOKEN);
 
   useEffect(() => {
     async function fetchMeta() {
@@ -418,28 +419,38 @@ export default function HeatmapScreen() {
       </View>
 
       <View style={s.mapContainer}>
-        <WebView
-          ref={webViewRef}
-          source={{ html: mapboxHtml }}
-          style={s.map}
-          onLoadEnd={() => {
-            if (webViewRef.current && MAPBOX_TOKEN) {
-              webViewRef.current.postMessage(JSON.stringify({
-                type: 'INIT',
-                token: MAPBOX_TOKEN,
-              }));
-            }
-          }}
-          onMessage={(e) => {
-            if (e.nativeEvent.data === 'MAP_READY') onMapReady();
-          }}
-          originWhitelist={['*']}
-          javaScriptEnabled={true}
-          scrollEnabled={false}
-          bounces={false}
-        />
+        {hasMapboxToken ? (
+          <WebView
+            ref={webViewRef}
+            source={{ html: mapboxHtml }}
+            style={s.map}
+            onLoadEnd={() => {
+              if (webViewRef.current) {
+                webViewRef.current.postMessage(JSON.stringify({
+                  type: 'INIT',
+                  token: MAPBOX_TOKEN,
+                }));
+              }
+            }}
+            onMessage={(e) => {
+              if (e.nativeEvent.data === 'MAP_READY') onMapReady();
+            }}
+            originWhitelist={['*']}
+            javaScriptEnabled={true}
+            scrollEnabled={false}
+            bounces={false}
+          />
+        ) : (
+          <View style={[s.map, s.mapMissingConfig]}>
+            <Ionicons name="map-outline" size={42} color={TEAL} />
+            <Text style={s.mapMissingTitle}>Map is not configured</Text>
+            <Text style={s.mapMissingText}>
+              Rebuild the APK with EXPO_PUBLIC_MAPBOX_TOKEN set in the build environment.
+            </Text>
+          </View>
+        )}
 
-        {loading && (
+        {loading && hasMapboxToken && (
           <View style={[s.loadingContainer, StyleSheet.absoluteFill]}>
             <ActivityIndicator size="large" color={TEAL} />
             <Text style={s.loadingText}>Updating heatmap...</Text>
@@ -493,6 +504,25 @@ const s = StyleSheet.create({
   filterIconBtn: { padding: 4 },
   mapContainer: { flex: 1, position: 'relative' },
   map: { width: '100%', height: '100%', backgroundColor: '#f5f7f8' },
+  mapMissingConfig: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  mapMissingTitle: {
+    marginTop: 14,
+    color: TEAL,
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  mapMissingText: {
+    marginTop: 8,
+    color: '#6b7280',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
   loadingContainer: { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)' },
   loadingText: { marginTop: 12, color: '#6b7280' },
   
