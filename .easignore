@@ -1,0 +1,23 @@
+node_modules/
+**/node_modules/
+.expo/
+**/.expo/
+dist/
+web-build/
+.next/
+**/.next/
+
+# EAS only needs the mobile app for Android builds.
+web/
+web/**
+
+# Local/generated native output should not be uploaded.
+mobile/android/
+mobile/.tmp-mobile-export/
+
+# Local editor/system files.
+.DS_Store
+Thumbs.db
+npm-debug.*
+yarn-debug.*
+yarn-error.*
