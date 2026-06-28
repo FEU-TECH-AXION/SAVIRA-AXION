@@ -1,7 +1,7 @@
 import json
 from pipeline.groq_client import MAX_TOKENS, get_client, parse_json_response
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "llama-3.1-8b-instant"
 
 CRITERIA = {
     "mission_alignment": {

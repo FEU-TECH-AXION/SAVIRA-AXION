@@ -95,7 +95,7 @@ export const SIDEBAR_LINKS = {
   // USER
   complainant: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
-    { href: "/about", label: "About", icon: "" },
+    { href: "/about", label: "About", icon: "ribbon" },
     {
       href: "/cases",
       label: "Report",
@@ -117,7 +117,7 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-    { href: "/contact", label: "Contact", icon: "" },
+    { href: "/contact", label: "Contact", icon: "contact" },
     {
       label: "Support & Resources",
       icon: "handsHelping",

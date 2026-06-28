@@ -25,9 +25,10 @@ import {
   MdLocalHospital,
   MdPhone,
   MdLock,
+  MdContactSupport,
 } from "react-icons/md";
 import { RiPoliceBadgeFill } from "react-icons/ri";
-import { FaHandsHelping } from "react-icons/fa";
+import { FaHandsHelping, FaRibbon } from "react-icons/fa";
 import {
   getSidebarLinks,
   // SIDEBAR_FOOTER_LINKS,
@@ -56,6 +57,8 @@ const ICONS = {
   home: <MdDashboard />,
   info: <MdHelp />,
   lock: <MdLock />,
+  ribbon: <FaRibbon />,
+  contact: <MdContactSupport />,
 };
 
 function withIcons(items) {
