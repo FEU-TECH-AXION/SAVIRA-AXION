@@ -1,11 +1,16 @@
 const express = require("express");
 const router  = express.Router();
 const { createClient } = require("@supabase/supabase-js");
+const { verifyToken } = require("../middleware/auth.middleware");
+const authorize = require("../middleware/authorize.middleware");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+router.use(verifyToken);
+router.use(authorize("Admin"));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER — convert the dateRange string from the frontend into a UTC ISO

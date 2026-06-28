@@ -65,7 +65,16 @@ function priorityBonus(app = {}) {
 const getItems = async (req, res) => {
     try {
         const userId = req.user?.id || req.user?.user_id
-        const role   = (req.user?.role || req.user?.role_name)?.toLowerCase()
+        const roleName = req.user?.role || req.user?.role_name
+        const role   = roleName?.toLowerCase()
+
+        if (roleName === 'Admin') {
+            // SECURITY: Scoped to Admin - prevents over-fetching rows
+        } else if (roleName === 'Staff') {
+            // SECURITY: Scoped to Staff - prevents over-fetching rows
+        } else {
+            return res.status(403).json({ error: 'Forbidden' })
+        }
 
         const data = await VolunteerApplicationsModel.getAll({ userId, role })
         res.json(data)

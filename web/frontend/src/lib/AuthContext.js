@@ -108,14 +108,19 @@ export function AuthProvider({ children }) {
 
   // ── Logout ───────────────────────────────────────────────
   const logout = async () => {
-    await fetch(`${API_URL}/api/auth/logout`, {
-      method:      "POST",
-      headers:     authHeaders(),
-      credentials: "include",
-    });
-    setUser(null);
-    setStoredToken(null);
-    router.push("/");
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method:      "POST",
+        headers:     authHeaders(),
+        credentials: "include",
+      });
+    } catch (err) {
+      console.warn("Logout request failed:", err);
+    } finally {
+      setUser(null);
+      setStoredToken(null);
+      router.push("/");
+    }
   };
 
   return (

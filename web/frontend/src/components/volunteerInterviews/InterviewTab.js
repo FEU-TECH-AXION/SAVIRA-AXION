@@ -426,6 +426,15 @@ function parseInterviewNotes(raw) {
   };
 }
 
+function normalizeCancellationReason(reason) {
+  const normalized = String(reason || "").trim();
+  const template = "The interview is being cancelled because";
+  const withoutTemplate = normalized
+    .replace(new RegExp(`^${template}\\s*`, "i"), "")
+    .trim();
+  return withoutTemplate ? normalized : "";
+}
+
 function formatStaffDateTime(interview) {
   const date = interview.interview_date || interview.scheduledDate;
   const time = interview.interview_time || interview.scheduledTime;
@@ -1097,12 +1106,13 @@ function CancelInterviewModal({ interview, onClose, onConfirm }) {
   const [submitting, setSubmitting] = useState(false);
 
   async function handleConfirm() {
-    if (!reason.trim()) {
+    const cancellationReason = normalizeCancellationReason(reason);
+    if (!cancellationReason) {
       setError("Please explain why this interview is being cancelled.");
       return;
     }
     setSubmitting(true);
-    await onConfirm(interview.id, reason.trim());
+    await onConfirm(interview.id, cancellationReason);
     setSubmitting(false);
   }
 
@@ -1227,6 +1237,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
               location: parsedNotes.venue || null,
               notes: parsedNotes.notes || null,
               rawNotes: iv.notes || null,
+              cancellationReason: iv.cancellation_reason || iv.cancellationReason || null,
               meetingLink: iv.meeting_link || iv.meetingLink || null,
             };
           })
@@ -1532,6 +1543,7 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
     if (!activeInterview) return null;
 
     const status = activeInterview.interviewStatus || activeInterview.status;
+    const cancellationReason = normalizeCancellationReason(activeInterview.cancellationReason);
 
     // Applicant requested a reschedule → show slot picker again with a banner
     if (applicantRescheduling || status === "Invited") {
@@ -1624,7 +1636,9 @@ export default function InterviewTab({ appData, isStaff, isApplicationOfficer, s
             ? "Your interview has been completed. Thank you."
             : status === "Expired"
             ? "Your interview invitation has expired. Please contact your application officer."
-            : "Your interview has been cancelled. Please contact your application officer if you have questions."}
+            : cancellationReason
+            ? `Your interview has been cancelled. Notice from the application officer: ${cancellationReason}`
+            : "Your interview has been cancelled. The application officer did not provide a cancellation notice."}
         </p>
       </div>
     );

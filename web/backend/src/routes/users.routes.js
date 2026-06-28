@@ -8,6 +8,7 @@ const { getItems, createItem, updateItem, uploadAvatar, loginUser, syncRole } = 
 const sendEmail = require('../config/mailer');
 const { sendResetPasswordEmail } = require('../config/mailer')
 const { verifyToken } = require('../middleware/auth.middleware')
+const authorize = require('../middleware/authorize.middleware')
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -19,13 +20,13 @@ const avatarUpload = multer({
   },
 })
 
-router.get('/', getItems)
-router.post('/', createItem)
+router.get('/', verifyToken, authorize('Admin'), getItems)
+router.post('/', verifyToken, authorize('Admin'), createItem)
 router.put('/:id', verifyToken, updateItem)
 router.patch('/:id', verifyToken, updateItem)
 router.post('/:id/avatar', verifyToken, avatarUpload.single('profile_img'), uploadAvatar)
 router.post('/login', loginUser)
-router.post('/:userId/sync-role', verifyToken, syncRole)
+router.post('/:userId/sync-role', verifyToken, authorize('Admin'), syncRole)
 
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body || {}

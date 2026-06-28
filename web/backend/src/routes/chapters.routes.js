@@ -7,12 +7,14 @@ const {
   updateItem,
   deleteItem,
 } = require('../controllers/chapters.controller')
+const { verifyToken } = require('../middleware/auth.middleware')
+const authorize = require('../middleware/authorize.middleware')
 
 router.get('/', getItems)
 router.get('/:id', getItem)
-router.post('/', createItem)
-router.put('/:id', updateItem)
-router.patch('/:id', updateItem)
-router.delete('/:id', deleteItem)
+router.post('/', verifyToken, authorize('Admin'), createItem)
+router.put('/:id', verifyToken, authorize('Admin'), updateItem)
+router.patch('/:id', verifyToken, authorize('Admin'), updateItem)
+router.delete('/:id', verifyToken, authorize('Admin'), deleteItem)
 
 module.exports = router

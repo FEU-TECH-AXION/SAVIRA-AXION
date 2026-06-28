@@ -71,7 +71,12 @@ const signup = async (req, res) => {
 
     // 5. Generate JWT
     const token = jwt.sign(
-      { id: newUser.user_id, role_id: newUser.role_id },
+      {
+        id: newUser.user_id,
+        role: newUser.roles?.role_name,
+        role_name: newUser.roles?.role_name,
+        role_id: newUser.role_id,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -117,7 +122,12 @@ const login = async (req, res) => {
 
     // 3. Generate JWT
     const token = jwt.sign(
-      { id: user.user_id, role: user.roles?.role_name },
+      {
+        id: user.user_id,
+        role: user.roles?.role_name,
+        role_name: user.roles?.role_name,
+        role_id: user.role_id,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
