@@ -52,6 +52,43 @@ const OUTCOME_OPTIONS = [
   "I am not sure yet",
 ];
 
+const CASE_REPORT_DRAFT_KEY = "savira_case_report_draft";
+
+function getUserDraftKey(user) {
+  return user?.id || user?.user_id || user?.email || "anonymous";
+}
+
+function getScopedDraftKey(baseKey, user) {
+  return `${baseKey}:${getUserDraftKey(user)}`;
+}
+
+const INITIAL_CONSENTS = {
+  dataPrivacy: false,
+  caseAnalysis: false,
+};
+
+const INITIAL_COMPLAINANT = {
+  name: "", age: "", gender: "", organization: "", reporteeType: "",
+  council: "", region: "",
+  orgName: "", organizationType: "", orgCity: "", userCity: "",
+  contactNumber: "", email: "", interview: "",
+};
+
+const INITIAL_INCIDENT = {
+  date: "", time: "", locationType: "", incidentCity: "", incidentVenue: "",
+  description: "", outcome: [],
+  perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
+  perpetratorRelationship: "", perpetratorGender: "",
+  perpetratorUnknownGender: "", perpetratorUnknownAppearance: "",
+  witnesses: "", witnessName: "", witnessContact: "", witnessRelationship: "",
+  toldAnyone: "", toldAnyoneWho: "", toldPolice: "", policeStation: "",
+};
+
+const INITIAL_EVIDENCE = {
+  files: [],
+  anonymous: false,
+};
+
 function normalizeOutcomeSelection(value) {
   if (Array.isArray(value)) {
     return [...new Set(value.filter((item) => OUTCOME_OPTIONS.includes(item)))];
@@ -1996,7 +2033,7 @@ export default function CreateReport({
   notifications   = [],
   events          = [],
 }) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [step, setStep]                   = useState(0);
   const [submitted, setSubmitted]         = useState(false);
   const [stepErrors, setStepErrors]       = useState({});
@@ -2004,29 +2041,10 @@ export default function CreateReport({
   const [submissionError, setSubmissionError] = useState(null);
   const formCardHeaderRef = useRef(null);
 
-  const [consents, setConsents] = useState({
-    dataPrivacy: false,
-    caseAnalysis: false,
-  });
-
-  const [complainant, setComplainant] = useState({
-    name: "", age: "", gender: "", organization: "", reporteeType: "",
-    council: "", region: "",
-    orgName: "", organizationType: "", orgCity: "", userCity: "",
-    contactNumber: "", email: "", interview: "",
-  });
-
-  const [incident, setIncident] = useState({
-    date: "", time: "", locationType: "", incidentCity: "", incidentVenue: "",
-    description: "", outcome: [],
-    perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
-    perpetratorRelationship: "", perpetratorGender: "",
-    perpetratorUnknownGender: "", perpetratorUnknownAppearance: "",
-    witnesses: "", witnessName: "", witnessContact: "", witnessRelationship: "",
-    toldAnyone: "", toldAnyoneWho: "", toldPolice: "", policeStation: "",
-  });
-
-  const [evidence, setEvidence] = useState({ files: [], anonymous: false });
+  const [consents, setConsents] = useState(INITIAL_CONSENTS);
+  const [complainant, setComplainant] = useState(INITIAL_COMPLAINANT);
+  const [incident, setIncident] = useState(INITIAL_INCIDENT);
+  const [evidence, setEvidence] = useState(INITIAL_EVIDENCE);
   const [draftNotice, setDraftNotice] = useState("");
 
   const totalSteps = STEPS.length;
@@ -2048,10 +2066,26 @@ export default function CreateReport({
   };
 
   const isDirty = useRef(false);
+  const draftStorageKey = getScopedDraftKey(CASE_REPORT_DRAFT_KEY, authUser);
+
+  const resetReportDraft = () => {
+    localStorage.removeItem(draftStorageKey);
+    localStorage.removeItem(CASE_REPORT_DRAFT_KEY);
+    isDirty.current = false;
+    setStep(0);
+    setStepErrors({});
+    setConsents(INITIAL_CONSENTS);
+    setComplainant(INITIAL_COMPLAINANT);
+    setIncident(INITIAL_INCIDENT);
+    setEvidence(INITIAL_EVIDENCE);
+    setDraftNotice("");
+  };
 
   useEffect(() => {
+    if (authLoading) return undefined;
     try {
-      const raw = localStorage.getItem("savira_case_report_draft");
+      localStorage.removeItem(CASE_REPORT_DRAFT_KEY);
+      const raw = localStorage.getItem(draftStorageKey);
       if (!raw) return;
       const draft = JSON.parse(raw);
       const timer = setTimeout(() => {
@@ -2071,7 +2105,7 @@ export default function CreateReport({
       }, 0);
       return () => clearTimeout(timer);
     } catch (_) {}
-  }, []);
+  }, [authLoading, draftStorageKey]);
 
   useEffect(() => {
     if (submitted) return;
@@ -2092,10 +2126,10 @@ export default function CreateReport({
       isDirty.current = true;
     }
     localStorage.setItem(
-      "savira_case_report_draft",
+      draftStorageKey,
       JSON.stringify({ complainant, incident, evidence, consents, updatedAt: new Date().toISOString() })
     );
-  }, [complainant, incident, evidence, consents, submitted]);
+  }, [complainant, incident, evidence, consents, submitted, draftStorageKey]);
 
   const clearError = (key) => {
     setStepErrors((prev) => {
@@ -2183,7 +2217,8 @@ export default function CreateReport({
           });
           throw new Error(errorMsg);
         }
-        localStorage.removeItem("savira_case_report_draft");
+        localStorage.removeItem(draftStorageKey);
+        localStorage.removeItem(CASE_REPORT_DRAFT_KEY);
         isDirty.current = false;
         setSubmitted(true);
       } catch (err) {
@@ -2261,10 +2296,7 @@ export default function CreateReport({
               <button
                 type="button"
                 className={styles.alertAction}
-                onClick={() => {
-                  localStorage.removeItem("savira_case_report_draft");
-                  setDraftNotice("");
-                }}
+                onClick={resetReportDraft}
               >
                 Discard Draft
               </button>

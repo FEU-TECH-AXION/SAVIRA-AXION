@@ -35,6 +35,22 @@ const APPLICATION_STATUSES = new Set(['pending', 'reviewing', 'approved', 'rejec
 const getAuthenticatedUserId = (req) =>
     req.user?.id || req.user?.user_id || req.user?.sub || null
 
+const getAuthenticatedUserEmail = async (req) => {
+    if (req.user?.email) return req.user.email
+
+    const userId = getAuthenticatedUserId(req)
+    if (!userId) return null
+
+    const { data, error } = await supabase
+        .from('users')
+        .select('email')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+    if (error) throw error
+    return data?.email || null
+}
+
 function average(values) {
     const nums = values.map(Number).filter((n) => Number.isFinite(n))
     if (nums.length === 0) return 0
@@ -666,6 +682,7 @@ const getMyApplications = async (req, res) => {
     try {
         const userId = getAuthenticatedUserId(req)
         if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+        const userEmail = await getAuthenticatedUserEmail(req)
 
         const applicationSelect = `
             *,
@@ -704,12 +721,12 @@ const getMyApplications = async (req, res) => {
             )
         }
 
-        if (req.user?.email) {
+        if (userEmail) {
             queries.push(
                 supabase
                     .from('volunteer_applications')
                     .select(applicationSelect)
-                    .eq('email', req.user.email)
+                    .ilike('email', userEmail)
             )
         }
 

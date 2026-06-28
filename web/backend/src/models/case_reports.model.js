@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase')
 const { mergeApprovedFieldChanges } = require('./case_field_changes')
+const { normalizeScoreForFields } = require('../services/duplicateCases.service')
 
 const ALLOWED_FIELDS = [
   'case_type',
@@ -558,11 +559,17 @@ async function getDuplicateMatches(caseIds) {
     console.warn('[getDuplicateMatches] duplicate metadata unavailable:', error.message)
     return {}
   }
-  return (data || []).reduce((map, item) => {
-    if (!map[item.case_report_id]) map[item.case_report_id] = []
-    map[item.case_report_id].push(item)
-    return map
-  }, {})
+  return (data || [])
+    .map((item) => ({
+      ...item,
+      similarity_score: normalizeScoreForFields(Number(item.similarity_score) || 0, item.matched_fields || []),
+    }))
+    .filter((item) => item.similarity_score >= 45)
+    .reduce((map, item) => {
+      if (!map[item.case_report_id]) map[item.case_report_id] = []
+      map[item.case_report_id].push(item)
+      return map
+    }, {})
 }
 
 const update = async (caseReportId, payload) => {

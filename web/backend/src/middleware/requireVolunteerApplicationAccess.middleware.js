@@ -6,10 +6,25 @@ const getApplicationId = (req) =>
 const getAuthenticatedUserId = (req) =>
   req.user?.id || req.user?.user_id || req.user?.sub || null
 
+const getAuthenticatedUserEmail = async (req, userId) => {
+  if (req.user?.email) return req.user.email
+  if (!userId) return null
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('email')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data?.email || null
+}
+
 const requireVolunteerApplicationAccess = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' })
     const userId = getAuthenticatedUserId(req)
+    const userEmail = await getAuthenticatedUserEmail(req, userId)
 
     if (req.user.role === 'Admin') return next()
 
@@ -47,7 +62,7 @@ const requireVolunteerApplicationAccess = async (req, res, next) => {
     }
 
     const ownsApplicant = applicant && String(applicant.user_id) === String(userId)
-    const ownsEmail = req.user?.email && String(application.email).toLowerCase() === String(req.user.email).toLowerCase()
+    const ownsEmail = userEmail && String(application.email).toLowerCase() === String(userEmail).toLowerCase()
 
     if (!ownsApplicant && !ownsEmail) {
       return res.status(403).json({ error: 'Forbidden' })
