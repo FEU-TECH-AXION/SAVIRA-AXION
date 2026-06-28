@@ -65,10 +65,14 @@ export function AuthProvider({ children }) {
     })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
-        if (mounted) setUser(data.user);
+        if (!mounted) return;
+        setUser(data.user);
+        if (data.token) setStoredToken(data.token);
       })
       .catch(() => {
-        if (mounted) setUser(null);
+        if (!mounted) return;
+        setUser(null);
+        setStoredToken(null);
       })
       .finally(() => {
         if (mounted) setLoading(false);

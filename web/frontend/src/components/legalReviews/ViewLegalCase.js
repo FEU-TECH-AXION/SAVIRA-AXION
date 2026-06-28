@@ -27,7 +27,7 @@ import {
   MonitoringModal,
   PARALEGAL_EVIDENCE_LABELS,
 } from "./LegalReviewModals";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -234,7 +234,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
       setNlpLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`);
         if (res.status === 404) { setNlpStatus("processing"); return; }
         if (!res.ok) { setNlpStatus("error"); return; }
         const json = await res.json();

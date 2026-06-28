@@ -201,7 +201,23 @@ const me = async (req, res) => {
       flatUser.committee_id = staffRecord?.committee_id ?? null;
     }
 
-    res.status(200).json({ user: flatUser });
+    const token = jwt.sign(
+      {
+        id: flatUser.user_id,
+        email: flatUser.email,
+        role: flatUser.role_name,
+        role_name: flatUser.role_name,
+        role_id: flatUser.role_id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res
+      .cookie('token', token, COOKIE_OPTIONS)
+      .cookie('user', JSON.stringify(flatUser), USER_COOKIE_OPTIONS)
+      .status(200)
+      .json({ user: flatUser, token });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
