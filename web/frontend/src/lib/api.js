@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+import { API_URL } from '@/lib/config';
 
 function authHeaders(headers = {}) {
   if (typeof window === 'undefined') return headers;
@@ -52,7 +52,6 @@ export async function loginUser(form) {
 }
 
 export async function fetchCommittees() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const response = await fetch(`${API_URL}/api/committees`, {
     credentials: 'include',
     headers: authHeaders(),

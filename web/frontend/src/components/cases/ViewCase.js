@@ -40,6 +40,7 @@ import {
   WITHDRAWAL_ACTION,
 } from "@/lib/caseWithdrawal";
 import { useAuth, authFetch } from "@/lib/AuthContext";
+import { API_URL } from "@/lib/config";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -388,7 +389,6 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
     const fetchNlp = async () => {
       setNlpLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`);
         if (res.status === 202 || res.status === 404) {
           setNlpData(null);
@@ -709,7 +709,6 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
   const [expiryDays, setExpiryDays] = useState("7");
   const [notes, setNotes]           = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -722,8 +721,6 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
     setSubmitting(true);
     setError(null);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      
       // Validate reporterId exists
       if (!caseData.reporterId) {
         throw new Error("Complainant user ID is missing. Cannot create interview. Check that the case has a valid complainant assigned.");
@@ -874,7 +871,6 @@ function CaseManagementTab({
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await authFetch(`${API_URL}/api/case_status_history`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -970,7 +966,6 @@ function CaseManagementTab({
     const fetchNoteLogs = async () => {
       setNotesLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/case_report_logs/case/${caseData.id}`);
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Failed to load notes.");
@@ -995,7 +990,6 @@ function CaseManagementTab({
     const fetchNlpSuggestion = async () => {
       setNlpSuggestionLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`);
         if (!res.ok) return;
 
@@ -1032,7 +1026,6 @@ function CaseManagementTab({
     const trimmed = internalNotes.trim();
     if (!trimmed) return showToast("Please enter a note before saving.", "error");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await authFetch(`${API_URL}/api/case_report_logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1054,7 +1047,6 @@ function CaseManagementTab({
     const trimmed = editingNoteText.trim();
     if (!trimmed) return showToast("Note cannot be empty.", "error");
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const id = getLogId(log);
       const res = await authFetch(`${API_URL}/api/case_report_logs/${id}`, {
         method: "PATCH",
@@ -1074,7 +1066,6 @@ function CaseManagementTab({
 
   async function deleteNote(log) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const id = getLogId(log);
       const res = await authFetch(`${API_URL}/api/case_report_logs/${id}`, { method: "DELETE" });
       const body = await res.json().catch(() => ({}));
@@ -1090,7 +1081,6 @@ function CaseManagementTab({
 
   async function saveAssessment(payload, onSuccess) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await authFetch(`${API_URL}/api/case_assessments/case/${caseData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1848,7 +1838,6 @@ export default function ViewCase() {
   };
 
   const dismissDuplicate = async (matchId) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const response = await authFetch(
       `${API_URL}/api/case_reports/${caseData.id}/duplicates/${matchId}/dismiss`,
       { method: "PATCH" }
@@ -1873,7 +1862,6 @@ export default function ViewCase() {
     }
     try {
       setWithdrawing(true);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const form = new FormData();
       form.append("reason", withdrawReason.trim());
       if (withdrawAffidavit) form.append("affidavit", withdrawAffidavit);
@@ -1899,7 +1887,6 @@ export default function ViewCase() {
     if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
     const fetchCase = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/case_reports/${caseId}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -2009,7 +1996,6 @@ export default function ViewCase() {
     const fetchInterviewAccess = async () => {
       setInterviewsChecked(false);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`);
         if (!res.ok) throw new Error("Failed to check interview invitation");
         const json = await res.json();

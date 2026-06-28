@@ -265,10 +265,40 @@ async function getNLPAnalysis(req, res) {
       return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });
     }
 
-    if (!latestAnalysis || latestAnalysis.status === 'pending') {
+    if (!latestAnalysis) {
+      const report = await fetchCaseById(id);
+      if (report?.case_report_id) {
+        runNLPAnalysis({
+          case_report_id: report.case_report_id,
+          incident_description: report.incident_description,
+        });
+      }
+
+      return res.status(202).json({
+        status: 'pending',
+        error: 'NLP analysis has been queued. Please check back shortly.',
+      });
+    }
+
+    if (latestAnalysis.status === 'pending') {
       return res.status(202).json({
         status: 'pending',
         error: 'NLP analysis is still processing. Please check back shortly.',
+      });
+    }
+
+    if (latestAnalysis.status === 'failed') {
+      const report = await fetchCaseById(id);
+      if (report?.case_report_id) {
+        runNLPAnalysis({
+          case_report_id: report.case_report_id,
+          incident_description: report.incident_description,
+        });
+      }
+
+      return res.status(202).json({
+        status: 'pending',
+        error: 'Previous NLP analysis failed. A retry has been queued.',
       });
     }
 
