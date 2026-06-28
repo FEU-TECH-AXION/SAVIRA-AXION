@@ -81,7 +81,7 @@ cd web/nlp
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt ## run this inside venv file
-python -m spacy download xx_ent_wiki_sm
+python -m spacy download en_core_web_sm
 python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt'); nltk.download('punkt_tab')"
 ```
 > **Note:** Mac/Linux users activate with `source venv/bin/activate` instead

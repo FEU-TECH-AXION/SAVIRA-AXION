@@ -5,7 +5,7 @@ from nltk.corpus import stopwords
 from spellchecker import SpellChecker
 from langdetect import detect, LangDetectException
 
-SPACY_MODEL = "xx_ent_wiki_sm"
+SPACY_MODEL = "en_core_web_sm"
 
 # Load spaCy model
 _nlp = None
@@ -100,8 +100,8 @@ def tokenize_and_lemmatize(text):
             len(token.text) <= 1
         ):
             continue
-        # The multilingual NER model may not include a lemmatizer, so keep text when lemma is unavailable.
-        tokens.append(token.lemma_ if token.lemma_ and token.lemma_ != "-PRON-" else token.text)
+        # Lemmatize — e.g. "threatening" → "threaten"
+        tokens.append(token.lemma_)
     return tokens
 
 def preprocess(text):
