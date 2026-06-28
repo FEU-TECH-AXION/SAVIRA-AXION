@@ -11,7 +11,7 @@ router.get('/debug-env', verifyToken, authorize('Admin'), (req, res) => {
 });
 router.post('/signup', signupRules, validateInput, signup);
 router.post('/login', loginRules, validateInput, login);
-router.post('/logout', verifyToken, logout);
+router.post('/logout', logout);
 router.get('/me', verifyToken, me);
 
 // router.get('/cases', verifyToken, authorize('admin', 'case_officer'), getCases);

@@ -1,5 +1,28 @@
 const jwt = require("jsonwebtoken");
 
+const ROLE_BY_ID = {
+  1: "User",
+  2: "Staff",
+  3: "Admin",
+  4: "Legal Personnel",
+  5: "Case Officer",
+  6: "Project Officer",
+};
+
+function normalizeUser(decoded) {
+  const role =
+    decoded.role ||
+    decoded.role_name ||
+    ROLE_BY_ID[Number(decoded.role_id)] ||
+    null;
+
+  return {
+    ...decoded,
+    role,
+    role_name: decoded.role_name || role,
+  };
+}
+
 // ── Verify token from httpOnly cookie ─────────────────────
 
 const verifyToken = (req, res, next) => {
@@ -18,7 +41,7 @@ const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    req.user = normalizeUser(decoded);
     next();
   } catch (err) {
     return res

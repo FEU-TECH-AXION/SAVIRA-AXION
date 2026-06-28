@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
-import { useAuth } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -192,7 +192,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
 
       if (applicants.length === 1) {
         setLoadingExisting(true)
-        fetch(
+        authFetch(
           `${process.env.NEXT_PUBLIC_API_URL || ""}/api/volunteer_application_assignments/${applicants[0].id}`,
           { credentials: "include" }
         )
@@ -255,7 +255,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
     setError("")
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
-      const res = await fetch(
+      const res = await authFetch(
         `${API_URL}/api/volunteer_application_assignments/${removalTarget.applicationId}/${removalTarget.assessorId}`,
         { method: "DELETE", credentials: "include" }
       )
@@ -659,7 +659,7 @@ export default function VolunteerManagement() {
 
       async function fetchApplicants() {
           try {
-              const res = await fetch(
+              const res = await authFetch(
                   `${process.env.NEXT_PUBLIC_API_URL || ""}/api/volunteer_applications`,
                   {
                       credentials: "include",
@@ -724,7 +724,7 @@ export default function VolunteerManagement() {
     async function fetchMembershipStaff() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/staff`, { credentials: "include" });
+        const res = await authFetch(`${API_URL}/api/staff`, { credentials: "include" });
         if (!res.ok) throw new Error("Failed to load staff.");
         const data = await res.json();
         setMembershipStaff(
@@ -785,7 +785,7 @@ export default function VolunteerManagement() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(assignments.map(async ({ applicationId, assessorId }) => {
-        const res = await fetch(`${API_URL}/api/volunteer_application_assignments/${applicationId}/${assessorId}`, {
+        const res = await authFetch(`${API_URL}/api/volunteer_application_assignments/${applicationId}/${assessorId}`, {
           method: "DELETE",
           credentials: "include",
         });
@@ -1128,7 +1128,7 @@ export default function VolunteerManagement() {
         staff={membershipStaff}
         onSave={async ({ applicants: selectedApps, assessor_ids }) => {
           const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
-          const res = await fetch(`${API_URL}/api/volunteer_application_assignments/assign-bulk`, {
+          const res = await authFetch(`${API_URL}/api/volunteer_application_assignments/assign-bulk`, {
             method:      "POST",
             credentials: "include",
             headers:     { "Content-Type": "application/json" },
@@ -1170,7 +1170,7 @@ export default function VolunteerManagement() {
           const updatedApplicants = [];
 
           for (const applicant of selectedApps) {
-            const res = await fetch(`${API_URL}/api/volunteer_applications/${applicant.id}`, {
+            const res = await authFetch(`${API_URL}/api/volunteer_applications/${applicant.id}`, {
               method: "PUT",
               credentials: "include",
               headers: { "Content-Type": "application/json" },

@@ -1366,6 +1366,7 @@ export default function ViewApplication() {
   const [modal,       setModal]       = useState(null);
   const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
   const [withdrawing, setWithdrawing] = useState(false);
+  const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
 
   const user = {
     id: authUser?.user_id || authUser?.id || null,
@@ -1392,6 +1393,13 @@ export default function ViewApplication() {
         const data = await res.json();
 
         if (!data) throw new Error("Application not found.");
+
+        const interviewsRes = await authFetch(
+          `${API}/api/interviews?type=volunteer&volunteer_application_id=${data.volunteer_application_id}`
+        );
+        const interviewsJson = interviewsRes.ok ? await interviewsRes.json().catch(() => ({})) : {};
+        const interviews = Array.isArray(interviewsJson?.data) ? interviewsJson.data : [];
+        setHasInterviewRecord(interviews.length > 0);
 
         const computedAge = (() => {
           if (data.age) return String(data.age);
@@ -1541,9 +1549,16 @@ export default function ViewApplication() {
   const isAssignedEvaluator = (appData?.assignedEvaluatorIds || [])
     .some((id) => String(id) === String(user.id));
   const canManageVolunteerApplication = isAdmin || isAssignedEvaluator;
+  const showInterviewTab = appData?.isWillingForInterview && (isStaff || hasInterviewRecord);
   const canWithdrawApplication =
     !isStaff &&
     ["Pending", "Reviewing"].includes(appData?.applicationStatus);
+
+  useEffect(() => {
+    if (activeTab === "interview" && appData && !showInterviewTab) {
+      setActiveTab("details");
+    }
+  }, [activeTab, appData, showInterviewTab]);
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -1578,7 +1593,7 @@ export default function ViewApplication() {
 
   const tabs = [
     { id: "details",    label: " Application Details" },
-    ...(appData.isWillingForInterview ? [
+    ...(showInterviewTab ? [
       { id: "interview", label: "Interview" },
     ] : []),
     ...(isStaff ? [
@@ -1657,7 +1672,7 @@ export default function ViewApplication() {
             <ApplicationDetailsTab appData={appData} isStaff={isStaff} />
           )}
 
-          {activeTab === "interview" && appData.isWillingForInterview && userLoaded && (
+          {activeTab === "interview" && showInterviewTab && userLoaded && (
             <InterviewTab
               appData={appData}
               isStaff={isStaff}
