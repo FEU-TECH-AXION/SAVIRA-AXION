@@ -216,19 +216,26 @@ export default function CasesTable({
   const selectedCases = paginated.filter(c => selectedIds.has(c.id));
   const selectionCount = selectedCases.length;
 
-  // Format submission date like image: "14-Aug-2024 10:10 AM"
+  function hasExplicitTime(value) {
+    if (value instanceof Date) return true;
+    if (typeof value !== "string") return false;
+    return /T\d{2}:\d{2}| \d{1,2}:\d{2}/.test(value);
+  }
+
+  // Format submission date like image: "14-Aug-2024 10:10 AM" when a real time exists.
   function formatDate(dateStr) {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr; // fallback if already formatted
-    return d.toLocaleString("en-PH", {
+    const options = {
       day: "2-digit",
       month: "short",
       year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).replace(",", "");
+      ...(hasExplicitTime(dateStr)
+        ? { hour: "numeric", minute: "2-digit", hour12: true }
+        : {}),
+    };
+    return d.toLocaleString("en-PH", options).replace(",", "");
   }
 
   function formatCaseType(caseType) {

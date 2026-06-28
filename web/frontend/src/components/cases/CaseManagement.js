@@ -1011,7 +1011,7 @@ useEffect(() => {
           status:          STATUS_STEP[r.case_status_id] || "For Verification",
           assignedOfficer: r.assigned_officer || null,
           assignedOfficerIds: r.assigned_officer_id ? [r.assigned_officer_id] : [],
-          dateSubmitted:   new Date(r.created_at).toLocaleDateString('en-PH'),
+          dateSubmitted:   r.created_at || "",
           caseType:        r.case_type || null,
           caseCategory:    r.primary_category || null,
           alsoInvolves:    r.additional_categories || [],
