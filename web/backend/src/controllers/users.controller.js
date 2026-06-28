@@ -180,7 +180,7 @@ const updateItem = async (req, res) => {
 const uploadAvatar = async (req, res) => {
   try {
     const { id } = req.params
-    if (String(req.user.id) !== String(id) && parseInt(req.user.role_id) !== 3) {
+    if (String(req.user.id) !== String(id) && req.user.role !== 'Admin') {
       return res.status(403).json({ error: 'You are not allowed to update this profile photo.' })
     }
     if (!req.file?.buffer) {

@@ -4,6 +4,7 @@ const supabase = require('../config/supabase') // adjust path
 const { getItems, getItem, createItem, updateItem, getMyApplications, getScores, assignAssessors, getRankings, withdrawApplication, undoWithdrawApplication } = require('../controllers/volunteer_applications.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
 const requireCommittee = require('../middleware/requireCommittee.middleware')
+const requireVolunteerApplicationAccess = require('../middleware/requireVolunteerApplicationAccess.middleware')
 const { getAnalysis } = require('../controllers/volunteer_application_analysis.controller');
 const { getEssayEvaluation, saveEssayEvaluation, getInterviewEvaluation, saveInterviewEvaluation } = require('../controllers/volunteer_application_evaluations.controller')
 const requireMembershipCommittee = requireCommittee(2)
@@ -12,15 +13,15 @@ router.get('/my_applications',          verifyToken, getMyApplications)
 router.post('/submit',                  verifyToken, createItem)          
 router.get('/rankings/list',            verifyToken, requireMembershipCommittee, getRankings)
 router.post('/assignments',             verifyToken, requireMembershipCommittee, assignAssessors)
-router.get('/:id/essay_evaluation',     verifyToken, requireMembershipCommittee, getEssayEvaluation)
+router.get('/:id/essay_evaluation',     verifyToken, requireVolunteerApplicationAccess, getEssayEvaluation)
 router.put('/:id/essay_evaluation',     verifyToken, requireMembershipCommittee, saveEssayEvaluation)
-router.get('/:id/interview_evaluation', verifyToken, requireMembershipCommittee, getInterviewEvaluation)
+router.get('/:id/interview_evaluation', verifyToken, requireVolunteerApplicationAccess, getInterviewEvaluation)
 router.put('/:id/interview_evaluation', verifyToken, requireMembershipCommittee, saveInterviewEvaluation)
-router.get('/:id/scores',               verifyToken, requireMembershipCommittee, getScores)
-router.get('/:id/nlp',                  verifyToken, requireMembershipCommittee, getAnalysis)
-router.post('/:id/withdraw',            verifyToken, withdrawApplication)
-router.post('/:id/undo_withdraw',       verifyToken, undoWithdrawApplication)
-router.get('/:id/status-history', verifyToken, requireMembershipCommittee, async (req, res) => {
+router.get('/:id/scores',               verifyToken, requireVolunteerApplicationAccess, getScores)
+router.get('/:id/nlp',                  verifyToken, requireVolunteerApplicationAccess, getAnalysis)
+router.post('/:id/withdraw',            verifyToken, requireVolunteerApplicationAccess, withdrawApplication)
+router.post('/:id/undo_withdraw',       verifyToken, requireVolunteerApplicationAccess, undoWithdrawApplication)
+router.get('/:id/status-history', verifyToken, requireVolunteerApplicationAccess, async (req, res) => {
   const { id } = req.params;
 
   const { data, error } = await supabase
@@ -55,7 +56,7 @@ router.get('/:id/status-history', verifyToken, requireMembershipCommittee, async
 
   return res.json({ data: formatted });
 });
-router.get('/:id',                      verifyToken, requireMembershipCommittee, getItem)
+router.get('/:id',                      verifyToken, requireVolunteerApplicationAccess, getItem)
 router.put('/:id',                      verifyToken, requireMembershipCommittee, updateItem)
 router.get('/',                         verifyToken, requireMembershipCommittee, getItems)
 

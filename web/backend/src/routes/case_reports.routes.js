@@ -3,6 +3,7 @@ const router = express.Router()
 const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
+const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
 const { amendCaseFields, createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
 const multer = require('multer');
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
@@ -42,8 +43,8 @@ router.patch('/:id/fields', verifyToken, upload.single('file'), amendCaseFields)
 router.post('/:id/withdraw', verifyToken, withdrawalUpload.single('affidavit'), withdrawCase);
 router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
 router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, dismissDuplicate);
-router.get('/:id/nlp', verifyToken, getNLPAnalysis); 
-router.get('/:id',     verifyToken, requireCaseAccess, getCaseById);
+router.get('/:id/nlp', verifyToken, requireCaseReportAccess, getNLPAnalysis); 
+router.get('/:id',     verifyToken, requireCaseReportAccess, getCaseById);
 router.get('/',        verifyToken, requireCaseAccess, getItems);
 router.post('/',       verifyToken, authorize('Admin'), createItem);
 router.patch('/:id', verifyToken, requireCaseAccess, updateItem)
