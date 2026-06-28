@@ -5,19 +5,22 @@ from nltk.corpus import stopwords
 from spellchecker import SpellChecker
 from langdetect import detect, LangDetectException
 
+SPACY_MODEL = "xx_ent_wiki_sm"
+
 # Load spaCy model
 _nlp = None
 
 def get_nlp():
     global _nlp
     if _nlp is None:
-        _nlp = spacy.load("en_core_web_sm")
+        _nlp = spacy.load(SPACY_MODEL)
     return _nlp
 
 # Download NLTK data if not already downloaded
 nltk.download("stopwords", quiet=True)
 nltk.download("wordnet", quiet=True)
 nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 
 # ── Custom stopword list ──────────────────────────────────────────
 # Start with NLTK's standard English stopwords
@@ -97,8 +100,8 @@ def tokenize_and_lemmatize(text):
             len(token.text) <= 1
         ):
             continue
-        # Lemmatize — e.g. "threatening" → "threaten"
-        tokens.append(token.lemma_)
+        # The multilingual NER model may not include a lemmatizer, so keep text when lemma is unavailable.
+        tokens.append(token.lemma_ if token.lemma_ and token.lemma_ != "-PRON-" else token.text)
     return tokens
 
 def preprocess(text):
