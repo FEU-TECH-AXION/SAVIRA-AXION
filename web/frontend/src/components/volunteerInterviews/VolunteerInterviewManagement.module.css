@@ -22,7 +22,7 @@
   min-height: 100vh;
   color: var(--sasha-text);
   padding-bottom: 2rem;
-  margin-top: 64px;
+  margin-top: 0;
 }
 
 .pageContainer {

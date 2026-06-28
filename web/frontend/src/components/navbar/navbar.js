@@ -21,6 +21,7 @@ import { useNotificationStore, markAllRead } from '@/lib/notificationStore';
 export default function Navbar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openPublicMenu, setOpenPublicMenu] = useState(null);
+  const navbarRef = useRef(null);
   const publicNavRef = useRef(null);
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
@@ -30,6 +31,30 @@ export default function Navbar() {
 
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  useEffect(() => {
+    const navbar = navbarRef.current;
+
+    if (!navbar) return undefined;
+
+    const updateNavbarHeight = () => {
+      document.documentElement.style.setProperty(
+        "--navbar-height",
+        `${navbar.getBoundingClientRect().height}px`
+      );
+    };
+
+    updateNavbarHeight();
+
+    const resizeObserver = new ResizeObserver(updateNavbarHeight);
+    resizeObserver.observe(navbar);
+    window.addEventListener("resize", updateNavbarHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateNavbarHeight);
+    };
+  }, [user]);
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -55,7 +80,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={styles.navbar}>
+      <nav className={styles.navbar} ref={navbarRef}>
         <div className={styles.navInner}>
 
           {user ? (

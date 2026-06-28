@@ -16,7 +16,7 @@
   background: var(--sasha-offwhite);
   color: var(--sasha-text);
   padding: 2rem;
-  margin-top: 64px;
+  margin-top: 0;
 }
 
 .inner {

@@ -36,7 +36,7 @@
   text-align: center;
   border-radius: 1rem;
   padding: 5rem;
-  margin-top: 6rem;
+  margin-top: 2rem;
   margin-left: 1rem;
   margin-right: 1rem;
   margin-bottom: 2rem;
@@ -59,7 +59,7 @@
   text-align: center;
   border-radius: 1rem;
   padding: 5rem;
-  margin-top: 6rem;
+  margin-top: 2rem;
 }
 
 .heroContent::before {

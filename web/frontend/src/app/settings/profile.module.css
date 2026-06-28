@@ -16,7 +16,6 @@
   padding: 2.5rem 1rem 3.5rem;
   position: relative;
   overflow: hidden;
-  padding-top: 4rem;
   /* 1. Create a new stacking context for the hero element */
   z-index: 1; 
 }

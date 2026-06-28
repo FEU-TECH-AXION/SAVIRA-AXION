@@ -19,7 +19,7 @@ export default function RootLayout({ children }) {
           <NotificationsInit />
           <ClientShell>
             <NavbarClient />
-            <main>{children}</main>
+            <main className="appMain">{children}</main>
             <Footer />
           </ClientShell>
         </AuthProvider>

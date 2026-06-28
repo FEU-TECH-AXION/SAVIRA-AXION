@@ -272,7 +272,7 @@
 
 @media (max-width: 767.98px) {
   .container {
-    padding-top: 5rem;
+    padding-top: 1.5rem;
   }
 
   .hero {
@@ -302,7 +302,7 @@
 
 @media (max-width: 575.98px) {
   .container {
-    padding-top: 4.5rem;
+    padding-top: 1rem;
   }
 
   .hero {

@@ -480,7 +480,7 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
   return (
     <div>
       {/* AI disclaimer */}
-      <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 8, padding: "10px 14px", marginBottom: "1.25rem", fontSize: "0.82rem", color: "#5b21b6", display: "flex", gap: 8, alignItems: "flex-start" }}>
+      <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: "10px 14px", marginBottom: "1.25rem", fontSize: "0.82rem", color: "#9a3412", display: "flex", gap: 8, alignItems: "flex-start" }}>
         <span>This analysis is <strong>AI-generated</strong> and is intended as a guide only. All decisions remain with the case officer and are subject to admin approval.</span>
       </div>
 

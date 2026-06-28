@@ -10,6 +10,8 @@
   --sasha-offwhite: #f7f7f7;
   --sasha-text: #222222;
   --sasha-muted: #555555;
+  --navbar-height: 64px;
+  --app-safe-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
 }
 
 /* Dark mode intentionally disabled — app uses a fixed light color scheme */
@@ -33,6 +35,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.appMain {
+  flex: 1 0 auto;
+  padding-top: var(--app-safe-top);
 }
 
 * {
@@ -65,9 +72,8 @@ a {
     display: none !important;
   }
 
-  /* Remove the top margin the page adds to account for the fixed navbar */
-  main > * {
-    margin-top: 0 !important;
+  .appMain {
+    padding-top: 0 !important;
   }
 
   /* Give the page a clean white background with no extra padding */

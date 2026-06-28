@@ -21,7 +21,7 @@
   min-height: 100vh;
   color: var(--sasha-text);
   padding: 2rem;
-  padding-top: 4rem;
+  padding-top: 2rem;
 }
 
 .pageInner {
@@ -707,7 +707,7 @@
   text-align: center;
   border-radius: 1rem;
   padding: 4rem 2rem;
-  margin-top: 6rem;
+  margin-top: 2rem;
 }
 
 .heroContent::before {

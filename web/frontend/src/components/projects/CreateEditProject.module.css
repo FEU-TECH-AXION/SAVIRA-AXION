@@ -22,7 +22,7 @@
   background: var(--sasha-offwhite);
   min-height: 100vh;
   padding-bottom: 4rem;
-  margin-top: 64px;
+  margin-top: 0;
 }
 
 /* ── Header bar ── */
