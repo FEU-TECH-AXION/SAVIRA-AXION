@@ -1398,6 +1398,7 @@ export default function ReportGenerator() {
           <button
             key={key}
             className={`${styles.moduleChip} ${activeModules[key] ? styles.moduleChipActive : ""}`}
+            aria-pressed={activeModules[key]}
             onClick={() => toggleModule(key)}
           >
             {icon} {label}

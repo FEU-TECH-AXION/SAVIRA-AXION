@@ -734,3 +734,75 @@
   background: linear-gradient(to right, var(--sasha-orange), transparent);
   border-radius: 2px;
 }
+
+:global(html[data-theme="dark"]) .pageWrapper {
+  background: #121821;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .searchFilterBar,
+:global(html[data-theme="dark"]) .calendarWrapper,
+:global(html[data-theme="dark"]) .modalBox {
+  background: #18222d;
+  border: 1px solid #354252;
+  color: #e5edf4;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+:global(html[data-theme="dark"]) .searchBox,
+:global(html[data-theme="dark"]) .formInput,
+:global(html[data-theme="dark"]) .calCell,
+:global(html[data-theme="dark"]) .calNavBtn,
+:global(html[data-theme="dark"]) .calTodayBtn {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .searchInput {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .searchInput::placeholder {
+  color: #8b98a8;
+}
+
+:global(html[data-theme="dark"]) .searchBox:focus-within,
+:global(html[data-theme="dark"]) .formInput:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22);
+}
+
+:global(html[data-theme="dark"]) .modalHeader,
+:global(html[data-theme="dark"]) .modalFooter {
+  background: #111923;
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .modalTitle,
+:global(html[data-theme="dark"]) .sectionTitle,
+:global(html[data-theme="dark"]) .calMonthLabel {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .calLegend,
+:global(html[data-theme="dark"]) .calendarHeader {
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .calDayName,
+:global(html[data-theme="dark"]) .calLegendItem,
+:global(html[data-theme="dark"]) .searchBox svg {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .calCellToday {
+  background: #123f43;
+  border-color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .warningNotice {
+  background: #2a2418;
+  border-color: #6b5a30;
+  color: #f0d48a;
+}

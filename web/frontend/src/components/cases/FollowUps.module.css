@@ -299,3 +299,115 @@
   color: #6b7280;
   font-size: 0.875rem;
 }
+
+:global(html[data-theme="dark"]) .modal,
+:global(html[data-theme="dark"]) .thread,
+:global(html[data-theme="dark"]) .inlineEditor,
+:global(html[data-theme="dark"]) .requestedFields,
+:global(html[data-theme="dark"]) .changeList,
+:global(html[data-theme="dark"]) .expandedHistoryThread,
+:global(html[data-theme="dark"]) .fieldTimeline,
+:global(html[data-theme="dark"]) .caseHistoryItem {
+  background: #18222d;
+  border-color: #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .threadHeader,
+:global(html[data-theme="dark"]) .historyToolbar,
+:global(html[data-theme="dark"]) .historyRow,
+:global(html[data-theme="dark"]) .fieldHistoryHeader,
+:global(html[data-theme="dark"]) .fieldTimelineItem > button,
+:global(html[data-theme="dark"]) .message,
+:global(html[data-theme="dark"]) .reasonNotice,
+:global(html[data-theme="dark"]) .confirmPreview p span {
+  background: #111923;
+  border-color: #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .messageMine,
+:global(html[data-theme="dark"]) .requestedFields span,
+:global(html[data-theme="dark"]) .historyToggle,
+:global(html[data-theme="dark"]) .historyToolbar button.activeMode {
+  background: #123f43;
+  border-color: #037f81;
+  color: #c8f4ee;
+}
+
+:global(html[data-theme="dark"]) .modalHeader h2,
+:global(html[data-theme="dark"]) .threadHeader h3,
+:global(html[data-theme="dark"]) .inlineEditor h3,
+:global(html[data-theme="dark"]) .changeList h4,
+:global(html[data-theme="dark"]) .changeCard > strong,
+:global(html[data-theme="dark"]) .confirmPreview strong,
+:global(html[data-theme="dark"]) .sectionHeading h3,
+:global(html[data-theme="dark"]) .historyToggle,
+:global(html[data-theme="dark"]) .historyMeta strong,
+:global(html[data-theme="dark"]) .fieldHistoryHeading > strong,
+:global(html[data-theme="dark"]) .fieldTimelineItem strong,
+:global(html[data-theme="dark"]) .messageOnlyHeading strong,
+:global(html[data-theme="dark"]) .caseHistoryHeader strong {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .panelHeader p,
+:global(html[data-theme="dark"]) .threadHeader p,
+:global(html[data-theme="dark"]) .modalHeader p,
+:global(html[data-theme="dark"]) .fieldHelp,
+:global(html[data-theme="dark"]) .fileLimit,
+:global(html[data-theme="dark"]) .selectionLabel,
+:global(html[data-theme="dark"]) .inlineEditor > p,
+:global(html[data-theme="dark"]) .historyToggle small,
+:global(html[data-theme="dark"]) .historyMeta > span,
+:global(html[data-theme="dark"]) .historyPreview,
+:global(html[data-theme="dark"]) .historyDate,
+:global(html[data-theme="dark"]) .fieldTimelineItem small,
+:global(html[data-theme="dark"]) .messageOnlyHeading span,
+:global(html[data-theme="dark"]) .caseHistoryHeader > div > span,
+:global(html[data-theme="dark"]) .caseHistoryItem time,
+:global(html[data-theme="dark"]) .caseHistoryEmpty {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .message p,
+:global(html[data-theme="dark"]) .changeCard p,
+:global(html[data-theme="dark"]) .caseHistoryMessage {
+  color: #d5dee6;
+}
+
+:global(html[data-theme="dark"]) .replyForm,
+:global(html[data-theme="dark"]) .fieldHistoryGroup,
+:global(html[data-theme="dark"]) .historyItem,
+:global(html[data-theme="dark"]) .changeCard,
+:global(html[data-theme="dark"]) .confirmPreview > div,
+:global(html[data-theme="dark"]) .messageOnlyHistory,
+:global(html[data-theme="dark"]) .amendmentAction {
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .replyForm textarea,
+:global(html[data-theme="dark"]) .field textarea,
+:global(html[data-theme="dark"]) .field select {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .secondaryButton,
+:global(html[data-theme="dark"]) .cancelButton,
+:global(html[data-theme="dark"]) .iconButton {
+  background: #111923;
+  border: 1px solid #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .warning {
+  background: #2a2418;
+  color: #f0d48a;
+}
+
+:global(html[data-theme="dark"]) .submitGuidance {
+  background: #14243d;
+  color: #bfdbfe;
+}

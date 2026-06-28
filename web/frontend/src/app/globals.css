@@ -165,6 +165,21 @@ html[data-theme="dark"] select option {
 html[data-theme="dark"] .appMain [class*="overviewCard"]:not([class*="Header"]):not([class*="Body"]):not([class*="Label"]):not([class*="Count"]),
 html[data-theme="dark"] .appMain [class*="overviewCardBody"],
 html[data-theme="dark"] .appMain [class*="calendarCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="contentCard"],
+html[data-theme="dark"] .appMain [class*="detailCard"],
+html[data-theme="dark"] .appMain [class*="viewCard"],
+html[data-theme="dark"] .appMain [class*="calendarWrapper"],
+html[data-theme="dark"] .appMain [class*="searchFilterBar"],
+html[data-theme="dark"] .appMain [class*="searchBox"],
+html[data-theme="dark"] .appMain [class*="panel"],
+html[data-theme="dark"] .appMain [class*="Panel"],
+html[data-theme="dark"] .appMain [class*="toolbar"],
+html[data-theme="dark"] .appMain [class*="Toolbar"],
+html[data-theme="dark"] .appMain [class*="filterMenu"],
+html[data-theme="dark"] .appMain [class*="filterPanel"],
+html[data-theme="dark"] .appMain [class*="modalContent"],
+html[data-theme="dark"] .appMain [class*="modalBody"],
+html[data-theme="dark"] .appMain [class*="dialog"],
 html[data-theme="dark"] .appMain [class*="heatmapCard"]:not([class*="Header"]):not([class*="Title"]),
 html[data-theme="dark"] .appMain [class*="deadlinesCard"]:not([class*="Header"]),
 html[data-theme="dark"] .appMain [class*="actionCard"]:not([class*="Header"]),
@@ -188,6 +203,41 @@ html[data-theme="dark"] .appMain [class*="noticePanel"] {
   color: var(--sasha-text);
 }
 
+html[data-theme="dark"] .appMain [class*="table"],
+html[data-theme="dark"] .appMain [class*="Table"],
+html[data-theme="dark"] .appMain [class*="tableWrap"],
+html[data-theme="dark"] .appMain [class*="tableContainer"],
+html[data-theme="dark"] .appMain [class*="tableShell"] {
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain :is(th, td, tr),
+html[data-theme="dark"] .appMain [class*="row"],
+html[data-theme="dark"] .appMain [class*="Row"],
+html[data-theme="dark"] .appMain [class*="viewRow"],
+html[data-theme="dark"] .appMain [class*="section"] {
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain :is(h1, h2, h3, h4, h5, h6),
+html[data-theme="dark"] .appMain [class*="title"],
+html[data-theme="dark"] .appMain [class*="Title"],
+html[data-theme="dark"] .appMain [class*="label"],
+html[data-theme="dark"] .appMain [class*="Label"] {
+  color: var(--sasha-text);
+}
+
+html[data-theme="dark"] .appMain [class*="desc"],
+html[data-theme="dark"] .appMain [class*="Desc"],
+html[data-theme="dark"] .appMain [class*="muted"],
+html[data-theme="dark"] .appMain [class*="Muted"],
+html[data-theme="dark"] .appMain [class*="hint"],
+html[data-theme="dark"] .appMain [class*="Hint"],
+html[data-theme="dark"] .appMain [class*="subtitle"],
+html[data-theme="dark"] .appMain [class*="Subtitle"] {
+  color: var(--sasha-muted) !important;
+}
+
 html[data-theme="dark"] .appMain [class*="aggregationBtn"]:not([class*="Active"]),
 html[data-theme="dark"] .appMain [class*="checkboxOption"],
 html[data-theme="dark"] .appMain [class*="consentLabel"],
@@ -203,6 +253,163 @@ html[data-theme="dark"] .appMain [class*="communicationNote"] {
   color: var(--sasha-teal) !important;
 }
 
+html[data-theme="dark"] .appMain [class*="calCell"],
+html[data-theme="dark"] .appMain [class*="calNavBtn"],
+html[data-theme="dark"] .appMain [class*="calTodayBtn"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="calMonthLabel"],
+html[data-theme="dark"] .appMain [class*="calDayNum"] {
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="calDayName"],
+html[data-theme="dark"] .appMain [class*="calLegendItem"] {
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="calCellToday"] {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-teal-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="calCell"]:has([class*="calSlotChip"])::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--sasha-teal-text);
+  box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.14);
+}
+
+html[data-theme="dark"] .appMain [class*="calLegendDot"] {
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  box-shadow: 0 0 0 2px rgba(111, 211, 204, 0.12) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="today"],
+html[data-theme="dark"] .appMain [class*="Today"],
+html[data-theme="dark"] .appMain [class*="currentDay"],
+html[data-theme="dark"] .appMain [class*="CurrentDay"] {
+  border-color: var(--sasha-teal-text) !important;
+  box-shadow: 0 0 0 2px rgba(111, 211, 204, 0.22) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="pageNum"],
+html[data-theme="dark"] .appMain [class*="pageBtn"],
+html[data-theme="dark"] .appMain [class*="pageArrow"],
+html[data-theme="dark"] .appMain [class*="pagination"] button {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="pageNumActive"],
+html[data-theme="dark"] .appMain [class*="pageBtnActive"],
+html[data-theme="dark"] .appMain [class*="activePage"],
+html[data-theme="dark"] .appMain [class*="ActivePage"],
+html[data-theme="dark"] .appMain [class*="pagination"] button[aria-current="page"],
+html[data-theme="dark"] .appMain [class*="pagination"] button[aria-selected="true"] {
+  background: #037f81 !important;
+  border-color: var(--sasha-teal-text) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .appMain .btn-primary,
+html[data-theme="dark"] .appMain [class*="btnPrimary"],
+html[data-theme="dark"] .appMain [class*="primaryBtn"],
+html[data-theme="dark"] .appMain [class*="saveBtn"] {
+  background: #037f81 !important;
+  border-color: #6fd3cc !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.14) !important;
+}
+
+html[data-theme="dark"] .appMain .btn-primary:hover,
+html[data-theme="dark"] .appMain [class*="btnPrimary"]:hover,
+html[data-theme="dark"] .appMain [class*="primaryBtn"]:hover,
+html[data-theme="dark"] .appMain [class*="saveBtn"]:hover {
+  background: #025f61 !important;
+  border-color: var(--sasha-teal-text) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .appMain [class*="modalBox"],
+html[data-theme="dark"] .appMain [class*="modalContent"],
+html[data-theme="dark"] .appMain [class*="dialog"] {
+  border-radius: var(--sasha-card-radius) !important;
+  overflow: hidden !important;
+}
+
+html[data-theme="dark"] .appMain [class*="modalHeader"],
+html[data-theme="dark"] .appMain [class*="modalFooter"] {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="modalHeader"] {
+  border-top-left-radius: inherit !important;
+  border-top-right-radius: inherit !important;
+}
+
+html[data-theme="dark"] .appMain [class*="modalHeader"] :is(h1, h2, h3, p, span),
+html[data-theme="dark"] .appMain [class*="modalFooter"] :is(p, span, strong) {
+  color: inherit !important;
+}
+
+html[data-theme="dark"] .appMain table,
+html[data-theme="dark"] .appMain thead,
+html[data-theme="dark"] .appMain tbody,
+html[data-theme="dark"] .appMain [class*="tableScroll"] {
+  background: var(--sasha-surface) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain table th,
+html[data-theme="dark"] .appMain [class*="table"] th,
+html[data-theme="dark"] .appMain [class*="Table"] th {
+  background: #111923 !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain table td,
+html[data-theme="dark"] .appMain [class*="table"] td,
+html[data-theme="dark"] .appMain [class*="Table"] td {
+  background: transparent !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain table tbody tr:hover,
+html[data-theme="dark"] .appMain [class*="table"] tbody tr:hover,
+html[data-theme="dark"] .appMain [class*="Table"] tbody tr:hover {
+  background: #111923 !important;
+}
+
+html[data-theme="dark"] .appMain [class*="calSlotChip"] {
+  background: #10242c !important;
+  border-color: #435266 !important;
+  color: #e5edf4 !important;
+}
+
+html[data-theme="dark"] .appMain [class*="statusPill"],
+html[data-theme="dark"] .appMain [class*="badge"],
+html[data-theme="dark"] .appMain [class*="Badge"],
+html[data-theme="dark"] .appMain [class*="chip"],
+html[data-theme="dark"] .appMain [class*="Chip"] {
+  background: #123f43 !important;
+  border-color: #278c8e !important;
+  color: #6fd3cc !important;
+}
+
 /* Restore hero stat cards — these live on the teal banner and use glassmorphism */
 html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statCard"],
 html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statCard"]:not([class*="Header"]) {
@@ -216,44 +423,54 @@ html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statLabel"]
   color: #fff !important;
 }
 
-html[data-theme="dark"] .appMain .react-calendar,
-html[data-theme="dark"] .appMain :global(.react-calendar) {
+html[data-theme="dark"] .appMain .react-calendar {
   background: var(--sasha-surface) !important;
   border-color: var(--sasha-border) !important;
   color: var(--sasha-text) !important;
 }
 html[data-theme="dark"] .appMain .react-calendar__tile:not(.react-calendar__tile--active),
-html[data-theme="dark"] .appMain :global(.react-calendar__tile):not(:global(.react-calendar__tile--active)),
-html[data-theme="dark"] .appMain .react-calendar__navigation button,
-html[data-theme="dark"] .appMain :global(.react-calendar__navigation button) {
+html[data-theme="dark"] .appMain .react-calendar__navigation button {
   background: transparent !important;
   color: var(--sasha-text) !important;
 }
 html[data-theme="dark"] .appMain .react-calendar__tile:enabled:hover,
 html[data-theme="dark"] .appMain .react-calendar__tile:enabled:focus,
-html[data-theme="dark"] .appMain :global(.react-calendar__tile:enabled:hover),
-html[data-theme="dark"] .appMain :global(.react-calendar__tile:enabled:focus),
 html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:hover,
-html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:focus,
-html[data-theme="dark"] .appMain :global(.react-calendar__navigation button:enabled:hover),
-html[data-theme="dark"] .appMain :global(.react-calendar__navigation button:enabled:focus) {
+html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:focus {
   background: var(--sasha-surface-soft) !important;
 }
-html[data-theme="dark"] .appMain .react-calendar__month-view__days__day--neighboringMonth,
-html[data-theme="dark"] .appMain :global(.react-calendar__month-view__days__day--neighboringMonth) {
+html[data-theme="dark"] .appMain .react-calendar__month-view__days__day--neighboringMonth {
   color: var(--sasha-muted) !important;
 }
 
-html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([class*="searchInput"]),
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
 html[data-theme="dark"] .appMain select,
-html[data-theme="dark"] .appMain textarea {
+html[data-theme="dark"] .appMain textarea,
+html[data-theme="dark"] .appMain [class*="searchInput"] {
   background: var(--sasha-surface-inset) !important;
   border-color: var(--sasha-border) !important;
   color: var(--sasha-text) !important;
 }
 
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])::placeholder,
+html[data-theme="dark"] .appMain textarea::placeholder,
+html[data-theme="dark"] .appMain [class*="searchInput"]::placeholder {
+  color: #8b98a8 !important;
+}
+
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus,
+html[data-theme="dark"] .appMain select:focus,
+html[data-theme="dark"] .appMain textarea:focus,
+html[data-theme="dark"] .appMain [class*="searchInput"]:focus {
+  background: #111c27 !important;
+  border-color: var(--sasha-teal) !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22) !important;
+}
+
 html[data-theme="dark"] .appMain [class*="pageWrapper"],
-html[data-theme="dark"] .appMain [class*="PageWrapper"] {
+html[data-theme="dark"] .appMain [class*="PageWrapper"],
+html[data-theme="dark"] .appMain [class*="page"],
+html[data-theme="dark"] .appMain [class*="Page"] {
   background: var(--sasha-offwhite) !important;
   color: var(--sasha-text);
 }
@@ -344,15 +561,60 @@ html[data-theme="dark"] .appMain [class*="backBtn"] {
   color: var(--sasha-teal-text);
 }
 
+html[data-theme="dark"] .appMain [class*="overviewCardHeader"],
+html[data-theme="dark"] .appMain [class*="calendarCardHeader"],
+html[data-theme="dark"] .appMain [class*="statusCardHeader"],
+html[data-theme="dark"] .appMain [class*="deadlineCardHeader"],
+html[data-theme="dark"] .appMain [class*="moduleCardHeader"] {
+  background: #037f81 !important;
+  border-color: #037f81 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .appMain [class*="sectionCardHeader"],
+html[data-theme="dark"] .appMain [class*="sectionHeader"] {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="sectionCardBody"],
+html[data-theme="dark"] .appMain [class*="sectionBody"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="btnRefresh"],
+html[data-theme="dark"] .appMain [class*="backBtn"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="btnRefresh"]:hover,
+html[data-theme="dark"] .appMain [class*="backBtn"]:hover {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-teal-text) !important;
+  color: var(--sasha-teal-text) !important;
+}
+
 /* Filter dropdown triggers — use dark surfaces instead of hardcoded white */
-html[data-theme="dark"] .appMain [class*="defaultFilterBtn"] {
+html[data-theme="dark"] .appMain [class*="defaultFilterBtn"],
+html[data-theme="dark"] .appMain [class*="filterMenuBtn"],
+html[data-theme="dark"] .appMain [class*="filterBtn"],
+html[data-theme="dark"] .appMain [class*="filterButton"] {
   background: var(--sasha-surface) !important;
   border-color: var(--sasha-border) !important;
   color: var(--sasha-text) !important;
 }
 
 html[data-theme="dark"] .appMain [class*="defaultFilterBtn"]:hover,
-html[data-theme="dark"] .appMain [class*="defaultFilterBtnActive"] {
+html[data-theme="dark"] .appMain [class*="defaultFilterBtnActive"],
+html[data-theme="dark"] .appMain [class*="filterMenuBtn"]:hover,
+html[data-theme="dark"] .appMain [class*="filterMenuBtnOpen"],
+html[data-theme="dark"] .appMain [class*="filterBtn"]:hover,
+html[data-theme="dark"] .appMain [class*="filterButton"]:hover {
   border-color: var(--sasha-teal-text) !important;
   background: var(--sasha-teal-light) !important;
   color: var(--sasha-teal-text) !important;
@@ -360,6 +622,228 @@ html[data-theme="dark"] .appMain [class*="defaultFilterBtnActive"] {
 
 html[data-theme="dark"] .appMain [class*="defaultFilterValue"] {
   color: var(--sasha-muted) !important;
+}
+
+/* Filter dropdown outputs across admin/case/user/project/volunteer pages */
+html[data-theme="dark"] .appMain [class*="defaultFilterDropdown"],
+html[data-theme="dark"] .appMain [class*="filterDropdown"],
+html[data-theme="dark"] .appMain [class*="filterMenuPanel"],
+html[data-theme="dark"] .appMain [class*="filterPanel"],
+html[data-theme="dark"] .appMain [class*="dropdownPanel"],
+html[data-theme="dark"] .appMain [class*="menuPanel"],
+html[data-theme="dark"] .appMain [class*="dateRangeOptions"],
+html[data-theme="dark"] .appMain [class*="filterFieldsList"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterDropdownHeader"],
+html[data-theme="dark"] .appMain [class*="filterDropdownFooter"],
+html[data-theme="dark"] .appMain [class*="officerSearchWrap"],
+html[data-theme="dark"] .appMain [class*="filterField"] {
+  background: transparent !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterDropdownTitle"],
+html[data-theme="dark"] .appMain [class*="filterFieldLabel"],
+html[data-theme="dark"] .appMain [class*="defaultFilterLabel"] {
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterDropdownHint"],
+html[data-theme="dark"] .appMain [class*="officerEmpty"] {
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="selectOption"],
+html[data-theme="dark"] .appMain [class*="dateRangeOption"],
+html[data-theme="dark"] .appMain [class*="officerOption"] {
+  background: transparent !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="selectOption"]:hover,
+html[data-theme="dark"] .appMain [class*="selectOptionActive"],
+html[data-theme="dark"] .appMain [class*="dateRangeOption"]:hover,
+html[data-theme="dark"] .appMain [class*="dateRangeOptionActive"],
+html[data-theme="dark"] .appMain [class*="officerOption"]:hover,
+html[data-theme="dark"] .appMain [class*="officerOptionActive"] {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-teal) !important;
+  color: var(--sasha-teal-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterDropdownClose"],
+html[data-theme="dark"] .appMain [class*="clearAllBtn"],
+html[data-theme="dark"] .appMain [class*="searchClear"] {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterDropdownClose"]:hover,
+html[data-theme="dark"] .appMain [class*="clearAllBtn"]:hover,
+html[data-theme="dark"] .appMain [class*="searchClear"]:hover {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-teal) !important;
+  color: var(--sasha-teal-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterFieldTextInput"],
+html[data-theme="dark"] .appMain [class*="officerSearchInput"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="filterFieldCheckbox"] {
+  accent-color: var(--sasha-teal);
+}
+
+/* Dark mode: catch inline light utility panels that bypass CSS modules. */
+html[data-theme="dark"] .appMain [style*="background: rgb(249, 250, 251)"],
+html[data-theme="dark"] .appMain [style*="background: #f9fafb"],
+html[data-theme="dark"] .appMain [style*="background:#f9fafb"],
+html[data-theme="dark"] .appMain [style*="background-color: rgb(249, 250, 251)"],
+html[data-theme="dark"] .appMain [style*="background-color: #f9fafb"],
+html[data-theme="dark"] .appMain [style*="backgroundColor: #f9fafb"] {
+  background: #18222d !important;
+  border-color: #354252 !important;
+  color: #e5edf4 !important;
+}
+
+html[data-theme="dark"] .appMain [style*="background: rgb(255, 251, 235)"],
+html[data-theme="dark"] .appMain [style*="background: #fffbeb"],
+html[data-theme="dark"] .appMain [style*="background:#fffbeb"],
+html[data-theme="dark"] .appMain [style*="background-color: rgb(255, 251, 235)"],
+html[data-theme="dark"] .appMain [style*="background-color: #fffbeb"],
+html[data-theme="dark"] .appMain [style*="backgroundColor: #fffbeb"] {
+  background: #2a2418 !important;
+  border-color: #6b5a30 !important;
+  color: #f0d48a !important;
+}
+
+html[data-theme="dark"] .appMain [style*="background: rgb(249, 250, 251)"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background: #f9fafb"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background:#f9fafb"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background-color: rgb(249, 250, 251)"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background-color: #f9fafb"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div) {
+  color: inherit !important;
+}
+
+html[data-theme="dark"] .appMain [style*="background: rgb(255, 251, 235)"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background: #fffbeb"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background:#fffbeb"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background-color: rgb(255, 251, 235)"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div),
+html[data-theme="dark"] .appMain [style*="background-color: #fffbeb"] :is(h1,h2,h3,h4,h5,h6,strong,span,p,div) {
+  color: inherit !important;
+}
+
+/* Unified table pagination indicators across management pages */
+.appMain [class*="pagination"],
+.appMain [class*="paginationBar"] {
+  align-items: center;
+}
+
+.appMain [class*="pagination"] [class*="pageBtn"],
+.appMain [class*="paginationBar"] [class*="pageBtn"],
+.appMain [class*="pagination"] [class*="pageNum"],
+.appMain [class*="paginationBar"] [class*="pageNum"],
+.appMain [class*="pagination"] [class*="pageArrow"],
+.appMain [class*="paginationBar"] [class*="pageArrow"] {
+  min-width: 34px;
+  min-height: 34px;
+  border: 1px solid var(--sasha-border) !important;
+  border-radius: 8px !important;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.appMain [class*="pagination"] [class*="pageBtnActive"],
+.appMain [class*="paginationBar"] [class*="pageBtnActive"],
+.appMain [class*="pagination"] [class*="pageNumActive"],
+.appMain [class*="paginationBar"] [class*="pageNumActive"] {
+  background: var(--sasha-teal) !important;
+  border-color: var(--sasha-teal) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.18) !important;
+  font-weight: 800 !important;
+}
+
+.appMain [class*="pagination"] [class*="pageArrow"]:disabled,
+.appMain [class*="paginationBar"] [class*="pageArrow"]:disabled,
+.appMain [class*="pagination"] button:disabled,
+.appMain [class*="paginationBar"] button:disabled {
+  opacity: 0.38 !important;
+  filter: grayscale(0.35);
+}
+
+html[data-theme="dark"] .appMain [class*="pagination"],
+html[data-theme="dark"] .appMain [class*="paginationBar"] {
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageBtn"],
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageBtn"],
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageNum"],
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageNum"],
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageArrow"],
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageArrow"] {
+  background: #0f1720 !important;
+  border-color: #435266 !important;
+  color: #f3f6f8 !important;
+}
+
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageBtn"]:hover:not(:disabled),
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageBtn"]:hover:not(:disabled),
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageNum"]:hover:not(:disabled),
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageNum"]:hover:not(:disabled),
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageArrow"]:hover:not(:disabled),
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageArrow"]:hover:not(:disabled) {
+  background: #123f43 !important;
+  border-color: #6fd3cc !important;
+  color: #6fd3cc !important;
+}
+
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageBtnActive"],
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageBtnActive"],
+html[data-theme="dark"] .appMain [class*="pagination"] [class*="pageNumActive"],
+html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageNumActive"] {
+  background: #037f81 !important;
+  border-color: #6fd3cc !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.22) !important;
+}
+
+html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchInput"],
+html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"],
+html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchInput"] {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.38) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchInput"]::placeholder,
+html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"]::placeholder,
+html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchInput"]::placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchInput"]:focus,
+html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"]:focus,
+html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchInput"]:focus {
+  background: rgba(255, 255, 255, 0.26) !important;
+  border-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchIcon"],
+html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchIcon"] {
+  color: rgba(255, 255, 255, 0.82) !important;
 }
 
 * {

@@ -56,6 +56,10 @@ function WorkloadCell({ person }) {
 function Pagination({ current, total, totalRecords, pageSize, onChange }) {
   const start = totalRecords === 0 ? 0 : Math.min((current - 1) * pageSize + 1, totalRecords)
   const end = Math.min(current * pageSize, totalRecords)
+  const pages = Array.from({ length: total }, (_, index) => index + 1).filter((pageNumber) => {
+    if (total <= 7) return true
+    return pageNumber === 1 || pageNumber === total || Math.abs(pageNumber - current) <= 1
+  })
 
   return (
     <div className={styles.paginationBar}>
@@ -68,6 +72,25 @@ function Pagination({ current, total, totalRecords, pageSize, onChange }) {
       >
         &lt;
       </button>
+      <div className={styles.pageNumbers}>
+        {pages.map((pageNumber, index) => {
+          const previous = pages[index - 1]
+          const showGap = previous && pageNumber - previous > 1
+          return (
+            <span key={pageNumber} className={styles.pageNumberGroup}>
+              {showGap && <span className={styles.ellipsis}>...</span>}
+              <button
+                type="button"
+                className={`${styles.pageBtn} ${pageNumber === current ? styles.pageBtnActive : ""}`}
+                onClick={() => onChange(pageNumber)}
+                aria-current={pageNumber === current ? "page" : undefined}
+              >
+                {pageNumber}
+              </button>
+            </span>
+          )
+        })}
+      </div>
       <span className={styles.recordCount}>{start}-{end} out of {totalRecords} records</span>
       <button
         type="button"

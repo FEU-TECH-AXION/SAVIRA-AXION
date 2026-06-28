@@ -372,6 +372,80 @@
   color: #991b1b;
 }
 
+:global(html[data-theme="dark"]) .page {
+  background: var(--sasha-page-bg);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .backBtn,
+:global(html[data-theme="dark"]) .iconBtn,
+:global(html[data-theme="dark"]) .tabs button,
+:global(html[data-theme="dark"]) .pagination button {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .backBtn:hover,
+:global(html[data-theme="dark"]) .iconBtn:hover,
+:global(html[data-theme="dark"]) .tabs button:hover,
+:global(html[data-theme="dark"]) .pagination button:hover:not(:disabled) {
+  background: var(--sasha-teal-light);
+  border-color: var(--sasha-teal-text);
+  color: var(--sasha-teal-text);
+}
+
+:global(html[data-theme="dark"]) .toolbar,
+:global(html[data-theme="dark"]) .tableWrap,
+:global(html[data-theme="dark"]) .state {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .searchBox {
+  background: var(--sasha-surface-inset);
+  border-color: var(--sasha-border);
+  color: var(--sasha-muted);
+}
+
+:global(html[data-theme="dark"]) .searchBox input {
+  background: transparent;
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .tabs .activeTab {
+  background: var(--sasha-teal-light);
+  border-color: var(--sasha-teal-text);
+  color: var(--sasha-teal-text);
+}
+
+:global(html[data-theme="dark"]) .recordLabel,
+:global(html[data-theme="dark"]) .table td span,
+:global(html[data-theme="dark"]) .pagination {
+  color: var(--sasha-muted);
+}
+
+:global(html[data-theme="dark"]) .table th {
+  background: var(--sasha-surface-inset);
+  color: var(--sasha-muted);
+}
+
+:global(html[data-theme="dark"]) .table td,
+:global(html[data-theme="dark"]) .table th {
+  border-bottom-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .table td strong {
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .error {
+  background: rgba(127, 29, 29, 0.22);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
 @media (max-width: 850px) {
   .hero,
   .toolbar {

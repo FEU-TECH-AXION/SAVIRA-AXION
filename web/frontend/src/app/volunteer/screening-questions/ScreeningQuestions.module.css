@@ -951,3 +951,91 @@
     justify-content: center;
   }
 }
+
+:global(html[data-theme="dark"]) .page {
+  --text: #f3f6f8;
+  --muted: #b9c4ce;
+  --border: #354252;
+  --teal: #6fd3cc;
+  --teal-dark: #38a6a8;
+  --teal-light: #123f43;
+  background: #121821;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .sectionCard,
+:global(html[data-theme="dark"]) .questionForm,
+:global(html[data-theme="dark"]) .questionCard,
+:global(html[data-theme="dark"]) .versionItem,
+:global(html[data-theme="dark"]) .stateCard,
+:global(html[data-theme="dark"]) .emptyState {
+  background: #18222d;
+  border-color: #354252;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .sectionCardHeader,
+:global(html[data-theme="dark"]) .formActions,
+:global(html[data-theme="dark"]) .groupHeader {
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .questionCardEditing,
+:global(html[data-theme="dark"]) .sectionChoicePanel,
+:global(html[data-theme="dark"]) .versionActive {
+  background: #111923;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .questionCardHidden {
+  background: #0f1720;
+}
+
+:global(html[data-theme="dark"]) .questionContent h3,
+:global(html[data-theme="dark"]) .groupHeader h3,
+:global(html[data-theme="dark"]) .versionTop strong,
+:global(html[data-theme="dark"]) .manageUserIntro strong {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .formGroup input,
+:global(html[data-theme="dark"]) .formGroup textarea,
+:global(html[data-theme="dark"]) .formGroup select,
+:global(html[data-theme="dark"]) .categoryRow input,
+:global(html[data-theme="dark"]) .iconButton,
+:global(html[data-theme="dark"]) .modeTabs button,
+:global(html[data-theme="dark"]) .questionActions button,
+:global(html[data-theme="dark"]) .btnSecondary,
+:global(html[data-theme="dark"]) .addSectionButton,
+:global(html[data-theme="dark"]) .addSectionInline {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .answers span,
+:global(html[data-theme="dark"]) .categoryBadge,
+:global(html[data-theme="dark"]) .requiredBadge,
+:global(html[data-theme="dark"]) .scoreBadge,
+:global(html[data-theme="dark"]) .hiddenBadge {
+  background: #123f43;
+  border-color: #278c8e;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .answers .expectedAnswer {
+  background: #2a2418;
+  border-color: #8a5f3a;
+  color: #f0d48a;
+}
+
+:global(html[data-theme="dark"]) .editBanner,
+:global(html[data-theme="dark"]) .emptySection {
+  background: #2a2418;
+  border-color: #6b5a30;
+}
+
+:global(html[data-theme="dark"]) .editBanner strong,
+:global(html[data-theme="dark"]) .emptySection strong {
+  color: #f0d48a;
+}

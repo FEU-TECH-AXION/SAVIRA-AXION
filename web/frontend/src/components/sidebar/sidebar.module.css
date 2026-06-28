@@ -330,13 +330,14 @@
   color: #9aa8b5 !important;
 }
 
-:global(html[data-theme="dark"]) .subNavItem:hover,
-:global(html[data-theme="dark"]) .subNavItemActive {
+:global(html[data-theme="dark"]) .subNavItem:hover {
+  background: var(--sasha-surface-soft, #111923) !important;
   color: var(--sasha-teal-text, #6fd3cc) !important;
 }
 
 :global(html[data-theme="dark"]) .subNavItemActive {
   background: rgba(111, 211, 204, 0.08) !important;
+  color: var(--sasha-teal-text, #6fd3cc) !important;
 }
 
 :global(html[data-theme="dark"]) .footerPrivacy a:hover {

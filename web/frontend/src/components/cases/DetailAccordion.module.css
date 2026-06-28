@@ -44,3 +44,22 @@
 .content {
   padding-top: 1rem;
 }
+
+:global(html[data-theme="dark"]) .accordion {
+  border-bottom-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .toggle {
+  background: #18222d;
+  border-color: #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .toggle:hover {
+  background: #111923;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .summary {
+  color: #b9c4ce;
+}
