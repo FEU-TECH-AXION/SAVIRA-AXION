@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
+const authorize = require('../middleware/authorize.middleware')
 const { amendCaseFields, createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
 const multer = require('multer');
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
@@ -13,6 +14,7 @@ const withdrawalUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
 });
+const requireCaseAccess = authorize('Admin', 'Case Officer', 'Legal Personnel')
 
 function handleEvidenceUpload(req, res, next) {
   upload.array('files', 10)(req, res, (err) => {
@@ -30,7 +32,7 @@ function handleEvidenceUpload(req, res, next) {
 // !! IMPORTANT: specific routes must come BEFORE /:id or Express will swallow them
 router.get('/heatmap/meta', getHeatmapMeta);   // no auth — static lookup data
 router.get('/heatmap/data', getHeatmapData);
-router.get('/all',        verifyToken, getAllCases);
+router.get('/all',        verifyToken, requireCaseAccess, getAllCases);
 router.get('/my-reports', verifyToken, getUserReports);
 router.post('/submit', verifyToken, handleEvidenceUpload, submitReport);
 
@@ -41,9 +43,9 @@ router.post('/:id/withdraw', verifyToken, withdrawalUpload.single('affidavit'), 
 router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
 router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, dismissDuplicate);
 router.get('/:id/nlp', verifyToken, getNLPAnalysis); 
-router.get('/:id',     getCaseById);
-router.get('/',        getItems);
-router.post('/',       createItem);
-router.patch('/:id', updateItem)
+router.get('/:id',     verifyToken, requireCaseAccess, getCaseById);
+router.get('/',        verifyToken, requireCaseAccess, getItems);
+router.post('/',       verifyToken, authorize('Admin'), createItem);
+router.patch('/:id', verifyToken, requireCaseAccess, updateItem)
 
 module.exports = router

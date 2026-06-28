@@ -6,3 +6,4 @@ const supabase = createClient(
 )
 
 module.exports = supabase
+module.exports.supabaseAdmin = supabase

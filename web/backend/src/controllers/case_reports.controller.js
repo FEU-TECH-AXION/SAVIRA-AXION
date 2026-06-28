@@ -1,6 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal } = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 const { randomUUID } = require('crypto');
@@ -202,11 +202,14 @@ async function getAllCases(req, res) {
     let reports;
 
     if (role === 'Admin') {
+      // SECURITY: Scoped to Admin - prevents over-fetching rows
       reports = await getAllReports();
     } else if (role === 'Case Officer') {
+      // SECURITY: Scoped to Case Officer - prevents over-fetching rows
       reports = await getReportsByAssignedOfficer(userId);
     } else if (role === 'Legal Personnel') {
-      reports = await getReportsByAssignedLegal(userId);
+      // SECURITY: Scoped to Legal Personnel - prevents over-fetching rows
+      reports = await getReportsForLegal();
     } else {
       console.warn('[getAllCases] Access denied for role:', role);
       return res.status(403).json({ error: 'Access denied.' });

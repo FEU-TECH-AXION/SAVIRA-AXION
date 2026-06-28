@@ -3,22 +3,24 @@ const router = express.Router()
 const supabase = require('../config/supabase') // adjust path
 const { getItems, getItem, createItem, updateItem, getMyApplications, getScores, assignAssessors, getRankings, withdrawApplication, undoWithdrawApplication } = require('../controllers/volunteer_applications.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
+const requireCommittee = require('../middleware/requireCommittee.middleware')
 const { getAnalysis } = require('../controllers/volunteer_application_analysis.controller');
 const { getEssayEvaluation, saveEssayEvaluation, getInterviewEvaluation, saveInterviewEvaluation } = require('../controllers/volunteer_application_evaluations.controller')
+const requireMembershipCommittee = requireCommittee(2)
 
 router.get('/my_applications',          verifyToken, getMyApplications)
 router.post('/submit',                  verifyToken, createItem)          
-router.get('/rankings/list',            verifyToken, getRankings)
-router.post('/assignments',             verifyToken, assignAssessors)
-router.get('/:id/essay_evaluation',     verifyToken, getEssayEvaluation)
-router.put('/:id/essay_evaluation',     verifyToken, saveEssayEvaluation)
-router.get('/:id/interview_evaluation', verifyToken, getInterviewEvaluation)
-router.put('/:id/interview_evaluation', verifyToken, saveInterviewEvaluation)
-router.get('/:id/scores',               verifyToken, getScores)
-router.get('/:id/nlp',                  verifyToken, getAnalysis)
+router.get('/rankings/list',            verifyToken, requireMembershipCommittee, getRankings)
+router.post('/assignments',             verifyToken, requireMembershipCommittee, assignAssessors)
+router.get('/:id/essay_evaluation',     verifyToken, requireMembershipCommittee, getEssayEvaluation)
+router.put('/:id/essay_evaluation',     verifyToken, requireMembershipCommittee, saveEssayEvaluation)
+router.get('/:id/interview_evaluation', verifyToken, requireMembershipCommittee, getInterviewEvaluation)
+router.put('/:id/interview_evaluation', verifyToken, requireMembershipCommittee, saveInterviewEvaluation)
+router.get('/:id/scores',               verifyToken, requireMembershipCommittee, getScores)
+router.get('/:id/nlp',                  verifyToken, requireMembershipCommittee, getAnalysis)
 router.post('/:id/withdraw',            verifyToken, withdrawApplication)
 router.post('/:id/undo_withdraw',       verifyToken, undoWithdrawApplication)
-router.get('/:id/status-history', verifyToken, async (req, res) => {
+router.get('/:id/status-history', verifyToken, requireMembershipCommittee, async (req, res) => {
   const { id } = req.params;
 
   const { data, error } = await supabase
@@ -53,8 +55,8 @@ router.get('/:id/status-history', verifyToken, async (req, res) => {
 
   return res.json({ data: formatted });
 });
-router.get('/:id',                      verifyToken, getItem)
-router.put('/:id',                      verifyToken, updateItem)
-router.get('/',                         verifyToken, getItems)
+router.get('/:id',                      verifyToken, requireMembershipCommittee, getItem)
+router.put('/:id',                      verifyToken, requireMembershipCommittee, updateItem)
+router.get('/',                         verifyToken, requireMembershipCommittee, getItems)
 
 module.exports = router
