@@ -117,6 +117,35 @@ const APP_STATUS_DISPLAY = {
   },
 };
 
+const VOLUNTEER_APPLICATION_DRAFT_KEY = "savira_volunteer_application_draft";
+
+function getUserDraftKey(user) {
+  return user?.id || user?.user_id || user?.email || "anonymous";
+}
+
+function getScopedDraftKey(baseKey, user) {
+  return `${baseKey}:${getUserDraftKey(user)}`;
+}
+
+const INITIAL_APPLICANT = {
+  name: "", birthday: "", age: "", gender: "", pronouns: "", organization: "",
+  interview: "", contactNumber: "", email: "",
+  council: "", tenureInScouting: "", rank: "", scoutingMembership: "",
+  organizationType: "", organizationTypeOther: "", orgName: "", orgCity: "", userCity: "",
+};
+
+const INITIAL_SCREENING_QUESTIONS = {
+  survivorDignity: "", confidentialityPolicy: "", noHarassment: "", respectfulComms: "",
+  saferEnvironments: "", advocacySupport: "", enthusiasm: "", professionalism: "",
+  genderAwareness: "", stayInformed: "", openToLearn: "", diverseTeams: "",
+  orientationWilling: "", timeCommitment: "", feedbackWilling: "",
+  withBackground: [], interestedFields: [], hoursPerWeek: "",
+};
+
+const INITIAL_ESSAY = {
+  description: "",
+};
+
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
 function WizardStepper({ current }) {
   return (
@@ -1321,28 +1350,9 @@ export default function CreateApplication({
     fetchScreeningQuestions();
   }, []);
 
-  const [applicant, setApplicant] = useState({
-    name: "", birthday: "", age: "", gender: "", pronouns: "", organization: "",
-    interview: "", contactNumber: "", email: "",
-    // BSP/GSP
-    council: "", tenureInScouting: "", rank: "", scoutingMembership: "",
-    // Other
-    organizationType: "", organizationTypeOther: "", orgName: "", orgCity: "", userCity: "",
-  });
-  const [screeningQuestions, setScreeningQuestions] = useState({
-    // Values & Conduct
-    survivorDignity: "", confidentialityPolicy: "", noHarassment: "", respectfulComms: "",
-    // Advocacy & Participation
-    saferEnvironments: "", advocacySupport: "", enthusiasm: "", professionalism: "",
-    // Learning & Awareness
-    genderAwareness: "", stayInformed: "", openToLearn: "", diverseTeams: "",
-    orientationWilling: "", timeCommitment: "", feedbackWilling: "",
-    // Expertise & Interest (unchanged)
-    withBackground: [], interestedFields: [], hoursPerWeek: "",
-  });
-  const [essay, setEssay] = useState({
-    description: "",
-  });
+  const [applicant, setApplicant] = useState(INITIAL_APPLICANT);
+  const [screeningQuestions, setScreeningQuestions] = useState(INITIAL_SCREENING_QUESTIONS);
+  const [essay, setEssay] = useState(INITIAL_ESSAY);
   // const [credentials, setCredentials] = useState({ files: []});
 
   const totalSteps = STEPS.length;
@@ -1350,11 +1360,29 @@ export default function CreateApplication({
   const isDirty = useRef(false);
   const hasLoadedDraft = useRef(false);
   const hasHydratedProfile = useRef(false);
+  const draftStorageKey = getScopedDraftKey(VOLUNTEER_APPLICATION_DRAFT_KEY, authUser);
+
+  const resetApplicationDraft = () => {
+    localStorage.removeItem(draftStorageKey);
+    localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+    isDirty.current = false;
+    hasLoadedDraft.current = false;
+    hasHydratedProfile.current = true;
+    setStep(0);
+    setStepErrors({});
+    setApplicant(INITIAL_APPLICANT);
+    setScreeningQuestions(INITIAL_SCREENING_QUESTIONS);
+    setScreeningAnswers({});
+    setEssay(INITIAL_ESSAY);
+    setDraftNotice("");
+  };
 
   useEffect(() => {
+    if (authLoading) return undefined;
     const timer = window.setTimeout(() => {
       try {
-        const raw = localStorage.getItem("savira_volunteer_application_draft");
+        localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+        const raw = localStorage.getItem(draftStorageKey);
         if (!raw) return;
         const draft = JSON.parse(raw);
         if (draft.applicant) setApplicant(draft.applicant);
@@ -1370,7 +1398,7 @@ export default function CreateApplication({
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [authLoading, draftStorageKey]);
 
   useEffect(() => {
     if (authLoading || !draftChecked || hasLoadedDraft.current || hasHydratedProfile.current) return;
@@ -1403,7 +1431,7 @@ export default function CreateApplication({
       isDirty.current = true;
     }
     localStorage.setItem(
-      "savira_volunteer_application_draft",
+      draftStorageKey,
       JSON.stringify({
         applicant,
         screeningQuestions,
@@ -1420,6 +1448,7 @@ export default function CreateApplication({
     screeningQuestionSetId,
     essay,
     submitted,
+    draftStorageKey,
   ]);
 
   const clearError = (key) => {
@@ -1497,7 +1526,8 @@ export default function CreateApplication({
 
           if (!res.ok) throw new Error(result.error || 'Submission failed.')
 
-          localStorage.removeItem("savira_volunteer_application_draft");
+          localStorage.removeItem(draftStorageKey);
+          localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
           isDirty.current = false;
           setSubmitted(true)
 
@@ -1557,10 +1587,7 @@ export default function CreateApplication({
             <button
               type="button"
               className={styles.alertAction}
-              onClick={() => {
-                localStorage.removeItem("savira_volunteer_application_draft");
-                setDraftNotice("");
-              }}
+              onClick={resetApplicationDraft}
             >
               Discard Draft
             </button>

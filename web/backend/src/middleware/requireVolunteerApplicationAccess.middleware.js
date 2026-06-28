@@ -3,9 +3,13 @@ const supabase = require('../config/supabase')
 const getApplicationId = (req) =>
   req.params.id || req.params.applicationId || req.body?.volunteer_application_id
 
+const getAuthenticatedUserId = (req) =>
+  req.user?.id || req.user?.user_id || req.user?.sub || null
+
 const requireVolunteerApplicationAccess = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' })
+    const userId = getAuthenticatedUserId(req)
 
     if (req.user.role === 'Admin') return next()
 
@@ -13,7 +17,7 @@ const requireVolunteerApplicationAccess = async (req, res, next) => {
       const { data, error } = await supabase
         .from('staff')
         .select('committee_id')
-        .eq('user_id', req.user.id)
+        .eq('user_id', userId)
         .maybeSingle()
 
       if (!error && data?.committee_id === 2) return next()
@@ -24,7 +28,7 @@ const requireVolunteerApplicationAccess = async (req, res, next) => {
 
     const { data: application, error: applicationError } = await supabase
       .from('volunteer_applications')
-      .select('volunteer_application_id, volunteer_applicant_id')
+      .select('volunteer_application_id, volunteer_applicant_id, email')
       .eq('volunteer_application_id', applicationId)
       .maybeSingle()
 
@@ -38,11 +42,14 @@ const requireVolunteerApplicationAccess = async (req, res, next) => {
       .eq('volunteer_applicant_id', application.volunteer_applicant_id)
       .maybeSingle()
 
-    if (applicantError || !applicant) {
+    if (applicantError) {
       return res.status(404).json({ error: 'Application not found.' })
     }
 
-    if (String(applicant.user_id) !== String(req.user.id)) {
+    const ownsApplicant = applicant && String(applicant.user_id) === String(userId)
+    const ownsEmail = req.user?.email && String(application.email).toLowerCase() === String(req.user.email).toLowerCase()
+
+    if (!ownsApplicant && !ownsEmail) {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
