@@ -223,6 +223,17 @@ async function getNLPAnalysis(req, res) {
   try {
     const { id } = req.params;
     const supabase = require('../config/supabase');
+    const queueAnalysisRetry = async () => {
+      const report = await fetchCaseById(id);
+      if (report?.case_report_id) {
+        runNLPAnalysis({
+          case_report_id: report.case_report_id,
+          incident_description: report.incident_description,
+        });
+        return true;
+      }
+      return false;
+    };
 
     const { data: completedAnalysis, error: completedError } = await supabase
       .from('case_report_analysis')
@@ -254,7 +265,7 @@ async function getNLPAnalysis(req, res) {
 
     const { data: latestAnalysis, error: latestError } = await supabase
       .from('case_report_analysis')
-      .select('analysis_id, case_report_id, status, analyzed_at')
+      .select('*')
       .eq('case_report_id', id)
       .order('analysis_id', { ascending: false })
       .limit(1)
@@ -266,13 +277,7 @@ async function getNLPAnalysis(req, res) {
     }
 
     if (!latestAnalysis) {
-      const report = await fetchCaseById(id);
-      if (report?.case_report_id) {
-        runNLPAnalysis({
-          case_report_id: report.case_report_id,
-          incident_description: report.incident_description,
-        });
-      }
+      await queueAnalysisRetry();
 
       return res.status(202).json({
         status: 'pending',
@@ -281,6 +286,18 @@ async function getNLPAnalysis(req, res) {
     }
 
     if (latestAnalysis.status === 'pending') {
+      const pendingSince = latestAnalysis.created_at || latestAnalysis.updated_at || latestAnalysis.analyzed_at;
+      const pendingAgeMs = pendingSince ? Date.now() - new Date(pendingSince).getTime() : 0;
+      const isStalePending = !pendingSince || (Number.isFinite(pendingAgeMs) && pendingAgeMs > 5 * 60 * 1000);
+
+      if (isStalePending) {
+        await queueAnalysisRetry();
+        return res.status(202).json({
+          status: 'pending',
+          error: 'Previous NLP analysis timed out. A retry has been queued.',
+        });
+      }
+
       return res.status(202).json({
         status: 'pending',
         error: 'NLP analysis is still processing. Please check back shortly.',
@@ -288,13 +305,7 @@ async function getNLPAnalysis(req, res) {
     }
 
     if (latestAnalysis.status === 'failed') {
-      const report = await fetchCaseById(id);
-      if (report?.case_report_id) {
-        runNLPAnalysis({
-          case_report_id: report.case_report_id,
-          incident_description: report.incident_description,
-        });
-      }
+      await queueAnalysisRetry();
 
       return res.status(202).json({
         status: 'pending',

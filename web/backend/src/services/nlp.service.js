@@ -50,6 +50,7 @@ async function runNLPAnalysis(report) {
         pendingAnalysis = await create({
             case_report_id,
             status: 'pending',
+            analyzed_at: new Date().toISOString(),
         });
 
         const response = await fetch(`${NLP_URL}/analyze`, {
