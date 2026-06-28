@@ -12,7 +12,8 @@ import {
   ActivityIndicator,
   Switch,
   Platform,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  useColorScheme
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
@@ -27,6 +28,15 @@ import { POLICIES } from '../../lib/policies';
 import { API_URL } from '../../lib/config';
 
 const INPUT_PLACEHOLDER_COLOR = '#64748b';
+const DISPLAY_PREFS_KEY = 'savira_display_prefs';
+const DEFAULT_DISPLAY_PREFS = {
+  theme: 'system',
+  fontSize: 'md',
+  language: 'en',
+  reducedMotion: false,
+  highContrast: false,
+  screenReaderHints: true,
+};
 TextInput.defaultProps = TextInput.defaultProps || {};
 TextInput.defaultProps.placeholderTextColor = INPUT_PLACEHOLDER_COLOR;
 
@@ -96,6 +106,7 @@ const ISSUE_TYPES = [
 export default function SettingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const systemColorScheme = useColorScheme();
   const [navOpen, setNavOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(params.tab || 'Profile');
   const [loading, setLoading] = useState(true);
@@ -244,8 +255,40 @@ export default function SettingsScreen() {
     theme: 'system', fontSize: 'md', language: 'en', reducedMotion: false, highContrast: false, screenReaderHints: true
   });
 
-  const handleDisplaySave = () => {
-    Alert.alert("Success", "Display preferences saved!");
+  const effectiveTheme = displayPrefs.theme === 'system' ? systemColorScheme || 'light' : displayPrefs.theme;
+  const displayColors = displayPrefs.highContrast
+    ? { bg: '#ffffff', card: '#ffffff', text: '#000000', muted: '#111827', border: '#111827', primary: '#005f61' }
+    : effectiveTheme === 'dark'
+      ? { bg: '#0f172a', card: '#111827', text: '#f8fafc', muted: '#cbd5e1', border: '#334155', primary: '#2dd4bf' }
+      : { bg: COLORS.bg, card: COLORS.card, text: COLORS.text, muted: COLORS.muted, border: COLORS.border, primary: COLORS.primary };
+  const fontScale = displayPrefs.fontSize === 'lg' ? 1.12 : displayPrefs.fontSize === 'sm' ? 0.94 : 1;
+  const displayStyles = {
+    page: { backgroundColor: displayColors.bg },
+    section: { backgroundColor: displayColors.card, borderColor: displayColors.border, borderWidth: displayPrefs.highContrast ? 1 : 0 },
+    text: { color: displayColors.text },
+    muted: { color: displayColors.muted },
+  };
+
+  useEffect(() => {
+    const loadDisplayPrefs = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(DISPLAY_PREFS_KEY);
+        if (raw) setDisplayPrefs({ ...DEFAULT_DISPLAY_PREFS, ...JSON.parse(raw) });
+      } catch {
+        // Keep defaults when saved preferences are unavailable.
+      }
+    };
+
+    loadDisplayPrefs();
+  }, []);
+
+  const handleDisplaySave = async () => {
+    try {
+      await AsyncStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify({ ...DEFAULT_DISPLAY_PREFS, ...displayPrefs }));
+      Alert.alert("Success", "Display preferences saved!");
+    } catch {
+      Alert.alert("Error", "Display preferences could not be saved on this device.");
+    }
   };
 
   // ── Report a Problem State ──────────────────────────
@@ -302,7 +345,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.container, displayStyles.page]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -325,13 +368,13 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Profile Card Overlay ────────────────────────── */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, displayStyles.section]}>
           <View style={styles.profileAvatar}>
             <Ionicons name="person" size={34} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>{user ? `${user.first_name || 'Test'} ${user.last_name || 'User'}`.trim() : 'Test User'}</Text>
-            <Text style={styles.profileEmail}>{user?.email}</Text>
+            <Text style={[styles.profileName, displayStyles.text, { fontSize: 18 * fontScale }]}>{user ? `${user.first_name || 'Test'} ${user.last_name || 'User'}`.trim() : 'Test User'}</Text>
+            <Text style={[styles.profileEmail, displayStyles.muted, { fontSize: 13 * fontScale }]}>{user?.email}</Text>
           </View>
           <Pressable style={styles.editBtn}>
             <Feather name="edit-2" size={15} color={COLORS.primary} />
@@ -595,32 +638,46 @@ export default function SettingsScreen() {
         {/* ======================= DISPLAY ======================= */}
         {activeTab === 'Display' && (
           <View>
-            <View style={styles.section}>
-               <Text style={styles.sectionTitle}>Theme</Text>
+            <View style={[styles.section, displayStyles.section]}>
+               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Theme</Text>
                <View style={styles.themeRow}>
                  {[{id:'light', label:'Light', icon:'sun'}, {id:'dark', label:'Dark', icon:'moon'}, {id:'system', label:'System', icon:'monitor'}].map(t => (
-                   <Pressable key={t.id} style={[styles.themeCard, displayPrefs.theme === t.id && styles.themeCardActive]} onPress={() => setDisplayPrefs({...displayPrefs, theme: t.id})}>
-                     <Feather name={t.icon} size={24} color={displayPrefs.theme === t.id ? COLORS.primary : COLORS.muted} />
-                     <Text style={[styles.themeText, displayPrefs.theme === t.id && styles.themeTextActive]}>{t.label}</Text>
+                   <Pressable
+                     key={t.id}
+                     accessibilityRole="button"
+                     accessibilityLabel={displayPrefs.screenReaderHints ? `Use ${t.label.toLowerCase()} theme for display preferences` : t.label}
+                     accessibilityState={{ selected: displayPrefs.theme === t.id }}
+                     style={[styles.themeCard, displayPrefs.theme === t.id && styles.themeCardActive]}
+                     onPress={() => setDisplayPrefs({...displayPrefs, theme: t.id})}
+                   >
+                     <Feather name={t.icon} size={24} color={displayPrefs.theme === t.id ? displayColors.primary : displayColors.muted} />
+                     <Text style={[styles.themeText, displayStyles.muted, displayPrefs.theme === t.id && styles.themeTextActive, { fontSize: 13 * fontScale }]}>{t.label}</Text>
                    </Pressable>
                  ))}
                </View>
             </View>
 
-            <View style={styles.section}>
-               <Text style={styles.sectionTitle}>Text & Readability</Text>
-               <Text style={styles.fieldLabel}>Font size</Text>
+            <View style={[styles.section, displayStyles.section]}>
+               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Text & Readability</Text>
+               <Text style={[styles.fieldLabel, displayStyles.text, { fontSize: 13 * fontScale }]}>Font size</Text>
                <View style={styles.segmentGroup}>
                  {[{id:'sm', l:'Small'}, {id:'md', l:'Default'}, {id:'lg', l:'Large'}].map(f => (
-                   <Pressable key={f.id} style={[styles.segItem, displayPrefs.fontSize === f.id && styles.segItemActive]} onPress={() => setDisplayPrefs({...displayPrefs, fontSize: f.id})}>
-                     <Text style={[styles.segItemText, displayPrefs.fontSize === f.id && styles.segItemTextActive]}>{f.l}</Text>
+                   <Pressable
+                     key={f.id}
+                     accessibilityRole="button"
+                     accessibilityLabel={displayPrefs.screenReaderHints ? `Set font size to ${f.l.toLowerCase()}` : f.l}
+                     accessibilityState={{ selected: displayPrefs.fontSize === f.id }}
+                     style={[styles.segItem, displayPrefs.fontSize === f.id && styles.segItemActive]}
+                     onPress={() => setDisplayPrefs({...displayPrefs, fontSize: f.id})}
+                   >
+                     <Text style={[styles.segItemText, displayPrefs.fontSize === f.id && styles.segItemTextActive, { fontSize: 13 * fontScale }]}>{f.l}</Text>
                    </Pressable>
                  ))}
                </View>
             </View>
 
-            <View style={styles.section}>
-               <Text style={styles.sectionTitle}>Accessibility</Text>
+            <View style={[styles.section, displayStyles.section]}>
+               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Accessibility</Text>
                {[
                  { key: 'reducedMotion', title: 'Reduce motion', desc: 'Minimizes animations.' },
                  { key: 'highContrast', title: 'High contrast', desc: 'Increases contrast between text and backgrounds.' },
@@ -628,13 +685,14 @@ export default function SettingsScreen() {
                ].map(({key, title, desc}) => (
                  <View key={key} style={styles.prefRow}>
                    <View style={{ flex: 1, paddingRight: 10 }}>
-                     <Text style={styles.prefTitle}>{title}</Text>
-                     <Text style={styles.prefDesc}>{desc}</Text>
+                     <Text style={[styles.prefTitle, displayStyles.text, { fontSize: 15 * fontScale }]}>{title}</Text>
+                     <Text style={[styles.prefDesc, displayStyles.muted, { fontSize: 13 * fontScale }]}>{desc}</Text>
                    </View>
                    <Switch 
                      value={displayPrefs[key]} 
+                     accessibilityLabel={displayPrefs.screenReaderHints ? `${title}. ${desc}` : title}
                      onValueChange={(val) => setDisplayPrefs({...displayPrefs, [key]: val})}
-                     trackColor={{ false: '#cbd5e1', true: COLORS.primary }}
+                     trackColor={{ false: '#cbd5e1', true: displayColors.primary }}
                    />
                  </View>
                ))}

@@ -7,7 +7,7 @@
 /* ── Page shell ─────────────────────────────────────────────── */
 .page {
   min-height: 100vh;
-  background: #f4f6f8;
+  background: var(--settings-page-bg);
   padding-bottom: 4rem;
 }
 
@@ -51,7 +51,7 @@
   left: 0;
   right: 0;
   height: 40px;
-  background: #f4f6f8;
+  background: var(--settings-page-bg);
   clip-path: ellipse(55% 100% at 50% 100%);
   z-index: 2;
 }
@@ -204,11 +204,11 @@
 .tabs {
   display: flex;
   gap: 0.35rem;
-  background: #fff;
+  background: var(--settings-card-bg);
   border-radius: 12px 12px 0 0;
   padding: 0.5rem 0.75rem 0;
-  border-bottom: 1px solid #e8ecf0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-bottom: 1px solid var(--settings-border);
+  box-shadow: var(--settings-shadow);
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -227,7 +227,7 @@
   background: transparent;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #666;
+  color: var(--settings-muted, #666);
   border-radius: 8px 8px 0 0;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
@@ -237,14 +237,238 @@
 }
 
 .tab:hover {
-  color: #037F81;
-  background: #f0fafa;
+  color: var(--settings-accent, #037F81);
+  background: var(--settings-hover-bg, #f0fafa);
 }
 
 .tabActive {
-  color: #037F81;
-  border-bottom-color: #037F81;
+  color: var(--settings-accent, #037F81);
+  border-bottom-color: var(--settings-accent, #037F81);
   font-weight: 600;
+}
+
+:global(html[data-theme="dark"]) .hero::after {
+  background: var(--settings-page-bg);
+}
+
+:global(html[data-theme="dark"]) .page select option {
+  background: var(--settings-card-bg);
+  color: var(--settings-input-text);
+}
+
+:global(html[data-theme="dark"]) .tabs {
+  background: var(--settings-card-bg) !important;
+  border-bottom-color: var(--settings-border) !important;
+  box-shadow: var(--settings-shadow) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNav, .policyContent, .policyLink, .sessionRow, .dangerPanel) {
+  background: var(--settings-card-bg-soft) !important;
+  border-color: var(--settings-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="subNav"], [class*="policyContent"], [class*="policyLink"], [class*="sessionRow"], [class*="dangerPanel"]) {
+  background: var(--settings-card-bg-soft) !important;
+  border-color: var(--settings-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, p, label, strong, .sectionTitle, .cardTitle, .policyTitle, .toggleRowLabel, .notifLabel, .privacyLabel, .sessionDevice, .fieldLabel) {
+  color: var(--settings-text);
+}
+
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, p, label, strong, [class*="sectionTitle"], [class*="cardTitle"], [class*="policyTitle"], [class*="toggleRowLabel"], [class*="notifLabel"], [class*="privacyLabel"], [class*="sessionDevice"], [class*="fieldLabel"]) {
+  color: var(--settings-text);
+}
+
+:global(html[data-theme="dark"]) .page :is(.cardDesc, .fieldHint, .policyContent p, .policyContent li, .policyLink span, .toggleRowDesc, .notifDesc, .privacyDesc, .sessionDetail, .placeholderNote, .infoLabel, .faqAnswer) {
+  color: var(--settings-muted) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="cardDesc"], [class*="fieldHint"], [class*="policyContent"] p, [class*="policyContent"] li, [class*="policyLink"] span, [class*="toggleRowDesc"], [class*="notifDesc"], [class*="privacyDesc"], [class*="sessionDetail"], [class*="placeholderNote"], [class*="infoLabel"], [class*="faqAnswer"]) {
+  color: var(--settings-muted) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.sectionTitle, .cardTitle, .policyContent h3, .policyLink strong, .infoItem, .emailLink) {
+  color: var(--settings-accent) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="sectionTitle"], [class*="cardTitle"], [class*="policyContent"] h3, [class*="policyLink"] strong, [class*="infoItem"], [class*="emailLink"]) {
+  color: var(--settings-accent) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, .inlineSelect, .searchInput) {
+  background: var(--settings-control-bg) !important;
+  border-color: #435266 !important;
+  color: var(--settings-input-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, [class*="inlineSelect"], [class*="searchInput"]) {
+  background: var(--settings-control-bg) !important;
+  border-color: #435266 !important;
+  color: var(--settings-input-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, .inlineSelect, .searchInput):focus,
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, [class*="inlineSelect"], [class*="searchInput"]):focus {
+  background: var(--settings-control-bg-focus) !important;
+  border-color: var(--settings-accent) !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.18) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNavItem, .policySubNavItem, [class*="subNavItem"]:not([class*="Active"]), [class*="policySubNavItem"]:not([class*="Active"])) {
+  color: #9aa8b5 !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNavItemActive, .policySubNavItemActive, .sessionBadge, .issueChipActive, .attachmentRow, .flashSuccess) {
+  background: #123f43 !important;
+  border-color: var(--settings-accent-solid) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="subNavItemActive"], [class*="policySubNavItemActive"], [class*="sessionBadge"], [class*="issueChipActive"], [class*="attachmentRow"], [class*="flashSuccess"]) {
+  background: #123f43 !important;
+  border-color: var(--settings-accent-solid) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNavItem:hover, .policySubNavItem:hover, .issueChip:hover, .attachBtn:hover) {
+  background: var(--settings-hover-bg) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnPrimary) {
+  background: var(--settings-accent-solid) !important;
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="btnPrimary"]) {
+  background: var(--settings-accent-solid) !important;
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnPrimary:hover) {
+  background: var(--settings-accent-strong) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnSecondary, [class*="btnSecondary"]) {
+  background: var(--settings-btn-secondary-bg) !important;
+  border-color: var(--settings-accent) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnSecondary:hover, [class*="btnSecondary"]:hover) {
+  background: var(--settings-hover-bg) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnDanger, [class*="btnDanger"]) {
+  background: var(--settings-danger-bg) !important;
+  border-color: var(--settings-danger-border) !important;
+  color: var(--settings-danger-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnDanger:hover, [class*="btnDanger"]:hover) {
+  background: #331818 !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.badge, [class*="badge"]) {
+  background: var(--settings-badge-bg) !important;
+  color: var(--settings-muted-light) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.sectionTitle, [class*="sectionTitle"]) {
+  border-bottom-color: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.issueChip, .attachBtn, [class*="issueChip"], [class*="attachBtn"]) {
+  background: var(--settings-chip-bg) !important;
+  border-color: var(--settings-border) !important;
+  color: var(--settings-muted) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.issueChip:hover, .attachBtn:hover, [class*="issueChip"]:hover, [class*="attachBtn"]:hover) {
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.warnNote, [class*="warnNote"]) {
+  background: var(--settings-warn-bg) !important;
+  border-color: var(--settings-warn-border) !important;
+  color: var(--settings-warn-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.flashError, [class*="flashError"]) {
+  background: var(--settings-error-bg) !important;
+  border-color: var(--settings-error-border) !important;
+  color: #f5a8a0 !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.dangerPanel, [class*="dangerPanel"]) {
+  background: var(--settings-danger-bg) !important;
+  border-color: var(--settings-danger-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.dangerPanelTitle, .dangerTitle, [class*="dangerPanelTitle"], [class*="dangerTitle"]) {
+  color: var(--settings-danger-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.infoGrid, [class*="infoGrid"]) {
+  border-top-color: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.infoValue, [class*="infoValue"]) {
+  color: var(--settings-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.navDivider, [class*="navDivider"]) {
+  background: var(--settings-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.faqItem, .notifRow, .privacyRow, .toggleRow, [class*="faqItem"], [class*="notifRow"], [class*="privacyRow"], [class*="toggleRow"]) {
+  border-color: var(--settings-row-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.faqQuestion, [class*="faqQuestion"]) {
+  color: var(--settings-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.faqChevron, [class*="faqChevron"]) {
+  color: var(--settings-muted-light) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.eyeBtn, [class*="eyeBtn"]) {
+  color: var(--settings-muted-light) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.eyeBtn:hover, [class*="eyeBtn"]:hover) {
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.toggle, [class*="toggle"]) {
+  background: var(--settings-toggle-bg) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.toggleKnob, [class*="toggleKnob"]) {
+  background: var(--settings-toggle-knob) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.policyContent hr, [class*="policyContent"] hr) {
+  background: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.policySection, [class*="policySection"]) {
+  border-bottom-color: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.policyContent strong, [class*="policyContent"] strong) {
+  color: var(--settings-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.deactivateNavItem, [class*="deactivateNavItem"]) {
+  color: var(--settings-danger-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.deactivateNavItem:hover, .deactivateNavItemActive, [class*="deactivateNavItem"]:hover, [class*="deactivateNavItemActive"]) {
+  background: var(--settings-danger-bg) !important;
+  color: var(--settings-danger-text) !important;
 }
 
 /* ── Responsive ─────────────────────────────────────────────── */

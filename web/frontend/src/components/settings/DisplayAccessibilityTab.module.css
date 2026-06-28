@@ -10,26 +10,33 @@
 }
 
 .card {
-  background: #fff;
-  border-radius: 14px;
+  background: var(--settings-card-bg);
+  border: 1px solid var(--settings-border);
+  border-radius: 8px;
   padding: 1.75rem 2rem 2rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  box-shadow: var(--settings-shadow);
 }
 
-.wrap > .card:first-child { border-radius: 0 0 14px 14px; }
+:global(html[data-theme="dark"]) .card {
+  background: var(--settings-card-bg);
+  border-color: var(--settings-border);
+  box-shadow: var(--settings-shadow);
+}
+
+.wrap > .card:first-child { border-radius: 0 0 8px 8px; }
 
 .cardTitle {
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #037F81;
+  color: var(--settings-accent);
   margin-bottom: 0.5rem;
 }
 
 .cardDesc {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--settings-muted);
   margin: 0 0 1.25rem;
   line-height: 1.5;
 }
@@ -47,22 +54,22 @@
   align-items: center;
   gap: 0.5rem;
   padding: 1.25rem 0.75rem;
-  border: 1.5px solid #dde3ea;
-  border-radius: 12px;
-  background: #fafafa;
-  color: #555;
+  border: 1.5px solid var(--settings-border);
+  border-radius: 8px;
+  background: var(--settings-control-bg);
+  color: var(--settings-muted);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.18s, background 0.18s, color 0.18s;
 }
 
-.themeCard:hover { border-color: #037F81; color: #037F81; }
+.themeCard:hover { border-color: var(--settings-accent); color: var(--settings-accent); }
 
 .themeCardActive {
-  border-color: #037F81;
-  background: #e6f9f5;
-  color: #037F81;
+  border-color: var(--settings-accent);
+  background: var(--settings-accent-soft);
+  color: var(--settings-accent-on-soft);
 }
 
 /* ── Field / select ─────────────────────────────────────────── */
@@ -73,7 +80,7 @@
   display: block;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #444;
+  color: var(--settings-text-secondary);
   margin-bottom: 0.5rem;
 }
 
@@ -81,24 +88,24 @@
   width: 100%;
   max-width: 280px;
   padding: 0.6rem 0.85rem;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: #222;
-  background: #fafafa;
+  color: var(--settings-input-text);
+  background: var(--settings-control-bg);
   outline: none;
 }
 
 .select:focus {
-  border-color: #037F81;
+  border-color: var(--settings-accent);
   box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
-  background: #fff;
+  background: var(--settings-control-bg-focus);
 }
 
 /* ── Segmented control (font size) ─────────────────────────── */
 .segmentGroup {
   display: inline-flex;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -106,23 +113,26 @@
 .segmentBtn {
   padding: 0.5rem 0.95rem;
   border: none;
-  background: #fafafa;
+  background: var(--settings-control-bg);
   font-size: 0.8rem;
   font-weight: 600;
-  color: #666;
+  color: var(--settings-muted);
   cursor: pointer;
-  border-right: 1px solid #dde3ea;
+  border-right: 1px solid var(--settings-border);
   transition: background 0.15s, color 0.15s;
 }
 
 .segmentBtn:last-child { border-right: none; }
-.segmentBtn:hover { background: #f0fafa; color: #037F81; }
+.segmentBtn:hover { background: var(--settings-hover-bg); color: var(--settings-accent); }
 
 .segmentBtnActive {
-  background: #037F81;
+  background: var(--settings-accent-solid);
   color: #fff;
 }
-.segmentBtnActive:hover { background: #037F81; color: #fff; }
+.segmentBtnActive:hover {
+  background: var(--settings-accent-solid);
+  color: #fff;
+}
 
 /* ── Toggle rows ────────────────────────────────────────────── */
 .toggleRow {
@@ -130,26 +140,28 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--settings-row-border);
   cursor: pointer;
 }
 .toggleRow:last-child { border-bottom: none; }
 
-.toggleRowLabel { font-size: 0.9rem; font-weight: 600; color: #222; margin: 0 0 0.2rem; }
-.toggleRowDesc { font-size: 0.8rem; color: #777; margin: 0; max-width: 420px; }
+.toggleRowLabel { font-size: 0.9rem; font-weight: 600; color: var(--settings-text); margin: 0; line-height: 1.3; }
+.toggleRowDesc { font-size: 0.8rem; color: var(--settings-muted); margin: 0.15rem 0 0; max-width: 420px; line-height: 1.45; }
 
 .toggle {
   width: 44px;
   height: 24px;
+  border: none;
+  padding: 0;
   border-radius: 999px;
-  background: #d4d8dd;
+  background: var(--settings-toggle-bg);
   position: relative;
   flex-shrink: 0;
   transition: background 0.2s;
   cursor: pointer;
 }
-.toggleOn { background: #037F81; }
+.toggleOn { background: var(--settings-accent-solid); }
 
 .toggleKnob {
   position: absolute;
@@ -158,18 +170,26 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--settings-toggle-knob);
   transition: transform 0.2s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .toggleOn .toggleKnob { transform: translateX(20px); }
+
+.toggle:focus-visible,
+.themeCard:focus-visible,
+.segmentBtn:focus-visible,
+.btnPrimary:focus-visible {
+  outline: 3px solid rgba(224, 96, 48, 0.45);
+  outline-offset: 2px;
+}
 
 /* ── Actions ────────────────────────────────────────────────── */
 .formActions { display: flex; justify-content: flex-end; }
 
 .btnPrimary {
   padding: 0.65rem 2rem;
-  background: #037F81;
+  background: var(--settings-accent-solid);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -178,7 +198,7 @@
   cursor: pointer;
   transition: background 0.18s, transform 0.1s;
 }
-.btnPrimary:hover { background: #025f61; transform: translateY(-1px); }
+.btnPrimary:hover { background: var(--settings-accent-strong); transform: translateY(-1px); }
 
 /* ── Flash ──────────────────────────────────────────────────── */
 .flashSuccess {
@@ -189,9 +209,9 @@
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
-  background: #e6f9f5;
-  color: #037F81;
-  border: 1px solid #a7e9d8;
+  background: var(--settings-success-bg);
+  color: var(--settings-accent-on-soft);
+  border: 1px solid var(--settings-success-border);
   animation: slideDown 0.25s ease;
 }
 
@@ -206,4 +226,8 @@
   .themeGrid { grid-template-columns: 1fr; }
   .segmentGroup { flex-wrap: wrap; width: 100%; }
   .segmentBtn { flex: 1; }
+}
+
+:global(html[data-theme="dark"]) .themeCardActive {
+  color: var(--settings-accent-on-soft);
 }

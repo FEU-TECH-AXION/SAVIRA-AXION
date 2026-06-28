@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FiSun, FiMoon, FiMonitor, FiCheck } from "react-icons/fi";
+import { applyDisplayPrefs, readDisplayPrefs, saveDisplayPrefs } from "@/lib/displayPreferences";
 import styles from "./DisplayAccessibilityTab.module.css";
 
 const THEME_OPTIONS = [
@@ -23,24 +24,19 @@ const LANGUAGES = [
 ];
 
 export default function DisplayAccessibilityTab() {
-  const [theme, setTheme] = useState("system");
-  const [fontSize, setFontSize] = useState("md");
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const [highContrast, setHighContrast] = useState(false);
-  const [screenReaderHints, setScreenReaderHints] = useState(true);
-  const [language, setLanguage] = useState("en");
+  const [prefs, setPrefs] = useState(() => readDisplayPrefs());
   const [saved, setSaved] = useState(false);
 
+  const updatePrefs = (updates) => {
+    setPrefs((current) => {
+      const next = { ...current, ...updates };
+      applyDisplayPrefs(next);
+      return next;
+    });
+  };
+
   const handleSave = () => {
-    // Persisted via a settings endpoint once available; for now reflected locally.
-    try {
-      localStorage.setItem(
-        "savira_display_prefs",
-        JSON.stringify({ theme, fontSize, reducedMotion, highContrast, screenReaderHints, language })
-      );
-    } catch {
-      // localStorage may be unavailable (private mode); fail silently.
-    }
+    saveDisplayPrefs(prefs);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -59,8 +55,9 @@ export default function DisplayAccessibilityTab() {
             <button
               key={id}
               type="button"
-              className={`${styles.themeCard} ${theme === id ? styles.themeCardActive : ""}`}
-              onClick={() => setTheme(id)}
+              aria-pressed={prefs.theme === id}
+              className={`${styles.themeCard} ${prefs.theme === id ? styles.themeCardActive : ""}`}
+              onClick={() => updatePrefs({ theme: id })}
             >
               <Icon size={20} />
               <span>{label}</span>
@@ -79,8 +76,9 @@ export default function DisplayAccessibilityTab() {
               <button
                 key={id}
                 type="button"
-                className={`${styles.segmentBtn} ${fontSize === id ? styles.segmentBtnActive : ""}`}
-                onClick={() => setFontSize(id)}
+                aria-pressed={prefs.fontSize === id}
+                className={`${styles.segmentBtn} ${prefs.fontSize === id ? styles.segmentBtnActive : ""}`}
+                onClick={() => updatePrefs({ fontSize: id })}
               >
                 {label}
               </button>
@@ -92,8 +90,8 @@ export default function DisplayAccessibilityTab() {
           <label className={styles.fieldLabel}>Language</label>
           <select
             className={styles.select}
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
+            value={prefs.language}
+            onChange={(e) => updatePrefs({ language: e.target.value })}
           >
             {LANGUAGES.map(({ id, label }) => (
               <option key={id} value={id}>{label}</option>
@@ -110,12 +108,14 @@ export default function DisplayAccessibilityTab() {
             <p className={styles.toggleRowLabel}>Reduce motion</p>
             <p className={styles.toggleRowDesc}>Minimizes animations and transitions throughout the app.</p>
           </div>
-          <div
-            className={`${styles.toggle} ${reducedMotion ? styles.toggleOn : ""}`}
-            onClick={() => setReducedMotion((v) => !v)}
+          <button
+            type="button"
+            aria-pressed={prefs.reducedMotion}
+            className={`${styles.toggle} ${prefs.reducedMotion ? styles.toggleOn : ""}`}
+            onClick={() => updatePrefs({ reducedMotion: !prefs.reducedMotion })}
           >
             <div className={styles.toggleKnob} />
-          </div>
+          </button>
         </label>
 
         <label className={styles.toggleRow}>
@@ -123,12 +123,14 @@ export default function DisplayAccessibilityTab() {
             <p className={styles.toggleRowLabel}>High contrast</p>
             <p className={styles.toggleRowDesc}>Increases contrast between text and backgrounds for better readability.</p>
           </div>
-          <div
-            className={`${styles.toggle} ${highContrast ? styles.toggleOn : ""}`}
-            onClick={() => setHighContrast((v) => !v)}
+          <button
+            type="button"
+            aria-pressed={prefs.highContrast}
+            className={`${styles.toggle} ${prefs.highContrast ? styles.toggleOn : ""}`}
+            onClick={() => updatePrefs({ highContrast: !prefs.highContrast })}
           >
             <div className={styles.toggleKnob} />
-          </div>
+          </button>
         </label>
 
         <label className={styles.toggleRow}>
@@ -136,12 +138,14 @@ export default function DisplayAccessibilityTab() {
             <p className={styles.toggleRowLabel}>Extended screen reader labels</p>
             <p className={styles.toggleRowDesc}>Adds more descriptive labels for screen reader and assistive technology users.</p>
           </div>
-          <div
-            className={`${styles.toggle} ${screenReaderHints ? styles.toggleOn : ""}`}
-            onClick={() => setScreenReaderHints((v) => !v)}
+          <button
+            type="button"
+            aria-pressed={prefs.screenReaderHints}
+            className={`${styles.toggle} ${prefs.screenReaderHints ? styles.toggleOn : ""}`}
+            onClick={() => updatePrefs({ screenReaderHints: !prefs.screenReaderHints })}
           >
             <div className={styles.toggleKnob} />
-          </div>
+          </button>
         </label>
       </div>
 

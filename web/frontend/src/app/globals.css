@@ -2,6 +2,8 @@
 
 :root {
   --sasha-teal: #037F81;
+  --sasha-teal-text: #037F81;
+  --sasha-teal-heading: #037F81;
   --sasha-teal-dark: #025f61;
   --sasha-orange: #E06030;
   --sasha-light-orange: #ff8a65;
@@ -10,14 +12,62 @@
   --sasha-offwhite: #f7f7f7;
   --sasha-text: #222222;
   --sasha-muted: #555555;
+  --sasha-surface: #ffffff;
+  --sasha-surface-soft: #f5f7f8;
+  --sasha-surface-inset: #fafafa;
+  --sasha-border: #e5e7eb;
+  --sasha-teal-light: #e1f5f5;
+  --sasha-card-radius: 14px;
   --navbar-height: 64px;
   --app-safe-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
+  --app-font-scale: 1;
+
+  /* Settings page surfaces (light) */
+  --settings-page-bg: #f4f6f8;
+  --settings-card-bg: #ffffff;
+  --settings-card-bg-soft: #fafbfc;
+  --settings-control-bg: #fafafa;
+  --settings-control-bg-focus: #ffffff;
+  --settings-border: #dde3ea;
+  --settings-border-soft: #edf2f7;
+  --settings-row-border: #f0f0f0;
+  --settings-text: #222222;
+  --settings-text-secondary: #444444;
+  --settings-muted: #666666;
+  --settings-muted-light: #888888;
+  --settings-input-text: #222222;
+  --settings-accent: #037F81;
+  --settings-accent-solid: #037F81;
+  --settings-accent-strong: #025f61;
+  --settings-accent-soft: #e6f9f5;
+  --settings-accent-on-soft: #037F81;
+  --settings-hover-bg: #f0fafa;
+  --settings-hover-bg-strong: #eef6f6;
+  --settings-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  --settings-badge-bg: #f0f0f0;
+  --settings-toggle-bg: #d4d8dd;
+  --settings-toggle-knob: #ffffff;
+  --settings-danger-bg: #fff8f7;
+  --settings-danger-border: #f5c6c2;
+  --settings-danger-text: #b83a2f;
+  --settings-warn-bg: #fff8e8;
+  --settings-warn-border: #f3deac;
+  --settings-warn-text: #8a6d1f;
+  --settings-success-bg: #e6f9f5;
+  --settings-success-border: #a7e9d8;
+  --settings-error-bg: #fff0ef;
+  --settings-error-border: #f5c6c2;
+  --settings-btn-secondary-bg: transparent;
+  --settings-chip-bg: #fafafa;
+  --settings-panel-bg: #fafcfc;
+  --settings-panel-border: #e0e8e7;
 }
 
 /* Dark mode intentionally disabled — app uses a fixed light color scheme */
 
 html {
   height: 100%;
+  font-size: calc(16px * var(--app-font-scale));
 }
 
 html,
@@ -37,9 +87,279 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html[data-font-size="sm"] { --app-font-scale: 0.95; }
+html[data-font-size="lg"] { --app-font-scale: 1.08; }
+html[data-font-size="xl"] { --app-font-scale: 1.16; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --sasha-offwhite: #121821;
+  --sasha-text: #f3f6f8;
+  --sasha-muted: #b9c4ce;
+  --sasha-surface: #18222d;
+  --sasha-surface-soft: #111923;
+  --sasha-surface-inset: #0f1720;
+  --sasha-border: #354252;
+  --sasha-teal-light: #123f43;
+  --sasha-teal: #38a6a8;
+  --sasha-teal-text: #6fd3cc;
+  --sasha-teal-heading: #6fd3cc;
+  --sasha-teal-dark: #278c8e;
+
+  /* Settings page surfaces (dark) */
+  --settings-page-bg: #121821;
+  --settings-card-bg: #18222d;
+  --settings-card-bg-soft: #111923;
+  --settings-control-bg: #0f1720;
+  --settings-control-bg-focus: #111c27;
+  --settings-border: #354252;
+  --settings-border-soft: #2a3543;
+  --settings-row-border: #2a3543;
+  --settings-text: #f3f6f8;
+  --settings-text-secondary: #d5dee6;
+  --settings-muted: #b9c4ce;
+  --settings-muted-light: #8b98a8;
+  --settings-input-text: #f3f6f8;
+  --settings-accent: #6fd3cc;
+  --settings-accent-solid: #38a6a8;
+  --settings-accent-strong: #4ecdc9;
+  --settings-accent-soft: #123f43;
+  --settings-accent-on-soft: #6fd3cc;
+  --settings-hover-bg: #1c363d;
+  --settings-hover-bg-strong: #1a2f35;
+  --settings-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+  --settings-badge-bg: #1e2a36;
+  --settings-toggle-bg: #5b6876;
+  --settings-toggle-knob: #f3f6f8;
+  --settings-danger-bg: #2a1818;
+  --settings-danger-border: #6b3030;
+  --settings-danger-text: #f5a8a0;
+  --settings-warn-bg: #2a2418;
+  --settings-warn-border: #6b5a30;
+  --settings-warn-text: #f0d48a;
+  --settings-success-bg: #123f43;
+  --settings-success-border: #037F81;
+  --settings-error-bg: #2a1818;
+  --settings-error-border: #6b3030;
+  --settings-btn-secondary-bg: transparent;
+  --settings-chip-bg: #0f1720;
+  --settings-panel-bg: #111923;
+  --settings-panel-border: #334155;
+}
+
+html[data-theme="dark"] body {
+  background: #121821;
+  color: #f3f6f8;
+}
+
+html[data-theme="dark"] .appMain {
+  background: #121821;
+}
+
+html[data-theme="dark"] select option {
+  background: #18222d;
+  color: #f3f6f8;
+}
+
+/* ── App-wide dark surfaces (CSS-module cards/panels) ───────── */
+html[data-theme="dark"] .appMain [class*="overviewCard"]:not([class*="Header"]):not([class*="Body"]):not([class*="Label"]):not([class*="Count"]),
+html[data-theme="dark"] .appMain [class*="overviewCardBody"],
+html[data-theme="dark"] .appMain [class*="calendarCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="heatmapCard"]:not([class*="Header"]):not([class*="Title"]),
+html[data-theme="dark"] .appMain [class*="deadlinesCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="actionCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="statusCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="emptyStatusCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="notifCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="eventsCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="featureCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="statCard"]:not([class*="Header"]):not([class*="heroStatCard"]),
+html[data-theme="dark"] .appMain [class*="infoCard"]:not([class*="Header"]),
+html[data-theme="dark"] .appMain [class*="pageWrapper"] [class*="module__"][class*="__card"]:not([class*="Header"]):not([class*="Title"]):not([class*="commitmentCard"]):not([class*="commitmentCardIcon"]),
+html[data-theme="dark"] .appMain [class*="formCard"]:not([class*="Header"]):not([class*="Title"]),
+html[data-theme="dark"] .appMain [class*="tableTopBar"],
+html[data-theme="dark"] .appMain [class*="Table"]:not([class*="Row"]):not([class*="Cell"]):not([class*="Head"]):not([class*="Header"]):not([class*="Title"]):not([class*="Toolbar"]):not([class*="Actions"]):not([class*="Footer"]):not([class*="Empty"]):not([class*="Wrap"]):not([class*="Container"]),
+html[data-theme="dark"] .appMain [class*="filterContainer"],
+html[data-theme="dark"] .appMain [class*="breakdownSection"],
+html[data-theme="dark"] .appMain [class*="consentSection"],
+html[data-theme="dark"] .appMain [class*="noticePanel"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text);
+}
+
+html[data-theme="dark"] .appMain [class*="aggregationBtn"]:not([class*="Active"]),
+html[data-theme="dark"] .appMain [class*="checkboxOption"],
+html[data-theme="dark"] .appMain [class*="consentLabel"],
+html[data-theme="dark"] .appMain [class*="noticeItem"],
+html[data-theme="dark"] .appMain [class*="wizardDot"]:not([class*="Active"]):not([class*="Done"]) {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="communicationNote"] {
+  background: var(--sasha-surface-soft) !important;
+  color: var(--sasha-teal) !important;
+}
+
+/* Restore hero stat cards — these live on the teal banner and use glassmorphism */
+html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statCard"],
+html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statCard"]:not([class*="Header"]) {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statNum"],
+html[data-theme="dark"] body .appMain [class*="heroBanner"] [class*="statLabel"] {
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .appMain .react-calendar,
+html[data-theme="dark"] .appMain :global(.react-calendar) {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+html[data-theme="dark"] .appMain .react-calendar__tile:not(.react-calendar__tile--active),
+html[data-theme="dark"] .appMain :global(.react-calendar__tile):not(:global(.react-calendar__tile--active)),
+html[data-theme="dark"] .appMain .react-calendar__navigation button,
+html[data-theme="dark"] .appMain :global(.react-calendar__navigation button) {
+  background: transparent !important;
+  color: var(--sasha-text) !important;
+}
+html[data-theme="dark"] .appMain .react-calendar__tile:enabled:hover,
+html[data-theme="dark"] .appMain .react-calendar__tile:enabled:focus,
+html[data-theme="dark"] .appMain :global(.react-calendar__tile:enabled:hover),
+html[data-theme="dark"] .appMain :global(.react-calendar__tile:enabled:focus),
+html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:hover,
+html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:focus,
+html[data-theme="dark"] .appMain :global(.react-calendar__navigation button:enabled:hover),
+html[data-theme="dark"] .appMain :global(.react-calendar__navigation button:enabled:focus) {
+  background: var(--sasha-surface-soft) !important;
+}
+html[data-theme="dark"] .appMain .react-calendar__month-view__days__day--neighboringMonth,
+html[data-theme="dark"] .appMain :global(.react-calendar__month-view__days__day--neighboringMonth) {
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([class*="searchInput"]),
+html[data-theme="dark"] .appMain select,
+html[data-theme="dark"] .appMain textarea {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="pageWrapper"],
+html[data-theme="dark"] .appMain [class*="PageWrapper"] {
+  background: var(--sasha-offwhite) !important;
+  color: var(--sasha-text);
+}
+
+html[data-theme="dark"] .appMain [class*="deadlineEmpty"],
+html[data-theme="dark"] .appMain [class*="metricRow"] div {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="deadlineThumb"],
+html[data-theme="dark"] .appMain [class*="eventThumb"] {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="deadlineItem"],
+html[data-theme="dark"] .appMain [class*="eventItem"] {
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-high-contrast="true"] {
+  --sasha-teal: #005f61;
+  --sasha-teal-dark: #003f40;
+  --sasha-orange: #b63b12;
+  --sasha-text: #000000;
+  --sasha-muted: #1f2937;
+
+  --settings-page-bg: #ffffff;
+  --settings-card-bg: #ffffff;
+  --settings-card-bg-soft: #ffffff;
+  --settings-control-bg: #ffffff;
+  --settings-control-bg-focus: #ffffff;
+  --settings-border: #111827;
+  --settings-border-soft: #111827;
+  --settings-row-border: #111827;
+  --settings-text: #000000;
+  --settings-text-secondary: #111827;
+  --settings-muted: #111827;
+  --settings-muted-light: #374151;
+  --settings-input-text: #000000;
+  --settings-accent: #005f61;
+  --settings-accent-solid: #005f61;
+  --settings-accent-soft: #e6fffb;
+  --settings-accent-on-soft: #005f61;
+  --settings-hover-bg: #e6fffb;
+  --settings-hover-bg-strong: #e6fffb;
+  --settings-shadow: 0 0 0 1px #111827;
+  --settings-panel-bg: #ffffff;
+  --settings-panel-border: #111827;
+  --settings-chip-bg: #ffffff;
+}
+
+html[data-high-contrast="true"] body {
+  background: #ffffff;
+  color: #000000;
+}
+
+html[data-reduced-motion="true"],
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+
 .appMain {
   flex: 1 0 auto;
   padding-top: var(--app-safe-top);
+}
+
+/* Dark mode: lighter teal page titles (excludes dashboard hero welcome text) */
+html[data-theme="dark"] .appMain [class*="pageWrapper"] [class*="title"],
+html[data-theme="dark"] .appMain [class*="pagewrapper"] [class*="hero"] h1 {
+  color: var(--sasha-teal-heading);
+}
+
+html[data-theme="dark"] .appMain [class*="heroBanner"] h1,
+html[data-theme="dark"] .appMain [class*="heroTitle"] {
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .appMain a[class*="backLink"],
+html[data-theme="dark"] .appMain [class*="backLink"],
+html[data-theme="dark"] .appMain [class*="backBtn"] {
+  color: var(--sasha-teal-text);
+}
+
+/* Filter dropdown triggers — use dark surfaces instead of hardcoded white */
+html[data-theme="dark"] .appMain [class*="defaultFilterBtn"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="defaultFilterBtn"]:hover,
+html[data-theme="dark"] .appMain [class*="defaultFilterBtnActive"] {
+  border-color: var(--sasha-teal-text) !important;
+  background: var(--sasha-teal-light) !important;
+  color: var(--sasha-teal-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="defaultFilterValue"] {
+  color: var(--sasha-muted) !important;
 }
 
 * {
@@ -127,3 +447,75 @@ a {
   border-top-color: #ffffff;
 }
 
+/* ══ LOCATION FACILITY FINDER — DARK MODE ══════════════════════════════════ */
+html[data-theme="dark"] .appMain [class*="searchPanel"],
+html[data-theme="dark"] .appMain [class*="mapPanel"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="serviceIcon"],
+html[data-theme="dark"] .appMain [class*="resultIcon"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="searchLabel"],
+html[data-theme="dark"] .appMain [class*="eyebrow"] {
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="resultItem"] {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="resultBody"] h2 {
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="resultBody"] p {
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="emptyState"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-muted) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="suggestions"] {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="suggestionItem"] {
+  background: var(--sasha-surface) !important;
+  border-bottom-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="suggestionItem"]:hover,
+html[data-theme="dark"] .appMain [class*="suggestionItemActive"] {
+  background: var(--sasha-teal-light) !important;
+  color: var(--sasha-teal) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="resultsHeader"] {
+  color: var(--sasha-muted) !important;
+  border-bottom-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="directionsLink"] {
+  background: var(--sasha-teal-light) !important;
+  color: var(--sasha-teal) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="directionsLink"]:hover {
+  background: var(--sasha-teal) !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .appMain [class*="mapCanvas"] {
+  background: var(--sasha-surface-inset) !important;
+}
