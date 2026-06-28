@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, } from "react-icons/io";
 import styles from "./ViewLegalCase.module.css";
+import { NLPAnalysisTab as SharedNLPAnalysisTab } from "../cases/ViewCase";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "../cases/UpdateStatusModals";
 import StatusDetailsSection from "../cases/StatusDetailsSection";
 import DetailAccordion from "../cases/DetailAccordion";
@@ -27,7 +28,7 @@ import {
   MonitoringModal,
   PARALEGAL_EVIDENCE_LABELS,
 } from "./LegalReviewModals";
-import { authFetch, useAuth } from "@/lib/AuthContext";
+import { useAuth } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -224,6 +225,8 @@ function StatusBadge({ status }) {
 // ─── Status Change Modals (imported from CaseManagement pattern) ──────────────
 
 function NLPAnalysisTab({ caseReportId, isAdmin }) {
+  return <SharedNLPAnalysisTab caseReportId={caseReportId} isAdmin={isAdmin} />;
+
   const [nlpData, setNlpData]     = useState(null);
   const [nlpLoading, setNlpLoading] = useState(false);
   const [nlpStatus, setNlpStatus]   = useState(null);
@@ -235,11 +238,21 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`);
-        if (res.status === 404) { setNlpStatus("processing"); return; }
-        if (!res.ok) { setNlpStatus("error"); return; }
+        if (res.status === 202 || res.status === 404) {
+          setNlpData(null);
+          setNlpStatus("processing");
+          return;
+        }
+        if (!res.ok) {
+          setNlpData(null);
+          setNlpStatus(res.status === 502 ? "failed" : "error");
+          return;
+        }
         const json = await res.json();
         setNlpData(json.data || json);
+        setNlpStatus(null);
       } catch {
+        setNlpData(null);
         setNlpStatus("error");
       } finally {
         setNlpLoading(false);
@@ -254,6 +267,19 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
   const CaseTypeBadge = ({ label }) => (
     <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#f3e8ff", color: "#6b21a8", marginRight: 6, marginBottom: 4 }}>{label}</span>
   );
+  const getClassificationLabel = (item, field) => {
+    if (!item) return "";
+    if (typeof item === "string") {
+      try {
+        const parsed = JSON.parse(item);
+        return parsed?.[field] || parsed?.category || parsed?.type || item;
+      } catch {
+        return item;
+      }
+    }
+    if (typeof item === "object") return item[field] || item.category || item.type || "";
+    return String(item);
+  };
 
   return (
     <div>
@@ -279,6 +305,13 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
         </div>
       )}
 
+      {nlpStatus === "failed" && !nlpLoading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#991b1b" }}>
+          <FiAlertCircle style={{ flexShrink: 0 }} />
+          NLP analysis failed on the server. Check the backend NLP service URL and logs, then rerun analysis for this case.
+        </div>
+      )}
+
       {nlpData && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {nlpData.summary && (
@@ -292,11 +325,11 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
             <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Classification</h4>
             <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Primary Categories</p>
             <div style={{ marginBottom: 12 }}>
-              {nlpData.primary_categories?.length > 0 ? nlpData.primary_categories.map((c) => <CategoryBadge key={c} label={c} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
+              {nlpData.primary_categories?.length > 0 ? nlpData.primary_categories.map((c, i) => <CategoryBadge key={`${getClassificationLabel(c, "category")}-${i}`} label={getClassificationLabel(c, "category")} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
             </div>
             <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Possible Case Types</p>
             <div style={{ marginBottom: 12 }}>
-              {nlpData.case_types?.length > 0 ? nlpData.case_types.map((t) => <CaseTypeBadge key={t} label={t} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
+              {nlpData.case_types?.length > 0 ? nlpData.case_types.map((t, i) => <CaseTypeBadge key={`${getClassificationLabel(t, "type")}-${i}`} label={getClassificationLabel(t, "type")} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
             </div>
             {nlpData.classification_notes && (
               <>
@@ -1513,7 +1546,7 @@ export default function ViewCase() {
           )}
 
           {activeTab === "nlp" && isStaff && userLoaded && (
-            <NLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
+            <SharedNLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
           )}
 
         </div>

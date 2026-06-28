@@ -224,23 +224,58 @@ async function getNLPAnalysis(req, res) {
     const { id } = req.params;
     const supabase = require('../config/supabase');
 
-    const { data, error } = await supabase
+    const { data: completedAnalysis, error: completedError } = await supabase
       .from('case_report_analysis')
       .select('*')
       .eq('case_report_id', id)
+      .eq('status', 'completed')
       .order('analyzed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      console.error('[getNLPAnalysis] Supabase error:', error.message);
+    if (completedError) {
+      console.error('[getNLPAnalysis] Supabase error:', completedError.message);
       return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });
     }
 
     // Null means the async NLP job hasn't finished yet — tell the frontend clearly.
-    if (!data) return res.status(404).json({ error: 'NLP analysis is still processing. Please check back shortly.' });
+    const hasCompletedPayload = Boolean(
+      completedAnalysis?.model_used ||
+      completedAnalysis?.summary ||
+      completedAnalysis?.anonymized_text ||
+      completedAnalysis?.classification_notes ||
+      completedAnalysis?.referral_notes ||
+      (Array.isArray(completedAnalysis?.primary_categories) && completedAnalysis.primary_categories.length > 0) ||
+      (Array.isArray(completedAnalysis?.case_types) && completedAnalysis.case_types.length > 0) ||
+      (Array.isArray(completedAnalysis?.recommended_steps) && completedAnalysis.recommended_steps.length > 0)
+    );
 
-    return res.json({ data });
+    if (hasCompletedPayload) return res.json({ data: completedAnalysis });
+
+    const { data: latestAnalysis, error: latestError } = await supabase
+      .from('case_report_analysis')
+      .select('analysis_id, case_report_id, status, analyzed_at')
+      .eq('case_report_id', id)
+      .order('analysis_id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestError) {
+      console.error('[getNLPAnalysis] Supabase error:', latestError.message);
+      return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });
+    }
+
+    if (!latestAnalysis || latestAnalysis.status === 'pending') {
+      return res.status(202).json({
+        status: 'pending',
+        error: 'NLP analysis is still processing. Please check back shortly.',
+      });
+    }
+
+    return res.status(502).json({
+      status: latestAnalysis.status || 'failed',
+      error: 'NLP analysis failed or returned no completed result. Please retry analysis or check the NLP service logs.',
+    });
   } catch (err) {
     console.error('[getNLPAnalysis] Unexpected error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch NLP analysis.' });

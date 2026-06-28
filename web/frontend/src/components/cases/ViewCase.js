@@ -378,7 +378,7 @@ function FSelect({ error, children, ...props }) {
 
 // ─── NLP Analysis Tab (staff only) ───────────────────────────────────────────
 
-function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
+export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
   const [nlpData, setNlpData]     = useState(null);
   const [nlpLoading, setNlpLoading] = useState(false);
   const [nlpStatus, setNlpStatus]   = useState(null);
@@ -390,11 +390,21 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await authFetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`);
-        if (res.status === 404) { setNlpStatus("processing"); return; }
-        if (!res.ok) { setNlpStatus("error"); return; }
+        if (res.status === 202 || res.status === 404) {
+          setNlpData(null);
+          setNlpStatus("processing");
+          return;
+        }
+        if (!res.ok) {
+          setNlpData(null);
+          setNlpStatus(res.status === 502 ? "failed" : "error");
+          return;
+        }
         const json = await res.json();
         setNlpData(json.data || json);
+        setNlpStatus(null);
       } catch {
+        setNlpData(null);
         setNlpStatus("error");
       } finally {
         setNlpLoading(false);
@@ -497,6 +507,13 @@ function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#991b1b" }}>
           <FiAlertCircle style={{ flexShrink: 0 }} />
           Could not load NLP analysis. Make sure the NLP service is running.
+        </div>
+      )}
+
+      {nlpStatus === "failed" && !nlpLoading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#991b1b" }}>
+          <FiAlertCircle style={{ flexShrink: 0 }} />
+          NLP analysis failed on the server. Check the backend NLP service URL and logs, then rerun analysis for this case.
         </div>
       )}
 
