@@ -140,11 +140,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.85rem 0;
-  border-bottom: 1px solid var(--settings-row-border);
+  padding: 0.85rem;
+  border: 1px solid transparent;
+  border-bottom-color: var(--settings-row-border);
+  border-radius: 8px;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.toggleRow:last-child { border-bottom: none; }
+.toggleRow:hover {
+  background: var(--settings-hover-bg-strong);
+  border-color: var(--settings-border-soft);
+}
+.toggleRow:last-child { border-bottom-color: transparent; }
 
 .toggleRowLabel { font-size: 0.9rem; font-weight: 600; color: var(--settings-text); margin: 0; line-height: 1.3; }
 .toggleRowDesc { font-size: 0.8rem; color: var(--settings-muted); margin: 0.15rem 0 0; max-width: 420px; line-height: 1.45; }
@@ -152,7 +159,7 @@
 .toggle {
   width: 44px;
   height: 24px;
-  border: none;
+  border: 1px solid var(--settings-border);
   padding: 0;
   border-radius: 999px;
   background: var(--settings-toggle-bg);
@@ -160,8 +167,12 @@
   flex-shrink: 0;
   transition: background 0.2s;
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
-.toggleOn { background: var(--settings-accent-solid); }
+.toggleOn {
+  background: var(--settings-accent-solid);
+  border-color: var(--settings-accent-strong);
+}
 
 .toggleKnob {
   position: absolute;
@@ -172,9 +183,28 @@
   border-radius: 50%;
   background: var(--settings-toggle-knob);
   transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 7px rgba(0,0,0,0.32);
 }
 .toggleOn .toggleKnob { transform: translateX(20px); }
+
+:global(html[data-theme="dark"]) .toggleRow {
+  background: #111923;
+}
+
+:global(html[data-theme="dark"]) .toggleRow:hover {
+  background: #172433;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .toggle {
+  background: #263545;
+  border-color: #607086;
+}
+
+:global(html[data-theme="dark"]) .toggleOn {
+  background: #037F81;
+  border-color: #4ecdc9;
+}
 
 .toggle:focus-visible,
 .themeCard:focus-visible,

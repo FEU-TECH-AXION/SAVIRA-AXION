@@ -216,6 +216,30 @@
   border-color: rgba(255, 255, 255, 0.5);
 }
 
+:global(html[data-theme="dark"]) .navbar .searchWrapper .searchInput,
+:global(html[data-theme="dark"]) .searchWrapper .searchInput {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:global(html[data-theme="dark"]) .navbar .searchWrapper .searchInput::placeholder,
+:global(html[data-theme="dark"]) .searchWrapper .searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+:global(html[data-theme="dark"]) .navbar .searchWrapper .searchInput:focus,
+:global(html[data-theme="dark"]) .searchWrapper .searchInput:focus {
+  background: rgba(255, 255, 255, 0.26) !important;
+  border-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+:global(html[data-theme="dark"]) .navbar .searchWrapper .searchIcon,
+:global(html[data-theme="dark"]) .searchWrapper .searchIcon {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
 /* ── Right slot ── */
 .navRight {
   display: flex;

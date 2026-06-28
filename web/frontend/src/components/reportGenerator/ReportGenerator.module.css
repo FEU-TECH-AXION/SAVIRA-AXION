@@ -229,10 +229,12 @@
 }
 
 .moduleChip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.85rem;
+  min-height: 34px;
+  padding: 0.35rem 0.9rem 0.35rem 0.8rem;
   border-radius: 999px;
   border: 1px solid var(--sasha-border);
   background: var(--sasha-white);
@@ -240,7 +242,7 @@
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s, transform 0.12s;
 }
 
 .moduleChip:hover {
@@ -252,6 +254,19 @@
   background: var(--sasha-teal) !important;
   color: var(--sasha-white) !important;
   border-color: var(--sasha-teal) !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.16);
+  font-weight: 800;
+  transform: translateY(-1px);
+}
+
+.moduleChipActive::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 0.15rem;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
 }
 
 /* ══ META ══ */
@@ -1400,4 +1415,159 @@
     align-items: flex-end;
     padding: 0;
   }
+}
+
+:global(html[data-theme="dark"]) .page {
+  background: var(--sasha-page-bg);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .pageTitle {
+  color: var(--sasha-teal-heading);
+}
+
+:global(html[data-theme="dark"]) .pageSubtitle,
+:global(html[data-theme="dark"]) .togglesLabel,
+:global(html[data-theme="dark"]) .lastGenerated,
+:global(html[data-theme="dark"]) .statLabel,
+:global(html[data-theme="dark"]) .statSub,
+:global(html[data-theme="dark"]) .stackedLegendItem,
+:global(html[data-theme="dark"]) .legendPct,
+:global(html[data-theme="dark"]) .breakdownSub,
+:global(html[data-theme="dark"]) .noData,
+:global(html[data-theme="dark"]) .formHint,
+:global(html[data-theme="dark"]) .formDesc {
+  color: var(--sasha-muted);
+}
+
+:global(html[data-theme="dark"]) .btnRefresh,
+:global(html[data-theme="dark"]) .moduleChip,
+:global(html[data-theme="dark"]) .rangeSelect,
+:global(html[data-theme="dark"]) .btnSecondary,
+:global(html[data-theme="dark"]) .afFilterBtn,
+:global(html[data-theme="dark"]) .afDateInput {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .btnRefresh:hover:not(:disabled),
+:global(html[data-theme="dark"]) .moduleChip:hover,
+:global(html[data-theme="dark"]) .btnSecondary:hover,
+:global(html[data-theme="dark"]) .afFilterBtn:hover {
+  background: var(--sasha-teal-light);
+  border-color: var(--sasha-teal-text);
+  color: var(--sasha-teal-text);
+}
+
+:global(html[data-theme="dark"]) .reportSection,
+:global(html[data-theme="dark"]) .advancedFilterWrap,
+:global(html[data-theme="dark"]) .reportFooter,
+:global(html[data-theme="dark"]) .modalBox {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .sectionHeader,
+:global(html[data-theme="dark"]) .modalHeader {
+  background: var(--sasha-surface-soft);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .sectionHeader:hover {
+  background: var(--sasha-teal-light);
+}
+
+:global(html[data-theme="dark"]) .sectionBody,
+:global(html[data-theme="dark"]) .modalBody {
+  background: var(--sasha-surface);
+  border-top-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .sectionTitle,
+:global(html[data-theme="dark"]) .statValue,
+:global(html[data-theme="dark"]) .breakdownTitle,
+:global(html[data-theme="dark"]) .legendLabel,
+:global(html[data-theme="dark"]) .legendVal,
+:global(html[data-theme="dark"]) .hBarLabel,
+:global(html[data-theme="dark"]) .hBarMeta,
+:global(html[data-theme="dark"]) .barValue,
+:global(html[data-theme="dark"]) .formLabel,
+:global(html[data-theme="dark"]) .afTitle {
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .statCard,
+:global(html[data-theme="dark"]) .trendCard,
+:global(html[data-theme="dark"]) .breakdownCard,
+:global(html[data-theme="dark"]) .chartCard {
+  background: var(--sasha-surface-soft);
+  border-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .statCardAccent,
+:global(html[data-theme="dark"]) .insightPill,
+:global(html[data-theme="dark"]) .moduleChipActive,
+:global(html[data-theme="dark"]) .afFilterBtnActive,
+:global(html[data-theme="dark"]) .afDateInputActive,
+:global(html[data-theme="dark"]) .tag {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-teal-text) !important;
+  color: var(--sasha-teal-text) !important;
+}
+
+:global(html[data-theme="dark"]) .moduleChipActive {
+  background: #037f81 !important;
+  border-color: #6fd3cc !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.22) !important;
+}
+
+:global(html[data-theme="dark"]) .moduleChipActive::after {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.28);
+}
+
+:global(html[data-theme="dark"]) .statCardAccent .statValue {
+  color: var(--sasha-teal-heading);
+}
+
+:global(html[data-theme="dark"]) .barTrack,
+:global(html[data-theme="dark"]) .hBarTrack {
+  background: var(--sasha-surface-inset);
+}
+
+:global(html[data-theme="dark"]) .exportDropdown,
+:global(html[data-theme="dark"]) .afDropdown {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+}
+
+:global(html[data-theme="dark"]) .exportOption,
+:global(html[data-theme="dark"]) .afDropOption {
+  color: var(--sasha-text);
+  border-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .exportOption:hover,
+:global(html[data-theme="dark"]) .afDropOption:hover,
+:global(html[data-theme="dark"]) .afDropOptionActive {
+  background: var(--sasha-teal-light);
+  color: var(--sasha-teal-text);
+}
+
+:global(html[data-theme="dark"]) .afDropSearch,
+:global(html[data-theme="dark"]) .modalFooter {
+  border-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .afDropSearchInput,
+:global(html[data-theme="dark"]) .formInput {
+  background: var(--sasha-surface-inset);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
 }

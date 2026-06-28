@@ -1,3 +1,5 @@
+import styles from "./TaskPanel.module.css"
+
 const COLORS = {
   Pending: ["#f3f4f6", "#374151"],
   "In Progress": ["#dbeafe", "#1d4ed8"],
@@ -8,8 +10,9 @@ const COLORS = {
 
 export default function TaskStatusBadge({ status }) {
   const [background, color] = COLORS[status] || COLORS.Pending
+  const statusClass = String(status || "Pending").replace(/\s+/g, "")
   return (
-    <span style={{
+    <span className={`${styles.statusBadge} ${styles[`status${statusClass}`] || ""}`} style={{
       display: "inline-flex", padding: "4px 10px", borderRadius: 999,
       background, color, fontSize: "0.75rem", fontWeight: 700,
     }}>

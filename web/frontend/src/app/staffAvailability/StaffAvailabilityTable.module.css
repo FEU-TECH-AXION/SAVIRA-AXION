@@ -365,6 +365,53 @@
   opacity: 0.35;
 }
 
+.pageNumbers {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pageNumberGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pageBtn {
+  display: flex;
+  min-width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 8px;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.pageBtn:hover {
+  border-color: #037F81;
+  color: #037F81;
+  background: #f0fffe;
+}
+
+.pageBtnActive {
+  background: #037F81 !important;
+  border-color: #037F81 !important;
+  color: #ffffff !important;
+}
+
+.ellipsis {
+  color: #9ca3af;
+  font-size: 0.82rem;
+  padding: 0 4px;
+}
+
 .recordCount {
   margin-left: 0.5rem;
   color: #6b7280;
@@ -393,4 +440,79 @@
   .paginationBar {
     justify-content: center;
   }
+}
+
+:global(html[data-theme="dark"]) .tableWrap,
+:global(html[data-theme="dark"]) .headerRow,
+:global(html[data-theme="dark"]) .paginationBar {
+  background: #18222d;
+  border-color: #354252;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .th,
+:global(html[data-theme="dark"]) .td,
+:global(html[data-theme="dark"]) .nameText,
+:global(html[data-theme="dark"]) .roleText {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .emailText,
+:global(html[data-theme="dark"]) .committeeText,
+:global(html[data-theme="dark"]) .recordCount,
+:global(html[data-theme="dark"]) .muted {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .row {
+  border-bottom-color: #2a3543;
+}
+
+:global(html[data-theme="dark"]) .row:hover {
+  background: #111923 !important;
+}
+
+:global(html[data-theme="dark"]) .rowSelected,
+:global(html[data-theme="dark"]) .bulkBar {
+  background: #123f43 !important;
+  border-color: #037F81;
+}
+
+:global(html[data-theme="dark"]) .workloadGrid span,
+:global(html[data-theme="dark"]) .rowActions,
+:global(html[data-theme="dark"]) .pageBtn,
+:global(html[data-theme="dark"]) .pageArrow {
+  background: #0f1720;
+  border-color: #354252;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .avatar,
+:global(html[data-theme="dark"]) .noteBadge {
+  background: #123f43;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .actionBtnSecondary {
+  background: #0f1720;
+  border-color: #037F81;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .pageArrow:hover:not(:disabled) {
+  background: #123f43;
+  border-color: #037F81;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .pageBtn:hover:not(:disabled) {
+  background: #123f43;
+  border-color: #6fd3cc;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .pageBtnActive {
+  background: #037F81 !important;
+  border-color: #6fd3cc !important;
+  color: #ffffff !important;
 }

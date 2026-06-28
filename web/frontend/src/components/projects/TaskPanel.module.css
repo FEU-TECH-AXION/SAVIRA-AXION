@@ -154,6 +154,9 @@
   font-weight: 700;
   color: var(--sasha-orange-dark, #9a3412);
 }
+.statusBadge {
+  border: 1px solid transparent;
+}
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -310,6 +313,113 @@
 }
 .modalActions .primary {
   padding: 0.55rem 1.4rem;
+}
+
+:global(html[data-theme="dark"]) .panel,
+:global(html[data-theme="dark"]) .modal {
+  background: #18222d;
+  border-color: #354252;
+  color: #f3f6f8;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+:global(html[data-theme="dark"]) .header h2,
+:global(html[data-theme="dark"]) .summary strong,
+:global(html[data-theme="dark"]) .taskTitleRow h3,
+:global(html[data-theme="dark"]) .actions button,
+:global(html[data-theme="dark"]) .modal label {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .header p,
+:global(html[data-theme="dark"]) .summary span,
+:global(html[data-theme="dark"]) .taskMain p,
+:global(html[data-theme="dark"]) .meta,
+:global(html[data-theme="dark"]) .activity,
+:global(html[data-theme="dark"]) .empty {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .summary div,
+:global(html[data-theme="dark"]) .task,
+:global(html[data-theme="dark"]) .filters button,
+:global(html[data-theme="dark"]) .actions button,
+:global(html[data-theme="dark"]) .empty,
+:global(html[data-theme="dark"]) .modal input,
+:global(html[data-theme="dark"]) .modal textarea,
+:global(html[data-theme="dark"]) .modal select,
+:global(html[data-theme="dark"]) .modalActions button:first-child {
+  background: #0f1720;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .summary .overdue,
+:global(html[data-theme="dark"]) .error {
+  background: #2a1818;
+  border-color: #6b3030;
+  color: #f5a8a0;
+}
+
+:global(html[data-theme="dark"]) .filters .activeFilter,
+:global(html[data-theme="dark"]) .filters button:hover,
+:global(html[data-theme="dark"]) .actions button:hover {
+  background: #123f43;
+  border-color: #6fd3cc;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .activity {
+  background: #111923;
+  border: 1px solid #354252;
+}
+
+:global(html[data-theme="dark"]) .readOnlyBadge {
+  background: #2a2418;
+  border-color: #6b5a30;
+  color: #f0d48a;
+}
+
+:global(html[data-theme="dark"]) .priority {
+  color: #f0d48a;
+}
+
+:global(html[data-theme="dark"]) .statusBadge {
+  background: #111923 !important;
+  border-color: #435266 !important;
+  color: #e5edf4 !important;
+}
+
+:global(html[data-theme="dark"]) .statusInProgress {
+  background: #10242c !important;
+  border-color: #278c8e !important;
+  color: #6fd3cc !important;
+}
+
+:global(html[data-theme="dark"]) .statusCompleted {
+  background: #123f28 !important;
+  border-color: #3b8f63 !important;
+  color: #8ee6b5 !important;
+}
+
+:global(html[data-theme="dark"]) .statusOverdue {
+  background: #2a1818 !important;
+  border-color: #6b3030 !important;
+  color: #f5a8a0 !important;
+}
+
+:global(html[data-theme="dark"]) .statusCancelled {
+  background: #2a2418 !important;
+  border-color: #6b5a30 !important;
+  color: #f0d48a !important;
+}
+
+:global(html[data-theme="dark"]) .modalHeader,
+:global(html[data-theme="dark"]) .modalActions {
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .modalHeader h2 {
+  color: #6fd3cc;
 }
 @media (max-width: 700px) {
   .summary,

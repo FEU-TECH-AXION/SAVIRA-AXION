@@ -50,6 +50,25 @@
   font-weight: 650;
 }
 
+:global(html[data-theme="dark"]) .field {
+  border-bottom-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .field strong,
+:global(html[data-theme="dark"]) .readText {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .imagePreview {
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .imageEmpty {
+  background: #0f1720;
+  border-color: #435266;
+  color: #b9c4ce;
+}
+
 @media (max-width: 700px) {
   .fieldGrid {
     grid-template-columns: 1fr;

@@ -569,3 +569,81 @@
     padding: 1rem;
   }
 }
+
+:global(html[data-theme="dark"]) .page {
+  --text: #f3f6f8;
+  --muted: #b9c4ce;
+  --border: #354252;
+  --teal: #6fd3cc;
+  --teal-dark: #38a6a8;
+  --teal-light: #123f43;
+  background: #121821;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .previewPane,
+:global(html[data-theme="dark"]) .historyPanel,
+:global(html[data-theme="dark"]) .document,
+:global(html[data-theme="dark"]) .questionCard,
+:global(html[data-theme="dark"]) .noChanges,
+:global(html[data-theme="dark"]) .state,
+:global(html[data-theme="dark"]) .menu {
+  background: #18222d;
+  border-color: #354252;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .panelHeader,
+:global(html[data-theme="dark"]) .documentHeader,
+:global(html[data-theme="dark"]) .options {
+  background: #111923;
+  border-color: #354252;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .menuButton,
+:global(html[data-theme="dark"]) .collapseButton,
+:global(html[data-theme="dark"]) .menu button,
+:global(html[data-theme="dark"]) .answers span {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .menuButton:hover,
+:global(html[data-theme="dark"]) .collapseButton:hover,
+:global(html[data-theme="dark"]) .menu button:hover,
+:global(html[data-theme="dark"]) .versionItem:hover,
+:global(html[data-theme="dark"]) .versionSelected {
+  background: #123f43;
+  border-color: #278c8e;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .questionGroup h2,
+:global(html[data-theme="dark"]) .questionCard h3,
+:global(html[data-theme="dark"]) .versionDetails strong,
+:global(html[data-theme="dark"]) .author {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .added {
+  background: #123f28;
+  border-left-color: #58c98d;
+}
+
+:global(html[data-theme="dark"]) .modified {
+  background: #123f43;
+  border-left-color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .removed {
+  background: #2a1818;
+  border-left-color: #f5a8a0;
+}
+
+:global(html[data-theme="dark"]) .answers .expected {
+  background: #2a2418;
+  border-color: #8a5f3a;
+  color: #f0d48a;
+}

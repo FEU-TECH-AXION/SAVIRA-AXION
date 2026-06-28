@@ -429,3 +429,74 @@
   background: var(--sasha-teal) !important;
   color: var(--sasha-white) !important;
 }
+
+:global(html[data-theme="dark"]) .modalBox {
+  background: #18222d;
+  border: 1px solid #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .modalTitle,
+:global(html[data-theme="dark"]) .modalField,
+:global(html[data-theme="dark"]) .cardMetaValue,
+:global(html[data-theme="dark"]) .stepLabelActive {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .modalText,
+:global(html[data-theme="dark"]) .cardMetaLabel,
+:global(html[data-theme="dark"]) .cardMetaUnassigned,
+:global(html[data-theme="dark"]) .cardUpdated {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .modalField textarea,
+:global(html[data-theme="dark"]) .modalField input {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .modalCancel {
+  background: #111923;
+  border-color: #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .statusCard {
+  background: #18222d;
+  border-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .cardMetaGrid {
+  border-bottom-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .stepDot {
+  background: #435266;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .stepLine {
+  background: #354252;
+}
+
+:global(html[data-theme="dark"]) .pageBtn,
+:global(html[data-theme="dark"]) .pageNum {
+  background: #111923;
+  border: 1px solid #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .pageBtn:hover:not(:disabled),
+:global(html[data-theme="dark"]) .pageNum:hover:not(.pageNumActive) {
+  background: #123f43;
+  border-color: #037f81;
+  color: #c8f4ee;
+}
+
+:global(html[data-theme="dark"]) .pageNumActive {
+  background: #037f81 !important;
+  border-color: #6fd3cc !important;
+  color: #ffffff !important;
+}

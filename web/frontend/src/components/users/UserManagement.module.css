@@ -987,6 +987,64 @@
   }
 }
 
+:global(html[data-theme="dark"]) .modalBox {
+  background: #18222d;
+  border-color: #354252;
+  color: #f3f6f8;
+  overflow: hidden;
+}
+
+:global(html[data-theme="dark"]) .modalHeader,
+:global(html[data-theme="dark"]) .modalFooter {
+  background: #111923;
+  border-color: #354252;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .modalTitle,
+:global(html[data-theme="dark"]) .manageUserIntro strong,
+:global(html[data-theme="dark"]) .manageOptionCard h3,
+:global(html[data-theme="dark"]) .deleteMsg,
+:global(html[data-theme="dark"]) .formLabel,
+:global(html[data-theme="dark"]) .viewVal,
+:global(html[data-theme="dark"]) .radioLabel {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .manageUserIntro p,
+:global(html[data-theme="dark"]) .manageOptionCard p,
+:global(html[data-theme="dark"]) .viewKey,
+:global(html[data-theme="dark"]) .modalClose {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .manageOptionCard,
+:global(html[data-theme="dark"]) .btnSecondary,
+:global(html[data-theme="dark"]) .formInput {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .manageOptionDanger,
+:global(html[data-theme="dark"]) .deleteIcon {
+  background: #2a1818;
+  border-color: #6b3030;
+  color: #f5a8a0;
+}
+
+:global(html[data-theme="dark"]) .btnSecondary:hover,
+:global(html[data-theme="dark"]) .modalClose:hover {
+  background: #123f43;
+  border-color: #6fd3cc;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .viewRow,
+:global(html[data-theme="dark"]) .modalFooter {
+  border-color: #354252;
+}
+
 /* ════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════ */

@@ -324,3 +324,65 @@
     border-radius: 1rem 1rem 0 0;
   }
 }
+
+:global(html[data-theme="dark"]) .page {
+  --sasha-offwhite: #121821;
+  --sasha-white: #18222d;
+  --sasha-text: #f3f6f8;
+  --sasha-muted: #b9c4ce;
+  --sasha-border: #354252;
+  --sasha-teal-light: #123f43;
+  background: #121821;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .toolbar,
+:global(html[data-theme="dark"]) .dialog,
+:global(html[data-theme="dark"]) .empty {
+  background: #18222d;
+  border-color: #354252;
+  color: #f3f6f8;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+:global(html[data-theme="dark"]) .sectionTitle,
+:global(html[data-theme="dark"]) .dialogLabel {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .dialog h2 {
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .dialog p,
+:global(html[data-theme="dark"]) .empty {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .dialogLabel select,
+:global(html[data-theme="dark"]) .dialogLabel textarea {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .dialogLabel select:focus,
+:global(html[data-theme="dark"]) .dialogLabel textarea:focus {
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22);
+  outline: none;
+}
+
+:global(html[data-theme="dark"]) .dialogActions {
+  border-top-color: #354252;
+}
+
+:global(html[data-theme="dark"]) .dialogSecondary {
+  background: #111923;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .dialogSecondary:hover {
+  background: #1c363d;
+}

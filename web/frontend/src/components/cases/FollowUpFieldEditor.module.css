@@ -23,3 +23,35 @@
 @media (max-width: 640px) {
   .checklist, .editorGrid { grid-template-columns: 1fr; }
 }
+
+:global(html[data-theme="dark"]) .checkOption {
+  background: #111923;
+  border-color: #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .checkOption:hover {
+  background: #123f43;
+  border-color: #037f81;
+  color: #c8f4ee;
+}
+
+:global(html[data-theme="dark"]) .textarea {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .textareaFooterNeutral,
+:global(html[data-theme="dark"]) .textareaFooterCounts {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .outcomeGrid label {
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .formError {
+  background: #2a1818;
+  color: #fecaca;
+}

@@ -600,3 +600,97 @@
   background: var(--sasha-offwhite);
   border-color: var(--sasha-muted);
 }
+
+:global(html[data-theme="dark"]) .pageWrapper {
+  background: var(--sasha-page-bg);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .backBtn,
+:global(html[data-theme="dark"]) .btnSecondary,
+:global(html[data-theme="dark"]) .modeTab,
+:global(html[data-theme="dark"]) .addPersonBtn {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .backBtn:hover,
+:global(html[data-theme="dark"]) .btnSecondary:hover,
+:global(html[data-theme="dark"]) .modeTab:hover,
+:global(html[data-theme="dark"]) .addPersonBtn:hover {
+  background: var(--sasha-teal-light);
+  border-color: var(--sasha-teal-text);
+  color: var(--sasha-teal-text);
+}
+
+:global(html[data-theme="dark"]) .sectionCard {
+  background: var(--sasha-surface);
+  border-color: var(--sasha-border);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+:global(html[data-theme="dark"]) .sectionCardHeader {
+  background: var(--sasha-surface-soft);
+  border-bottom-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .sectionCardBody {
+  background: var(--sasha-surface);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .sectionCardTitle {
+  color: var(--sasha-teal-heading);
+}
+
+:global(html[data-theme="dark"]) .sectionCardSub,
+:global(html[data-theme="dark"]) .formHint,
+:global(html[data-theme="dark"]) .visibilityNote,
+:global(html[data-theme="dark"]) .visibilityDesc,
+:global(html[data-theme="dark"]) .viewKey {
+  color: var(--sasha-muted);
+}
+
+:global(html[data-theme="dark"]) .formLabel,
+:global(html[data-theme="dark"]) .radioLabel {
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .formInput {
+  background: var(--sasha-surface-inset);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .formInput:focus {
+  border-color: var(--sasha-teal-text);
+  box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.16);
+}
+
+:global(html[data-theme="dark"]) .modeTabActive,
+:global(html[data-theme="dark"]) .visibilityCardActive {
+  background: var(--sasha-teal-light) !important;
+  border-color: var(--sasha-teal-text) !important;
+  color: var(--sasha-teal-text) !important;
+}
+
+:global(html[data-theme="dark"]) .imageUploadArea,
+:global(html[data-theme="dark"]) .visibilityCard {
+  background: var(--sasha-surface-inset);
+  border-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .imageUploadPlaceholder {
+  color: var(--sasha-muted);
+}
+
+:global(html[data-theme="dark"]) .approvalNote {
+  background: rgba(30, 64, 175, 0.24);
+  border-color: rgba(147, 197, 253, 0.35);
+  color: #bfdbfe;
+}
+
+:global(html[data-theme="dark"]) .approvalRow {
+  border-top-color: var(--sasha-border);
+}
