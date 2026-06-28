@@ -83,7 +83,7 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/staffAvailability", label: "Staff Availability" },
     { href: "/volunteer", label: "Volunteers" },
     { href: "/heatmap", label: "Heatmap" },
-    { href: "/reportGenerator", label: "Report Generator" },
+    { href: "/reportGenerator", label: "Report & Analysis" },
   ],
 };
 
@@ -95,6 +95,7 @@ export const SIDEBAR_LINKS = {
   // USER
   complainant: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
+    { href: "/about", label: "About", icon: "" },
     {
       href: "/cases",
       label: "Report",
@@ -116,6 +117,7 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/events", label: "Events", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
+    { href: "/contact", label: "Contact", icon: "" },
     {
       label: "Support & Resources",
       icon: "handsHelping",
@@ -225,7 +227,7 @@ export const SIDEBAR_LINKS = {
       ],
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
-    { href: "/reportGenerator", label: "Report Generator", icon: "assessment" },
+    { href: "/reportGenerator", label: "Reports & Analysis", icon: "assessment" },
     {
       label: "Settings",
       icon: "settings",
