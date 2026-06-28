@@ -166,13 +166,10 @@ async function submitReport(req, res) {
       });
     }
 
-    runNLPAnalysis({
+  runNLPAnalysis({
       case_report_id:       newReport.case_report_id,
       incident_description: newReport.incident_description,
-      incident_location:    newReport.incident_location,
-      incident_city:        newReport.incident_city,
-      action_requested:     newReport.action_requested,
-    });
+  });
 
     return res.status(201).json({ data: newReport, files: uploadedFiles });
   } catch (err) {

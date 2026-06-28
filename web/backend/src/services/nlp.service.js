@@ -34,7 +34,16 @@ async function updateWithSchemaFallback(updateFn, updates) {
  * Runs in the background and does not block report submission.
  */
 async function runNLPAnalysis(report) {
-    const { case_report_id, incident_description, incident_location, incident_city, action_requested } = report;
+    console.log(`[NLP] runNLPAnalysis triggered for report ${report?.case_report_id}`);
+
+    const { case_report_id, incident_description } = report;
+
+    // Guard — skip if description is missing or too short
+    if (!incident_description || incident_description.trim().length < 10) {
+        console.warn(`[NLP] Skipping — incident_description missing or too short for report ${case_report_id}`);
+        return;
+    }
+
     let pendingAnalysis = null;
 
     try {
@@ -44,14 +53,11 @@ async function runNLPAnalysis(report) {
         });
 
         const response = await fetch(`${NLP_URL}/analyze`, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body:    JSON.stringify({
                 case_report_id,
-                incident_description,
-                incident_location: incident_location || null,
-                incident_city:     incident_city     || null,
-                action_requested:  action_requested  || null,
+                incident_description,  // ← only this is sent to FastAPI
             }),
         });
 
@@ -94,10 +100,10 @@ async function runNLPAnalysis(report) {
             );
         }
 
-        console.log(`[NLP] Analysis completed for report ${case_report_id}`);
-    } catch (err) {
-        console.error(`[NLP] Analysis failed for report ${case_report_id}:`, err.message);
+        console.log(`[NLP] ✅ Analysis completed for report ${case_report_id}`);
 
+    } catch (err) {
+        console.error(`[NLP] ❌ Analysis failed for report ${case_report_id}:`, err.message);
         try {
             if (pendingAnalysis?.analysis_id) {
                 await updateAnalysisById(pendingAnalysis.analysis_id, { status: 'failed' });
@@ -105,7 +111,7 @@ async function runNLPAnalysis(report) {
                 await updateAnalysisByReportId(case_report_id, { status: 'failed' });
             }
         } catch (statusErr) {
-            console.error(`[NLP] Failed to mark report ${case_report_id} analysis as failed:`, statusErr.message);
+            console.error(`[NLP] Failed to mark report ${case_report_id} as failed:`, statusErr.message);
         }
     }
 }
