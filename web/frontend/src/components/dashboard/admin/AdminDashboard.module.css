@@ -170,7 +170,7 @@
    OVERVIEW CARDS
    ════════════════════════════════════════ */
 .overviewCard {
-  background: var(--sasha-white);
+  background: var(--sasha-surface);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   overflow: hidden;
@@ -192,6 +192,7 @@
   flex: 1;
   min-height: 112px;
   padding: 1rem 1.1rem 1.1rem;
+  background: var(--sasha-surface);
 }
 
 .overviewLabel {
@@ -237,7 +238,7 @@
    CALENDAR CARD  (react-calendar)
    ════════════════════════════════════════ */
 .calendarCard {
-  background: var(--sasha-white);
+  background: var(--sasha-surface);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   overflow: hidden;
@@ -335,7 +336,7 @@
    HEATMAP CARD
    ════════════════════════════════════════ */
 .heatmapCard {
-  background: var(--sasha-white);
+  background: var(--sasha-surface);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   padding: 1.25rem;
@@ -360,7 +361,7 @@
    UPCOMING DEADLINES
    ════════════════════════════════════════ */
 .deadlinesCard {
-  background: var(--sasha-white);
+  background: var(--sasha-surface);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   padding: 1.1rem;
@@ -397,7 +398,7 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.8rem 0;
-  border-bottom: 1px solid #edf1f3;
+  border-bottom: 1px solid var(--sasha-border);
 }
 
 .deadlineItem:last-child {
@@ -409,13 +410,13 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: #eef8f8;
+  background: var(--sasha-teal-light);
   color: var(--sasha-teal);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #cfe9e9;
+  border: 1px solid var(--sasha-border);
 }
 
 .deadlineContent {
@@ -447,8 +448,8 @@
   margin: 0;
   padding: 0.95rem;
   border-radius: 10px;
-  background: #f8fafb;
-  border: 1px dashed #d9e2e4;
+  background: var(--sasha-surface-soft);
+  border: 1px dashed var(--sasha-border);
   color: var(--sasha-muted);
   font-size: 0.82rem;
   text-align: center;

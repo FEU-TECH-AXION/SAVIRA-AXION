@@ -4,10 +4,16 @@
    ============================================================ */
 
 .card {
-  background: #fff;
+  background: var(--settings-card-bg);
+  border: 1px solid transparent;
   border-radius: 0 0 14px 14px;
   padding: 1.75rem 2rem 2rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  box-shadow: var(--settings-shadow);
+}
+
+:global(html[data-theme="dark"]) .card {
+  background: var(--settings-card-bg);
+  box-shadow: var(--settings-shadow);
 }
 
 .cardTitle {
@@ -15,13 +21,13 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #037F81;
+  color: var(--settings-accent, #037F81);
   margin-bottom: 0.5rem;
 }
 
 .cardDesc {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--settings-muted, #666);
   margin: 0 0 1.25rem;
   line-height: 1.5;
 }
@@ -34,7 +40,7 @@
   display: block;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #444;
+  color: var(--settings-text-secondary, #444);
   margin-bottom: 0.55rem;
 }
 
@@ -43,8 +49,8 @@
 .badge {
   font-size: 0.68rem;
   font-weight: 500;
-  color: #888;
-  background: #f0f0f0;
+  color: var(--settings-muted-light, #888);
+  background: var(--settings-badge-bg, #f0f0f0);
   border-radius: 4px;
   padding: 1px 6px;
   margin-left: 0.3rem;
@@ -54,11 +60,11 @@
 .field textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border, #dde3ea);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: #222;
-  background: #fafafa;
+  color: var(--settings-input-text, #222);
+  background: var(--settings-control-bg, #fafafa);
   outline: none;
   font-family: inherit;
   resize: vertical;
@@ -67,9 +73,9 @@
 
 .field input:focus,
 .field textarea:focus {
-  border-color: #037F81;
+  border-color: var(--settings-accent, #037F81);
   box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
-  background: #fff;
+  background: var(--settings-control-bg-focus, #fff);
 }
 
 /* ── Issue type chips ───────────────────────────────────────── */
@@ -81,22 +87,22 @@
 
 .issueChip {
   padding: 0.5rem 1rem;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border, #dde3ea);
   border-radius: 999px;
-  background: #fafafa;
+  background: var(--settings-chip-bg, #fafafa);
   font-size: 0.8rem;
   font-weight: 600;
-  color: #555;
+  color: var(--settings-muted, #555);
   cursor: pointer;
   transition: border-color 0.18s, background 0.18s, color 0.18s;
 }
 
-.issueChip:hover { border-color: #037F81; color: #037F81; }
+.issueChip:hover { border-color: var(--settings-accent, #037F81); color: var(--settings-accent, #037F81); }
 
 .issueChipActive {
-  border-color: #037F81;
-  background: #e6f9f5;
-  color: #037F81;
+  border-color: var(--settings-accent, #037F81);
+  background: var(--settings-accent-soft, #e6f9f5);
+  color: var(--settings-accent-on-soft, #037F81);
 }
 
 /* ── Attachment ─────────────────────────────────────────────── */
@@ -105,28 +111,28 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 1rem;
-  border: 1.5px dashed #dde3ea;
+  border: 1.5px dashed var(--settings-border, #dde3ea);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--settings-chip-bg, #fafafa);
   font-size: 0.82rem;
   font-weight: 500;
-  color: #555;
+  color: var(--settings-muted, #555);
   cursor: pointer;
   transition: border-color 0.18s, color 0.18s;
 }
 
-.attachBtn:hover { border-color: #037F81; color: #037F81; }
+.attachBtn:hover { border-color: var(--settings-accent, #037F81); color: var(--settings-accent, #037F81); }
 
 .attachmentRow {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.85rem;
-  background: #e6f9f5;
-  border: 1px solid #a7e9d8;
+  background: var(--settings-success-bg, #e6f9f5);
+  border: 1px solid var(--settings-success-border, #a7e9d8);
   border-radius: 8px;
   font-size: 0.82rem;
-  color: #037F81;
+  color: var(--settings-accent-on-soft, #037F81);
 }
 
 .attachmentName {
@@ -139,13 +145,13 @@
 .removeBtn {
   background: none;
   border: none;
-  color: #037F81;
+  color: var(--settings-accent, #037F81);
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 0;
 }
-.removeBtn:hover { color: #025f61; }
+.removeBtn:hover { color: var(--settings-accent-strong, #025f61); }
 
 /* ── Actions ────────────────────────────────────────────────── */
 .formActions {
@@ -156,7 +162,7 @@
 
 .btnPrimary {
   padding: 0.65rem 2rem;
-  background: #037F81;
+  background: var(--settings-accent-solid, #037F81);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -166,7 +172,7 @@
   transition: background 0.18s, transform 0.1s;
 }
 
-.btnPrimary:hover:not(:disabled) { background: #025f61; transform: translateY(-1px); }
+.btnPrimary:hover:not(:disabled) { background: var(--settings-accent-strong, #025f61); transform: translateY(-1px); }
 .btnPrimary:disabled { opacity: 0.65; cursor: not-allowed; }
 
 /* ── Flash messages ─────────────────────────────────────────── */
@@ -183,8 +189,17 @@
   animation: slideDown 0.25s ease;
 }
 
-.flashSuccess { background: #e6f9f5; color: #037F81; border: 1px solid #a7e9d8; }
-.flashError { background: #fff0ef; color: #c0392b; border: 1px solid #f5c6c2; }
+.flashSuccess {
+  background: var(--settings-success-bg, #e6f9f5);
+  color: var(--settings-accent-on-soft, #037F81);
+  border: 1px solid var(--settings-success-border, #a7e9d8);
+}
+
+.flashError {
+  background: var(--settings-error-bg, #fff0ef);
+  color: #c0392b;
+  border: 1px solid var(--settings-error-border, #f5c6c2);
+}
 
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }

@@ -1,5 +1,5 @@
 .card {
-  background: var(--sasha-white);
+  background: var(--sasha-surface);
   border: 1px solid var(--sasha-border);
   border-radius: var(--sasha-card-radius);
   height: 100%;

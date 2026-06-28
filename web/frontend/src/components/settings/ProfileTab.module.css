@@ -4,10 +4,15 @@
    ============================================================ */
 
 .formCard {
-  background: #fff;
+  background: var(--settings-card-bg);
   border-radius: 0 0 14px 14px;
   padding: 1.75rem 2rem 2rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  box-shadow: var(--settings-shadow);
+}
+
+:global(html[data-theme="dark"]) .formCard {
+  background: var(--settings-card-bg);
+  box-shadow: var(--settings-shadow);
 }
 
 .sectionTitle {
@@ -15,10 +20,10 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #037F81;
+  color: var(--settings-accent, #037F81);
   margin-bottom: 1.1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--settings-border-soft, #edf2f7);
 }
 
 /* ── Grid layouts ───────────────────────────────────────────── */
@@ -39,7 +44,7 @@
 .fieldLabel {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #444;
+  color: var(--settings-text-secondary, #444);
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -50,8 +55,8 @@
 .badge {
   font-size: 0.68rem;
   font-weight: 500;
-  color: #888;
-  background: #f0f0f0;
+  color: var(--settings-muted-light, #888);
+  background: var(--settings-badge-bg, #f0f0f0);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -60,26 +65,27 @@
 .field select {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border, #dde3ea);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: #222;
-  background: #fafafa;
+  color: var(--settings-input-text, #222);
+  background: var(--settings-control-bg, #fafafa);
   transition: border-color 0.18s, box-shadow 0.18s;
   outline: none;
 }
 
 .field input:focus,
 .field select:focus {
-  border-color: #037F81;
+  border-color: var(--settings-accent, #037F81);
   box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
-  background: #fff;
+  background: var(--settings-control-bg-focus, #fff);
 }
 
 .fieldHint {
   font-size: 0.75rem;
   line-height: 1.4;
   margin: 0;
+  color: var(--settings-muted, #666);
 }
 
 .fieldError {
@@ -97,7 +103,7 @@
 
 .btnPrimary {
   padding: 0.65rem 2rem;
-  background: #037F81;
+  background: var(--settings-accent-solid, #037F81);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -108,7 +114,7 @@
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: #025f61;
+  background: var(--settings-accent-strong, #025f61);
   transform: translateY(-1px);
 }
 
@@ -131,8 +137,17 @@
   animation: slideDown 0.25s ease;
 }
 
-.flashSuccess { background: #e6f9f5; color: #037F81; border: 1px solid #a7e9d8; }
-.flashError   { background: #fff0ef; color: #c0392b; border: 1px solid #f5c6c2; }
+.flashSuccess {
+  background: var(--settings-success-bg, #e6f9f5);
+  color: var(--settings-accent-on-soft, #037F81);
+  border: 1px solid var(--settings-success-border, #a7e9d8);
+}
+
+.flashError {
+  background: var(--settings-error-bg, #fff0ef);
+  color: #c0392b;
+  border: 1px solid var(--settings-error-border, #f5c6c2);
+}
 
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }

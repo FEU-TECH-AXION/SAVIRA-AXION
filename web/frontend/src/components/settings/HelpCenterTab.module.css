@@ -10,10 +10,16 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--settings-card-bg);
+  border: 1px solid transparent;
   border-radius: 14px;
   padding: 1.75rem 2rem 2rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  box-shadow: var(--settings-shadow);
+}
+
+:global(html[data-theme="dark"]) .card {
+  background: var(--settings-card-bg);
+  box-shadow: var(--settings-shadow);
 }
 
 .wrap > .card:first-child { border-radius: 0 0 14px 14px; }
@@ -23,13 +29,13 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #037F81;
+  color: var(--settings-accent, #037F81);
   margin-bottom: 1rem;
 }
 
 .cardDesc {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--settings-muted, #666);
   margin: 0 0 1.25rem;
   line-height: 1.5;
 }
@@ -38,25 +44,26 @@
 .searchInput {
   width: 100%;
   padding: 0.7rem 1rem;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border, #dde3ea);
   border-radius: 10px;
   font-size: 0.9rem;
-  background: #fafafa;
+  color: var(--settings-input-text, #222);
+  background: var(--settings-control-bg, #fafafa);
   outline: none;
   margin-bottom: 1.25rem;
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .searchInput:focus {
-  border-color: #037F81;
+  border-color: var(--settings-accent, #037F81);
   box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
-  background: #fff;
+  background: var(--settings-control-bg-focus, #fff);
 }
 
 /* ── FAQ accordion ──────────────────────────────────────────── */
 .faqList { display: flex; flex-direction: column; }
 
-.faqItem { border-bottom: 1px solid #f0f0f0; }
+.faqItem { border-bottom: 1px solid var(--settings-row-border, #f0f0f0); }
 .faqItem:last-child { border-bottom: none; }
 
 .faqQuestion {
@@ -71,26 +78,26 @@
   text-align: left;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #222;
+  color: var(--settings-text, #222);
   cursor: pointer;
 }
 
-.faqQuestion:hover { color: #037F81; }
+.faqQuestion:hover { color: var(--settings-accent, #037F81); }
 
-.faqChevron { transition: transform 0.2s; color: #888; flex-shrink: 0; }
-.faqChevronOpen { transform: rotate(180deg); color: #037F81; }
+.faqChevron { transition: transform 0.2s; color: var(--settings-muted-light, #888); flex-shrink: 0; }
+.faqChevronOpen { transform: rotate(180deg); color: var(--settings-accent, #037F81); }
 
 .faqAnswer {
   font-size: 0.85rem;
   line-height: 1.6;
-  color: #555;
+  color: var(--settings-muted, #555);
   margin: 0 0 1rem;
   padding-right: 1.5rem;
 }
 
 .emptyNote {
   font-size: 0.85rem;
-  color: #888;
+  color: var(--settings-muted-light, #888);
   padding: 1rem 0;
 }
 
@@ -98,17 +105,17 @@
 .contactForm { display: flex; flex-direction: column; gap: 1.1rem; }
 
 .field { display: flex; flex-direction: column; gap: 0.3rem; }
-.fieldLabel { font-size: 0.8rem; font-weight: 600; color: #444; }
+.fieldLabel { font-size: 0.8rem; font-weight: 600; color: var(--settings-text-secondary, #444); }
 
 .field input,
 .field textarea {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1.5px solid #dde3ea;
+  border: 1.5px solid var(--settings-border, #dde3ea);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: #222;
-  background: #fafafa;
+  color: var(--settings-input-text, #222);
+  background: var(--settings-control-bg, #fafafa);
   outline: none;
   font-family: inherit;
   resize: vertical;
@@ -117,9 +124,9 @@
 
 .field input:focus,
 .field textarea:focus {
-  border-color: #037F81;
+  border-color: var(--settings-accent, #037F81);
   box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
-  background: #fff;
+  background: var(--settings-control-bg-focus, #fff);
 }
 
 .formActions {
@@ -135,7 +142,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.82rem;
-  color: #037F81;
+  color: var(--settings-accent, #037F81);
   text-decoration: none;
   font-weight: 500;
 }
@@ -145,7 +152,7 @@
   display: flex;
   align-items: center;
   padding: 0.65rem 1.5rem;
-  background: #037F81;
+  background: var(--settings-accent-solid, #037F81);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -155,7 +162,7 @@
   transition: background 0.18s, transform 0.1s;
 }
 
-.btnPrimary:hover:not(:disabled) { background: #025f61; transform: translateY(-1px); }
+.btnPrimary:hover:not(:disabled) { background: var(--settings-accent-strong, #025f61); transform: translateY(-1px); }
 .btnPrimary:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .flashSuccess {
@@ -167,9 +174,9 @@
   font-size: 0.875rem;
   font-weight: 500;
   margin: 0 0 1rem;
-  background: #e6f9f5;
-  color: #037F81;
-  border: 1px solid #a7e9d8;
+  background: var(--settings-success-bg, #e6f9f5);
+  color: var(--settings-accent-on-soft, #037F81);
+  border: 1px solid var(--settings-success-border, #a7e9d8);
   animation: slideDown 0.25s ease;
 }
 

@@ -127,6 +127,20 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // ── Enforce Dark Mode Restrictions ───────────────────────
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        document.documentElement.dataset.theme = "light";
+      } else {
+        // Re-apply full preferences dynamically when user logs in
+        import("@/lib/displayPreferences").then((m) => {
+          m.applyDisplayPrefs(m.readDisplayPrefs());
+        });
+      }
+    }
+  }, [user, loading]);
+
   return (
     <AuthContext.Provider value={{ user, setUser, loading, login, logout }}>
       {children}

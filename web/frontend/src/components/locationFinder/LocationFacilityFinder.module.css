@@ -316,6 +316,108 @@
   min-height: 420px;
 }
 
+:global(html[data-theme="dark"]) .searchPanel,
+:global(html[data-theme="dark"]) .mapPanel {
+  background: #18222d;
+  border-color: #334155;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+:global(html[data-theme="dark"]) .serviceIcon,
+:global(html[data-theme="dark"]) .resultIcon {
+  background: #111923;
+  border-color: #334155;
+}
+
+:global(html[data-theme="dark"]) .eyebrow,
+:global(html[data-theme="dark"]) .searchLabel,
+:global(html[data-theme="dark"]) .resultsHeader,
+:global(html[data-theme="dark"]) .resultBody p,
+:global(html[data-theme="dark"]) .emptyState,
+:global(html[data-theme="dark"]) .mapFallback,
+:global(html[data-theme="dark"]) .suggestionMeta {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .title,
+:global(html[data-theme="dark"]) .resultsHeader strong {
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .searchInput {
+  background: #0f1720;
+  border-color: #435266;
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .searchInput::placeholder {
+  color: #94a3b8;
+}
+
+:global(html[data-theme="dark"]) .searchInput:focus {
+  background: #111c27;
+  border-color: #037F81;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22);
+}
+
+:global(html[data-theme="dark"]) .suggestions {
+  background: #111923;
+  border-color: #334155;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
+}
+
+:global(html[data-theme="dark"]) .suggestionItem {
+  background: #111923;
+  border-bottom-color: #253244;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .suggestionItem:hover,
+:global(html[data-theme="dark"]) .suggestionItemActive {
+  background: #123f43;
+  color: #c8f4ee;
+}
+
+:global(html[data-theme="dark"]) .emptyState,
+:global(html[data-theme="dark"]) .resultItem {
+  background: #111923;
+  border-color: #334155;
+}
+
+:global(html[data-theme="dark"]) .resultsHeader {
+  border-bottom-color: #334155;
+}
+
+:global(html[data-theme="dark"]) .resultBody h2 {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .directionsLink {
+  background: #123f43;
+  color: #c8f4ee;
+}
+
+:global(html[data-theme="dark"]) .directionsLink:hover {
+  background: #037F81;
+  color: #ffffff;
+}
+
+:global(html[data-theme="dark"]) .mapCanvas {
+  background: #0f1720;
+}
+
+:global(html[data-theme="dark"]) .notice {
+  background: #2f2416;
+  border-color: #9a6a2e;
+  color: #fed7aa;
+}
+
+:global(html[data-theme="dark"]) .error {
+  background: #321c20;
+  border-color: #91414a;
+  color: #fecdd3;
+}
+
 @media (max-width: 992px) {
   .finder {
     grid-template-columns: 1fr;
