@@ -51,6 +51,7 @@
 import { useState, useEffect } from "react";
 import { FiX, FiClock, FiAlertTriangle } from "react-icons/fi";
 import styles from "./UpdateStatusModals.module.css";
+import { authFetch } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1124,9 +1125,7 @@ export default function UpdateStatusModal({
       setNlpClarificationLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`, {
-          credentials: "include",
-        });
+        const res = await authFetch(`${API_URL}/api/case_reports/${caseData.id}/nlp`);
 
         if (res.status === 404) {
           if (!cancelled) setFetchedNlpClarification(null);

@@ -1,6 +1,12 @@
 const supabase = require('../config/supabase')
 
 const clean = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ')
+const STRONG_INCIDENT_FIELDS = new Set([
+  'respondent name',
+  'same incident date',
+  'same location',
+  'similar description',
+])
 
 function textSimilarity(a, b) {
   const left = new Set(clean(a).split(/\W+/).filter((word) => word.length > 2))
@@ -14,6 +20,11 @@ function textSimilarity(a, b) {
 function dateDistanceDays(a, b) {
   if (!a || !b) return Infinity
   return Math.abs(new Date(a) - new Date(b)) / 86400000
+}
+
+function normalizeScoreForFields(score, fields = []) {
+  const hasStrongIncidentMatch = fields.some((field) => STRONG_INCIDENT_FIELDS.has(field))
+  return Math.min(hasStrongIncidentMatch ? score : Math.min(score, 40), 100)
 }
 
 function scoreReports(report, candidate) {
@@ -50,7 +61,7 @@ function scoreReports(report, candidate) {
     fields.push('similar description')
   }
 
-  return { score: Math.min(score, 100), fields }
+  return { score: normalizeScoreForFields(score, fields), fields }
 }
 
 async function detectForCase(report) {
@@ -97,4 +108,4 @@ async function dismiss(matchId, userId) {
   return data
 }
 
-module.exports = { detectForCase, dismiss }
+module.exports = { detectForCase, dismiss, normalizeScoreForFields }

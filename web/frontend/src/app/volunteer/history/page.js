@@ -7,7 +7,7 @@ import styles from "./VolunteerHistory.module.css";
 import { IoIosInformationCircle, IoIosWarning } from "react-icons/io";
 import VolunteerApplicationStatusCard from "@/components/volunteer/VolunteerApplicationStatusCard";
 import { ConfirmDialog } from "@/components/ui/Dialog";
-import { authFetch } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
 
 // ── Status badge colors ───────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -21,6 +21,15 @@ const STATUS_COLORS = {
 
 const REAPPLICATION_WAIT_DAYS = 15;
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000;
+const VOLUNTEER_APPLICATION_DRAFT_KEY = "savira_volunteer_application_draft";
+
+function getUserDraftKey(user) {
+  return user?.id || user?.user_id || user?.email || "anonymous";
+}
+
+function getScopedDraftKey(baseKey, user) {
+  return `${baseKey}:${getUserDraftKey(user)}`;
+}
 
 function formatDate(value) {
   if (!value) return "—";
@@ -106,6 +115,7 @@ function getSubmissionEligibility(applications) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ApplicationHistoryPage() {
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [applications, setApplications] = useState([]);
   const [draft,        setDraft]        = useState(null);
   const [loading,      setLoading]      = useState(true);
@@ -116,15 +126,20 @@ export default function ApplicationHistoryPage() {
   const [selectedAppId, setSelectedAppId] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const draftStorageKey = getScopedDraftKey(VOLUNTEER_APPLICATION_DRAFT_KEY, authUser);
 
   useEffect(() => {
-    // Load any saved draft from localStorage
-    try {
-      const raw = localStorage.getItem("savira_volunteer_application_draft");
-      setDraft(raw ? JSON.parse(raw) : null);
-    } catch (_) {
-      setDraft(null);
-    }
+    if (authLoading) return undefined;
+
+    const draftTimer = window.setTimeout(() => {
+      try {
+        localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+        const raw = localStorage.getItem(draftStorageKey);
+        setDraft(raw ? JSON.parse(raw) : null);
+      } catch (_) {
+        setDraft(null);
+      }
+    }, 0);
 
     async function fetchApplications() {
       try {
@@ -142,7 +157,8 @@ export default function ApplicationHistoryPage() {
       }
     }
     fetchApplications();
-  }, []);
+    return () => window.clearTimeout(draftTimer);
+  }, [authLoading, draftStorageKey]);
 
   const handleWithdraw = async () => {
     if (!selectedAppId) return;
@@ -229,7 +245,7 @@ export default function ApplicationHistoryPage() {
               <div className={styles.infoBanner}>
                 <span><IoIosInformationCircle /></span>
                 <span>
-                  You already have an active application under review. You can't submit a new application unless you {" "}
+                  You already have an active application under review. You can&apos;t submit a new application unless you {" "}
                   <strong>withdraw your current application</strong>.
                 </span>
               </div>

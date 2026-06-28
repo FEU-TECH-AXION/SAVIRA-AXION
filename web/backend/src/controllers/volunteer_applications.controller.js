@@ -32,6 +32,25 @@ const REAPPLICATION_WAIT_DAYS = 15
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000
 const APPLICATION_STATUSES = new Set(['pending', 'reviewing', 'approved', 'rejected'])
 
+const getAuthenticatedUserId = (req) =>
+    req.user?.id || req.user?.user_id || req.user?.sub || null
+
+const getAuthenticatedUserEmail = async (req) => {
+    if (req.user?.email) return req.user.email
+
+    const userId = getAuthenticatedUserId(req)
+    if (!userId) return null
+
+    const { data, error } = await supabase
+        .from('users')
+        .select('email')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+    if (error) throw error
+    return data?.email || null
+}
+
 function average(values) {
     const nums = values.map(Number).filter((n) => Number.isFinite(n))
     if (nums.length === 0) return 0
@@ -64,7 +83,7 @@ function priorityBonus(app = {}) {
 
 const getItems = async (req, res) => {
     try {
-        const userId = req.user?.id || req.user?.user_id
+        const userId = getAuthenticatedUserId(req)
         const roleName = req.user?.role || req.user?.role_name
         const role   = roleName?.toLowerCase()
 
@@ -338,7 +357,7 @@ const createItem = async (req, res) => {
             screening_question_set_id,
             essay,
         } = req.body
-        const userId = req.user?.id
+        const userId = getAuthenticatedUserId(req)
         if (!userId) return res.status(401).json({ error: 'Authentication required.' })
 
         const birthday = applicant?.birthday
@@ -576,7 +595,7 @@ const updateItem = async (req, res) => {
     try {
         const { id } = req.params
         const { application_status, notes } = req.body
-        const changedBy = req.user?.id || null
+        const changedBy = getAuthenticatedUserId(req)
         const normalizedStatus = String(application_status || '').trim().toLowerCase()
         const normalizedNotes = String(notes || '').trim()
 
@@ -661,40 +680,73 @@ const updateItem = async (req, res) => {
 
 const getMyApplications = async (req, res) => {
     try {
-        const userId = req.user?.id
+        const userId = getAuthenticatedUserId(req)
         if (!userId) return res.status(401).json({ error: 'Authentication required.' })
+        const userEmail = await getAuthenticatedUserEmail(req)
 
-        // Get volunteer_applicant_id from user
-        const { data: volunteerApplicant } = await supabase
+        const applicationSelect = `
+            *,
+            volunteer_application_assignments (
+                assignment_id,
+                assessor_id,
+                is_active,
+                users!volunteer_application_assignments_assessor_id_fkey (
+                    user_id,
+                    first_name,
+                    last_name,
+                    email
+                )
+            )
+        `
+
+        const { data: volunteerApplicants, error: applicantError } = await supabase
             .from('volunteer_applicants')
             .select('volunteer_applicant_id')
             .eq('user_id', userId)
-            .maybeSingle()
 
-        if (!volunteerApplicant) return res.status(200).json([])
+        if (applicantError) throw applicantError
 
-        const { data, error } = await supabase
-            .from('volunteer_applications')
-            .select(`
-                *,
-                volunteer_application_assignments (
-                    assignment_id,
-                    assessor_id,
-                    is_active,
-                    users!volunteer_application_assignments_assessor_id_fkey (
-                        user_id,
-                        first_name,
-                        last_name,
-                        email
-                    )
-                )
-            `)
-            .eq('volunteer_applicant_id', volunteerApplicant.volunteer_applicant_id)
-            .order('created_at', { ascending: false })
+        const applicantIds = (volunteerApplicants || [])
+            .map((applicant) => applicant.volunteer_applicant_id)
+            .filter(Boolean)
 
-        if (error) throw error
+        const queries = []
 
-        res.status(200).json(data)
+        if (applicantIds.length > 0) {
+            queries.push(
+                supabase
+                    .from('volunteer_applications')
+                    .select(applicationSelect)
+                    .in('volunteer_applicant_id', applicantIds)
+            )
+        }
+
+        if (userEmail) {
+            queries.push(
+                supabase
+                    .from('volunteer_applications')
+                    .select(applicationSelect)
+                    .ilike('email', userEmail)
+            )
+        }
+
+        if (queries.length === 0) return res.status(200).json([])
+
+        const results = await Promise.all(queries)
+        const firstError = results.find((result) => result.error)?.error
+        if (firstError) throw firstError
+
+        const applicationsById = new Map()
+        for (const result of results) {
+            for (const application of result.data || []) {
+                applicationsById.set(application.volunteer_application_id, application)
+            }
+        }
+
+        const applications = Array.from(applicationsById.values())
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+
+        res.status(200).json(applications)
 
     } catch (error) {
         res.status(500).json({ error: error.message })

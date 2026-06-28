@@ -73,6 +73,7 @@ const signup = async (req, res) => {
     const token = jwt.sign(
       {
         id: newUser.user_id,
+        email: newUser.email,
         role: newUser.roles?.role_name,
         role_name: newUser.roles?.role_name,
         role_id: newUser.role_id,
@@ -124,6 +125,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       {
         id: user.user_id,
+        email: user.email,
         role: user.roles?.role_name,
         role_name: user.roles?.role_name,
         role_id: user.role_id,
@@ -199,7 +201,23 @@ const me = async (req, res) => {
       flatUser.committee_id = staffRecord?.committee_id ?? null;
     }
 
-    res.status(200).json({ user: flatUser });
+    const token = jwt.sign(
+      {
+        id: flatUser.user_id,
+        email: flatUser.email,
+        role: flatUser.role_name,
+        role_name: flatUser.role_name,
+        role_id: flatUser.role_id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res
+      .cookie('token', token, COOKIE_OPTIONS)
+      .cookie('user', JSON.stringify(flatUser), USER_COOKIE_OPTIONS)
+      .status(200)
+      .json({ user: flatUser, token });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
