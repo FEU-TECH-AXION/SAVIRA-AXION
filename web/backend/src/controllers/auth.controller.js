@@ -26,6 +26,35 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function legacyDotlessGmailEmail(email) {
+  const normalizedEmail = normalizeEmail(email);
+  const [localPart, domain] = normalizedEmail.split('@');
+  if (!localPart || !domain || !['gmail.com', 'googlemail.com'].includes(domain)) return null;
+
+  const dotlessEmail = `${localPart.replace(/\./g, '')}@${domain}`;
+  return dotlessEmail === normalizedEmail ? null : dotlessEmail;
+}
+
+async function findUserByEmail(email, select = '*, roles(role_name)') {
+  const normalizedEmail = normalizeEmail(email);
+  const { data: exactUser, error: exactError } = await supabase
+    .from('users')
+    .select(select)
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (exactError || exactUser) return { data: exactUser, error: exactError };
+
+  const legacyEmail = legacyDotlessGmailEmail(normalizedEmail);
+  if (!legacyEmail) return { data: null, error: null };
+
+  return supabase
+    .from('users')
+    .select(select)
+    .eq('email', legacyEmail)
+    .maybeSingle();
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -236,11 +265,7 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*, roles(role_name)')
-      .eq('email', normalizeEmail(email))
-      .single();
+    const { data: user, error } = await findUserByEmail(email);
 
     if (error || !user) return res.status(401).json({ error: 'Invalid email or password.' });
 
@@ -345,11 +370,7 @@ const resendVerification = async (req, res) => {
     }
 
     if (purpose === 'login') {
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('user_id, is_email_verified')
-        .eq('email', email)
-        .maybeSingle();
+      const { data: user, error } = await findUserByEmail(email, 'user_id, is_email_verified');
       if (error) throw error;
       if (!user) return res.status(404).json({ error: 'User not found.' });
       if (user.is_email_verified) return res.status(400).json({ error: 'This account is already verified.' });

@@ -20,6 +20,37 @@ const avatarUpload = multer({
   },
 })
 
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
+
+const legacyDotlessGmailEmail = (email) => {
+  const normalizedEmail = normalizeEmail(email)
+  const [localPart, domain] = normalizedEmail.split('@')
+  if (!localPart || !domain || !['gmail.com', 'googlemail.com'].includes(domain)) return null
+
+  const dotlessEmail = `${localPart.replace(/\./g, '')}@${domain}`
+  return dotlessEmail === normalizedEmail ? null : dotlessEmail
+}
+
+const findUserForPasswordReset = async (email) => {
+  const normalizedEmail = normalizeEmail(email)
+  const { data: exactUser, error: exactError } = await supabase
+    .from('users')
+    .select('user_id, email')
+    .eq('email', normalizedEmail)
+    .maybeSingle()
+
+  if (exactError || exactUser) return { data: exactUser, error: exactError }
+
+  const legacyEmail = legacyDotlessGmailEmail(normalizedEmail)
+  if (!legacyEmail) return { data: null, error: null }
+
+  return supabase
+    .from('users')
+    .select('user_id, email')
+    .eq('email', legacyEmail)
+    .maybeSingle()
+}
+
 router.get('/', verifyToken, authorize('Admin'), getItems)
 router.post('/', verifyToken, authorize('Admin'), createItem)
 router.put('/:id', verifyToken, updateItem)
@@ -36,11 +67,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 
   try {
-    const { data: user, error: findError } = await supabase
-      .from('users')
-      .select('user_id, email')
-      .eq('email', email)
-      .maybeSingle()
+    const { data: user, error: findError } = await findUserForPasswordReset(email)
 
     if (findError) throw findError
     if (!user) {

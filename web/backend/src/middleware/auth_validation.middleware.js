@@ -5,9 +5,9 @@ const NAME_PATTERN = /^\p{L}+(?:[ -]\p{L}+)*$/u;
 // Define rules
 const loginRules = [
   body('email')
+    .trim()
     .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Must be a valid email address')
-    .normalizeEmail(),
+    .isEmail().withMessage('Must be a valid email address'),
 
   body('password')
     .notEmpty().withMessage('Password is required'),
@@ -29,9 +29,9 @@ body('lastName')
   .matches(NAME_PATTERN).withMessage('Last name can only contain letters with single spaces or hyphens between name parts'),
 
   body('email')
+    .trim()
     .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Must be a valid email address')
-    .normalizeEmail(),
+    .isEmail().withMessage('Must be a valid email address'),
 
   body('password')
     .notEmpty().withMessage('Password is required')
