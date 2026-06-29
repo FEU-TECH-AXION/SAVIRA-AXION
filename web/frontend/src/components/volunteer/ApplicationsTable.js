@@ -189,15 +189,25 @@ export default function ApplicationsTable({
         (a.assignedEvaluatorIds || []).some((id) => String(id) === String(currentUserId))
       ));
 
+  function hasExplicitTime(value) {
+    if (value instanceof Date) return true;
+    if (typeof value !== "string") return false;
+    return /T\d{2}:\d{2}| \d{1,2}:\d{2}/.test(value);
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleString("en-PH", {
+    const options = {
       day: "2-digit",
       month: "short",
       year: "numeric",
-    });
+      ...(hasExplicitTime(dateStr)
+        ? { hour: "numeric", minute: "2-digit", hour12: true }
+        : {}),
+    };
+    return d.toLocaleString("en-PH", options).replace(",", "");
   }
 
   function SortIcon({ field }) {

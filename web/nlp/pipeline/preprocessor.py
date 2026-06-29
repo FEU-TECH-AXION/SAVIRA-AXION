@@ -5,19 +5,22 @@ from nltk.corpus import stopwords
 from spellchecker import SpellChecker
 from langdetect import detect, LangDetectException
 
+SPACY_MODEL = "en_core_web_sm"
+
 # Load spaCy model
 _nlp = None
 
 def get_nlp():
     global _nlp
     if _nlp is None:
-        _nlp = spacy.load("en_core_web_sm")
+        _nlp = spacy.load(SPACY_MODEL)
     return _nlp
 
 # Download NLTK data if not already downloaded
 nltk.download("stopwords", quiet=True)
 nltk.download("wordnet", quiet=True)
 nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 
 # ── Custom stopword list ──────────────────────────────────────────
 # Start with NLTK's standard English stopwords

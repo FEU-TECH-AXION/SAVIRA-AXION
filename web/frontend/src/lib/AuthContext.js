@@ -8,8 +8,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+import { API_URL } from "@/lib/config";
 
 const AuthContext = createContext(null);
 
