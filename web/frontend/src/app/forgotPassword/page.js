@@ -22,8 +22,7 @@ export default function ForgotPassword() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const sendResetEmail = async () => {
     setError("");
     setMessage("");
 
@@ -54,6 +53,11 @@ export default function ForgotPassword() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await sendResetEmail();
   };
 
   return (
@@ -93,9 +97,20 @@ export default function ForgotPassword() {
             </button>
 
             {message && (
-              <p className={styles.pgdescription} style={{ color: 'green', marginTop: '10px' }}>
-                {message}
-              </p>
+              <div className={styles.sentMessage}>
+                <p>{message}</p>
+                <p>
+                  Didn't receive the email?{" "}
+                  <button
+                    type="button"
+                    className={styles.resendBtn}
+                    onClick={sendResetEmail}
+                    disabled={loading}
+                  >
+                    {loading ? "Resending..." : "Resend reset link"}
+                  </button>
+                </p>
+              </div>
             )}
 
             <div className={styles.auxiliaryGroup}>

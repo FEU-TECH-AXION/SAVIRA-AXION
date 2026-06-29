@@ -2,12 +2,61 @@ const { randomUUID } = require('crypto');
 const supabase = require('../config/supabase');
 const { sendSupportReplyEmail } = require('../config/mailer');
 
+const ATTACHMENT_BUCKET = 'case-evidence';
+
 function clean(value) {
   return String(value || '').trim();
 }
 
 function isAdmin(req) {
   return String(req.user?.role || req.user?.role_name || '').toLowerCase() === 'admin' || Number(req.user?.role_id) === 3;
+}
+
+async function getReporterProfile(req) {
+  const userId = req.user?.id || req.user?.user_id || req.body.user_id || null;
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, first_name, last_name, email')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function uploadSupportAttachment(messageId, file) {
+  if (!file) return {};
+
+  const extension = file.originalname.includes('.')
+    ? `.${file.originalname.split('.').pop()}`
+    : '';
+  const path = `support-messages/${messageId}/${randomUUID()}${extension}`;
+  const { error } = await supabase.storage
+    .from(ATTACHMENT_BUCKET)
+    .upload(path, file.buffer, { contentType: file.mimetype, upsert: false });
+  if (error) throw error;
+
+  return {
+    attachment_name: file.originalname,
+    attachment_path: path,
+    attachment_mime_type: file.mimetype,
+  };
+}
+
+async function addAttachmentUrls(messages) {
+  const paths = (messages || []).map((message) => message.attachment_path).filter(Boolean);
+  if (paths.length === 0) return messages;
+
+  const { data } = await supabase.storage
+    .from(ATTACHMENT_BUCKET)
+    .createSignedUrls(paths, 60 * 60);
+  const urlByPath = new Map((data || []).map((item) => [item.path, item.signedUrl]));
+
+  return messages.map((message) => ({
+    ...message,
+    attachment_url: urlByPath.get(message.attachment_path) || null,
+  }));
 }
 
 const createContactMessage = async (req, res) => {
@@ -42,18 +91,21 @@ const createContactMessage = async (req, res) => {
 
 const createBugReport = async (req, res) => {
   try {
+    const messageId = randomUUID();
+    const reporter = await getReporterProfile(req);
+    const attachment = await uploadSupportAttachment(messageId, req.file);
     const payload = {
-      message_id: randomUUID(),
+      message_id: messageId,
       source: 'bug_report',
       status: 'open',
-      user_id: req.user?.id || req.body.user_id || null,
-      first_name: clean(req.user?.first_name || req.body.firstName),
-      last_name: clean(req.user?.last_name || req.body.lastName),
-      email: clean(req.user?.email || req.body.email).toLowerCase(),
+      user_id: reporter?.user_id || req.user?.id || req.body.user_id || null,
+      first_name: clean(reporter?.first_name || req.user?.first_name || req.body.firstName),
+      last_name: clean(reporter?.last_name || req.user?.last_name || req.body.lastName),
+      email: clean(reporter?.email || req.user?.email || req.body.email).toLowerCase(),
       subject: clean(req.body.issue_type || 'Bug report'),
       message: clean(req.body.description),
       page_url: clean(req.body.page_url),
-      attachment_name: req.file?.originalname || null,
+      ...attachment,
     };
 
     if (!payload.message) return res.status(400).json({ error: 'Description is required.' });
@@ -64,7 +116,8 @@ const createBugReport = async (req, res) => {
       .select('*')
       .single();
     if (error) throw error;
-    res.status(201).json({ data });
+    const [messageWithUrl] = await addAttachmentUrls([data]);
+    res.status(201).json({ data: messageWithUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -84,7 +137,8 @@ const listMessages = async (req, res) => {
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json({ data: data || [] });
+    const messages = await addAttachmentUrls(data || []);
+    res.json({ data: messages });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -127,7 +181,8 @@ const replyToMessage = async (req, res) => {
       .select('*')
       .single();
     if (error) throw error;
-    res.json({ data });
+    const [messageWithUrl] = await addAttachmentUrls([data]);
+    res.json({ data: messageWithUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -149,7 +204,8 @@ const markResolved = async (req, res) => {
       .select('*')
       .single();
     if (error) throw error;
-    res.json({ data });
+    const [messageWithUrl] = await addAttachmentUrls([data]);
+    res.json({ data: messageWithUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -11,6 +11,14 @@ const SOURCE_LABELS = {
   bug_report: "Bug Report",
 };
 
+function senderName(message) {
+  return [message?.first_name, message?.last_name].filter(Boolean).join(" ") || message?.email || "Unknown sender";
+}
+
+function isImageAttachment(message) {
+  return String(message?.attachment_mime_type || "").startsWith("image/");
+}
+
 export default function SupportMessagesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -197,7 +205,7 @@ export default function SupportMessagesPage() {
                     {SOURCE_LABELS[message.source] || message.source}
                   </span>
                   <strong>{message.subject || "No subject"}</strong>
-                  <span>{message.email}</span>
+                  <span>{senderName(message)}</span>
                   <small className={styles[`status-${message.status}`]}>{message.status}</small>
                 </button>
               ))}
@@ -213,7 +221,7 @@ export default function SupportMessagesPage() {
                     {SOURCE_LABELS[selected.source] || selected.source}
                   </span>
                   <h2>{selected.subject || "No subject"}</h2>
-                  <p>{[selected.first_name, selected.last_name].filter(Boolean).join(" ") || selected.email}</p>
+                  <p>{senderName(selected)}</p>
                   <p>{selected.email}{selected.phone ? ` | ${selected.phone}` : ""}</p>
                 </div>
                 <button type="button" className={styles.resolveButton} onClick={markResolved} disabled={busy || selected.status === "resolved"}>
@@ -223,7 +231,20 @@ export default function SupportMessagesPage() {
 
               <div className={styles.messageBody}>{selected.message}</div>
               {selected.page_url && <p className={styles.meta}>Page: {selected.page_url}</p>}
-              {selected.attachment_name && <p className={styles.meta}>Attachment: {selected.attachment_name}</p>}
+              {selected.attachment_name && (
+                <div className={styles.attachmentBox}>
+                  <p className={styles.meta}>Attachment: {selected.attachment_name}</p>
+                  {selected.attachment_url && isImageAttachment(selected) ? (
+                    <a href={selected.attachment_url} target="_blank" rel="noreferrer" className={styles.attachmentImageLink}>
+                      <img src={selected.attachment_url} alt={selected.attachment_name} className={styles.attachmentImage} />
+                    </a>
+                  ) : selected.attachment_url ? (
+                    <a href={selected.attachment_url} target="_blank" rel="noreferrer" className={styles.attachmentLink}>
+                      Open attachment
+                    </a>
+                  ) : null}
+                </div>
+              )}
 
               <form className={styles.replyForm} onSubmit={sendReply}>
                 <h3><FiMail /> Reply</h3>

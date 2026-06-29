@@ -31,6 +31,8 @@ create table if not exists support_messages (
   message text not null,
   page_url text,
   attachment_name text,
+  attachment_path text,
+  attachment_mime_type text,
   replies jsonb not null default '[]'::jsonb,
   resolved_by varchar references users(user_id) on delete set null,
   resolved_at timestamptz,

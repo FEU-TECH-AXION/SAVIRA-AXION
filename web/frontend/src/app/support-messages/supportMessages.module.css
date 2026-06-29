@@ -291,6 +291,40 @@
   white-space: pre-wrap;
 }
 
+.attachmentBox {
+  margin-top: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.attachmentImageLink {
+  display: block;
+  margin-top: 0.55rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.attachmentImage {
+  display: block;
+  max-width: min(100%, 680px);
+  max-height: 420px;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.attachmentLink {
+  display: inline-flex;
+  margin-top: 0.45rem;
+  color: var(--sasha-teal);
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.attachmentLink:hover {
+  text-decoration: underline;
+}
+
 .replyForm {
   display: grid;
   gap: 0.8rem;
