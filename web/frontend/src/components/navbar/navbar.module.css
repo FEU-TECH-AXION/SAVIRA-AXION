@@ -205,6 +205,7 @@
   outline: none;
   transition: background 0.2s, border-color 0.2s;
   font-family: Poppins, sans-serif;
+  color-scheme: light;
 }
 
 .searchInput::placeholder {
@@ -218,26 +219,27 @@
 
 :global(html[data-theme="dark"]) .navbar .searchWrapper .searchInput,
 :global(html[data-theme="dark"]) .searchWrapper .searchInput {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.36) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
   color: #ffffff !important;
   box-shadow: none !important;
+  color-scheme: light;
 }
 
 :global(html[data-theme="dark"]) .navbar .searchWrapper .searchInput::placeholder,
 :global(html[data-theme="dark"]) .searchWrapper .searchInput::placeholder {
-  color: rgba(255, 255, 255, 0.72) !important;
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 :global(html[data-theme="dark"]) .navbar .searchWrapper .searchInput:focus,
 :global(html[data-theme="dark"]) .searchWrapper .searchInput:focus {
-  background: rgba(255, 255, 255, 0.26) !important;
-  border-color: rgba(255, 255, 255, 0.62) !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 :global(html[data-theme="dark"]) .navbar .searchWrapper .searchIcon,
 :global(html[data-theme="dark"]) .searchWrapper .searchIcon {
-  color: rgba(255, 255, 255, 0.82) !important;
+  color: rgba(255, 255, 255, 0.65) !important;
 }
 
 /* ── Right slot ── */

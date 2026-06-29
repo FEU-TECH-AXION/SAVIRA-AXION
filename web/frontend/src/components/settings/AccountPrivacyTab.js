@@ -10,13 +10,14 @@ import { POLICIES } from "@/components/policies/policyContent";
 import styles from "./AccountPrivacyTab.module.css";
 
 const SECTIONS = [
+  { id: "email", label: "Email" },
   { id: "password", label: "Password" },
   { id: "notifications", label: "Notifications" },
   { id: "policies", label: "Policies" },
 ];
 
-export default function AccountPrivacyTab({ user }) {
-  const [section, setSection] = useState("password");
+export default function AccountPrivacyTab({ user, setUser }) {
+  const [section, setSection] = useState("email");
   const [policy, setPolicy] = useState("terms");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
@@ -28,6 +29,11 @@ export default function AccountPrivacyTab({ user }) {
   });
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
   const [pwErrors, setPwErrors] = useState({});
+  const [emailForm, setEmailForm] = useState({
+    newEmail: user?.email || "",
+    code: "",
+    awaitingCode: false,
+  });
 
   // ── Two-factor state ──────────────────────────────────────
   // ── Notification prefs ────────────────────────────────────
@@ -46,6 +52,71 @@ export default function AccountPrivacyTab({ user }) {
 
   const handlePwChange = (e) => setPwForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   const handleNotifChange = (key) => setNotifPrefs((p) => ({ ...p, [key]: !p[key] }));
+
+  const requestEmailChange = async (e) => {
+    e.preventDefault();
+    if (!emailForm.newEmail.trim()) {
+      flash("error", "Enter the email address you want to use.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/email-change/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({ newEmail: emailForm.newEmail.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send verification code.");
+      setEmailForm((p) => ({ ...p, awaitingCode: true, code: "" }));
+      flash("success", "Verification code sent. Please check your inbox.");
+    } catch (err) {
+      flash("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const verifyEmailChange = async (e) => {
+    e.preventDefault();
+    if (emailForm.code.trim().length !== 6) {
+      flash("error", "Enter the 6-digit verification code.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/email-change/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          newEmail: emailForm.newEmail.trim(),
+          code: emailForm.code.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Email verification failed.");
+      localStorage.setItem("token", data.token);
+      if (setUser) setUser(data.user);
+      setEmailForm({ newEmail: data.user.email, code: "", awaitingCode: false });
+      flash("success", "Email verified and updated.");
+    } catch (err) {
+      flash("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const validatePassword = () => {
     const errs = {};
@@ -152,6 +223,53 @@ export default function AccountPrivacyTab({ user }) {
 
         {/* ── Content ──────────────────────────────────── */}
         <div className={styles.content}>
+
+          {section === "email" && (
+            <form className={styles.card} onSubmit={emailForm.awaitingCode ? verifyEmailChange : requestEmailChange}>
+              <div className={styles.cardTitle}>Email</div>
+              <p className={styles.cardDesc}>
+                {user.email}
+                <br />
+                {user.is_email_verified
+                  ? "Verified"
+                  : "Not yet verified — check your inbox."}
+              </p>
+
+              <div className={styles.grid1}>
+                <Field label="Email address">
+                  <input
+                    type="email"
+                    value={emailForm.newEmail}
+                    onChange={(e) => setEmailForm((p) => ({ ...p, newEmail: e.target.value }))}
+                    placeholder="user@test.com"
+                  />
+                </Field>
+
+                {emailForm.awaitingCode && (
+                  <Field label="Verification code">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={emailForm.code}
+                      onChange={(e) => setEmailForm((p) => ({ ...p, code: e.target.value.replace(/\D/g, "").slice(0, 6) }))}
+                      placeholder="6-digit code"
+                    />
+                  </Field>
+                )}
+              </div>
+
+              <div className={styles.formActions}>
+                <button type="submit" className={styles.btnPrimary} disabled={saving}>
+                  {saving
+                    ? "Working..."
+                    : emailForm.awaitingCode
+                    ? "Verify Email"
+                    : "Send Verification Code"}
+                </button>
+              </div>
+            </form>
+          )}
 
           {section === "password" && (
             <form className={styles.card} onSubmit={handlePasswordSave}>

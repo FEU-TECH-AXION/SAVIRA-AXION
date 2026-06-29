@@ -99,6 +99,10 @@ export function AuthProvider({ children }) {
       throw data.errors || [{ path: "general", msg: data.error || "Login failed." }];
     }
 
+    if (data.verificationRequired) {
+      return data;
+    }
+
     setUser(data.user);
     setStoredToken(data.token);
 

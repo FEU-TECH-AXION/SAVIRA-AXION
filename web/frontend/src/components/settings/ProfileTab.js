@@ -231,7 +231,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
           error={formErrors.email}
         >
           <input name="email" type="email" value={form.email}
-            onChange={handleChange} placeholder="you@example.com" required />
+            placeholder="you@example.com" readOnly required />
         </Field>
         <Field
           label="Contact Number"

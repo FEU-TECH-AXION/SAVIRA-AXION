@@ -227,6 +227,7 @@ export const SIDEBAR_LINKS = {
       ],
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
+    { href: "/support-messages", label: "Support Messages", icon: "contact" },
     { href: "/reportGenerator", label: "Reports & Analysis", icon: "assessment" },
     {
       label: "Settings",

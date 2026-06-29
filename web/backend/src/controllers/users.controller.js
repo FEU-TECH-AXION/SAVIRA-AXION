@@ -94,7 +94,6 @@ const updateItem = async (req, res) => {
       'last_name',
       'extension_name',
       'user_name',
-      'email',
       'contact_number',
       'city',
       'province',

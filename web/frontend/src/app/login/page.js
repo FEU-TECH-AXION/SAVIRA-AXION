@@ -16,6 +16,7 @@ export default function Login() {
   const [errors, setErrors] = useState([]);
 
   const { login } = useAuth();
+  const router = useRouter();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,7 +38,10 @@ export default function Login() {
     }
 
     try {
-      await login(form.email, form.password);
+      const data = await login(form.email, form.password);
+      if (data?.verificationRequired) {
+        router.push(`/verify-email?purpose=login&email=${encodeURIComponent(data.email)}`);
+      }
     } catch (err) {
       // err could be an array or a single error object
       if (Array.isArray(err)) {

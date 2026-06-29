@@ -1,0 +1,164 @@
+const { randomUUID } = require('crypto');
+const supabase = require('../config/supabase');
+const { sendSupportReplyEmail } = require('../config/mailer');
+
+function clean(value) {
+  return String(value || '').trim();
+}
+
+function isAdmin(req) {
+  return String(req.user?.role || req.user?.role_name || '').toLowerCase() === 'admin' || Number(req.user?.role_id) === 3;
+}
+
+const createContactMessage = async (req, res) => {
+  try {
+    const payload = {
+      message_id: randomUUID(),
+      source: 'contact',
+      status: 'open',
+      first_name: clean(req.body.firstName),
+      last_name: clean(req.body.lastName),
+      email: clean(req.body.email).toLowerCase(),
+      phone: clean(req.body.phone),
+      subject: clean(req.body.subject),
+      message: clean(req.body.message),
+    };
+
+    if (!payload.email || !payload.message) {
+      return res.status(400).json({ error: 'Email and message are required.' });
+    }
+
+    const { data, error } = await supabase
+      .from('support_messages')
+      .insert([payload])
+      .select('*')
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const createBugReport = async (req, res) => {
+  try {
+    const payload = {
+      message_id: randomUUID(),
+      source: 'bug_report',
+      status: 'open',
+      user_id: req.user?.id || req.body.user_id || null,
+      first_name: clean(req.user?.first_name || req.body.firstName),
+      last_name: clean(req.user?.last_name || req.body.lastName),
+      email: clean(req.user?.email || req.body.email).toLowerCase(),
+      subject: clean(req.body.issue_type || 'Bug report'),
+      message: clean(req.body.description),
+      page_url: clean(req.body.page_url),
+      attachment_name: req.file?.originalname || null,
+    };
+
+    if (!payload.message) return res.status(400).json({ error: 'Description is required.' });
+
+    const { data, error } = await supabase
+      .from('support_messages')
+      .insert([payload])
+      .select('*')
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const listMessages = async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+
+    let query = supabase
+      .from('support_messages')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (req.query.source && req.query.source !== 'all') query = query.eq('source', req.query.source);
+    if (req.query.status && req.query.status !== 'all') query = query.eq('status', req.query.status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json({ data: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const replyToMessage = async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+
+    const { id } = req.params;
+    const { subject, message } = req.body;
+    if (!clean(message)) return res.status(400).json({ error: 'Reply message is required.' });
+
+    const { data: supportMessage, error: findError } = await supabase
+      .from('support_messages')
+      .select('*')
+      .eq('message_id', id)
+      .single();
+    if (findError || !supportMessage) return res.status(404).json({ error: 'Message not found.' });
+
+    await sendSupportReplyEmail(supportMessage.email, subject || `Re: ${supportMessage.subject || 'SAVIRA support'}`, message);
+
+    const replies = Array.isArray(supportMessage.replies) ? supportMessage.replies : [];
+    const { data, error } = await supabase
+      .from('support_messages')
+      .update({
+        replies: [
+          ...replies,
+          {
+            subject: subject || '',
+            message,
+            replied_at: new Date().toISOString(),
+            replied_by: req.user.id,
+          },
+        ],
+        status: 'replied',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('message_id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const markResolved = async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+
+    const { data, error } = await supabase
+      .from('support_messages')
+      .update({
+        status: 'resolved',
+        resolved_at: new Date().toISOString(),
+        resolved_by: req.user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('message_id', req.params.id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = {
+  createContactMessage,
+  createBugReport,
+  listMessages,
+  replyToMessage,
+  markResolved,
+};

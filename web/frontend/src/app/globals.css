@@ -443,25 +443,22 @@ html[data-theme="dark"] .appMain .react-calendar__month-view__days__day--neighbo
   color: var(--sasha-muted) !important;
 }
 
-html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([class*="searchInput"]),
 html[data-theme="dark"] .appMain select,
-html[data-theme="dark"] .appMain textarea,
-html[data-theme="dark"] .appMain [class*="searchInput"] {
+html[data-theme="dark"] .appMain textarea {
   background: var(--sasha-surface-inset) !important;
   border-color: var(--sasha-border) !important;
   color: var(--sasha-text) !important;
 }
 
-html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])::placeholder,
-html[data-theme="dark"] .appMain textarea::placeholder,
-html[data-theme="dark"] .appMain [class*="searchInput"]::placeholder {
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([class*="searchInput"])::placeholder,
+html[data-theme="dark"] .appMain textarea::placeholder {
   color: #8b98a8 !important;
 }
 
-html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus,
+html[data-theme="dark"] .appMain input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([class*="searchInput"]):focus,
 html[data-theme="dark"] .appMain select:focus,
-html[data-theme="dark"] .appMain textarea:focus,
-html[data-theme="dark"] .appMain [class*="searchInput"]:focus {
+html[data-theme="dark"] .appMain textarea:focus {
   background: #111c27 !important;
   border-color: var(--sasha-teal) !important;
   box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22) !important;
@@ -820,30 +817,27 @@ html[data-theme="dark"] .appMain [class*="paginationBar"] [class*="pageNumActive
 }
 
 html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchInput"],
-html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"],
-html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchInput"] {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.38) !important;
+html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"] {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
   color: #ffffff !important;
   box-shadow: none !important;
+  color-scheme: light;
 }
 
 html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchInput"]::placeholder,
-html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"]::placeholder,
-html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchInput"]::placeholder {
-  color: rgba(255, 255, 255, 0.72) !important;
+html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"]::placeholder {
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchInput"]:focus,
-html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"]:focus,
-html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchInput"]:focus {
-  background: rgba(255, 255, 255, 0.26) !important;
-  border-color: rgba(255, 255, 255, 0.62) !important;
+html[data-theme="dark"] body input[class*="navbar-module"][class*="searchInput"]:focus {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
-html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchIcon"],
-html[data-theme="dark"] body [class*="searchWrapper"] [class*="searchIcon"] {
-  color: rgba(255, 255, 255, 0.82) !important;
+html[data-theme="dark"] body [class*="navbar"] [class*="searchWrapper"] [class*="searchIcon"] {
+  color: rgba(255, 255, 255, 0.65) !important;
 }
 
 * {

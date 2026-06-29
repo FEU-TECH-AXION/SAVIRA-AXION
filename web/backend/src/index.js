@@ -58,6 +58,8 @@ app.use('/api/auth', authRouter)
 
 const notificationsRouter = require('./routes/notifications.routes');
 app.use('/api/notifications', notificationsRouter);
+const supportRouter = require('./routes/support.routes');
+app.use('/api/support', supportRouter);
 
 // ── ROUTES FOR USER RELATED TABLES ────────────────────────────────────────────────
 
