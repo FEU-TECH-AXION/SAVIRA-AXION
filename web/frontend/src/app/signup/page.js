@@ -123,15 +123,20 @@ export default function SignUp() {
         if (data.errors) {
           setErrors(data.errors);
         } else {
-          setErrors([{ path: "general", msg: data.error || "Sign up failed." }]);
+          setErrors([{ path: "general", msg: data.error || data.message || "Sign up failed." }]);
         }
+        return;
+      }
+
+      if (data.verificationRequired) {
+        window.location.href = `/verify-email?purpose=signup&email=${encodeURIComponent(data.email)}`;
         return;
       }
 
       localStorage.setItem("token", data.token);
       window.location.href = "/dashboard";
     } catch (err) {
-      setErrors([{ path: "general", msg: "Something went wrong. Please try again." }]);
+      setErrors([{ path: "general", msg: err.message || "Something went wrong. Please try again." }]);
     } finally {
       setLoading(false);
     }

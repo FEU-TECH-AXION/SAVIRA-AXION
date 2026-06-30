@@ -156,7 +156,7 @@ function CaseCalendarModal({ open, onClose, cases, onFullView }) {
         </div>
       )}
       <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Close</button>
+        <button className={`${styles.btnSecondary} ${styles.btnLight}`} onClick={onClose}>Close</button>
         <button className={styles.btnPrimary} onClick={onFullView}>Open Full Calendar</button>
       </div>
     </Modal>

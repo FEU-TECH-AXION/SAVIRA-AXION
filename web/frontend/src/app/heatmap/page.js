@@ -182,7 +182,7 @@ function StatCard({ title, value, subtext }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FilterSection({ filters, onChange, meta }) {
-  const { regions = [], cities = [], councils = [], statuses = [] } = meta;
+  const { regions = [], cities = [], statuses = [] } = meta;
   const ALL_STATUSES = [
     "Submitted",
     "For Verification",
@@ -225,12 +225,6 @@ function FilterSection({ filters, onChange, meta }) {
           key: "city",
           options: citiesInRegion.map((c) => ({ value: c, label: c })),
           placeholder: "All Cities",
-        },
-        {
-          label: "Council",
-          key: "council",
-          options: councils.map((c) => ({ value: c, label: c })),
-          placeholder: "All Councils",
         },
         {
           label: "Status",
@@ -315,14 +309,12 @@ export default function HeatmapPage() {
   const [meta, setMeta] = useState({
     regions: [],
     cities: [],
-    councils: [],
     statuses: [],
   });
 
   const [filters, setFilters] = useState({
     region: "",
     city: "",
-    council: "",
     status: "",
     verification: "",
     victim_gender: "",
@@ -344,7 +336,6 @@ export default function HeatmapPage() {
         setMeta({
           regions: geo.regions || [],
           cities: geo.cities || [],
-          councils: geo.councils || [],
           statuses,
         });
       } catch (err) {
@@ -362,7 +353,6 @@ export default function HeatmapPage() {
         queryParams.append("aggregation", aggregation);
         if (filters.city) queryParams.append("city", filters.city);
         if (filters.region) queryParams.append("region", filters.region);
-        if (filters.council) queryParams.append("council", filters.council);
         if (filters.status) queryParams.append("status", filters.status);
         if (filters.verification)
           queryParams.append("verification", filters.verification);
@@ -401,7 +391,6 @@ export default function HeatmapPage() {
       setFilters({
         region: "",
         city: "",
-        council: "",
         status: "",
         verification: "",
         victim_gender: "",

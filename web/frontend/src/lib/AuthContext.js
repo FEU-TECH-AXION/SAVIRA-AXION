@@ -7,7 +7,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { API_URL } from "@/lib/config";
 
 const AuthContext = createContext(null);
@@ -53,6 +53,7 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(true); // true while we check session
   const router                = useRouter();
+  const pathname              = usePathname();
 
   // ── On mount: verify session with the backend ──
   useEffect(() => {
@@ -98,12 +99,16 @@ export function AuthProvider({ children }) {
       throw data.errors || [{ path: "general", msg: data.error || "Login failed." }];
     }
 
+    if (data.verificationRequired) {
+      return data;
+    }
+
     setUser(data.user);
     setStoredToken(data.token);
 
     // Redirect based on role
     const role     = data.user?.role_name?.toLowerCase() ?? "user";
-    const redirect = ROLE_REDIRECT[role] ?? "/dashboard";
+    const redirect = data.user?.must_change_password ? "/change-password" : ROLE_REDIRECT[role] ?? "/dashboard";
     router.push(redirect);
 
     return data;
@@ -139,6 +144,13 @@ export function AuthProvider({ children }) {
       }
     }
   }, [user, loading]);
+
+  useEffect(() => {
+    if (loading || !user?.must_change_password) return;
+    if (pathname !== "/change-password") {
+      router.replace("/change-password");
+    }
+  }, [loading, pathname, router, user]);
 
   return (
     <AuthContext.Provider value={{ user, setUser, loading, login, logout }}>

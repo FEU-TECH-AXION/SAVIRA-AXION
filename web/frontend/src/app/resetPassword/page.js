@@ -129,15 +129,15 @@ function ResetPasswordContent() {
 
           <form onSubmit={handleSubmit} noValidate>
 
-            {/* Password */}
+            {/* New Password */}
             <div className={styles.fieldGroupLg}>
-              <label className={styles.label}>Password</label>
+              <label className={styles.label}>New Password</label>
               <div className={styles.passwordWrap}>
                 <input
                   className={styles.input}
                   type={show.password ? "text" : "password"}
                   name="password"
-                  placeholder="Password"
+                  placeholder="New Password"
                   value={form.password}
                   onChange={handleChange}
                   onBlur={handleBlur}

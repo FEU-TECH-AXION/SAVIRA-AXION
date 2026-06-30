@@ -211,7 +211,7 @@ function SettingsPageContent() {
           <ProfileTab user={user} setUser={setUser} form={form} setForm={setForm} />
         )}
         {activeTab === "lock" && (
-          <AccountPrivacyTab user={user} />
+          <AccountPrivacyTab user={user} setUser={setUser} />
         )}
         {activeTab === "help" && (
           <HelpCenterTab user={user} />

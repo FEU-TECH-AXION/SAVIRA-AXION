@@ -381,8 +381,6 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
     const confidence = isObj ? item.confidence : null;
     const basis      = isObj ? item.basis : null;
     const c          = CONFIDENCE_COLORS[confidence] || { bg: "#f9fafb", border: "#e5e7eb" };
-    const badgeBg    = type === "category" ? "#e1f5f5" : "#f3e8ff";
-    const badgeColor = type === "category" ? "#037F81" : "#6b21a8";
     {nlpData.primary_categories?.length > 0
       ? nlpData.primary_categories.map((c, i) => {
           // ── Parse if item is a JSON string instead of an object ──
@@ -407,8 +405,8 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
       : <p style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</p>
     }
     return (
-      <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
-        <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 700, background: badgeBg, color: badgeColor }}>
+      <div className={styles.nlpClassificationCard} style={{ background: c.bg, borderColor: c.border }}>
+        <span className={`${styles.nlpBadge} ${type === "category" ? styles.nlpBadgeCategory : styles.nlpBadgeType}`}>
           {label}
         </span>
         {confidence && <ConfidenceBar confidence={confidence} />}
@@ -508,8 +506,8 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
             ) : <p style={{ margin: 0, fontSize: "0.82rem", color: "#9ca3af" }}>No steps suggested.</p>}
           </div>
 
-          <div style={{ background: nlpData.referral_suggested ? "#fffbeb" : "#f0fdf4", border: `1px solid ${nlpData.referral_suggested ? "#fcd34d" : "#86efac"}`, borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: nlpData.referral_suggested ? "#92400e" : "#166534" }}>
+          <div className={`${styles.nlpResultBox} ${nlpData.referral_suggested ? styles.nlpResultWarning : styles.nlpResultSuccess}`}>
+            <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700 }}>
               {nlpData.referral_suggested ? "Referral may be appropriate" : "May be resolvable internally"}
             </h4>
             {nlpData.referral_notes && <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.referral_notes}</p>}
@@ -579,12 +577,10 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
                           { key: "has_body",         label: "Body",         notes: nlpData.report_structure.body_notes },
                           { key: "has_conclusion",   label: "Conclusion",   notes: nlpData.report_structure.conclusion_notes },
                       ].map(({ key, label, notes }) => (
-                          <div key={key} style={{
-                              display: "flex", gap: 10, alignItems: "flex-start",
-                              padding: "8px 10px", borderRadius: 6,
-                              background: nlpData.report_structure[key] ? "#f0fdf4" : "#fef2f2",
-                              border: `1px solid ${nlpData.report_structure[key] ? "#86efac" : "#fca5a5"}`,
-                          }}>
+                          <div
+                              key={key}
+                              className={`${styles.nlpStructureItem} ${nlpData.report_structure[key] ? styles.nlpStructurePass : styles.nlpStructureFail}`}
+                          >
                               <span style={{
                                   fontSize: "0.85rem", fontWeight: 700, minWidth: 20,
                                   color: nlpData.report_structure[key] ? "#16a34a" : "#dc2626",
