@@ -1,0 +1,18 @@
+name: Keep Render NLP Service Warm
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # every 10 minutes
+  workflow_dispatch:          # allows manual trigger from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping NLP service health endpoint
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://savira-axion-1.onrender.com/health)
+          echo "Health check responded with status: $response"
+          if [ "$response" -ne 200 ]; then
+            echo "Warning: unexpected status code from health check"
+          fi
