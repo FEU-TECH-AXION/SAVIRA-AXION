@@ -1,6 +1,15 @@
 const supabase = require('../config/supabase')
 const bcrypt = require('bcrypt')
 
+function isMissingColumnError(error, column) {
+    const message = String(error?.message || '')
+    return (
+        error?.code === 'PGRST204' &&
+        message.includes(`'${column}'`) &&
+        message.includes('schema cache')
+    )
+}
+
 const getAll = async () => {
     const { data: users, error } = await supabase
         .from('users')
@@ -37,10 +46,21 @@ const getAll = async () => {
 }
 
 const create = async (payload) => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
         .from('users')
         .insert([payload])
         .select()
+
+    if (error && isMissingColumnError(error, 'must_change_password')) {
+        const { must_change_password, ...compatiblePayload } = payload
+        const retry = await supabase
+            .from('users')
+            .insert([compatiblePayload])
+            .select()
+        data = retry.data
+        error = retry.error
+    }
+
     if (error) throw error
     return data[0]
 }
