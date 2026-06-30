@@ -917,11 +917,18 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
     const fetchSlots = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+        const interviewerId = interview.interviewer_user_id || interview.interviewerUserId;
+        const interviewerFilter = interviewerId
+          ? `&created_by=${encodeURIComponent(interviewerId)}`
+          : "";
         const res = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true`,
+          `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true${interviewerFilter}`,
           { credentials: "include" }
         );
-        if (!res.ok) throw new Error("Failed to load slots");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Failed to load slots");
+        }
         const json = await res.json();
         // Map slot_id → id so SlotPickerCalendar works
         setSlots((json.data || []).map(s => ({
@@ -931,14 +938,15 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
           time: s.slot_time,
           status: "free",
         })));
-      } catch {
+      } catch (err) {
+        console.error("Failed to load available interview slots:", err);
         setSlots([]);
       } finally {
         setLoading(false);
       }
     };
     fetchSlots();
-  }, []);
+  }, [interview.interviewer_user_id, interview.interviewerUserId]);
 
   async function handleConfirmSlot(slot) {
     setConfirming(true);

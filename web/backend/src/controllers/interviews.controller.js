@@ -298,6 +298,15 @@ const selectSlot = async (req, res) => {
         // Verify the slot exists and is still available
         const slot = await InterviewSlotsModel.getById(slot_id)
         if (!slot) return res.status(404).json({ error: 'Slot not found.' })
+        if (slot.slot_type !== normalizeInterviewType(currentInterview.type)) {
+            return res.status(400).json({ error: 'Selected slot does not match this interview type.' })
+        }
+        if (
+            currentInterview.interviewer_user_id &&
+            String(slot.created_by) !== String(currentInterview.interviewer_user_id)
+        ) {
+            return res.status(403).json({ error: 'Selected slot is not available for this interviewer.' })
+        }
         if (!slot.is_available) return res.status(409).json({ error: 'This slot has already been taken.' })
 
         // Claim the slot and update interview status

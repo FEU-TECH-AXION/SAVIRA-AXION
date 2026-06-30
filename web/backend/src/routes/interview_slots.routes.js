@@ -13,7 +13,23 @@ const normalizeSlotType = (slotType) => {
 
 const getUserId = (user = {}) => user.user_id || user.id || user.sub
 
-const requireCaseSlotManager = (req, res, next) => {
+const hasActiveCaseInterviewWithOfficer = async (intervieweeUserId, interviewerUserId) => {
+  if (!intervieweeUserId || !interviewerUserId) return false
+
+  const { data, error } = await supabaseAdmin
+    .from('interviews')
+    .select('interview_id')
+    .eq('type', 'case_report')
+    .eq('status', 'invited')
+    .eq('interviewee_user_id', intervieweeUserId)
+    .eq('interviewer_user_id', interviewerUserId)
+    .limit(1)
+
+  if (error) throw error
+  return Boolean(data?.length)
+}
+
+const requireCaseSlotManager = async (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized' })
   if (req.user.role === 'Admin') return next()
   if (req.user.role === 'Case Officer') {
@@ -22,6 +38,25 @@ const requireCaseSlotManager = (req, res, next) => {
     else req.body.created_by = userId
     return next()
   }
+
+  if (req.method === 'GET') {
+    try {
+      const userId = getUserId(req.user)
+      const requestedCreator = req.query.created_by
+      const isAvailableOnly = req.query.is_available === 'true'
+
+      if (
+        requestedCreator &&
+        isAvailableOnly &&
+        await hasActiveCaseInterviewWithOfficer(userId, requestedCreator)
+      ) {
+        return next()
+      }
+    } catch (err) {
+      return res.status(500).json({ error: err.message })
+    }
+  }
+
   return res.status(403).json({ error: 'Forbidden' })
 }
 
