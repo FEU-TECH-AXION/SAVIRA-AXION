@@ -68,7 +68,11 @@ function PolicyModal({ visible, policy, onClose }) {
           </View>
 
           {/* Body */}
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+            showsVerticalScrollIndicator={false}
+          >
             <PolicyMarkdown markdown={content.markdown} />
           </ScrollView>
 
@@ -214,8 +218,7 @@ export default function Signup() {
     <>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
       <ScrollView
         style={styles.scroll}

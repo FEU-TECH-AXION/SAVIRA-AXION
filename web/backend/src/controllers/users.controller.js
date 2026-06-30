@@ -14,6 +14,7 @@ const USER_COOKIE_OPTIONS = {
 
 const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
 const AVATAR_BUCKET = 'avatars'
+const AVATAR_CHANGE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
 
 async function ensureAvatarBucket() {
   const { data: bucket, error: getError } = await supabase.storage.getBucket(AVATAR_BUCKET)
@@ -39,6 +40,14 @@ function toSafeUser(user) {
     ...safeUser,
     role_name: roles?.role_name || user.role_name || null,
   }
+}
+
+function formatLockDate(date) {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 const getItems = async (req, res) => {
@@ -209,6 +218,24 @@ const uploadAvatar = async (req, res) => {
       return res.status(400).json({ error: 'Please select an image to upload.' })
     }
 
+    const { data: existingUser, error: existingError } = await supabase
+      .from('users')
+      .select('profile_img_updated_at')
+      .eq('user_id', id)
+      .single()
+    if (existingError) throw existingError
+
+    if (existingUser?.profile_img_updated_at) {
+      const changedAt = new Date(existingUser.profile_img_updated_at)
+      const nextChangeAt = new Date(changedAt.getTime() + AVATAR_CHANGE_INTERVAL_MS)
+      if (nextChangeAt > new Date()) {
+        return res.status(429).json({
+          error: `You can change your profile photo again on ${formatLockDate(nextChangeAt)}.`,
+          next_change_at: nextChangeAt.toISOString(),
+        })
+      }
+    }
+
     await ensureAvatarBucket()
 
     const extension = (req.file.originalname.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '')
@@ -226,7 +253,7 @@ const uploadAvatar = async (req, res) => {
 
     const { data, error } = await supabase
       .from('users')
-      .update({ profile_img })
+      .update({ profile_img, profile_img_updated_at: new Date().toISOString() })
       .eq('user_id', id)
       .select('*, roles(role_name)')
       .single()
@@ -237,6 +264,60 @@ const uploadAvatar = async (req, res) => {
       res.cookie('user', JSON.stringify(safeUser), USER_COOKIE_OPTIONS)
     }
     res.status(200).json({ profile_img, user: safeUser })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+const changePassword = async (req, res) => {
+  try {
+    const { id } = req.params
+    const actorId = req.user?.id || req.user?.user_id
+    const actorRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    const actorRoleId = parseInt(req.user?.role_id)
+    const isAdmin = actorRole === 'admin' || actorRoleId === 3
+
+    if (String(actorId) !== String(id) && !isAdmin) {
+      return res.status(403).json({ error: 'You are not allowed to change this password.' })
+    }
+
+    const { current_password, new_password } = req.body || {}
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Current password and new password are required.' })
+    }
+    if (String(new_password).length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters.' })
+    }
+
+    const { data: user, error: findError } = await supabase
+      .from('users')
+      .select('user_id, password')
+      .eq('user_id', id)
+      .single()
+
+    if (findError || !user) return res.status(404).json({ error: 'User not found.' })
+
+    if (!isAdmin || String(actorId) === String(id)) {
+      const currentMatches = await bcrypt.compare(current_password, user.password)
+      if (!currentMatches) {
+        return res.status(401).json({ error: 'Current password is incorrect.' })
+      }
+    }
+
+    const sameAsCurrent = await bcrypt.compare(new_password, user.password)
+    if (sameAsCurrent) {
+      return res.status(400).json({ error: 'Please choose a different password.' })
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10)
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password: hashedPassword, must_change_password: false })
+      .eq('user_id', id)
+
+    if (updateError) throw updateError
+
+    res.json({ message: 'Password changed successfully.' })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -413,4 +494,4 @@ async function syncUserSubTable(userId, roleId, options = {}) {
   }
 }
 
-module.exports = { getItems, createItem, updateItem, uploadAvatar, loginUser, syncRole }
+module.exports = { getItems, createItem, updateItem, uploadAvatar, changePassword, loginUser, syncRole }

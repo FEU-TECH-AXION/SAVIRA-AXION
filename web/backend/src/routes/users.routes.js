@@ -5,7 +5,7 @@ const multer = require('multer')
 const { randomUUID } = require('crypto')
 const router = express.Router()
 const supabase = require('../config/supabase')
-const { getItems, createItem, updateItem, uploadAvatar, loginUser, syncRole } = require('../controllers/users.controller')
+const { getItems, createItem, updateItem, uploadAvatar, changePassword, loginUser, syncRole } = require('../controllers/users.controller')
 const sendEmail = require('../config/mailer');
 const { sendResetPasswordEmail } = require('../config/mailer')
 const { verifyToken } = require('../middleware/auth.middleware')
@@ -56,6 +56,15 @@ const findUserForPasswordReset = async (email) => {
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
+const getFrontendResetBaseUrl = () => {
+  const configured = String(process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((url) => url.trim().replace(/\/$/, ''))
+    .filter(Boolean)[0]
+
+  return configured || 'https://www.saviraphilippines.org'
+}
+
 const ensureCanSendPasswordReset = async (email) => {
   const { count, error } = await supabase
     .from('email_verification_codes')
@@ -90,6 +99,7 @@ const recordPasswordResetEmail = async (email, userId) => {
 
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body || {}
+  let resetEmailSent = false
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ message: 'Email is required.' })
@@ -111,14 +121,34 @@ router.post('/forgot-password', async (req, res) => {
       { expiresIn: `${PASSWORD_RESET_EXPIRY_MINUTES}m` }
     )
 
-    const resetLink = `${process.env.FRONTEND_URL}/resetPassword?token=${resetToken}`
+    const resetLink = `${getFrontendResetBaseUrl()}/resetPassword?token=${resetToken}`
     await sendResetPasswordEmail(user.email, resetLink)
-    await recordPasswordResetEmail(user.email, user.user_id)
+    resetEmailSent = true
+
+    try {
+      await recordPasswordResetEmail(user.email, user.user_id)
+    } catch (trackingError) {
+      console.warn('Password reset tracking failed after email was sent:', trackingError)
+    }
 
     res.json({ message: 'Reset link sent! Check your email.' })
   } catch (err) {
     console.error('Forgot-password error:', err)
-    res.status(err.status || 500).json({ message: err.status ? err.message : 'Something went wrong. Please try again.' })
+    if (resetEmailSent) {
+      return res.json({ message: 'Email sent. Please check your inbox.' })
+    }
+
+    const isPasswordResetMigrationMissing =
+      err.code === '23514' &&
+      String(err.message || '').includes('email_verification_codes_purpose_check')
+
+    res.status(err.status || 500).json({
+      message: err.status
+        ? err.message
+        : isPasswordResetMigrationMissing
+          ? 'Password reset is not fully enabled on the server yet. Please run the password reset database migration.'
+          : 'Something went wrong. Please try again.',
+    })
   }
 })
 
@@ -162,6 +192,7 @@ router.post('/', verifyToken, authorize('Admin'), createItem)
 router.post('/login', loginUser)
 router.put('/:id', verifyToken, updateItem)
 router.patch('/:id', verifyToken, updateItem)
+router.patch('/:id/password', verifyToken, changePassword)
 router.post('/:id/avatar', verifyToken, avatarUpload.single('profile_img'), uploadAvatar)
 router.post('/:userId/sync-role', verifyToken, authorize('Admin'), syncRole)
 

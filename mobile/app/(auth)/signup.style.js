@@ -260,7 +260,6 @@ export default StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '85%',
-    paddingBottom: 28,
     overflow: 'hidden',   /* clips the dark overlay bleed on rounded corners */
   },
 
@@ -292,8 +291,12 @@ export default StyleSheet.create({
   },
 
   modalBody: {
+    flexShrink: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
+  },
+
+  modalBodyContent: {
     paddingBottom: 80,
   },
 
@@ -331,6 +334,7 @@ export default StyleSheet.create({
   modalCloseFooterBtn: {
     marginHorizontal: 20,
     marginTop: 16,
+    marginBottom: 28,
     backgroundColor: '#037F81',
     padding: 14,
     borderRadius: 10,

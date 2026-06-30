@@ -50,6 +50,10 @@ function SettingsPageContent() {
   const router  = useRouter();
   const searchParams = useSearchParams();
   const fileRef = useRef(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState(null);
+  const [pendingAvatarPreview, setPendingAvatarPreview] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
   const requestedTab = searchParams.get("tab");
   const activeTab = TABS.some((tab) => tab.id === requestedTab)
     ? requestedTab
@@ -97,13 +101,29 @@ function SettingsPageContent() {
   const initials = `${user?.first_name?.[0] || ""}${user?.last_name?.[0] || ""}`.toUpperCase() || "?";
 
   // ── Profile photo upload (lives in the hero, shared across all tabs) ──
-  const handleImageUpload = async (e) => {
+  const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    if (pendingAvatarPreview) URL.revokeObjectURL(pendingAvatarPreview);
+    setPendingAvatarFile(file);
+    setPendingAvatarPreview(URL.createObjectURL(file));
+    setAvatarError("");
+  };
 
+  const cancelAvatarUpload = () => {
+    if (pendingAvatarPreview) URL.revokeObjectURL(pendingAvatarPreview);
+    setPendingAvatarFile(null);
+    setPendingAvatarPreview("");
+    setAvatarError("");
+  };
+
+  const confirmAvatarUpload = async () => {
+    if (!pendingAvatarFile) return;
     const formData = new FormData();
-    formData.append("profile_img", file);
+    formData.append("profile_img", pendingAvatarFile);
+    setAvatarUploading(true);
+    setAvatarError("");
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res   = await authFetch(
@@ -114,10 +134,11 @@ function SettingsPageContent() {
       if (!res.ok) throw new Error(data.error || "Upload failed.");
       setForm((p) => ({ ...p, profile_img: data.profile_img }));
       if (setUser) setUser(data.user);
+      cancelAvatarUpload();
     } catch (err) {
-      // Avatar upload errors surface locally; the hero has no flash banner
-      // of its own, so this is intentionally quiet beyond a console trace.
-      console.error(err);
+      setAvatarError(err.message);
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -155,7 +176,7 @@ function SettingsPageContent() {
               type="file"
               accept="image/*"
               hidden
-              onChange={handleImageUpload}
+              onChange={handleImageSelect}
             />
           </div>
 
@@ -224,6 +245,39 @@ function SettingsPageContent() {
         )}
 
       </div>
+
+      {pendingAvatarFile && (
+        <div className={styles.confirmOverlay} role="presentation">
+          <div className={styles.confirmDialog} role="dialog" aria-modal="true" aria-labelledby="avatar-confirm-title">
+            <div className={styles.confirmPreviewWrap}>
+              <img src={pendingAvatarPreview} alt="Selected profile preview" className={styles.confirmPreview} />
+            </div>
+            <div className={styles.confirmContent}>
+              <h2 id="avatar-confirm-title">Use this as your profile photo?</h2>
+              <p>You will not be able to change it again until next week.</p>
+              {avatarError && <p className={styles.confirmError}>{avatarError}</p>}
+              <div className={styles.confirmActions}>
+                <button
+                  type="button"
+                  className={styles.confirmSecondary}
+                  onClick={cancelAvatarUpload}
+                  disabled={avatarUploading}
+                >
+                  Choose another
+                </button>
+                <button
+                  type="button"
+                  className={styles.confirmPrimary}
+                  onClick={confirmAvatarUpload}
+                  disabled={avatarUploading}
+                >
+                  {avatarUploading ? "Saving..." : "Yes, use this photo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

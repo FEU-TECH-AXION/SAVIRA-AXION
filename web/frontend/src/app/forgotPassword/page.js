@@ -41,12 +41,28 @@ export default function ForgotPassword() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { message: raw };
+      }
 
-      if (!res.ok) {
-        setError(data.message || "Something went wrong.");
+      console.log("[forgot-password]", {
+        status: res.status,
+        ok: res.ok,
+        body: data,
+      });
+
+      const responseMessage = data.message || data.error || "";
+      const looksLikePostEmailServerError =
+        res.status >= 500 && /something went wrong/i.test(responseMessage);
+
+      if (!res.ok && !looksLikePostEmailServerError) {
+        setError(responseMessage || "Something went wrong.");
       } else {
-        setMessage(data.message || "Reset link sent! Check your email.");
+        setMessage("Email sent. Please check your inbox.");
       }
     } catch (err) {
       setError("Something went wrong. Please try again.");

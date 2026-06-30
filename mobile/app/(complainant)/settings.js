@@ -100,6 +100,19 @@ const ISSUE_TYPES = [
   { id: "other", label: "Something else" },
 ];
 
+function confirmPhotoChoice() {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Use this as your profile photo?',
+      'You will not be able to change it again until next week.',
+      [
+        { text: 'Choose another', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Yes, use this photo', onPress: () => resolve(true) },
+      ]
+    );
+  });
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -211,6 +224,9 @@ export default function SettingsScreen() {
       if (picked.canceled || !picked.assets?.length) return;
 
       const asset = picked.assets[0];
+      const confirmed = await confirmPhotoChoice();
+      if (!confirmed) return;
+
       const token = await AsyncStorage.getItem('user_token');
       const filename = asset.fileName || `profile-${Date.now()}.jpg`;
       const formData = new FormData();
@@ -242,12 +258,80 @@ export default function SettingsScreen() {
   };
 
   // ── Account & Privacy State ──────────────────────────
-  const [apSection, setApSection] = useState('password'); // password, notifications, policies, deactivate
+  const [apSection, setApSection] = useState('email'); // email, password, notifications, policies, deactivate
+  const [emailForm, setEmailForm] = useState({ newEmail: '', code: '', awaitingCode: false });
+  const [emailSaving, setEmailSaving] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', new: '', confirm: '' });
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
   const [pwSaving, setPwSaving] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState({ email_updates: true, case_updates: true, event_reminders: false });
   const [policy, setPolicy] = useState('terms');
+
+  useEffect(() => {
+    if (user?.email) {
+      setEmailForm((prev) => ({ ...prev, newEmail: user.email }));
+    }
+  }, [user?.email]);
+
+  const handleEmailRequest = async () => {
+    if (!emailForm.newEmail.trim()) {
+      Alert.alert('Error', 'Enter the email address you want to use.');
+      return;
+    }
+
+    setEmailSaving(true);
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/auth/email-change/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newEmail: emailForm.newEmail.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not send verification code.');
+      setEmailForm((prev) => ({ ...prev, awaitingCode: true, code: '' }));
+      Alert.alert('Success', 'Verification code sent. Please check your inbox.');
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
+  const handleEmailVerify = async () => {
+    if (emailForm.code.trim().length !== 6) {
+      Alert.alert('Error', 'Enter the 6-digit verification code.');
+      return;
+    }
+
+    setEmailSaving(true);
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/auth/email-change/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          newEmail: emailForm.newEmail.trim(),
+          code: emailForm.code.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Email verification failed.');
+
+      if (data.token) await AsyncStorage.setItem('user_token', data.token);
+      if (data.user) {
+        setUser(data.user);
+        await AsyncStorage.setItem('user', JSON.stringify(data.user));
+        setProfileForm((prev) => ({ ...prev, email: data.user.email || prev.email }));
+        setEmailForm({ newEmail: data.user.email || emailForm.newEmail, code: '', awaitingCode: false });
+      }
+      Alert.alert('Success', 'Email verified and updated.');
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setEmailSaving(false);
+    }
+  };
 
   const handlePasswordSave = async () => {
     if (!pwForm.current || pwForm.new.length < 8 || pwForm.new !== pwForm.confirm) {
@@ -262,7 +346,8 @@ export default function SettingsScreen() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ current_password: pwForm.current, new_password: pwForm.new }),
       });
-      if (!res.ok) throw new Error('Password change failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Password change failed');
       Alert.alert('Success', 'Password changed successfully!');
       setPwForm({ current: '', new: '', confirm: '' });
     } catch (err) {
@@ -508,7 +593,7 @@ export default function SettingsScreen() {
                 <Text style={styles.fieldLabel}>Email *</Text>
                 <View style={styles.inputWrap}>
                   <Ionicons name="mail-outline" size={18} color="#94a3b8" />
-                  <TextInput style={styles.modernInput} placeholder="you@example.com" keyboardType="email-address" value={profileForm.email} onChangeText={(t) => setProfileForm({...profileForm, email: t})} />
+                  <TextInput style={styles.modernInput} placeholder="you@example.com" keyboardType="email-address" value={profileForm.email} editable={false} />
                 </View>
               </View>
 
@@ -548,6 +633,7 @@ export default function SettingsScreen() {
           <View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.apNavScroll}>
                {[
+                 { id: 'email', label: 'Email' },
                  { id: 'password', label: 'Password' },
                  { id: 'notifications', label: 'Notifications' },
                  { id: 'policies', label: 'Policies' },
@@ -558,6 +644,59 @@ export default function SettingsScreen() {
                  </Pressable>
                ))}
             </ScrollView>
+
+            {apSection === 'email' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Email</Text>
+                <Text style={styles.cardDesc}>
+                  {user?.is_email_verified ? 'Verified' : 'Not yet verified. Check your inbox or send a new verification code.'}
+                </Text>
+
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Email address</Text>
+                  <View style={styles.inputWrap}>
+                    <Ionicons name="mail-outline" size={18} color="#94a3b8" />
+                    <TextInput
+                      style={styles.modernInput}
+                      placeholder="you@example.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={emailForm.newEmail}
+                      onChangeText={(t) => setEmailForm((prev) => ({ ...prev, newEmail: t }))}
+                    />
+                  </View>
+                </View>
+
+                {emailForm.awaitingCode && (
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Verification code</Text>
+                    <View style={styles.inputWrap}>
+                      <Ionicons name="keypad-outline" size={18} color="#94a3b8" />
+                      <TextInput
+                        style={styles.modernInput}
+                        placeholder="6-digit code"
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        value={emailForm.code}
+                        onChangeText={(t) => setEmailForm((prev) => ({ ...prev, code: t.replace(/\D/g, '').slice(0, 6) }))}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                <Pressable
+                  style={styles.btnPrimary}
+                  onPress={emailForm.awaitingCode ? handleEmailVerify : handleEmailRequest}
+                  disabled={emailSaving}
+                >
+                  {emailSaving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.btnPrimaryText}>{emailForm.awaitingCode ? 'Verify Email' : 'Send Verification Code'}</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
 
             {apSection === 'password' && (
               <View style={styles.section}>
@@ -936,7 +1075,7 @@ const styles = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, paddingHorizontal: 14 },
   modernInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: COLORS.text },
 
-  btnPrimary: { backgroundColor: COLORS.primary, paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  btnPrimary: { backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 22, borderRadius: 16, alignItems: 'center' },
   btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   btnDanger: { backgroundColor: COLORS.danger, paddingVertical: 14, borderRadius: 16, alignItems: 'center', paddingHorizontal: 20 },
   btnDangerText: { color: '#fff', fontWeight: '700', fontSize: 15 },

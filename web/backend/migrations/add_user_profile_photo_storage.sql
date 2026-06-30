@@ -1,5 +1,6 @@
 alter table users
-  add column if not exists profile_img text;
+  add column if not exists profile_img text,
+  add column if not exists profile_img_updated_at timestamptz;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (

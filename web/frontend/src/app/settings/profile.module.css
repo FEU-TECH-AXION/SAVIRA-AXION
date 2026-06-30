@@ -247,6 +247,94 @@
   font-weight: 600;
 }
 
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.confirmDialog {
+  width: min(420px, 100%);
+  background: var(--settings-card-bg, #fff);
+  border: 1px solid var(--settings-border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+  padding: 1.25rem;
+}
+
+.confirmPreviewWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.confirmPreview {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--settings-accent, #037F81);
+}
+
+.confirmContent h2 {
+  color: var(--settings-text, #1f2937);
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+  text-align: center;
+}
+
+.confirmContent p {
+  color: var(--settings-muted, #64748b);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+  text-align: center;
+}
+
+.confirmError {
+  margin-top: 0.75rem !important;
+  color: #c0392b !important;
+  font-weight: 600;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.confirmPrimary,
+.confirmSecondary {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: Poppins, sans-serif;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+}
+
+.confirmPrimary {
+  background: var(--settings-accent, #037F81);
+  color: #fff;
+}
+
+.confirmSecondary {
+  background: var(--settings-hover-bg, #eef6f6);
+  color: var(--settings-accent, #037F81);
+}
+
+.confirmPrimary:disabled,
+.confirmSecondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 :global(html[data-theme="dark"]) .hero::after {
   background: var(--settings-page-bg);
 }

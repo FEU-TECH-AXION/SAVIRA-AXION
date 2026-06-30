@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert, ScrollView } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, Text, TextInput, Pressable, Alert, ScrollView, Image, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { API_URL } from '../../lib/config';
 import { clearSession, saveSession } from '../../lib/session';
+import styles from './login.style';
 
 export default function VerifyEmail() {
   const router = useRouter();
@@ -11,6 +12,35 @@ export default function VerifyEmail() {
   const purpose = String(params.purpose || 'signup');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const inputRefs = useRef([]);
+
+  const codeDigits = Array.from({ length: 6 }, (_, index) => code[index] || '');
+
+  const updateCode = (value, index) => {
+    const digits = String(value || '').replace(/\D/g, '');
+
+    if (digits.length > 1) {
+      const nextCode = digits.slice(0, 6);
+      setCode(nextCode);
+      inputRefs.current[Math.min(nextCode.length, 5)]?.focus();
+      return;
+    }
+
+    const next = codeDigits.slice();
+    next[index] = digits;
+    const nextCode = next.join('').slice(0, 6);
+    setCode(nextCode);
+
+    if (digits && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (event, index) => {
+    if (event.nativeEvent.key === 'Backspace' && !codeDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
   const verify = async () => {
     if (!email || code.trim().length !== 6) {
@@ -63,26 +93,117 @@ export default function VerifyEmail() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#f5f7f8' }}>
-      <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 22, borderWidth: 1, borderColor: '#d8eeee' }}>
-        <Text style={{ fontSize: 26, fontWeight: '900', color: '#111827', marginBottom: 8 }}>Verify Email</Text>
-        <Text style={{ color: '#4b5563', lineHeight: 20, marginBottom: 18 }}>Enter the code sent to {email}.</Text>
-        <TextInput
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          maxLength={6}
-          placeholder="6-digit code"
-          placeholderTextColor="#6b7280"
-          style={{ borderWidth: 1, borderColor: '#cde8e8', borderRadius: 12, padding: 14, fontSize: 18, letterSpacing: 0, marginBottom: 14 }}
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <View style={styles.hero}>
+        <Image
+          source={require('../../assets/sasha-bg-2.png')}
+          style={styles.heroBg}
+          resizeMode="cover"
         />
-        <Pressable disabled={loading} onPress={verify} style={{ minHeight: 48, borderRadius: 14, backgroundColor: '#037F81', alignItems: 'center', justifyContent: 'center', opacity: loading ? 0.7 : 1 }}>
-          <Text style={{ color: '#fff', fontWeight: '900' }}>{loading ? 'Checking...' : 'Verify'}</Text>
+        <Image
+          source={require('../../assets/sasha-logo-white.png')}
+          style={styles.heroLogo}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>Verify Email</Text>
+        <View style={styles.signupRow}>
+          <Text style={styles.signupText}>Code sent to </Text>
+          <Text style={local.emailText} numberOfLines={1}>{email}</Text>
+        </View>
+
+        <Text style={styles.label}>Verification Code</Text>
+        <View style={local.codeRow}>
+          {codeDigits.map((digit, index) => (
+            <TextInput
+              key={index}
+              ref={(ref) => {
+                inputRefs.current[index] = ref;
+              }}
+              value={digit}
+              onChangeText={(value) => updateCode(value, index)}
+              onKeyPress={(event) => handleKeyPress(event, index)}
+              keyboardType="number-pad"
+              maxLength={1}
+              selectTextOnFocus
+              style={[local.codeBox, digit ? local.codeBoxFilled : null]}
+              textAlign="center"
+              accessibilityLabel={`Verification code digit ${index + 1}`}
+            />
+          ))}
+        </View>
+
+        <Pressable
+          disabled={loading}
+          onPress={verify}
+          style={[styles.btn, loading && styles.btnDisabled, local.verifyBtn]}
+        >
+          <Text style={styles.btnText}>{loading ? 'Checking...' : 'Verify'}</Text>
         </Pressable>
-        <Pressable disabled={loading} onPress={resend} style={{ alignItems: 'center', padding: 14 }}>
-          <Text style={{ color: '#E96433', fontWeight: '800' }}>Resend code</Text>
+
+        <Pressable disabled={loading} onPress={resend} style={local.resendBtn}>
+          <Text style={local.resendText}>Resend code</Text>
+        </Pressable>
+
+        <Pressable disabled={loading} onPress={() => router.replace('/(auth)/login')} style={local.backBtn}>
+          <Text style={local.backText}>Back to Login</Text>
         </Pressable>
       </View>
     </ScrollView>
   );
 }
+
+const local = StyleSheet.create({
+  emailText: {
+    color: '#037F81',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  codeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 18,
+  },
+  codeBox: {
+    flex: 1,
+    minWidth: 0,
+    height: 72,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#d8eeee',
+    backgroundColor: '#f0f0f0',
+    color: '#111827',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  codeBoxFilled: {
+    borderColor: '#037F81',
+    backgroundColor: '#f0fafb',
+  },
+  verifyBtn: {
+    marginTop: 4,
+  },
+  resendBtn: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  resendText: {
+    color: '#E96433',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  backBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  backText: {
+    color: '#037F81',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});

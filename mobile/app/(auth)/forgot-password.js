@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, Alert, ScrollView, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { API_URL } from '../../lib/config';
+import styles from './login.style';
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -20,8 +21,31 @@ export default function ForgotPassword() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       });
-      const data = await res.json();
-      Alert.alert(res.ok ? 'Email sent' : 'Error', data.message || 'Please try again.');
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { message: raw };
+      }
+
+      console.log('[forgot-password]', {
+        apiUrl: API_URL,
+        status: res.status,
+        ok: res.ok,
+        body: data,
+      });
+
+      const message = data.message || data.error || '';
+      const looksLikePostEmailServerError =
+        res.status >= 500 && /something went wrong/i.test(message);
+
+      Alert.alert(
+        res.ok || looksLikePostEmailServerError ? 'Email sent' : 'Error',
+        res.ok || looksLikePostEmailServerError
+          ? 'Email sent. Please check your inbox.'
+          : message || `Request failed (${res.status}).`
+      );
     } catch {
       Alert.alert('Error', `Unable to connect to the server at ${API_URL}.`);
     } finally {
@@ -30,19 +54,66 @@ export default function ForgotPassword() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#f5f7f8' }}>
-      <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 22, borderWidth: 1, borderColor: '#d8eeee' }}>
-        <Text style={{ fontSize: 26, fontWeight: '900', color: '#111827', marginBottom: 8 }}>Forgot Password?</Text>
-        <Text style={{ color: '#4b5563', lineHeight: 20, marginBottom: 18 }}>Enter your email and we will send a reset link.</Text>
-        <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#6b7280" style={{ borderWidth: 1, borderColor: '#cde8e8', borderRadius: 12, padding: 14, marginBottom: 14 }} />
-        <Pressable disabled={loading} onPress={submit} style={{ minHeight: 48, borderRadius: 14, backgroundColor: '#037F81', alignItems: 'center', justifyContent: 'center', opacity: loading ? 0.7 : 1 }}>
-          <Text style={{ color: '#fff', fontWeight: '900' }}>{loading ? 'Sending...' : 'Send Email'}</Text>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <View style={styles.hero}>
+        <Image
+          source={require('../../assets/sasha-bg-2.png')}
+          style={styles.heroBg}
+          resizeMode="cover"
+        />
+        <Image
+          source={require('../../assets/sasha-logo-white.png')}
+          style={styles.heroLogo}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>Forgot Password?</Text>
+        <View style={styles.signupRow}>
+          <Text style={styles.signupText}>Enter your email to receive a reset link.</Text>
+        </View>
+
+        <Text style={styles.label}>E-mail</Text>
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholder="E-mail"
+          placeholderTextColor="#6b7280"
+          style={[styles.input, local.input]}
+        />
+
+        <Pressable
+          disabled={loading}
+          onPress={submit}
+          style={[styles.btn, loading && styles.btnDisabled]}
+        >
+          <Text style={styles.btnText}>{loading ? 'Sending...' : 'Send Email'}</Text>
         </Pressable>
-        <Pressable onPress={() => router.back()} style={{ alignItems: 'center', padding: 14 }}>
-          <Text style={{ color: '#E96433', fontWeight: '800' }}>Back to login</Text>
+
+        <Pressable onPress={() => router.replace('/(auth)/login')} style={local.backBtn}>
+          <Text style={local.backText}>Back to Login</Text>
         </Pressable>
       </View>
     </ScrollView>
   );
 }
 
+const local = StyleSheet.create({
+  input: {
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  backBtn: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  backText: {
+    color: '#037F81',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});
