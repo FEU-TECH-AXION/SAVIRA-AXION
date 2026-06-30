@@ -440,8 +440,14 @@ export default function ComplainantDashboard() {
         animationType="slide"
         onRequestClose={() => setImportantOpen(false)}
       >
-        <Pressable style={s.modalOverlay} onPress={() => setImportantOpen(false)}>
-          <Pressable style={s.notificationSheet} onPress={(event) => event.stopPropagation()}>
+        <View style={s.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setImportantOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close notifications"
+          />
+          <View style={s.notificationSheet}>
             <View style={s.sheetHandle} />
             <View style={s.sheetHeader}>
               <View>
@@ -479,8 +485,8 @@ export default function ComplainantDashboard() {
                 ))
               )}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
