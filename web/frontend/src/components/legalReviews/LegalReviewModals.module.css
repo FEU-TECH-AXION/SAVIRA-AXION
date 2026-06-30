@@ -125,15 +125,65 @@
   accent-color: #037f81;
 }
 
-.evidenceCard {
-  padding: 0.85rem;
+.evidenceSelector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.9rem;
+  padding: 0.75rem;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
 }
 
+.evidenceCard {
+  overflow: hidden;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.evidenceAccordionButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.evidenceAccordionMeta {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.4rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.evidenceChevron {
+  color: #037f81;
+  transition: transform 0.18s ease;
+}
+
+.evidenceChevronOpen {
+  transform: rotate(180deg);
+}
+
+.evidenceAccordionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
 .evidenceTitle {
-  margin: 0 0 0.75rem;
+  margin: 0;
   color: #037f81;
   font-size: 0.9rem;
   font-weight: 800;
@@ -228,8 +278,21 @@
   border-color: #354252;
 }
 
+:global(html[data-theme="dark"]) .evidenceSelector {
+  background: #111923;
+  border-color: #354252;
+}
+
 :global(html[data-theme="dark"]) .evidenceTitle,
 :global(html[data-theme="dark"]) .sectionDivider {
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .evidenceAccordionMeta {
+  color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .evidenceChevron {
   color: #6fd3cc;
 }
 
