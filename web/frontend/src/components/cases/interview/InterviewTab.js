@@ -556,6 +556,35 @@ function formatStaffDateTime(interview) {
   return date || time;
 }
 
+function getInterviewStartTime(interview) {
+  const date = interview?.interview_date || interview?.scheduledDate;
+  const time = interview?.interview_time || interview?.scheduledTime;
+  if (!date || !time) return null;
+
+  const timestamp = new Date(`${date}T${String(time).slice(0, 8)}`).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function getCompletionEligibility(interview) {
+  const startsAt = getInterviewStartTime(interview);
+  if (!startsAt) {
+    return {
+      canComplete: false,
+      reason: "A selected interview date and time is required before marking complete.",
+    };
+  }
+
+  const eligibleAt = startsAt + 10 * 60 * 1000;
+  if (Date.now() < eligibleAt) {
+    return {
+      canComplete: false,
+      reason: "Interview can only be marked complete 10 minutes after the selected date and time.",
+    };
+  }
+
+  return { canComplete: true, reason: "" };
+}
+
 function isWithinCancellationRescheduleWindow(interview) {
   const cancelledAt = interview.cancelled_at || interview.updated_at;
   if (!cancelledAt) return false;
@@ -2302,6 +2331,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             const isConfirmed = status === "Confirmed";
             const isCancelled = status === "Cancelled";
             const isCompleted = status === "Completed";
+            const completionEligibility = getCompletionEligibility(iv);
             const canManageActive = (isStaff || isCaseOfficer) &&
               !["Cancelled", "Completed", "Expired"].includes(status);
             const canRescheduleCancelled =
@@ -2416,8 +2446,23 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                         Reschedule
                       </button>
                       <button
-                        onClick={() => setCompleteInterview(iv)}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 14px", background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 8, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                        onClick={() => completionEligibility.canComplete && setCompleteInterview(iv)}
+                        disabled={!completionEligibility.canComplete}
+                        title={completionEligibility.reason}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "5px 14px",
+                          background: "#dcfce7",
+                          color: "#166534",
+                          border: "1px solid #86efac",
+                          borderRadius: 8,
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          cursor: completionEligibility.canComplete ? "pointer" : "not-allowed",
+                          opacity: completionEligibility.canComplete ? 1 : 0.45,
+                        }}
                       >
                         Mark Interview Complete
                       </button>

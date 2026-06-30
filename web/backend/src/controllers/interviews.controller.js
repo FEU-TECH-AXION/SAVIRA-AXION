@@ -193,6 +193,17 @@ const getPreferredDateTimeFromBody = (body = {}) => {
     return preferredDate && preferredTime ? `${preferredDate}T${preferredTime}` : ''
 }
 
+const getInterviewCompletionEligibleAt = (interview) => {
+    const slotDate = interview?.slot?.slot_date
+    const slotTime = interview?.slot?.slot_time
+    if (!slotDate || !slotTime) return null
+
+    const startsAt = new Date(`${slotDate}T${String(slotTime).slice(0, 8)}`)
+    if (Number.isNaN(startsAt.getTime())) return null
+
+    return new Date(startsAt.getTime() + 10 * 60 * 1000)
+}
+
 const getItems = async (req, res) => {
     try {
         // Accepts query params: type, status, interviewer_user_id,
@@ -467,6 +478,20 @@ const complete = async (req, res) => {
         const interview = await InterviewModel.getById(req.params.id)
         if (!interview) return res.status(404).json({ error: 'Interview not found.' })
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
+        if (!isAdmin(req) && String(interview.interviewer_user_id) !== String(actorId(req))) {
+            return res.status(403).json({ error: 'Only the assigned interviewer can mark this interview complete.' })
+        }
+
+        const eligibleAt = getInterviewCompletionEligibleAt(interview)
+        if (!eligibleAt) {
+            return res.status(400).json({ error: 'A selected interview date and time is required before marking complete.' })
+        }
+        if (Date.now() < eligibleAt.getTime()) {
+            return res.status(409).json({
+                error: 'Interview can only be marked complete 10 minutes after the selected date and time.',
+                eligible_at: eligibleAt.toISOString(),
+            })
+        }
 
         const data = await InterviewModel.complete(req.params.id)
         res.json({ data })

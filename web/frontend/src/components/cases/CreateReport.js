@@ -55,7 +55,7 @@ const MAX_EVIDENCE_FILES = 10;
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_EVIDENCE_FILE_SIZE_LABEL = "50MB";
 
-const INCIDENT_MONTH_OPTIONS = [
+export const INCIDENT_MONTH_OPTIONS = [
   { value: "1", label: "January" },
   { value: "2", label: "February" },
   { value: "3", label: "March" },
@@ -179,11 +179,11 @@ function getLocalPoliceStationSuggestions(query) {
     }));
 }
 
-function getTodayInputValue() {
+export function getTodayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getCurrentTimeInputValue() {
+export function getCurrentTimeInputValue() {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
@@ -196,7 +196,7 @@ function getDaysInMonth(year, month) {
   return new Date(safeYear, parsedMonth, 0).getDate();
 }
 
-function splitIncidentDate(date) {
+export function splitIncidentDate(date) {
   if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { incidentYear: "", incidentMonth: "", incidentMonthText: "", incidentDay: "" };
   }
@@ -210,7 +210,7 @@ function splitIncidentDate(date) {
   };
 }
 
-function buildIncidentDate(incident) {
+export function buildIncidentDate(incident) {
   const year = Number.parseInt(incident.incidentYear, 10);
   const month = Number.parseInt(incident.incidentMonth, 10);
   const day = Number.parseInt(incident.incidentDay, 10);
@@ -235,7 +235,7 @@ function isFutureIncident(incident, time) {
   return incidentDateTime > new Date();
 }
 
-function getEarliestIncidentYear(age) {
+export function getEarliestIncidentYear(age) {
   const parsedAge = Number.parseInt(age, 10);
   const currentYear = new Date().getFullYear();
   if (Number.isNaN(parsedAge) || parsedAge < 0 || parsedAge > 120) return 1900;

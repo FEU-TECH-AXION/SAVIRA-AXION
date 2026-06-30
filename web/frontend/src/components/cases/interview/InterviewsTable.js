@@ -27,6 +27,21 @@ function InterviewStatusBadge({ status }) {
   );
 }
 
+function getInterviewStartTime(interview) {
+  if (!interview?.scheduledDate || !interview?.scheduledTime) return null;
+  const timestamp = new Date(`${interview.scheduledDate}T${String(interview.scheduledTime).slice(0, 8)}`).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function canCompleteInterview(interview) {
+  const startsAt = getInterviewStartTime(interview);
+  return Boolean(
+    interview?.interviewStatus === "Confirmed" &&
+    startsAt &&
+    Date.now() >= startsAt + 10 * 60 * 1000
+  );
+}
+
 function Pagination({ current, total, totalRecords, pageSize, onChange }) {
   const start = Math.min((current - 1) * pageSize + 1, totalRecords);
   const end = Math.min(current * pageSize, totalRecords);
@@ -152,7 +167,7 @@ useEffect(() => {
 
   const selectedInterviews = interviews.filter((i) => selectedIds.includes(i.id));
   const canAddMeetingLink = selectedInterviews.every((i) => i.interviewStatus === "Scheduled");
-  const canMarkComplete = selectedInterviews.every((i) => i.interviewStatus === "Confirmed"); 
+  const canMarkComplete = selectedInterviews.length > 0 && selectedInterviews.every(canCompleteInterview);
 
   return (
     <div className={styles.tableWrapper}>
@@ -176,7 +191,7 @@ useEffect(() => {
             className={styles.bulkActionBtn}
             onClick={() => onMarkComplete(selectedIds)}
             disabled={!canMarkComplete}
-            title={!canMarkComplete ? "Only Confirmed interviews can be marked complete" : ""}
+            title={!canMarkComplete ? "Only confirmed interviews at least 10 minutes past the selected date and time can be marked complete" : ""}
             style={{ opacity: !canMarkComplete ? 0.4 : 1, cursor: !canMarkComplete ? "not-allowed" : "pointer" }}
           >
             Mark Complete

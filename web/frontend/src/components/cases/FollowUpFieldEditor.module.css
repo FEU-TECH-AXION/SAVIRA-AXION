@@ -3,6 +3,12 @@
 .checkOption input { accent-color: #037f81; margin-top: .12rem; }
 .editorGrid { display: grid; gap: .2rem 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fullWidthField { grid-column: 1 / -1; }
+.incidentDateGroup { display: grid; gap: .2rem 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.typeahead { position: relative; }
+.suggestionsList { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 14px 30px rgba(15, 23, 42, .14); left: 0; margin-top: 4px; max-height: 190px; overflow-y: auto; position: absolute; right: 0; top: 100%; z-index: 30; }
+.suggestionItem { align-items: flex-start; background: #fff; border: 0; border-bottom: 1px solid #eef2f7; color: #374151; cursor: pointer; display: flex; flex-direction: column; font: inherit; gap: 2px; padding: .65rem .75rem; text-align: left; width: 100%; }
+.suggestionItem:hover { background: #f0fafa; color: #037f81; }
+.suggestionName { font-size: .85rem; font-weight: 700; }
 .textarea { border: 1px solid #d1d5db; border-radius: 8px; font: inherit; font-size: .85rem; min-height: 125px; padding: .75rem; resize: vertical; width: 100%; }
 .textarea:focus { border-color: #037f81; box-shadow: 0 0 0 3px rgba(3,127,129,.12); outline: none; }
 .inputError { background: #fff7ed; border-color: #f97316 !important; }
@@ -21,7 +27,7 @@
 .submitButton:disabled { cursor: not-allowed; opacity: .55; }
 .formError { background: #fee2e2; border-radius: 8px; color: #991b1b; font-size: .83rem; margin-top: .5rem; padding: .7rem .85rem; }
 @media (max-width: 640px) {
-  .checklist, .editorGrid { grid-template-columns: 1fr; }
+  .checklist, .editorGrid, .incidentDateGroup { grid-template-columns: 1fr; }
 }
 
 :global(html[data-theme="dark"]) .checkOption {
@@ -40,6 +46,18 @@
   background: #0f1720;
   border-color: #435266;
   color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .suggestionsList,
+:global(html[data-theme="dark"]) .suggestionItem {
+  background: #0f1720;
+  border-color: #354252;
+  color: #e5edf4;
+}
+
+:global(html[data-theme="dark"]) .suggestionItem:hover {
+  background: #123f43;
+  color: #c8f4ee;
 }
 
 :global(html[data-theme="dark"]) .textareaFooterNeutral,

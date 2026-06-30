@@ -621,12 +621,14 @@ export default function CaseInterviewManagement() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(
-        selectedIds.map((id) =>
-          fetch(`${API_URL}/api/interviews/${id}/complete`, {
+        selectedIds.map(async (id) => {
+          const res = await fetch(`${API_URL}/api/interviews/${id}/complete`, {
             method: "PATCH",
             credentials: "include",
           })
-        )
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.error || "Failed to mark complete");
+        })
       );
       setInterviews((prev) =>
         prev.map((i) =>
@@ -638,7 +640,7 @@ export default function CaseInterviewManagement() {
       setSelectedInterviews([]);
       alert("Interviews marked as complete!");
     } catch (err) {
-      alert("Failed to mark complete");
+      alert(err.message || "Failed to mark complete");
     }
   };
 
