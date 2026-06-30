@@ -151,7 +151,7 @@ export default function Navbar() {
                 <button className={styles.iconBtn} aria-label="Help">
                   <FiHelpCircle size={20} />
                 </button>
-                <UserMenu user={user} logout={logout} />
+                <UserMenu key={pathname} user={user} logout={logout} />
               </div>
             </>
           ) : (
@@ -274,12 +274,37 @@ export default function Navbar() {
 
 function UserMenu({ user, logout }) {
   const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className={styles.userMenu}>
+    <div className={styles.userMenu} ref={menuRef}>
       <button
         className={styles.userAvatar}
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((current) => !current)}
         aria-label="Account menu"
         aria-expanded={open}
       >
