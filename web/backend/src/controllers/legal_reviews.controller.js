@@ -1,5 +1,22 @@
 const LegalReviews = require('../models/legal_reviews.model')
 
+const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
+const PUBLIC_MESSAGE_MAX_LENGTH = 280
+
+function normalizePublicFields({ actionType, isPublic, publicMessage }) {
+  if (actionType === 'internal_note') {
+    return { isPublic: false, publicMessage: null }
+  }
+
+  const visible = isPublic === true
+  const message = typeof publicMessage === 'string' ? publicMessage.trim() : ''
+  if (visible && !message) return { error: PUBLIC_MESSAGE_REQUIRED }
+  if (visible && message.length > PUBLIC_MESSAGE_MAX_LENGTH) {
+    return { error: `Public message must be ${PUBLIC_MESSAGE_MAX_LENGTH} characters or fewer.` }
+  }
+  return { isPublic: visible, publicMessage: visible ? message : null }
+}
+
 function getActorUserId(req) {
   return (
     req.user?.user_id ||
@@ -68,6 +85,8 @@ async function updateByCase(req, res) {
       monitoring_entry,
       document_repository,
       review_status,
+      is_public,
+      public_message,
     } = req.body
 
     const performedByUserId = getActorUserId(req)
@@ -108,12 +127,21 @@ async function updateByCase(req, res) {
       review = await LegalReviews.updateReview(review.legal_review_id, patch)
     }
 
+    const publicFields = normalizePublicFields({
+      actionType: action_type || 'legal_review_updated',
+      isPublic: is_public,
+      publicMessage: public_message,
+    })
+    if (publicFields.error) return res.status(400).json({ error: publicFields.error })
+
     await LegalReviews.logAction({
       legalReviewId: review.legal_review_id,
       caseReportId,
       actionType: action_type || 'legal_review_updated',
       remarks,
       performedByUserId,
+      isPublic: publicFields.isPublic,
+      publicMessage: publicFields.publicMessage,
     })
 
     const logs = await LegalReviews.getLogsByReview(review.legal_review_id)

@@ -14,6 +14,7 @@ const USER_COOKIE_OPTIONS = {
 
 const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
 const AVATAR_BUCKET = 'avatars'
+const AVATAR_CHANGE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
 
 async function ensureAvatarBucket() {
   const { data: bucket, error: getError } = await supabase.storage.getBucket(AVATAR_BUCKET)
@@ -39,6 +40,14 @@ function toSafeUser(user) {
     ...safeUser,
     role_name: roles?.role_name || user.role_name || null,
   }
+}
+
+function formatLockDate(date) {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 const getItems = async (req, res) => {
@@ -117,6 +126,7 @@ const updateItem = async (req, res) => {
       'contact_number',
       'city',
       'province',
+      'profile_img',
       'birthday',
       'gender_identity',
       'is_active',
@@ -201,11 +211,35 @@ const updateItem = async (req, res) => {
 const uploadAvatar = async (req, res) => {
   try {
     const { id } = req.params
-    if (String(req.user.id) !== String(id) && req.user.role !== 'Admin') {
+    const actorId = req.user?.id || req.user?.user_id
+    const actorRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    const actorRoleId = parseInt(req.user?.role_id)
+    const isAdmin = actorRole === 'admin' || actorRoleId === 3
+    const bypassCooldown = req.query.bypass_avatar_cooldown === '1' && isAdmin
+
+    if (String(actorId) !== String(id) && !isAdmin) {
       return res.status(403).json({ error: 'You are not allowed to update this profile photo.' })
     }
     if (!req.file?.buffer) {
       return res.status(400).json({ error: 'Please select an image to upload.' })
+    }
+
+    const { data: existingUser, error: existingError } = await supabase
+      .from('users')
+      .select('profile_img_updated_at')
+      .eq('user_id', id)
+      .single()
+    if (existingError) throw existingError
+
+    if (!bypassCooldown && existingUser?.profile_img_updated_at) {
+      const changedAt = new Date(existingUser.profile_img_updated_at)
+      const nextChangeAt = new Date(changedAt.getTime() + AVATAR_CHANGE_INTERVAL_MS)
+      if (nextChangeAt > new Date()) {
+        return res.status(429).json({
+          error: `You can change your profile photo again on ${formatLockDate(nextChangeAt)}.`,
+          next_change_at: nextChangeAt.toISOString(),
+        })
+      }
     }
 
     await ensureAvatarBucket()
@@ -225,7 +259,7 @@ const uploadAvatar = async (req, res) => {
 
     const { data, error } = await supabase
       .from('users')
-      .update({ profile_img })
+      .update({ profile_img, profile_img_updated_at: new Date().toISOString() })
       .eq('user_id', id)
       .select('*, roles(role_name)')
       .single()

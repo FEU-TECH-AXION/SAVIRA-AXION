@@ -27,6 +27,8 @@ import StatusDetailsSection from "./StatusDetailsSection";
 import DetailAccordion from "./DetailAccordion";
 import PendingStatusApproval from "./PendingStatusApproval";
 import CaseDetailsPage from "./CaseDetailsPage";
+import CaseUpdatesTab from "./CaseUpdatesTab";
+import PublicMessageField from "./PublicMessageField";
 import FollowUpsPanel, {
   FollowUpBadge,
   FollowUpCaseHistory,
@@ -192,6 +194,24 @@ const VIOLENCE_TYPES = [
   "Stalking with sexual nature or intent",
   "Gender-based sexual harassment in institutions",
 ];
+
+const CASE_TYPE_DESCRIPTIONS = {
+  "Sexual harassment": "Unwanted sexual remarks, advances, requests, or conduct in person.",
+  "Online sexual harassment": "Sexual harassment through chat, social media, email, calls, or digital platforms.",
+  "Non-consensual sharing of intimate images/videos": "Including threats to leak them.",
+  "Sexual assault / unwanted sexual touching": "Groping, forced kissing, coercive contact.",
+  "Rape / attempted rape": "Including attempted forced sexual penetration.",
+  "Child sexual abuse": "Any sexual act, grooming, exploitation, or coercion involving a minor.",
+  "Sexual exploitation / trafficking-related sexual abuse": "Including exchange-based coercion or abuse tied to power, money, or favors.",
+  "Stalking with sexual nature or intent": "Persistent following, monitoring, threats, or repeated unwanted contact with sexual overtones.",
+  "Gender-based sexual harassment in institutions": "School, workplace, organization, training, or Scouting-related settings.",
+};
+
+const CASE_CATEGORY_DESCRIPTIONS = {
+  Physical: "Incidents involving in-person contact, physical presence, touching, assault, or other conduct that happens in a physical location.",
+  Virtual: "Incidents that happen through online spaces, digital platforms, chat, social media, email, calls, or shared digital content.",
+  Verbal: "Incidents involving spoken or written words, remarks, threats, coercion, harassment, or repeated unwanted communication.",
+};
 
 const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
 
@@ -852,6 +872,7 @@ function CaseManagementTab({
   const [referralVal, setReferralVal] = useState(caseData.referralBody || "");
   const [referralReq, setReferralReq] = useState(caseData.referralRequired ? "yes" : "no");
   const [endorseNotes, setEndorseNotes] = useState("");
+  const [referralPublicUpdate, setReferralPublicUpdate] = useState({ isPublic: false, publicMessage: "" });
   const [internalNotes, setInternalNotes] = useState(caseData.internalNotes || "");
   const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [noteLogs, setNoteLogs] = useState([]);
@@ -1031,6 +1052,49 @@ function CaseManagementTab({
     }
   }
 
+  async function saveReferralEndorsement() {
+    try {
+      const referralRequired = referralReq === "yes";
+      const selectedBody = referralRequired ? referralVal : null;
+
+      await saveAssessment({
+        referral_required: referralRequired,
+        referral_body: selectedBody,
+        endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null,
+      }, () => {
+        setCaseData((p) => ({
+          ...p,
+          referralRequired,
+          referralBody: selectedBody,
+          endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : null,
+        }));
+        showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated.");
+      });
+
+      if (selectedBody && referralPublicUpdate.isPublic) {
+        const res = await authFetch(`${API_URL}/api/case_report_logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            case_report_id: caseData.id,
+            action_type: "referral_endorsed",
+            remarks: endorseNotes || `Case referred and endorsed to ${selectedBody}.`,
+            performed_by_user_id: userId,
+            is_public: true,
+            public_message: referralPublicUpdate.publicMessage,
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to save public referral update.");
+      }
+
+      setReferralPublicUpdate({ isPublic: false, publicMessage: "" });
+      setModal(null);
+    } catch (err) {
+      showToast(err.message || "Failed to save referral details.", "error");
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <PendingStatusApproval
@@ -1207,7 +1271,25 @@ function CaseManagementTab({
         <div className={styles.formGrid}>
           <FormGroup label="Case Type(s)" required>
             <div className={styles.checkGroup}>
-              {VIOLENCE_TYPES.map((v) => <label key={v} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={caseTypeVal.includes(v)} onChange={() => setCaseTypeVal((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])} />{v}</label>)}
+              {VIOLENCE_TYPES.map((v) => {
+                const checked = caseTypeVal.includes(v);
+                return (
+                  <label key={v} className={`${styles.checkLabel} ${checked ? styles.checkLabelActive : ""}`}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkInput}
+                      checked={checked}
+                      onChange={() => setCaseTypeVal((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])}
+                    />
+                    <span className={styles.checkLabelText}>
+                      <span className={styles.checkLabelTitle}>{v}</span>
+                      {checked && CASE_TYPE_DESCRIPTIONS[v] && (
+                        <span className={styles.checkDescription}>{CASE_TYPE_DESCRIPTIONS[v]}</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </FormGroup>
         </div>
@@ -1233,9 +1315,37 @@ function CaseManagementTab({
         <div className={styles.formGrid}>
           <FormGroup label="Case Category" required>
             <FSelect value={caseCatVal} onChange={(e) => { setCaseCatVal(e.target.value); setAlsoCatVal((prev) => prev.filter((c) => c !== e.target.value)); }}><option value="">Select case category</option><option value="Physical">Physical</option><option value="Virtual">Virtual</option><option value="Verbal">Verbal</option></FSelect>
+            {caseCatVal && CASE_CATEGORY_DESCRIPTIONS[caseCatVal] && (
+              <div className={`${styles.checkLabel} ${styles.checkLabelActive}`}>
+                <span className={styles.checkLabelText}>
+                  <span className={styles.checkLabelTitle}>{caseCatVal}</span>
+                  <span className={styles.checkDescription}>{CASE_CATEGORY_DESCRIPTIONS[caseCatVal]}</span>
+                </span>
+              </div>
+            )}
           </FormGroup>
           <FormGroup label="Also involves (optional)">
-            <div className={styles.checkGroup}>{["Physical", "Virtual", "Verbal"].filter((c) => c !== caseCatVal).map((c) => <label key={c} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={alsoCatVal.includes(c)} onChange={() => setAlsoCatVal((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])} />{c}</label>)}</div>
+            <div className={styles.checkGroup}>
+              {["Physical", "Virtual", "Verbal"].filter((c) => c !== caseCatVal).map((c) => {
+                const checked = alsoCatVal.includes(c);
+                return (
+                  <label key={c} className={`${styles.checkLabel} ${checked ? styles.checkLabelActive : ""}`}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkInput}
+                      checked={checked}
+                      onChange={() => setAlsoCatVal((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
+                    />
+                    <span className={styles.checkLabelText}>
+                      <span className={styles.checkLabelTitle}>{c}</span>
+                      {checked && CASE_CATEGORY_DESCRIPTIONS[c] && (
+                        <span className={styles.checkDescription}>{CASE_CATEGORY_DESCRIPTIONS[c]}</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
           </FormGroup>
         </div>
         <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, primaryCategory: caseCatVal, alsoInvolves: alsoCatVal, additionalCategories: alsoCatVal })); showToast(hasSuggestedCategory && !hasSavedCategory ? "Category approved and saved." : "Category saved."); })}>{hasSavedCategory ? "Save Changes" : hasSuggestedCategory ? "Approve Classification" : "Save"}</button></div>
@@ -1247,12 +1357,16 @@ function CaseManagementTab({
           <FormGroup label="Referral required?"><FSelect value={referralReq} onChange={(e) => { setReferralReq(e.target.value); if (e.target.value === "no") setReferralVal(""); }}><option value="no">No</option><option value="yes">Yes</option></FSelect></FormGroup>
           {referralReq === "yes" && <FormGroup label="Referral / Endorsement Body" required><FSelect value={referralVal} onChange={(e) => setReferralVal(e.target.value)}><option value="">Select body</option>{ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}</FSelect></FormGroup>}
           {referralReq === "yes" && <FormGroup label="Referral / endorsement notes"><FTextarea placeholder="Explain basis for referral or endorsement and any supporting details..." value={endorseNotes} onChange={(e) => setEndorseNotes(e.target.value)} /></FormGroup>}
+          {referralReq === "yes" && (
+            <PublicMessageField
+              actionType="referral_endorsed"
+              contextFields={{ institution: referralVal }}
+              value={referralPublicUpdate}
+              onChange={setReferralPublicUpdate}
+            />
+          )}
         </div>
-        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={referralReq === "yes" && !referralVal} onClick={() => {
-          const referralRequired = referralReq === "yes";
-          const selectedBody = referralRequired ? referralVal : null;
-          saveAssessment({ referral_required: referralRequired, referral_body: selectedBody, endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null }, () => { setCaseData((p) => ({ ...p, referralRequired, referralBody: selectedBody, endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : null })); showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated."); });
-        }}>Save</button></div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={referralReq === "yes" && !referralVal} onClick={saveReferralEndorsement}>Save</button></div>
       </Modal>
 
     </div>
@@ -1720,6 +1834,7 @@ export default function ViewCase() {
   // Tab definitions — staff gets 4 tabs, complainant gets 2 (details + interview if eligible)
   const tabs = [
     { id: "details", label: "Case Details", tooltip: "View the submitted report and case information.", staffOnly: false },
+    { id: "updates", label: "Case Updates", tooltip: "See progress and announcements about your case.", staffOnly: false },
     ...(showInterviewTab ? [
       { id: "interview", label: "Interview", tooltip: "View or manage interview scheduling and details.", staffOnly: false },
     ] : []),
@@ -1839,6 +1954,10 @@ export default function ViewCase() {
           {/* Tab content */}
           {displayedActiveTab === "details" && userLoaded && (
             <CaseDetailsPage caseData={caseData} isStaff={isStaff} />
+          )}
+
+          {displayedActiveTab === "updates" && userLoaded && (
+            <CaseUpdatesTab caseId={caseData.id} />
           )}
 
           {displayedActiveTab === "interview" && showInterviewTab && userLoaded && (

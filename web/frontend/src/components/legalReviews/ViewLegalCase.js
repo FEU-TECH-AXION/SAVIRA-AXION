@@ -689,6 +689,8 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       performed_by_user_id: userId || null,
       action_type: "legal_review_updated",
       remarks: `Legal review updated for case ${caseData.caseId || caseData.id}.`,
+      is_public: Boolean(updated.is_public),
+      public_message: updated.is_public ? updated.public_message : null,
     };
 
     if (updated.paralegalRecord !== caseData.paralegalRecord) {

@@ -61,6 +61,23 @@ function filterReports(reports, filters, search) {
   });
 }
 
+function sortBySubmissionOrder(reports) {
+  return [...reports].sort((a, b) => {
+    const dateA = a.rawDateSubmitted ? new Date(a.rawDateSubmitted).getTime() : Number.POSITIVE_INFINITY;
+    const dateB = b.rawDateSubmitted ? new Date(b.rawDateSubmitted).getTime() : Number.POSITIVE_INFINITY;
+
+    if (dateA !== dateB) return dateA - dateB;
+    return Number(a.id || 0) - Number(b.id || 0);
+  });
+}
+
+function numberReportsBySubmissionOrder(reports) {
+  return sortBySubmissionOrder(reports).map((report, index) => ({
+    ...report,
+    reportNumber: index + 1,
+  }));
+}
+
 async function fetchReportDetails(API_URL, report) {
   const id = report.case_report_id || report.id;
   if (!id) return report;
@@ -108,7 +125,7 @@ export default function ReportHistoryPage() {
           rows.map((report) => fetchReportDetails(API_URL, report))
         );
 
-        setReports(detailedRows.map(normalizeReport));
+        setReports(numberReportsBySubmissionOrder(detailedRows.map(normalizeReport)));
       } catch (err) {
         setError(err.message || "Failed to load report history.");
       } finally {
@@ -140,11 +157,6 @@ export default function ReportHistoryPage() {
     [reports, filters, search]
   );
 
-  // Reset to page 1 whenever filters or search query changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters, search]);
-
   const ITEMS_PER_PAGE = 3;
   const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
   const activePage = Math.min(totalPages, Math.max(1, currentPage));
@@ -159,6 +171,16 @@ export default function ReportHistoryPage() {
     () => [...new Set(reports.map((report) => report.assignedPersonnel).filter(Boolean))],
     [reports]
   );
+
+  function handleFilterChange(nextFilters) {
+    setFilters({ ...INITIAL_FILTERS, ...nextFilters });
+    setCurrentPage(1);
+  }
+
+  function handleSearchChange(value) {
+    setSearch(value);
+    setCurrentPage(1);
+  }
 
   async function handleWithdraw() {
     if (!withdrawReport?.id) return;
@@ -235,12 +257,10 @@ export default function ReportHistoryPage() {
           <div className={styles.tableTopBar}>
             <FilterMenu
               activeFilters={filters}
-              onFilterChange={(nextFilters) =>
-                setFilters({ ...INITIAL_FILTERS, ...nextFilters })
-              }
+              onFilterChange={handleFilterChange}
               officerOptions={officerOptions}
               searchValue={search}
-              onSearchChange={setSearch}
+              onSearchChange={handleSearchChange}
             />
           </div>
 
@@ -264,7 +284,7 @@ export default function ReportHistoryPage() {
             {paginatedReports.map((report, index) => (
               <div className="col-12" key={report.id}>
                 <ReportStatusCard
-                  reportNumber={startIndex + index + 1}
+                  reportNumber={report.reportNumber || startIndex + index + 1}
                   report={report}
                   onWithdraw={() => {
                     setActionError("");

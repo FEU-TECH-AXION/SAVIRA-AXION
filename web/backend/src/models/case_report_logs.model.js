@@ -46,6 +46,29 @@ const getByCaseReport = async (caseReportId) => {
     return attachUserNames(data || [])
 }
 
+const getById = async (id) => {
+    const { data, error } = await supabase
+        .from('case_report_logs')
+        .select('case_report_log_id, action_type')
+        .eq('case_report_log_id', id)
+        .maybeSingle()
+    if (error) throw error
+    return data
+}
+
+const getPublicByCaseReport = async (caseReportId) => {
+    const { data, error } = await supabase
+        .from('case_report_logs')
+        .select('case_report_log_id, action_type, public_message, performed_by_user_id, performed_at')
+        .eq('case_report_id', caseReportId)
+        .eq('is_public', true)
+        .neq('action_type', 'internal_note')
+        .order('performed_at', { ascending: false })
+    if (error) throw error
+
+    return attachUserNames(data || [])
+}
+
 const create = async (payload) => {
     const { data, error } = await supabase
         .from('case_report_logs')
@@ -83,4 +106,4 @@ const remove = async (id) => {
     return true
 }
 
-module.exports = { getAll, getByCaseReport, create, update, remove }
+module.exports = { getAll, getByCaseReport, getById, getPublicByCaseReport, create, update, remove }

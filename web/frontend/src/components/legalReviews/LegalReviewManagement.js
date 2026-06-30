@@ -1296,6 +1296,8 @@ export default function LegalReviewManagement() {
       performed_by_user_id: performedByUserId,
       action_type: "legal_review_updated",
       remarks: `Legal review updated for case ${updated.id}.`,
+      is_public: Boolean(updated.is_public),
+      public_message: updated.is_public ? updated.public_message : null,
     };
 
     if (updated.paralegalRecord !== selectedCase?.paralegalRecord) {

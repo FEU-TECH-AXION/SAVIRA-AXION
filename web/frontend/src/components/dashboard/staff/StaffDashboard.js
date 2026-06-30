@@ -16,8 +16,37 @@ import {
   limitUpcomingDeadlines,
 } from "@/lib/dashboardDeadlines";
 
-// TODO: Nav links for Staff are temporary — update with correct pages later
-// TODO: Overview counts are placeholder — connect to real API when ready
+const MEMBERSHIP_COMMITTEE_ID = 2;
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isSamePerson(a, b) {
+  return Boolean(normalizeText(a) && normalizeText(a) === normalizeText(b));
+}
+
+function isToday(value) {
+  return Boolean(value && new Date(value).toDateString() === new Date().toDateString());
+}
+
+function isUpcomingDate(value) {
+  if (!value) return false;
+  const date = new Date(`${String(value).split("T")[0]}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return !Number.isNaN(date.getTime()) && date >= today;
+}
+
+function isOpenTask(task) {
+  const status = normalizeText(task?.status || task?.display_status);
+  return status !== "completed" && status !== "cancelled" && status !== "canceled";
+}
+
+function listIncludesPerson(list, actorName) {
+  const values = Array.isArray(list) ? list : (list ? [list] : []);
+  return values.some((item) => isSamePerson(item, actorName));
+}
 
 function OverviewCard({ category, label, count, showView = false }) {
   return (
@@ -31,8 +60,6 @@ function OverviewCard({ category, label, count, showView = false }) {
     </div>
   );
 }
-
-// ── Cookies ─────────────────────────────────────────────────────────────────────
 
 export default function StaffDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
@@ -54,42 +81,79 @@ export default function StaffDashboard() {
     if (authLoading || !authUser?.user_id) return;
     async function fetchDashboardData() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
-        const [volunteerRes, taskRows, projectRows, staffData, interviewsRes] = await Promise.all([
-          authFetch(`${API_URL}/api/volunteer_applications`, { cache: 'no-store' }),
+        const [taskRows, projectRows, staffData] = await Promise.all([
           fetchAllProjectTasks(),
           fetchProjects(),
           fetchStaff(),
-          authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
         ]);
-        if (volunteerRes.ok) {
-          const json = await volunteerRes.json();
-          setVolunteers(Array.isArray(json) ? json : json?.data || []);
+
+        const staffList = Array.isArray(staffData) ? staffData : [];
+        const staffRecord = staffList.find((person) => person.user_id === authUser.user_id);
+        const committeeId = Number(authUser.committee_id ?? staffRecord?.committee_id ?? staffRecord?.committees?.committee_id);
+        if (committeeId === MEMBERSHIP_COMMITTEE_ID) {
+          const [volunteerRes, interviewsRes] = await Promise.all([
+            authFetch(`${API_URL}/api/volunteer_applications`, { cache: "no-store" }),
+            authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: "no-store" }),
+          ]);
+          if (volunteerRes.ok) {
+            const json = await volunteerRes.json();
+            setVolunteers(Array.isArray(json) ? json : json?.data || []);
+          }
+          if (interviewsRes.ok) {
+            const json = await interviewsRes.json();
+            setInterviews(Array.isArray(json) ? json : json?.data || []);
+          }
+        } else {
+          setVolunteers([]);
+          setInterviews([]);
         }
         setProjectTasks(Array.isArray(taskRows) ? taskRows : []);
         setProjects(Array.isArray(projectRows) ? projectRows : projectRows?.data || []);
-        setStaffRows(Array.isArray(staffData) ? staffData : []);
-        if (interviewsRes.ok) {
-          const json = await interviewsRes.json();
-          setInterviews(Array.isArray(json) ? json : json?.data || []);
-        }
+        setStaffRows(staffList);
       } catch (err) {
         console.error("Failed to fetch StaffDashboard data:", err);
       }
     }
     fetchDashboardData();
-  }, [authLoading, authUser?.user_id]);
+  }, [authLoading, authUser?.committee_id, authUser?.user_id]);
 
   const actorName = getActorName(user);
   const currentStaff = useMemo(() => {
     return staffRows.find((person) => person.user_id === authUser?.user_id);
   }, [authUser?.user_id, staffRows]);
   const committeeName = currentStaff?.committees?.committee_name || "";
+  const isMembershipStaff = Number(authUser?.committee_id ?? currentStaff?.committee_id ?? currentStaff?.committees?.committee_id) === MEMBERSHIP_COMMITTEE_ID;
+
+  const scopedProjectTasks = useMemo(() => {
+    return projectTasks.filter((task) => {
+      const assignee = task.assignee || {};
+      const mine = assignee.user_id === authUser?.user_id || isSamePerson(assignee.name, actorName);
+      const committeeMatch = committeeName && normalizeText(assignee.committee_name) === normalizeText(committeeName);
+      return mine || committeeMatch;
+    });
+  }, [actorName, authUser?.user_id, committeeName, projectTasks]);
+
+  const scopedProjects = useMemo(() => {
+    return projects.filter((project) =>
+      listIncludesPerson(project.projectOfficers, actorName) ||
+      listIncludesPerson(project.projectCommitteeMembers, actorName)
+    );
+  }, [actorName, projects]);
 
   const stats = useMemo(() => {
-    const todayStr = new Date().toDateString();
-    const newToday = volunteers.filter(v => v.created_at && new Date(v.created_at).toDateString() === todayStr).length;
+    if (!isMembershipStaff) {
+      const activeProjects = scopedProjects.filter((project) => project.status === "Active").length;
+      const openTasks = scopedProjectTasks.filter(isOpenTask).length;
+
+      return [
+        { num: activeProjects, label: "Active Projects", hasNew: activeProjects > 0 },
+        { num: openTasks, label: "Open Project Tasks", hasNew: openTasks > 0 },
+      ];
+    }
+
+    const newToday = volunteers.filter(v => isToday(v.created_at)).length;
     const review = volunteers.filter(v => {
       const status = (v.application_status || "").toLowerCase();
       return status === "pending" || status === "under_review";
@@ -97,13 +161,25 @@ export default function StaffDashboard() {
 
     return [
       { num: newToday, label: "New Applications Today", hasNew: newToday > 0 },
-      { num: review,   label: "Review Applications",     hasNew: review > 0 },
+      { num: review, label: "Review Applications", hasNew: review > 0 },
     ];
-  }, [volunteers]);
+  }, [isMembershipStaff, scopedProjectTasks, scopedProjects, volunteers]);
 
   const overviewCards = useMemo(() => {
-    const todayStr = new Date().toDateString();
-    const newToday = volunteers.filter(v => v.created_at && new Date(v.created_at).toDateString() === todayStr).length;
+    if (!isMembershipStaff) {
+      const upcomingEvents = scopedProjects.filter((project) => {
+        const status = normalizeText(project.status);
+        return status !== "completed" && isUpcomingDate(project.dateStart || project.dueDate || project.dateEnd);
+      }).length;
+      const overdueTasks = scopedProjectTasks.filter((task) => task.display_status === "Overdue").length;
+
+      return [
+        { category: "Events", label: "Upcoming Events", count: upcomingEvents, showView: false },
+        { category: "Projects", label: "Overdue Tasks", count: overdueTasks, showView: true },
+      ];
+    }
+
+    const newToday = volunteers.filter(v => isToday(v.created_at)).length;
     const review = volunteers.filter(v => {
       const status = (v.application_status || "").toLowerCase();
       return status === "pending" || status === "under_review";
@@ -111,9 +187,9 @@ export default function StaffDashboard() {
 
     return [
       { category: "New Applicants", label: "New Applications Today", count: newToday, showView: false },
-      { category: "Volunteer",      label: "Review Applications",    count: review,   showView: true  },
+      { category: "Volunteer", label: "Review Applications", count: review, showView: true },
     ];
-  }, [volunteers]);
+  }, [isMembershipStaff, scopedProjectTasks, scopedProjects, volunteers]);
 
   const deadlines = useMemo(() => limitUpcomingDeadlines([
     ...buildProjectTaskDeadlines(projectTasks, {
@@ -124,12 +200,13 @@ export default function StaffDashboard() {
       limit: Infinity,
     }),
     ...buildProjectDeadlines(projects, { actorName, limit: Infinity }),
-    ...(committeeName ? buildConfirmedInterviewDeadlines(interviews, {
+    ...(isMembershipStaff ? buildConfirmedInterviewDeadlines(interviews, {
       userId: authUser?.user_id,
       actorName,
       limit: Infinity,
     }) : []),
-  ]), [actorName, authUser?.user_id, committeeName, interviews, projectTasks, projects]);
+  ]), [actorName, authUser?.user_id, committeeName, interviews, isMembershipStaff, projectTasks, projects]);
+
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
 

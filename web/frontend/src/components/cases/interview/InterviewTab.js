@@ -552,6 +552,12 @@ function isWithinCancellationRescheduleWindow(interview) {
   return Date.now() - timestamp <= 15 * 24 * 60 * 60 * 1000;
 }
 
+function wasRescheduledFromCancellation(interview) {
+  const status = interview?.interviewStatus || interview?.status;
+  if (!["Scheduled", "Confirmed"].includes(status)) return false;
+  return Boolean(interview?.cancellationReason || interview?.cancellation_reason);
+}
+
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
@@ -917,11 +923,18 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
     const fetchSlots = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+        const interviewerId = interview.interviewer_user_id || interview.interviewerUserId;
+        const interviewerFilter = interviewerId
+          ? `&created_by=${encodeURIComponent(interviewerId)}`
+          : "";
         const res = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true`,
+          `${API_URL}/api/interview_slots?slot_type=case_report&is_available=true${interviewerFilter}`,
           { credentials: "include" }
         );
-        if (!res.ok) throw new Error("Failed to load slots");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Failed to load slots");
+        }
         const json = await res.json();
         // Map slot_id → id so SlotPickerCalendar works
         setSlots((json.data || []).map(s => ({
@@ -931,14 +944,15 @@ function InvitedView({ caseData, interview, onSlotSelected, onAvailabilityReques
           time: s.slot_time,
           status: "free",
         })));
-      } catch {
+      } catch (err) {
+        console.error("Failed to load available interview slots:", err);
         setSlots([]);
       } finally {
         setLoading(false);
       }
     };
     fetchSlots();
-  }, []);
+  }, [interview.interviewer_user_id, interview.interviewerUserId]);
 
   async function handleConfirmSlot(slot) {
     setConfirming(true);
@@ -1102,7 +1116,7 @@ function RescheduleReasonModal({ open, onClose, onContinue }) {
   );
 }
 
-function ScheduledView({ interview, onReschedule }) {
+function ScheduledView({ interview, onReschedule, officerRescheduled = false }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -1118,10 +1132,12 @@ function ScheduledView({ interview, onReschedule }) {
         <div>
           <h2 className={styles.statusTitle}>Waiting for Meeting Link</h2>
           <p className={styles.statusDesc}>
-            Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly.
+            {officerRescheduled
+              ? "Your case officer has rescheduled this interview. They will confirm and send you the meeting link shortly."
+              : "Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly."}
           </p>
         </div>
-        {onReschedule && (
+        {onReschedule && !officerRescheduled && (
           <button className={styles.rescheduleBtn} onClick={onReschedule}>
             Reschedule
           </button>
@@ -1161,7 +1177,9 @@ function ScheduledView({ interview, onReschedule }) {
       </div>
 
       <div className={styles.waitingMessage}>
-        You will be notified once the meeting link is ready. Please check back here or watch for a notification.
+        {officerRescheduled
+          ? "Please review the updated schedule below. You will be notified once the meeting link is ready."
+          : "You will be notified once the meeting link is ready. Please check back here or watch for a notification."}
       </div>
     </div>
   );
@@ -1169,7 +1187,7 @@ function ScheduledView({ interview, onReschedule }) {
 
 // ─── Complainant: Confirmed view (Interview is Confirmed) ─────────────────────
 
-function ConfirmedView({ interview, onReschedule }) {
+function ConfirmedView({ interview, onReschedule, officerRescheduled = false }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -1186,10 +1204,12 @@ function ConfirmedView({ interview, onReschedule }) {
         <div>
           <h2 className={styles.statusTitle}>Your Interview is Confirmed</h2>
           <p className={styles.statusDesc}>
-            Everything is set. See the details below and join at the scheduled time.
+            {officerRescheduled
+              ? "Your case officer rescheduled this interview and confirmed the updated details below."
+              : "Everything is set. See the details below and join at the scheduled time."}
           </p>
         </div>
-        {onReschedule && (
+        {onReschedule && !officerRescheduled && (
           <button className={styles.rescheduleBtn} onClick={onReschedule}>
             Reschedule
           </button>
@@ -1592,6 +1612,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               notes: parsedNotes.notes || null,
               availabilityRequest: iv.availability_request_reason || null,
               availabilityRequested: Boolean(iv.availability_requested),
+              cancellationReason: iv.cancellation_reason || null,
               rawNotes: iv.notes || null,
               meetingLink: iv.meeting_link || iv.meetingLink || null,
             };
@@ -1955,35 +1976,43 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     }
 
     if (status === "Scheduled") {
+      const officerRescheduled = wasRescheduledFromCancellation(activeInterview);
       return (
         <>
           <ScheduledView
             interview={activeInterview}
+            officerRescheduled={officerRescheduled}
             onReschedule={() => setComplainantReschedulePrompt(true)}
           />
-          <AvailabilityRequestModal
-            open={complainantReschedulePrompt}
-            onClose={() => setComplainantReschedulePrompt(false)}
-            scheduled
-            onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
-          />
+          {!officerRescheduled && (
+            <AvailabilityRequestModal
+              open={complainantReschedulePrompt}
+              onClose={() => setComplainantReschedulePrompt(false)}
+              scheduled
+              onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
+            />
+          )}
         </>
       );
     }
 
     if (status === "Confirmed") {
+      const officerRescheduled = wasRescheduledFromCancellation(activeInterview);
       return (
         <>
           <ConfirmedView
             interview={activeInterview}
+            officerRescheduled={officerRescheduled}
             onReschedule={() => setComplainantReschedulePrompt(true)}
           />
-          <AvailabilityRequestModal
-            open={complainantReschedulePrompt}
-            onClose={() => setComplainantReschedulePrompt(false)}
-            scheduled
-            onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
-          />
+          {!officerRescheduled && (
+            <AvailabilityRequestModal
+              open={complainantReschedulePrompt}
+              onClose={() => setComplainantReschedulePrompt(false)}
+              scheduled
+              onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
+            />
+          )}
         </>
       );
     }

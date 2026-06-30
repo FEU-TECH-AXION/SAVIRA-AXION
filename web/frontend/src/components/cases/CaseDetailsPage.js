@@ -35,7 +35,7 @@ const CASE_TYPE_DESCRIPTIONS = {
   "Gender-based sexual harassment in institutions": "This covers harassment in school, workplace, organization, training, or Scouting-related settings.",
 };
 
-const STATUS_EXPLANATIONS = {
+export const STATUS_EXPLANATIONS = {
   "For Verification": {
     title: "Your report has been received",
     description: "SASHA has received your report. An intake officer has logged your case and is checking the basic details, urgency, and available evidence.",

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiX } from "react-icons/fi";
 import Tooltip from "@/components/ui/Tooltip";
+import PublicMessageField from "@/components/cases/PublicMessageField";
 import styles from "./LegalReviewModals.module.css";
 
 export const ENDORSEMENT_BODIES = [
@@ -78,6 +79,7 @@ function emptyEvidence() {
 
 export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
   const [expandedEvidenceLabels, setExpandedEvidenceLabels] = useState([]);
+  const [publicUpdate, setPublicUpdate] = useState({ isPublic: false, publicMessage: "" });
   const [form, setForm] = useState({
     evidenceItems: emptyEvidence(),
     selectedEvidenceLabels: [],
@@ -122,6 +124,7 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
       readyForLawyerReview: Boolean(record.readyForLawyerReview),
     });
     setExpandedEvidenceLabels(selectedEvidenceLabels.slice(0, 1));
+    setPublicUpdate({ isPublic: false, publicMessage: "" });
   }, [open, caseData]);
 
   if (!caseData) return null;
@@ -183,6 +186,8 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
         readyAt: form.readyForLawyerReview ? new Date().toISOString() : null,
       },
       documentRepository: linkedDocuments,
+      is_public: publicUpdate.isPublic,
+      public_message: publicUpdate.publicMessage,
     });
     onClose();
   }
@@ -247,6 +252,12 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
         <FormGroup label="Additional notes"><FTextarea value={form.otherNotes} onChange={(event) => setForm((previous) => ({ ...previous, otherNotes: event.target.value }))} /></FormGroup>
         <label className={styles.checkLabel}><input className={styles.checkInput} type="checkbox" checked={form.survivorUnderstood} onChange={(event) => setForm((previous) => ({ ...previous, survivorUnderstood: event.target.checked }))} />Survivor confirmed understanding</label>
         <label className={styles.checkLabel}><input className={styles.checkInput} type="checkbox" checked={form.readyForLawyerReview} onChange={(event) => setForm((previous) => ({ ...previous, readyForLawyerReview: event.target.checked }))} />Ready for lawyer review</label>
+        <PublicMessageField
+          actionType="paralegal_record_saved"
+          contextFields={{}}
+          value={publicUpdate}
+          onChange={setPublicUpdate}
+        />
       </div>
       <div className={styles.modalFooter}>
         <button type="button" className={styles.btnSecondary} onClick={onClose}>Cancel</button>
@@ -300,11 +311,13 @@ const DETAIL_FIELDS = {
 export function EndorseModal({ open, onClose, caseData, onSave }) {
   const [body, setBody] = useState("");
   const [details, setDetails] = useState({});
+  const [publicUpdate, setPublicUpdate] = useState({ isPublic: false, publicMessage: "" });
 
   useEffect(() => {
     if (!open || !caseData) return;
     setBody(caseData.endorsedTo || "");
     setDetails(caseData.endorsementDetails || {});
+    setPublicUpdate({ isPublic: false, publicMessage: "" });
   }, [open, caseData]);
 
   if (!caseData) return null;
@@ -324,6 +337,8 @@ export function EndorseModal({ open, onClose, caseData, onSave }) {
         "Lawyer Recommendation": caseData.lawyerRecord?.recommendation || "",
         "Recommendation Alignment": recommendedBodies.length === 0 || recommendedBodies.includes(body) ? "Aligned" : "Different path selected",
       },
+      is_public: publicUpdate.isPublic,
+      public_message: publicUpdate.publicMessage,
     });
     onClose();
   }
@@ -348,6 +363,12 @@ export function EndorseModal({ open, onClose, caseData, onSave }) {
               : <FInput type={type} value={details[label] || ""} onChange={(event) => setDetails((previous) => ({ ...previous, [label]: event.target.value }))} />}
           </FormGroup>
         ))}
+        <PublicMessageField
+          actionType="endorsement_saved"
+          contextFields={{ institution: body }}
+          value={publicUpdate}
+          onChange={setPublicUpdate}
+        />
       </div>
       <div className={styles.modalFooter}>
         <button type="button" className={styles.btnSecondary} onClick={onClose}>Cancel</button>
@@ -360,11 +381,13 @@ export function EndorseModal({ open, onClose, caseData, onSave }) {
 export function MonitoringModal({ open, onClose, caseData, onSave, actorName }) {
   const [update, setUpdate] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [publicUpdate, setPublicUpdate] = useState({ isPublic: false, publicMessage: "" });
 
   useEffect(() => {
     if (!open) return;
     setUpdate("");
     setDate(new Date().toISOString().split("T")[0]);
+    setPublicUpdate({ isPublic: false, publicMessage: "" });
   }, [open]);
 
   if (!caseData) return null;
@@ -372,7 +395,12 @@ export function MonitoringModal({ open, onClose, caseData, onSave, actorName }) 
   async function handleSave() {
     if (!update.trim()) return;
     const entry = { date: new Date(`${date}T00:00:00`).toLocaleDateString("en-PH"), by: actorName, update };
-    await onSave({ ...caseData, monitoringLog: [...(caseData.monitoringLog || []), entry] });
+    await onSave({
+      ...caseData,
+      monitoringLog: [...(caseData.monitoringLog || []), entry],
+      is_public: publicUpdate.isPublic,
+      public_message: publicUpdate.publicMessage,
+    });
     onClose();
   }
 
@@ -384,6 +412,12 @@ export function MonitoringModal({ open, onClose, caseData, onSave, actorName }) 
         <FormGroup label="Current institution"><FInput value={caseData.endorsedTo || "Not yet endorsed"} disabled /></FormGroup>
         <FormGroup label="Date of follow-up" required><FInput type="date" value={date} onChange={(event) => setDate(event.target.value)} /></FormGroup>
         <FormGroup label="Update / findings" required><FTextarea rows={5} value={update} onChange={(event) => setUpdate(event.target.value)} /></FormGroup>
+        <PublicMessageField
+          actionType="monitoring_update_added"
+          contextFields={{ institution: caseData.endorsedTo }}
+          value={publicUpdate}
+          onChange={setPublicUpdate}
+        />
       </div>
       <div className={styles.modalFooter}>
         <button type="button" className={styles.btnSecondary} onClick={onClose}>Cancel</button>

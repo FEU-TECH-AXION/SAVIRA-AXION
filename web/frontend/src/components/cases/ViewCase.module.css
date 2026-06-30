@@ -1151,10 +1151,32 @@
 /* ── Checkbox group ── */
 .checkGroup { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
 .checkLabel {
-  display: flex; align-items: center; gap: 0.5rem;
+  display: flex; align-items: flex-start; gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: 0.88rem; color: var(--sasha-text); cursor: pointer;
+  padding: 0.45rem 0.55rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+.checkLabelActive {
+  background: var(--sasha-teal-light);
+  border-color: rgba(3, 127, 129, 0.22);
 }
 .checkInput { accent-color: var(--sasha-teal); width: 15px; height: 15px; flex-shrink: 0; }
+.checkLabelText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+  line-height: 1.35;
+}
+.checkLabelTitle { font-weight: 600; }
+.checkDescription {
+  color: var(--sasha-teal-dark);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
 
 /* ── Section divider inside forms ── */
 .sectionDivider {
@@ -1307,4 +1329,56 @@
   .duplicateSecondaryBtn {
     width: 100%;
   }
+}
+
+.loadingCard {
+  padding: 2rem;
+  text-align: center;
+  color: var(--sasha-muted);
+  font-size: 0.9rem;
+}
+
+.errorBox {
+  margin: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+.caseUpdateContent {
+  padding-top: 1px;
+  min-width: 0;
+}
+
+.caseUpdateTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--sasha-text);
+}
+
+.publicMessageBox {
+  grid-column: 1 / -1;
+  padding: 0.85rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: var(--sasha-offwhite);
+}
+
+.publicMessageFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.publicMessageMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--sasha-muted);
+  font-size: 0.76rem;
 }
