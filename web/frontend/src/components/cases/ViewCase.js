@@ -27,6 +27,8 @@ import StatusDetailsSection from "./StatusDetailsSection";
 import DetailAccordion from "./DetailAccordion";
 import PendingStatusApproval from "./PendingStatusApproval";
 import CaseDetailsPage from "./CaseDetailsPage";
+import CaseUpdatesTab from "./CaseUpdatesTab";
+import PublicMessageField from "./PublicMessageField";
 import FollowUpsPanel, {
   FollowUpBadge,
   FollowUpCaseHistory,
@@ -852,6 +854,7 @@ function CaseManagementTab({
   const [referralVal, setReferralVal] = useState(caseData.referralBody || "");
   const [referralReq, setReferralReq] = useState(caseData.referralRequired ? "yes" : "no");
   const [endorseNotes, setEndorseNotes] = useState("");
+  const [referralPublicUpdate, setReferralPublicUpdate] = useState({ isPublic: false, publicMessage: "" });
   const [internalNotes, setInternalNotes] = useState(caseData.internalNotes || "");
   const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [noteLogs, setNoteLogs] = useState([]);
@@ -1028,6 +1031,49 @@ function CaseManagementTab({
       setModal(null);
     } catch (err) {
       showToast(err.message, "error");
+    }
+  }
+
+  async function saveReferralEndorsement() {
+    try {
+      const referralRequired = referralReq === "yes";
+      const selectedBody = referralRequired ? referralVal : null;
+
+      await saveAssessment({
+        referral_required: referralRequired,
+        referral_body: selectedBody,
+        endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null,
+      }, () => {
+        setCaseData((p) => ({
+          ...p,
+          referralRequired,
+          referralBody: selectedBody,
+          endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : null,
+        }));
+        showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated.");
+      });
+
+      if (selectedBody && referralPublicUpdate.isPublic) {
+        const res = await authFetch(`${API_URL}/api/case_report_logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            case_report_id: caseData.id,
+            action_type: "referral_endorsed",
+            remarks: endorseNotes || `Case referred and endorsed to ${selectedBody}.`,
+            performed_by_user_id: userId,
+            is_public: true,
+            public_message: referralPublicUpdate.publicMessage,
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to save public referral update.");
+      }
+
+      setReferralPublicUpdate({ isPublic: false, publicMessage: "" });
+      setModal(null);
+    } catch (err) {
+      showToast(err.message || "Failed to save referral details.", "error");
     }
   }
 
@@ -1247,12 +1293,16 @@ function CaseManagementTab({
           <FormGroup label="Referral required?"><FSelect value={referralReq} onChange={(e) => { setReferralReq(e.target.value); if (e.target.value === "no") setReferralVal(""); }}><option value="no">No</option><option value="yes">Yes</option></FSelect></FormGroup>
           {referralReq === "yes" && <FormGroup label="Referral / Endorsement Body" required><FSelect value={referralVal} onChange={(e) => setReferralVal(e.target.value)}><option value="">Select body</option>{ENDORSEMENT_BODIES.map((b) => <option key={b} value={b}>{b}</option>)}</FSelect></FormGroup>}
           {referralReq === "yes" && <FormGroup label="Referral / endorsement notes"><FTextarea placeholder="Explain basis for referral or endorsement and any supporting details..." value={endorseNotes} onChange={(e) => setEndorseNotes(e.target.value)} /></FormGroup>}
+          {referralReq === "yes" && (
+            <PublicMessageField
+              actionType="referral_endorsed"
+              contextFields={{ institution: referralVal }}
+              value={referralPublicUpdate}
+              onChange={setReferralPublicUpdate}
+            />
+          )}
         </div>
-        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={referralReq === "yes" && !referralVal} onClick={() => {
-          const referralRequired = referralReq === "yes";
-          const selectedBody = referralRequired ? referralVal : null;
-          saveAssessment({ referral_required: referralRequired, referral_body: selectedBody, endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null }, () => { setCaseData((p) => ({ ...p, referralRequired, referralBody: selectedBody, endorsementStatus: selectedBody ? `Endorsed to ${selectedBody}` : null })); showToast(selectedBody ? `Case referred and endorsed to ${selectedBody}.` : "Referral details updated."); });
-        }}>Save</button></div>
+        <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={referralReq === "yes" && !referralVal} onClick={saveReferralEndorsement}>Save</button></div>
       </Modal>
 
     </div>
@@ -1720,6 +1770,7 @@ export default function ViewCase() {
   // Tab definitions — staff gets 4 tabs, complainant gets 2 (details + interview if eligible)
   const tabs = [
     { id: "details", label: "Case Details", tooltip: "View the submitted report and case information.", staffOnly: false },
+    { id: "updates", label: "Case Updates", tooltip: "See progress and announcements about your case.", staffOnly: false },
     ...(showInterviewTab ? [
       { id: "interview", label: "Interview", tooltip: "View or manage interview scheduling and details.", staffOnly: false },
     ] : []),
@@ -1839,6 +1890,10 @@ export default function ViewCase() {
           {/* Tab content */}
           {displayedActiveTab === "details" && userLoaded && (
             <CaseDetailsPage caseData={caseData} isStaff={isStaff} />
+          )}
+
+          {displayedActiveTab === "updates" && userLoaded && (
+            <CaseUpdatesTab caseId={caseData.id} />
           )}
 
           {displayedActiveTab === "interview" && showInterviewTab && userLoaded && (

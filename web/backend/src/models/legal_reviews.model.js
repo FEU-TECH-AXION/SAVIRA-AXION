@@ -32,6 +32,17 @@ async function getLogsByReview(legalReviewId) {
   return data || []
 }
 
+async function getPublicLogsByCase(caseReportId) {
+  const { data, error } = await supabase
+    .from('legal_review_logs')
+    .select('legal_review_log_id, action_type, public_message, performed_by_user_id, performed_at')
+    .eq('case_report_id', caseReportId)
+    .eq('is_public', true)
+    .order('performed_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
 async function getAssignedLegalPersonnelId(caseReportId) {
   const { data, error } = await supabase
     .from('legal_case_assignments')
@@ -101,7 +112,7 @@ async function updateReview(legalReviewId, patch) {
   return data
 }
 
-async function logAction({ legalReviewId, caseReportId, actionType, remarks, performedByUserId }) {
+async function logAction({ legalReviewId, caseReportId, actionType, remarks, performedByUserId, isPublic = false, publicMessage = null }) {
   const { data, error } = await supabase
     .from('legal_review_logs')
     .insert([{
@@ -109,6 +120,8 @@ async function logAction({ legalReviewId, caseReportId, actionType, remarks, per
       case_report_id: caseReportId,
       action_type: actionType,
       remarks: remarks?.slice(0, 500) || null,
+      is_public: isPublic,
+      public_message: isPublic ? publicMessage : null,
       performed_by_user_id: performedByUserId,
       performed_at: new Date().toISOString(),
     }])
@@ -121,6 +134,7 @@ async function logAction({ legalReviewId, caseReportId, actionType, remarks, per
 module.exports = {
   getLatestByCase,
   getLogsByReview,
+  getPublicLogsByCase,
   resolveLegalPersonnelId,
   createForCase,
   updateReview,
