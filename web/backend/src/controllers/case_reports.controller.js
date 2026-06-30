@@ -329,7 +329,7 @@ async function getNLPAnalysis(req, res) {
 // ── GET /api/case_reports/heatmap/data ────────────────────────────────────
 async function getHeatmapData(req, res) {
   try {
-    const { aggregation = 'city', city, region, council, status, verification, victim_gender, perpetrator_gender } = req.query;
+    const { aggregation = 'city', city, region, council, status, case_type, verification, victim_gender, perpetrator_gender } = req.query;
 
     // Fetch only incident_city and case_status_id for the heatmap
     const allReports = await getHeatmapReports();
@@ -340,6 +340,7 @@ async function getHeatmapData(req, res) {
     if (region) filters.region = region;
     if (council) filters.council = council;
     if (status) filters.status = status;
+    if (case_type) filters.case_type = case_type;
     if (verification) filters.verification = verification;
     if (victim_gender) filters.victim_gender = victim_gender;
     if (perpetrator_gender) filters.perpetrator_gender = perpetrator_gender;
