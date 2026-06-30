@@ -88,14 +88,6 @@ const recordPasswordResetEmail = async (email, userId) => {
   if (error) throw error
 }
 
-router.get('/', verifyToken, authorize('Admin'), getItems)
-router.post('/', verifyToken, authorize('Admin'), createItem)
-router.put('/:id', verifyToken, updateItem)
-router.patch('/:id', verifyToken, updateItem)
-router.post('/:id/avatar', verifyToken, avatarUpload.single('profile_img'), uploadAvatar)
-router.post('/login', loginUser)
-router.post('/:userId/sync-role', verifyToken, authorize('Admin'), syncRole)
-
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body || {}
 
@@ -164,5 +156,13 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({ message: 'Something went wrong. Please try again.' })
   }
 })
+
+router.get('/', verifyToken, authorize('Admin'), getItems)
+router.post('/', verifyToken, authorize('Admin'), createItem)
+router.post('/login', loginUser)
+router.put('/:id', verifyToken, updateItem)
+router.patch('/:id', verifyToken, updateItem)
+router.post('/:id/avatar', verifyToken, avatarUpload.single('profile_img'), uploadAvatar)
+router.post('/:userId/sync-role', verifyToken, authorize('Admin'), syncRole)
 
 module.exports = router

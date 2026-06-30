@@ -13,7 +13,11 @@ export default function Splash() {
       const session = await restoreSession();
       setTimeout(() => {
         if (!mounted) return;
-        router.replace(session ? '/(complainant)/dashboard' : '/(auth)/login');
+        if (!session) {
+          router.replace('/(auth)/login');
+          return;
+        }
+        router.replace(session.user?.must_change_password ? '/(auth)/change-password' : '/(complainant)/dashboard');
       }, 1200);
     };
 

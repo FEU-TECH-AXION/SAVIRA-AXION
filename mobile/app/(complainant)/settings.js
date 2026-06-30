@@ -26,17 +26,13 @@ import NotificationBell from '../../components/NotificationBell';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
 import { API_URL } from '../../lib/config';
+import {
+  DEFAULT_DISPLAY_PREFS,
+  readDisplayPrefs,
+  saveDisplayPrefs,
+} from '../../lib/displayPreferences';
 
 const INPUT_PLACEHOLDER_COLOR = '#64748b';
-const DISPLAY_PREFS_KEY = 'savira_display_prefs';
-const DEFAULT_DISPLAY_PREFS = {
-  theme: 'system',
-  fontSize: 'md',
-  language: 'en',
-  reducedMotion: false,
-  highContrast: false,
-  screenReaderHints: true,
-};
 TextInput.defaultProps = TextInput.defaultProps || {};
 TextInput.defaultProps.placeholderTextColor = INPUT_PLACEHOLDER_COLOR;
 
@@ -251,9 +247,7 @@ export default function SettingsScreen() {
   };
 
   // ── Display State ───────────────────────────────────
-  const [displayPrefs, setDisplayPrefs] = useState({
-    theme: 'system', fontSize: 'md', language: 'en', reducedMotion: false, highContrast: false, screenReaderHints: true
-  });
+  const [displayPrefs, setDisplayPrefs] = useState(DEFAULT_DISPLAY_PREFS);
 
   const effectiveTheme = displayPrefs.theme === 'system' ? systemColorScheme || 'light' : displayPrefs.theme;
   const displayColors = displayPrefs.highContrast
@@ -271,12 +265,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     const loadDisplayPrefs = async () => {
-      try {
-        const raw = await AsyncStorage.getItem(DISPLAY_PREFS_KEY);
-        if (raw) setDisplayPrefs({ ...DEFAULT_DISPLAY_PREFS, ...JSON.parse(raw) });
-      } catch {
-        // Keep defaults when saved preferences are unavailable.
-      }
+      setDisplayPrefs(await readDisplayPrefs());
     };
 
     loadDisplayPrefs();
@@ -284,7 +273,7 @@ export default function SettingsScreen() {
 
   const handleDisplaySave = async () => {
     try {
-      await AsyncStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify({ ...DEFAULT_DISPLAY_PREFS, ...displayPrefs }));
+      setDisplayPrefs(await saveDisplayPrefs(displayPrefs));
       Alert.alert("Success", "Display preferences saved!");
     } catch {
       Alert.alert("Error", "Display preferences could not be saved on this device.");

@@ -32,6 +32,7 @@ const BORDER = "#e5e7eb";
 const BG = "#f5f7f8";
 const ERROR = "#dc2626";
 const HISTORY_PAGE_SIZE = 5;
+const MAX_EVIDENCE_FILES = 10;
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_EVIDENCE_FILE_SIZE_LABEL = "50 MB";
 const INPUT_PLACEHOLDER_COLOR = "#6b7280";
@@ -86,13 +87,12 @@ const NCR_CITIES = [
 const OUTCOME_OPTIONS = [
   "Safety planning and support",
   "Counseling or psychosocial support",
-  "Legal advice or legal action",
-  "Mediation or restorative process",
+  "Legal advice",
   "Referral to police or another agency",
   "Financial support",
-  "Medical support",
   "Documentation only",
   "I am not sure yet",
+  "Others",
 ];
 
 function normalizeOutcome(value) {
@@ -102,6 +102,34 @@ function normalizeOutcome(value) {
 
 function formatOutcome(value) {
   return normalizeOutcome(value).join(", ") || "—";
+}
+
+function parseMobileDate(value) {
+  if (!value) return { isoDate: "", year: null, month: null, day: null };
+  const parts = String(value).split("/");
+  if (parts.length !== 3) return { isoDate: "", year: null, month: null, day: null };
+  const month = Number.parseInt(parts[0], 10);
+  const day = Number.parseInt(parts[1], 10);
+  const year = Number.parseInt(parts[2], 10);
+  if (!year || !month || !day) return { isoDate: "", year: null, month: null, day: null };
+  const isoDate = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return { isoDate, year, month, day };
+}
+
+function getDaysInMonth(year, month) {
+  return new Date(year || new Date().getFullYear(), month, 0).getDate();
+}
+
+function isPartialIncidentDateInFuture(year, month, day) {
+  const today = new Date();
+  if (!year || Number.isNaN(year)) return false;
+  if (year > today.getFullYear()) return true;
+  if (year < today.getFullYear()) return false;
+  if (!month || Number.isNaN(month)) return false;
+  if (month > today.getMonth() + 1) return true;
+  if (month < today.getMonth() + 1) return false;
+  if (!day || Number.isNaN(day)) return false;
+  return day > today.getDate();
 }
 
 
@@ -1510,12 +1538,29 @@ function StepEvidence({ data, onChange }) {
 
   const appendValidFiles = (files) => {
     const oversizedFiles = files.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
-    const validFiles = files.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
+    const remainingSlots = MAX_EVIDENCE_FILES - (data.files || []).length;
+    const allowedFiles = files.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
+    const validFiles = allowedFiles.slice(0, Math.max(remainingSlots, 0));
 
     if (oversizedFiles.length > 0) {
       Alert.alert(
         "File Too Large",
         `Each evidence file must be ${MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller. Please choose a smaller file.`
+      );
+    }
+
+    if (remainingSlots <= 0) {
+      Alert.alert(
+        "File Limit Reached",
+        `You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`
+      );
+      return;
+    }
+
+    if (allowedFiles.length > validFiles.length) {
+      Alert.alert(
+        "File Limit Reached",
+        `Only ${remainingSlots} more file${remainingSlots === 1 ? "" : "s"} can be added. You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`
       );
     }
 
@@ -1658,7 +1703,7 @@ function StepEvidence({ data, onChange }) {
       </Text>
       <Text style={s.stepDesc}>
         Attach any files, photos, or documents relevant to the incident
-        (optional). Each file must be {MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller.
+        (optional). Each file must be {MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller. You can add up to {MAX_EVIDENCE_FILES} files.
       </Text>
 
       <View style={s.credSection}>
@@ -1672,7 +1717,7 @@ function StepEvidence({ data, onChange }) {
             <Ionicons name="add" size={16} color="#fff" />
             <Text style={s.browseBtnText}>Choose Files</Text>
           </View>
-          <Text style={s.dropHint}>Max {MAX_EVIDENCE_FILE_SIZE_LABEL} per file</Text>
+          <Text style={s.dropHint}>Max {MAX_EVIDENCE_FILE_SIZE_LABEL} per file, {MAX_EVIDENCE_FILES} files total</Text>
         </Pressable>
 
         <View style={s.fileList}>
@@ -1718,7 +1763,7 @@ function StepEvidence({ data, onChange }) {
               <View style={{ flex: 1 }}>
                 <Text style={s.uploadModalTitle}>Add Evidence</Text>
                 <Text style={s.uploadModalSubtitle}>
-                  Choose from your device. Up to {MAX_EVIDENCE_FILE_SIZE_LABEL} per file.
+                  Choose from your device. Up to {MAX_EVIDENCE_FILE_SIZE_LABEL} per file and {MAX_EVIDENCE_FILES} files total.
                 </Text>
               </View>
               <Pressable style={s.uploadModalClose} onPress={() => setPickerOpen(false)}>
@@ -1899,7 +1944,8 @@ function validateStep0(complainant, consents) {
 function validateStep1(data) {
   const e = {};
   if (!data.reporteeType) e.reporteeType = "Report type is required.";
-  if (!data.age) e.age = "Age is required.";
+  const age = Number.parseInt(data.age, 10);
+  if (!data.age || Number.isNaN(age) || age < 1 || age > 120) e.age = "A valid age from 1 to 120 is required.";
   if (!data.gender) e.gender = "Gender identity is required.";
   if (!data.organization) e.organization = "Organization is required.";
   if (!data.contactNumber) {
@@ -1916,6 +1962,9 @@ function validateStep1(data) {
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
   if (isScoutOrg && !data.council) e.council = "Council is required.";
+  if (data.organization === "No Organization / Independent" && !NCR_CITIES.includes(data.userCity)) {
+    e.userCity = "A valid city/municipality is required for your location.";
+  }
   if (data.organization === "Others") {
     if (!data.organizationType)
       e.organizationType = "Organization type is required.";
@@ -1924,25 +1973,39 @@ function validateStep1(data) {
       data.organizationType !== "No Organization / Independent";
     if (hasAffiliation) {
       if (!data.orgName) e.orgName = "Organization name is required.";
-      if (!data.orgCity) e.orgCity = "Organization city is required.";
+      if (!NCR_CITIES.includes(data.orgCity)) e.orgCity = "A valid organization city is required.";
     }
-    if (!data.userCity) e.userCity = "Your city/municipality is required.";
+    if (!NCR_CITIES.includes(data.userCity)) e.userCity = "A valid city/municipality is required for your location.";
   }
   return e;
 }
 
-function validateStep2(data) {
+function validateStep2(data, complainantAge) {
   const e = {};
-  if (!data.date) e.date = "Date is required.";
-  if (!data.time) e.time = "Time is required.";
+  const { isoDate, year, month, day } = parseMobileDate(data.date);
+  const currentYear = new Date().getFullYear();
+  const age = Number.parseInt(complainantAge, 10);
+  const earliestYear = Number.isNaN(age) ? 1900 : currentYear - age;
+  if (!isoDate) {
+    e.date = "Date is required.";
+  } else if (year < earliestYear || year > currentYear) {
+    e.date = `A valid incident year from ${earliestYear} to ${currentYear} is required.`;
+  } else if (day > getDaysInMonth(year, month) || isPartialIncidentDateInFuture(year, month, day)) {
+    e.date = "Incident date cannot be invalid or in the future.";
+  } else if (data.time) {
+    const incidentDateTime = new Date(`${isoDate}T${data.time}`);
+    if (!Number.isNaN(incidentDateTime.getTime()) && incidentDateTime > new Date()) {
+      e.time = "Incident date and time cannot be in the future.";
+    }
+  }
   if (!data.locationType) e.locationType = "Please select whether the incident was physical or online.";
-  if (data.locationType === "Physical Location" && !data.incidentCity)
-    e.incidentCity = "Incident city is required.";
+  if (data.locationType === "Physical Location" && !NCR_CITIES.includes(data.incidentCity))
+    e.incidentCity = "A valid incident city is required.";
   if (!data.description) {
     e.description = "Description of incident is required.";
-  } else if (data.description.trim().split(/\s+/).length < 50) {
-    e.description = "Description must be at least 50 words.";
   }
+  if (Array.isArray(data.outcome) && data.outcome.some((item) => !OUTCOME_OPTIONS.includes(item)))
+    e.outcome = "Please choose a valid requested outcome.";
   if (!data.perpetratorKnown)
     e.perpetratorKnown = "Please indicate if the perpetrator is known.";
   if (!data.witnesses) e.witnesses = "Please indicate if there are witnesses.";
@@ -1954,9 +2017,6 @@ function validateStep2(data) {
       e.perpetratorName = "Perpetrator name is required.";
     if (!data.perpetratorGender)
       e.perpetratorGender = "Perpetrator gender is required.";
-  }
-  if (data.witnesses === "Yes") {
-    // witness name and contact are optional — no validation required
   }
   return e;
 }
@@ -2397,7 +2457,7 @@ export default function ReportScreen() {
     let errs = {};
     if (step === 0) errs = validateStep0(complainant, consents);
     if (step === 1) errs = validateStep1(complainant);
-    if (step === 2) errs = validateStep2(incident);
+    if (step === 2) errs = validateStep2(incident, complainant.age);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -2427,19 +2487,29 @@ export default function ReportScreen() {
       setStep(3);
       return;
     }
+    if ((evidence.files || []).length > MAX_EVIDENCE_FILES) {
+      setSubmitError(`You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`);
+      setStep(3);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const userToken = await AsyncStorage.getItem("user_token");
       const formData = new FormData();
       formData.append("complainant", JSON.stringify(complainant));
+      const parsedIncidentDate = parseMobileDate(incident.date);
       
       const formattedIncident = {
         ...incident,
+        date: parsedIncidentDate.isoDate,
+        incident_year: parsedIncidentDate.year,
+        incident_month: parsedIncidentDate.month,
+        incident_day: parsedIncidentDate.day,
         outcome: Array.isArray(incident.outcome) ? incident.outcome.join(", ") : incident.outcome
       };
       formData.append("incident", JSON.stringify(formattedIncident));
       
-      formData.append("evidence", JSON.stringify({ anonymous: false }));
+      formData.append("evidence", JSON.stringify({ anonymous: evidence.anonymous ?? false }));
       (evidence.files || []).forEach((file) => {
         formData.append("files", {
           uri: file.uri,
@@ -2517,7 +2587,7 @@ export default function ReportScreen() {
       toldPolice: "",
       policeStation: "",
     });
-    setEvidence({ files: [] });
+    setEvidence({ files: [], anonymous: false });
   };
 
   // ── Derived filtered reports for history tab ─────────────────────────────

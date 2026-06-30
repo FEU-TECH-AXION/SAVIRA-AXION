@@ -191,6 +191,14 @@ export default function Signup() {
         return;
       }
 
+      if (data.verificationRequired) {
+        router.push({
+          pathname: '/(auth)/verify-email',
+          params: { email: data.email || form.email, purpose: data.purpose || 'signup' },
+        });
+        return;
+      }
+
       Alert.alert('Success', 'Account created! Please log in.');
       router.replace('/(auth)/login');
 

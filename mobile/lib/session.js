@@ -45,8 +45,9 @@ export async function restoreSession() {
 
     const data = await response.json();
     const user = data.user || JSON.parse(storedUser);
-    await saveSession(user, token);
-    return { user, token };
+    const freshToken = data.token || token;
+    await saveSession(user, freshToken);
+    return { user, token: freshToken };
   } catch {
     return { user: JSON.parse(storedUser), token };
   }

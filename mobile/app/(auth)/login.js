@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './login.style';
 import { API_URL } from '../../lib/config';
-import { saveSession } from '../../lib/session';
+import { clearSession, saveSession } from '../../lib/session';
 import AppLoadingOverlay from '../../components/AppLoadingOverlay';
 
 const PLACEHOLDER_COLOR = '#6b7280';
@@ -53,13 +53,22 @@ export default function Login() {
         return;
       }
 
+      if (data.verificationRequired) {
+        router.push({
+          pathname: '/(auth)/verify-email',
+          params: { email: data.email || email, purpose: data.purpose || 'login' },
+        });
+        return;
+      }
+
       await saveSession(data.user, data.token);
 
       const role = (data.user?.role_name || data.user?.roles?.role_name || '').toLowerCase();
 
       if (role === 'user' || role === 'complainant') {
-        router.replace('/(complainant)/dashboard');
+        router.replace(data.user?.must_change_password ? '/(auth)/change-password' : '/(complainant)/dashboard');
       } else {
+        await clearSession();
         Alert.alert('Unauthorized', 'This app is for complainants only.');
       }
     } catch (err) {
@@ -139,6 +148,10 @@ export default function Login() {
             Recognize this device for 30 days
           </Text>
         </View>
+
+        <Pressable onPress={() => router.push('/(auth)/forgot-password')} style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 12 }}>
+          <Text style={{ color: '#037F81', fontWeight: '800', fontSize: 13 }}>Forgot Password?</Text>
+        </Pressable>
 
         <Pressable
           style={[styles.btn, loading && styles.btnDisabled]}

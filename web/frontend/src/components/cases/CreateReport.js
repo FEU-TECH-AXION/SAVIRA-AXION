@@ -51,6 +51,10 @@ const OUTCOME_OPTIONS = [
   "Others",
 ];
 
+const MAX_EVIDENCE_FILES = 10;
+const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_EVIDENCE_FILE_SIZE_LABEL = "50MB";
+
 const INCIDENT_MONTH_OPTIONS = [
   { value: "1", label: "January" },
   { value: "2", label: "February" },
@@ -1989,18 +1993,30 @@ function StepEvidence({ data, onChange }) {
   const fileInputRef = useRef();
   const [dragging, setDragging] = useState(false);
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024;
-
   const addFiles = (newFiles) => {
     const arr = Array.from(newFiles);
-    const oversized = arr.filter(f => f.size > MAX_FILE_SIZE);
+    const currentFiles = data.files || [];
+    const remainingSlots = MAX_EVIDENCE_FILES - currentFiles.length;
+    const oversized = arr.filter(f => f.size > MAX_EVIDENCE_FILE_SIZE);
     
     if (oversized.length > 0) {
-      alert(`These files exceed the 50MB limit and were not added:\n${oversized.map(f => f.name).join('\n')}`);
+      alert(`These files exceed the ${MAX_EVIDENCE_FILE_SIZE_LABEL} limit and were not added:\n${oversized.map(f => f.name).join('\n')}`);
     }
 
-    const valid = arr.filter(f => f.size <= MAX_FILE_SIZE);
-    onChange({ ...data, files: [...(data.files || []), ...valid] });
+    if (remainingSlots <= 0) {
+      alert(`You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`);
+      return;
+    }
+
+    const valid = arr.filter(f => f.size <= MAX_EVIDENCE_FILE_SIZE).slice(0, remainingSlots);
+    const skippedByLimit = arr.filter(f => f.size <= MAX_EVIDENCE_FILE_SIZE).length - valid.length;
+    if (skippedByLimit > 0) {
+      alert(`Only ${remainingSlots} more file${remainingSlots === 1 ? "" : "s"} can be added. You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`);
+    }
+
+    if (valid.length > 0) {
+      onChange({ ...data, files: [...currentFiles, ...valid] });
+    }
   };
 
   const removeFile = (idx) => {
@@ -2040,7 +2056,7 @@ function StepEvidence({ data, onChange }) {
           >
             Browse
           </button>
-          <p className={styles.dropHint}>Supported files: PDF, JPG, PNG, MP4</p>
+          <p className={styles.dropHint}>Supported files: PDF, JPG, PNG, MP4. Max {MAX_EVIDENCE_FILE_SIZE_LABEL} each, {MAX_EVIDENCE_FILES} files total.</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -2073,17 +2089,17 @@ function StepEvidence({ data, onChange }) {
         </div>
       </div>
 
-      {/* <div className={styles.anonymousRow}>
+      <div className={styles.anonymousRow}>
         <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
             className={styles.checkbox}
-            checked={data.anonymous}
+            checked={Boolean(data.anonymous)}
             onChange={(e) => onChange({ ...data, anonymous: e.target.checked })}
           />
-          I would like to submit Anonymously
+          I would like to submit anonymously
         </label>
-      </div> */}
+      </div>
     </div>
   );
 }
@@ -2490,6 +2506,11 @@ export default function CreateReport({
       return;
     }
       setSubmissionError(null);
+      if ((evidence.files || []).length > MAX_EVIDENCE_FILES) {
+        setSubmissionError(`You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`);
+        setStep(3);
+        return;
+      }
       setIsSubmitting(true);
       fetchUserReports();
       try {
