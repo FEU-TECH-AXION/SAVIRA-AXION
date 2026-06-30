@@ -7,6 +7,7 @@ const INTERVIEW_STATUS_COLORS = {
   Invited: { bg: "#dbeafe", color: "#1e40af" },
   "Awaiting New Slots": { bg: "#fff7ed", color: "#9a3412" },
   Scheduled: { bg: "#fef9c3", color: "#854d0e" },
+  Rescheduled: { bg: "#e0f2fe", color: "#0369a1" },
   Confirmed: { bg: "#dcfce7", color: "#166534" },
   Completed: { bg: "#d1fae5", color: "#065f46" },
   Cancelled: { bg: "#fee2e2", color: "#991b1b" },

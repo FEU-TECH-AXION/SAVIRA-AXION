@@ -357,7 +357,10 @@ const reschedule = async (req, res) => {
         }
 
         const previousSlotId = interview.selected_slot_id
-        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id, normalizedReason)
+        const nextStatus = normalizeInterviewType(interview.type) === 'case_report'
+            ? 'rescheduled'
+            : 'scheduled'
+        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id, normalizedReason, nextStatus)
 
         await InterviewSlotsModel.markUnavailable(slot_id)
         if (previousSlotId && String(previousSlotId) !== String(slot_id)) {

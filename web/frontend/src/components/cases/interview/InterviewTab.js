@@ -32,6 +32,7 @@ import Tooltip from "@/components/ui/Tooltip";
 
 const INTERVIEW_STATUS_COLORS = {
   Scheduled:  { bg: "#dbeafe", color: "#1e40af" },
+  Rescheduled: { bg: "#e0f2fe", color: "#0369a1" },
   Confirmed:  { bg: "#d1fae5", color: "#065f46" },
   Completed:  { bg: "#d1fae5", color: "#065f46" },
   Cancelled:  { bg: "#fee2e2", color: "#991b1b" },
@@ -47,6 +48,17 @@ function formatInterviewStatus(status) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
+}
+
+function getInterviewDisplayStatus(interview) {
+  const status = formatInterviewStatus(interview?.status || interview?.interviewStatus);
+  if (
+    status === "Scheduled" &&
+    Boolean(interview?.reschedule_requires_response || interview?.rescheduleRequiresResponse)
+  ) {
+    return "Rescheduled";
+  }
+  return status;
 }
 
 function InterviewStatusBadge({ status }) {
@@ -554,7 +566,7 @@ function isWithinCancellationRescheduleWindow(interview) {
 
 function wasRescheduledFromCancellation(interview) {
   const status = interview?.interviewStatus || interview?.status;
-  if (!["Scheduled", "Confirmed"].includes(status)) return false;
+  if (!["Scheduled", "Rescheduled", "Confirmed"].includes(status)) return false;
   return Boolean(
     interview?.rescheduleRequiresResponse ||
     interview?.reschedule_requires_response ||
@@ -1208,13 +1220,13 @@ function ScheduledView({
       {rescheduleRequiresResponse && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" className={styles.btnPrimary} onClick={onAcceptReschedule}>
-            Accept
+            Accept Rescheduled Date
           </button>
           <button type="button" className={styles.btnSecondary} onClick={onReschedule}>
             Reschedule
           </button>
           <button type="button" className={styles.cancelBtn} onClick={onCancelInterview}>
-            Cancel
+            Cancel Interview
           </button>
         </div>
       )}
@@ -1316,13 +1328,13 @@ function ConfirmedView({
       {rescheduleRequiresResponse && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" className={styles.btnPrimary} onClick={onAcceptReschedule}>
-            Accept
+            Accept Rescheduled Date
           </button>
           <button type="button" className={styles.btnSecondary} onClick={onReschedule}>
             Reschedule
           </button>
           <button type="button" className={styles.cancelBtn} onClick={onCancelInterview}>
-            Cancel
+            Cancel Interview
           </button>
         </div>
       )}
@@ -1685,7 +1697,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             return {
               ...iv,
               id: iv.interview_id,
-              interviewStatus: formatInterviewStatus(iv.status),
+              interviewStatus: getInterviewDisplayStatus(iv),
               scheduledDate: iv.slot?.slot_date || null,
               scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
               interview_date: iv.slot?.slot_date || null,
@@ -1930,8 +1942,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                 }
               : {
                   ...iv,
-                  interviewStatus: "Scheduled",
-                  status: "Scheduled",
+                  interviewStatus: "Rescheduled",
+                  status: "Rescheduled",
                   scheduledDate: slot.date,
                   scheduledTime: slot.time?.slice(0, 5),
                   interview_date: slot.date,
@@ -2001,6 +2013,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
 
     setInterviews((prev) => prev.map((iv) => iv.id === interview.id ? {
       ...iv,
+      interviewStatus: "Scheduled",
+      status: "Scheduled",
       rescheduleRequiresResponse: false,
       rescheduleRespondedAt: body.data?.reschedule_responded_at || new Date().toISOString(),
     } : iv));
@@ -2088,7 +2102,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
       );
     }
 
-    if (status === "Scheduled") {
+    if (status === "Scheduled" || status === "Rescheduled") {
       const officerRescheduled = wasRescheduledFromCancellation(activeInterview);
       const rescheduleRequiresResponse = requiresRescheduleResponse(activeInterview);
       return (
@@ -2291,6 +2305,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             const scheduledLabel = formatStaffDateTime(iv);
             const isInvited = status === "Invited";
             const isAwaitingNewSlots = status === "Awaiting New Slots";
+            const isRescheduled = status === "Rescheduled";
             const isConfirmed = status === "Confirmed";
             const isCancelled = status === "Cancelled";
             const isCompleted = status === "Completed";
@@ -2321,6 +2336,10 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                       ? "New interview times requested"
                       : isInvited
                       ? "Interview invitation sent"
+                      : isRescheduled
+                      ? scheduledLabel
+                        ? `Rescheduled to ${scheduledLabel}`
+                        : "Interview rescheduled"
                       : scheduledLabel || "Interview schedule pending"}
                   </strong>
                   <span style={{ display: "block", marginTop: 3, fontSize: "0.82rem", color: "#6b7280" }}>
@@ -2328,6 +2347,8 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                       ? "Waiting for staff to offer new interview times."
                       : isInvited
                       ? "Waiting for the complainant to select an available slot."
+                      : isRescheduled
+                      ? "Waiting for the complainant to accept, cancel, or request another time."
                       : isCancelled
                       ? "This interview was cancelled."
                       : isCompleted

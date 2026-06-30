@@ -67,22 +67,38 @@ const selectSlot = async (id, slot_id, notes = null) => {
     return updateById(id, payload)
 }
 
-const reschedule = async (id, slot_id, reason) => {
-    return updateById(id, {
+const reschedule = async (id, slot_id, reason, status = 'scheduled') => {
+    const payload = {
         selected_slot_id: slot_id,
         meeting_link: null,
         notes: null,
-        status: 'scheduled',
+        status,
         availability_requested: false,
         availability_request_reason: null,
         reschedule_reason: reason,
         reschedule_requires_response: true,
         reschedule_responded_at: null,
-    })
+    }
+
+    try {
+        return await updateById(id, payload)
+    } catch (error) {
+        const violatesStatusConstraint =
+            status === 'rescheduled' &&
+            (error?.code === '23514' || String(error?.message || '').includes('interviews_status_check'))
+
+        if (!violatesStatusConstraint) throw error
+
+        return updateById(id, {
+            ...payload,
+            status: 'scheduled',
+        })
+    }
 }
 
 const acceptReschedule = async (id) => {
     return updateById(id, {
+        status: 'scheduled',
         reschedule_requires_response: false,
         reschedule_responded_at: new Date().toISOString(),
     })

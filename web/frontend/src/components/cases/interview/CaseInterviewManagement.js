@@ -26,6 +26,14 @@ function formatInterviewStatus(status) {
     .join(" ");
 }
 
+function getInterviewDisplayStatus(interview) {
+  const status = formatInterviewStatus(interview?.status);
+  if (status === "Scheduled" && Boolean(interview?.reschedule_requires_response)) {
+    return "Rescheduled";
+  }
+  return status;
+}
+
 function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -428,7 +436,7 @@ export default function CaseInterviewManagement() {
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "—",
-            interviewStatus: formatInterviewStatus(iv.status),
+            interviewStatus: getInterviewDisplayStatus(iv),
             scheduledDate: iv.slot?.slot_date || null,
             scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
             duration: `${iv.slot?.duration_minutes || 60} minutes`,
@@ -706,7 +714,7 @@ export default function CaseInterviewManagement() {
                 <span className={styles.statLabel}>Pending Invitations</span>
               </div>
               <div className={styles.statCard}>
-                <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Scheduled").length}</span>
+                <span className={styles.statNumber}>{interviews.filter((i) => ["Scheduled", "Rescheduled"].includes(i.interviewStatus)).length}</span>
                 <span className={styles.statLabel}>Scheduled</span>
               </div>
               <div className={styles.statCard}>
