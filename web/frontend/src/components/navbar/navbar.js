@@ -27,6 +27,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const { notifications, unreadCount, markAllRead } = useNotificationStore({ enabled: Boolean(user) && !loading });
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
 
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -77,6 +78,30 @@ export default function Navbar() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!notifOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!notifRef.current?.contains(event.target)) {
+        setNotifOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setNotifOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [notifOpen]);
+
   return (
     <>
       <nav className={styles.navbar} ref={navbarRef}>
@@ -116,10 +141,11 @@ export default function Navbar() {
 
               {/* Right icons */}
               <div className={styles.navRight}>
-                <div className={styles.notifWrapper}>
+                <div className={styles.notifWrapper} ref={notifRef}>
                   <button
                     className={styles.iconBtn}
                     aria-label="Notifications"
+                    aria-expanded={notifOpen}
                     onClick={() => { setNotifOpen(o => !o); markAllRead(); }}
                   >
                     <FiBell size={20} />

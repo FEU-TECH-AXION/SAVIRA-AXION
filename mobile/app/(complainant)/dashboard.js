@@ -352,7 +352,7 @@ export default function ComplainantDashboard() {
   const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
 
-  const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '' });
+  const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '', profile_img: '' });
   const [reports, setReports] = useState([]);
   const [dashEvents, setDashEvents] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -372,6 +372,7 @@ export default function ComplainantDashboard() {
           firstName: parsedUser.first_name || 'User',
           lastName: parsedUser.last_name || 'Name',
           email: parsedUser.email || '',
+          profile_img: parsedUser.profile_img || '',
         });
       }
 

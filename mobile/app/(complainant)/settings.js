@@ -100,6 +100,27 @@ const ISSUE_TYPES = [
   { id: "other", label: "Something else" },
 ];
 
+function getCompletionFields(profile) {
+  return [
+    { key: 'user_name', label: 'Username', optional: false },
+    { key: 'contact_number', label: 'Contact Number', optional: false },
+    { key: 'city', label: 'City', optional: false },
+    { key: 'province', label: 'Province', optional: false },
+    { key: 'profile_img', label: 'Profile Photo', optional: true },
+    { key: 'birthday', label: 'Birthday', optional: true },
+    { key: 'gender_identity', label: 'Gender Identity', optional: true },
+  ].map((field) => ({ ...field, filled: !!String(profile?.[field.key] || '').trim() }));
+}
+
+function calcCompletion(profile) {
+  const required = getCompletionFields(profile).filter((field) => !field.optional);
+  const filled = required.filter((field) => field.filled).length;
+  const base = 4;
+  const total = base + required.length;
+  const done = base + filled;
+  return Math.round((done / total) * 100);
+}
+
 function confirmPhotoChoice() {
   return new Promise((resolve) => {
     Alert.alert(
@@ -130,7 +151,7 @@ export default function SettingsScreen() {
   const [profileForm, setProfileForm] = useState({
     first_name: '', middle_name: '', last_name: '', extension_name: '',
     user_name: '', birthday: '', gender_identity: '',
-    email: '', contact_number: '', city: '', province: 'National Capital Region (NCR)'
+    email: '', contact_number: '', city: '', province: 'National Capital Region (NCR)', profile_img: ''
   });
   const [profileSaving, setProfileSaving] = useState(false);
   const [photoSaving, setPhotoSaving] = useState(false);
@@ -152,6 +173,7 @@ export default function SettingsScreen() {
           last_name: parsedUser.last_name || '',
           email: parsedUser.email || '',
           contact_number: parsedUser.contact_number || '',
+          profile_img: parsedUser.profile_img || '',
         }));
       }
 
@@ -175,7 +197,8 @@ export default function SettingsScreen() {
             email: data.user.email || '',
             contact_number: data.user.contact_number || '',
             city: data.user.city || '',
-            province: data.user.province || 'National Capital Region (NCR)'
+            province: data.user.province || 'National Capital Region (NCR)',
+            profile_img: data.user.profile_img || ''
           });
         }
       }
@@ -189,10 +212,15 @@ export default function SettingsScreen() {
     setProfileSaving(true);
     try {
       const token = await AsyncStorage.getItem('user_token');
+      const {
+        profile_img,
+        email,
+        ...editableProfile
+      } = profileForm;
       const res = await fetch(`${API_URL}/api/users/${user.user_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(profileForm),
+        body: JSON.stringify(editableProfile),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Profile update failed');
@@ -215,7 +243,7 @@ export default function SettingsScreen() {
       }
 
       const picked = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.85,
@@ -244,10 +272,11 @@ export default function SettingsScreen() {
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Photo upload failed');
+      if (!res.ok) throw new Error(data.error || data.message || 'Photo upload failed');
 
       const nextUser = data.user || { ...user, profile_img: data.profile_img };
       setUser(nextUser);
+      setProfileForm((prev) => ({ ...prev, profile_img: nextUser.profile_img || '' }));
       await AsyncStorage.setItem('user', JSON.stringify(nextUser));
       Alert.alert('Success', 'Profile photo updated successfully!');
     } catch (err) {
@@ -437,6 +466,7 @@ export default function SettingsScreen() {
   const [reportFile, setReportFile] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const completion = calcCompletion(profileForm);
 
   const pickReportFile = async () => {
     try {
@@ -521,6 +551,15 @@ export default function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.profileName, displayStyles.text, { fontSize: 18 * fontScale }]}>{user ? `${user.first_name || 'Test'} ${user.last_name || 'User'}`.trim() : 'Test User'}</Text>
             <Text style={[styles.profileEmail, displayStyles.muted, { fontSize: 13 * fontScale }]}>{user?.email}</Text>
+            <View style={styles.completionInline}>
+              <View style={styles.completionInlineHeader}>
+                <Text style={styles.completionInlineLabel}>Profile completion</Text>
+                <Text style={styles.completionInlinePercent}>{completion}%</Text>
+              </View>
+              <View style={styles.completionInlineBar}>
+                <View style={[styles.completionInlineFill, { width: `${completion}%` }]} />
+              </View>
+            </View>
           </View>
           <Pressable style={styles.editBtn} onPress={handlePhotoUpload} disabled={photoSaving}>
             {photoSaving ? (
@@ -1021,6 +1060,12 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   profileEmail: { fontSize: 13, color: COLORS.muted, marginTop: 3 },
   editBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#ecfeff', justifyContent: 'center', alignItems: 'center' },
+  completionInline: { marginTop: 14, maxWidth: 190 },
+  completionInlineHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
+  completionInlineLabel: { color: COLORS.muted, fontSize: 11, fontWeight: '700' },
+  completionInlinePercent: { color: COLORS.primary, fontSize: 12, fontWeight: '900' },
+  completionInlineBar: { height: 5, borderRadius: 999, backgroundColor: 'rgba(3,127,129,0.14)', overflow: 'hidden' },
+  completionInlineFill: { height: '100%', borderRadius: 999, backgroundColor: COLORS.accent },
 
   segmentWrap: { marginTop: 22 },
   segmentScroll: { paddingHorizontal: 20 },
