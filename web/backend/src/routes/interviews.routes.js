@@ -6,6 +6,7 @@ const {
     createItem,
     selectSlot,
     reschedule,
+    acceptReschedule,
     requestNewSlots,
     reopenSelection,
     confirm,
@@ -25,6 +26,7 @@ router.get('/:id',           verifyToken, getItem)
 router.post('/',             verifyToken, createItem)
 router.patch('/:id/select-slot', verifyToken, selectSlot)
 router.patch('/:id/reschedule',  verifyToken, reschedule)
+router.patch('/:id/accept-reschedule', verifyToken, acceptReschedule)
 router.patch('/:id/request-new-slots', verifyToken, requestNewSlots)
 router.patch('/:id/reopen-selection', verifyToken, reopenSelection)
 router.patch('/:id/confirm',     verifyToken, confirm)

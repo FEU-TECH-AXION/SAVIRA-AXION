@@ -339,13 +339,25 @@ const reschedule = async (req, res) => {
 
         if (!interview) return res.status(404).json({ error: 'Interview not found.' })
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
+        if (!isAdmin(req) && String(interview.interviewer_user_id) !== String(actorId(req))) {
+            return res.status(403).json({ error: 'Only the assigned interviewer can reschedule this interview.' })
+        }
         if (!slot) return res.status(404).json({ error: 'Slot not found.' })
+        if (slot.slot_type !== normalizeInterviewType(interview.type)) {
+            return res.status(400).json({ error: 'Selected slot does not match this interview type.' })
+        }
+        if (
+            interview.interviewer_user_id &&
+            String(slot.created_by) !== String(interview.interviewer_user_id)
+        ) {
+            return res.status(403).json({ error: 'Selected slot is not available for this interviewer.' })
+        }
         if (!slot.is_available) {
             return res.status(409).json({ error: 'This slot has already been taken.' })
         }
 
         const previousSlotId = interview.selected_slot_id
-        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id)
+        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id, normalizedReason)
 
         await InterviewSlotsModel.markUnavailable(slot_id)
         if (previousSlotId && String(previousSlotId) !== String(slot_id)) {
@@ -353,6 +365,25 @@ const reschedule = async (req, res) => {
         }
 
         res.json({ data: updatedInterview })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+// PATCH /api/interviews/:id/accept-reschedule
+const acceptReschedule = async (req, res) => {
+    try {
+        const interview = await InterviewModel.getById(req.params.id)
+        if (!interview) return res.status(404).json({ error: 'Interview not found.' })
+        if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
+
+        const userId = actorId(req)
+        if (String(interview.interviewee_user_id) !== String(userId) && !isAdmin(req)) {
+            return res.status(403).json({ error: 'Only the interviewee can accept a rescheduled interview.' })
+        }
+
+        const data = await InterviewModel.acceptReschedule(req.params.id)
+        res.json({ data })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -518,6 +549,7 @@ module.exports = {
     createItem,
     selectSlot,
     reschedule,
+    acceptReschedule,
     requestNewSlots,
     reopenSelection,
     confirm,

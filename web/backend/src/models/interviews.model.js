@@ -67,13 +67,24 @@ const selectSlot = async (id, slot_id, notes = null) => {
     return updateById(id, payload)
 }
 
-const reschedule = async (id, slot_id) => {
+const reschedule = async (id, slot_id, reason) => {
     return updateById(id, {
         selected_slot_id: slot_id,
         meeting_link: null,
+        notes: null,
         status: 'scheduled',
         availability_requested: false,
         availability_request_reason: null,
+        reschedule_reason: reason,
+        reschedule_requires_response: true,
+        reschedule_responded_at: null,
+    })
+}
+
+const acceptReschedule = async (id) => {
+    return updateById(id, {
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
     })
 }
 
@@ -84,6 +95,8 @@ const requestNewSlots = async (id, reason) => {
         status: 'awaiting_new_slots',
         availability_requested: true,
         availability_request_reason: reason,
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
     })
 }
 
@@ -117,6 +130,8 @@ const cancel = async (id, cancellation_reason) => {
     return updateById(id, {
         status: 'cancelled',
         cancellation_reason,
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     })
 }
@@ -154,6 +169,7 @@ module.exports = {
     create,
     selectSlot,
     reschedule,
+    acceptReschedule,
     requestNewSlots,
     reopenSelection,
     confirm,
