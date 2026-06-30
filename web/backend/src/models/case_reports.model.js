@@ -592,13 +592,37 @@ const update = async (caseReportId, payload) => {
 async function getHeatmapReports() {
   const { data, error } = await supabase
     .from('case_reports')
-    .select('case_report_id, incident_city, case_status_id, gender_identity, perpetrator_gender')
+    .select(`
+      case_report_id,
+      incident_city,
+      case_status_id,
+      gender_identity,
+      perpetrator_gender,
+      case_assessments (
+        case_type,
+        created_at
+      )
+    `)
     .eq('is_current', true)
   if (error) {
     console.error('[getHeatmapReports] Supabase error:', error.message)
     throw error
   }
-  return normalizeSubmittedReportStatuses(data)
+  const normalized = await normalizeSubmittedReportStatuses(data)
+  return normalized.map((report) => {
+    const latestAssessment = [...(report.case_assessments || [])]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .find((assessment) =>
+        Array.isArray(assessment.case_type)
+          ? assessment.case_type.length > 0
+          : Boolean(assessment.case_type)
+      )
+
+    return {
+      ...report,
+      case_type: latestAssessment?.case_type || null,
+    }
+  })
 }
 
 async function getReportsByAssignedOfficer(userId) {

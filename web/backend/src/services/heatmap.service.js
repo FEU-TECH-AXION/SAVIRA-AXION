@@ -166,6 +166,18 @@ function getFilteredReports(reports, filters = {}) {
     filtered = filtered.filter((r) => STATUS_MAP[r.case_status_id] === filters.status);
   }
 
+  if (filters.case_type) {
+    filtered = filtered.filter((r) => {
+      if (Array.isArray(r.case_type)) {
+        return r.case_type.some(
+          (type) => type && type.toLowerCase() === filters.case_type.toLowerCase()
+        );
+      }
+
+      return r.case_type && r.case_type.toLowerCase() === filters.case_type.toLowerCase();
+    });
+  }
+
   if (filters.verification === 'verified') {
     filtered = filtered.filter((r) => {
       const statusName = STATUS_MAP[r.case_status_id] || '';

@@ -182,7 +182,7 @@ function StatCard({ title, value, subtext }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FilterSection({ filters, onChange, meta }) {
-  const { regions = [], cities = [], statuses = [] } = meta;
+  const { regions = [], cities = [], caseTypes = [], statuses = [] } = meta;
   const ALL_STATUSES = [
     "Submitted",
     "For Verification",
@@ -230,6 +230,12 @@ function FilterSection({ filters, onChange, meta }) {
           label: "Status",
           key: "status",
           options: STATUS_OPTIONS,
+          placeholder: "All",
+        },
+        {
+          label: "Case Type",
+          key: "case_type",
+          options: caseTypes.map((type) => ({ value: type, label: type })),
           placeholder: "All",
         },
         {
@@ -309,12 +315,14 @@ export default function HeatmapPage() {
   const [meta, setMeta] = useState({
     regions: [],
     cities: [],
+    caseTypes: [],
     statuses: [],
   });
 
   const [filters, setFilters] = useState({
     region: "",
     city: "",
+    case_type: "",
     status: "",
     verification: "",
     victim_gender: "",
@@ -324,18 +332,26 @@ export default function HeatmapPage() {
   useEffect(() => {
     async function fetchMeta() {
       try {
-        const [geoRes, statusRes] = await Promise.all([
+        const [geoRes, statusRes, caseTypeRes] = await Promise.all([
           fetch(`${API_URL}/api/case_reports/heatmap/meta`),
           fetch(`${API_URL}/api/case_status`),
+          fetch(`${API_URL}/api/case_types`),
         ]);
         const geo = geoRes.ok ? await geoRes.json() : {};
         const statusRows = statusRes.ok ? await statusRes.json() : [];
+        const caseTypeRows = caseTypeRes.ok ? await caseTypeRes.json() : [];
         const statuses = Array.isArray(statusRows)
           ? statusRows.map((r) => r.status_name).filter(Boolean)
+          : [];
+        const caseTypes = Array.isArray(caseTypeRows)
+          ? caseTypeRows
+              .map((r) => r.case_type_name || r.name || r.type || r.label)
+              .filter(Boolean)
           : [];
         setMeta({
           regions: geo.regions || [],
           cities: geo.cities || [],
+          caseTypes,
           statuses,
         });
       } catch (err) {
@@ -354,6 +370,7 @@ export default function HeatmapPage() {
         if (filters.city) queryParams.append("city", filters.city);
         if (filters.region) queryParams.append("region", filters.region);
         if (filters.status) queryParams.append("status", filters.status);
+        if (filters.case_type) queryParams.append("case_type", filters.case_type);
         if (filters.verification)
           queryParams.append("verification", filters.verification);
         if (filters.victim_gender)
@@ -391,6 +408,7 @@ export default function HeatmapPage() {
       setFilters({
         region: "",
         city: "",
+        case_type: "",
         status: "",
         verification: "",
         victim_gender: "",
