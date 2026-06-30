@@ -60,6 +60,27 @@ const DEFAULT_FILTERS = [
 
 // ─── All available fields for the "Add Filters" menu ─────────────────────────
 
+const NCR_CITIES = [
+  "All",
+  "Caloocan",
+  "Las Piñas",
+  "Makati",
+  "Malabon",
+  "Mandaluyong",
+  "Manila",
+  "Marikina",
+  "Muntinlupa",
+  "Navotas",
+  "Parañaque",
+  "Pasay",
+  "Pasig",
+  "Pateros",
+  "Quezon City",
+  "San Juan",
+  "Taguig",
+  "Valenzuela",
+];
+
 const ALL_FILTER_FIELDS = [
   {
     key: "primaryCategory",
@@ -72,28 +93,10 @@ const ALL_FILTER_FIELDS = [
       "Virtual",
     ],
   },
-  { key: "city",
+  { key: "incident_city",
     label: "City",
     type: "select",
-    options: [
-      "Caloocan",
-      "Las Piñas",
-      "Makati",
-      "Malabon",
-      "Mandaluyong",
-      "Manila",
-      "Marikina",
-      "Muntinlupa",
-      "Navotas",
-      "Parañaque",
-      "Pasay",
-      "Pasig",
-      "Pateros",
-      "Quezon City",
-      "San Juan",
-      "Taguig",
-      "Valenzuela",
-    ], 
+    options: NCR_CITIES,
   },
 ];
 
@@ -500,15 +503,31 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone, offi
                       </label>
                       {isSelected && (
                         <div className={styles.filterFieldInput}>
-                          <input
-                            type="text"
-                            placeholder={`Search ${field.label}…`}
-                            value={activeFilters[field.key] || ""}
-                            onChange={e =>
-                              onFilterChange({ ...activeFilters, [field.key]: e.target.value })
-                            }
-                            className={styles.filterFieldTextInput}
-                          />
+                          {field.type === "select" ? (
+                            <select
+                              value={activeFilters[field.key] || ""}
+                              onChange={e =>
+                                onFilterChange({ ...activeFilters, [field.key]: e.target.value })
+                              }
+                              className={styles.filterFieldTextInput}
+                            >
+                              {(field.options || []).map(option => (
+                                <option key={option} value={option === "All" ? "" : option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder={`Search ${field.label}...`}
+                              value={activeFilters[field.key] || ""}
+                              onChange={e =>
+                                onFilterChange({ ...activeFilters, [field.key]: e.target.value })
+                              }
+                              className={styles.filterFieldTextInput}
+                            />
+                          )}
                         </div>
                       )}
                     </div>

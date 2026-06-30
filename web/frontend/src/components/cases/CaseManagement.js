@@ -71,6 +71,15 @@ function isDateInRange(dateString, startDate, endDate) {
   return date >= startDate && date <= endDate;
 }
 
+function normalizeCityName(value) {
+  return String(value || "")
+    .replace(/Ã±/g, "ñ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1007,6 +1016,7 @@ useEffect(() => {
           caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
           reporterId:      String(r.complainant_id),
           region:          r.incident_province || r.incident_city || "—",
+          incident_city:   r.incident_city || "",
           city:            r.incident_city || "",
           status:          STATUS_STEP[r.case_status_id] || "For Verification",
           assignedOfficer: r.assigned_officer || null,
@@ -1090,7 +1100,7 @@ useEffect(() => {
     caseType: "",
     dateSubmitted: "",
     primaryCategory: "",
-    city: "",
+    incident_city: "",
   });
   const [sortField, setSortField] = useState("dateSubmitted");
   const [sortDir, setSortDir]     = useState("desc");
@@ -1151,7 +1161,8 @@ const stats = useMemo(() => {
   // ── Filtering ──
   const filtered = useMemo(() =>
     cases.filter((c) => {
-      const ms = !search || c.caseId.includes(search) || c.reporterId.includes(search) || c.region.toLowerCase().includes(search.toLowerCase()) || (c.city && c.city.toLowerCase().includes(search.toLowerCase()));
+      const incidentCity = c.incident_city || c.city || "";
+      const ms = !search || c.caseId.includes(search) || c.reporterId.includes(search) || c.region.toLowerCase().includes(search.toLowerCase()) || incidentCity.toLowerCase().includes(search.toLowerCase());
       
       // Apply advanced filters
       let mf = true;
@@ -1173,8 +1184,9 @@ const stats = useMemo(() => {
       if (advancedFilters.primaryCategory && advancedFilters.primaryCategory !== "" && advancedFilters.primaryCategory !== "All") {
         mf = mf && (c.primaryCategory || "") === advancedFilters.primaryCategory;
       }
-      if (advancedFilters.city && advancedFilters.city !== "" && advancedFilters.city !== "All") {
-        mf = mf && ((c.region || "").toLowerCase().includes(advancedFilters.city.toLowerCase()) || (c.city || "").toLowerCase().includes(advancedFilters.city.toLowerCase()));
+      const cityFilter = advancedFilters.incident_city || advancedFilters.city;
+      if (cityFilter && cityFilter !== "" && cityFilter !== "All") {
+        mf = mf && normalizeCityName(incidentCity) === normalizeCityName(cityFilter);
       }
       
       return ms && mf;

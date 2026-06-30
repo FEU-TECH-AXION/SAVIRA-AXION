@@ -207,6 +207,12 @@ const CASE_TYPE_DESCRIPTIONS = {
   "Gender-based sexual harassment in institutions": "School, workplace, organization, training, or Scouting-related settings.",
 };
 
+const CASE_CATEGORY_DESCRIPTIONS = {
+  Physical: "Incidents involving in-person contact, physical presence, touching, assault, or other conduct that happens in a physical location.",
+  Virtual: "Incidents that happen through online spaces, digital platforms, chat, social media, email, calls, or shared digital content.",
+  Verbal: "Incidents involving spoken or written words, remarks, threats, coercion, harassment, or repeated unwanted communication.",
+};
+
 const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
@@ -1309,9 +1315,37 @@ function CaseManagementTab({
         <div className={styles.formGrid}>
           <FormGroup label="Case Category" required>
             <FSelect value={caseCatVal} onChange={(e) => { setCaseCatVal(e.target.value); setAlsoCatVal((prev) => prev.filter((c) => c !== e.target.value)); }}><option value="">Select case category</option><option value="Physical">Physical</option><option value="Virtual">Virtual</option><option value="Verbal">Verbal</option></FSelect>
+            {caseCatVal && CASE_CATEGORY_DESCRIPTIONS[caseCatVal] && (
+              <div className={`${styles.checkLabel} ${styles.checkLabelActive}`}>
+                <span className={styles.checkLabelText}>
+                  <span className={styles.checkLabelTitle}>{caseCatVal}</span>
+                  <span className={styles.checkDescription}>{CASE_CATEGORY_DESCRIPTIONS[caseCatVal]}</span>
+                </span>
+              </div>
+            )}
           </FormGroup>
           <FormGroup label="Also involves (optional)">
-            <div className={styles.checkGroup}>{["Physical", "Virtual", "Verbal"].filter((c) => c !== caseCatVal).map((c) => <label key={c} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={alsoCatVal.includes(c)} onChange={() => setAlsoCatVal((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])} />{c}</label>)}</div>
+            <div className={styles.checkGroup}>
+              {["Physical", "Virtual", "Verbal"].filter((c) => c !== caseCatVal).map((c) => {
+                const checked = alsoCatVal.includes(c);
+                return (
+                  <label key={c} className={`${styles.checkLabel} ${checked ? styles.checkLabelActive : ""}`}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkInput}
+                      checked={checked}
+                      onChange={() => setAlsoCatVal((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
+                    />
+                    <span className={styles.checkLabelText}>
+                      <span className={styles.checkLabelTitle}>{c}</span>
+                      {checked && CASE_CATEGORY_DESCRIPTIONS[c] && (
+                        <span className={styles.checkDescription}>{CASE_CATEGORY_DESCRIPTIONS[c]}</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
           </FormGroup>
         </div>
         <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, primaryCategory: caseCatVal, alsoInvolves: alsoCatVal, additionalCategories: alsoCatVal })); showToast(hasSuggestedCategory && !hasSavedCategory ? "Category approved and saved." : "Category saved."); })}>{hasSavedCategory ? "Save Changes" : hasSuggestedCategory ? "Approve Classification" : "Save"}</button></div>

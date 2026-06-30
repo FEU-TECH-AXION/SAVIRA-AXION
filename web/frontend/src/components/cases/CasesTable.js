@@ -181,7 +181,8 @@ export default function CasesTable({
 
   // Derived: which extra columns to show based on active extra filters
   const showPrimaryCategory = !!(activeFilters.primaryCategory && activeFilters.primaryCategory !== "" && activeFilters.primaryCategory !== "All");
-  const showCity = !!(activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All");
+  const activeCityFilter = activeFilters.incident_city || activeFilters.city;
+  const showCity = !!(activeCityFilter && activeCityFilter !== "" && activeCityFilter !== "All");
 
   // Sync selection: clear if paginated changes (page turn)
   const pageIds = useMemo(() => paginated.map(c => c.id), [paginated]);
@@ -437,7 +438,7 @@ export default function CasesTable({
                     {/* Extra: City */}
                     {showCity && (
                       <td className={styles.td}>
-                        {c.region || <span className={styles.muted}>—</span>}
+                        {c.incident_city || c.city || <span className={styles.muted}>—</span>}
                       </td>
                     )}
 
