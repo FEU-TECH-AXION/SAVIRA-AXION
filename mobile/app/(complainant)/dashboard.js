@@ -23,6 +23,7 @@ import NotificationBell from '../../components/NotificationBell';
 import ncrCities from '../../assets/geojson/ncr-cities';
 import {
   fetchNotifications,
+  formatNotificationTime,
   getImportantNotifications,
   getUnreadNotificationCount,
 } from '../../lib/notifications';
@@ -156,6 +157,7 @@ function NotificationsCard({ notifications, onView }) {
             <View key={n.id} style={s.notifItem}>
               <Text style={s.notifTitle} numberOfLines={1}>{n.title}</Text>
               <Text style={s.notifText} numberOfLines={1}>{n.message || n.text}</Text>
+              <Text style={s.notifTime}>{formatNotificationTime(n.created_at)}</Text>
             </View>
           ))
         )}
@@ -463,7 +465,7 @@ export default function ComplainantDashboard() {
                   <View key={item.id} style={[s.sheetNotifItem, !item.read && s.sheetNotifUnread]}>
                     <View style={s.sheetNotifIcon}>
                       <Ionicons
-                        name={item.type === 'case_update' ? 'document-text' : 'notifications'}
+                        name={item.type?.includes('case') ? 'document-text' : item.type === 'volunteer_application' ? 'people' : 'notifications'}
                         size={17}
                         color="#fff"
                       />
@@ -471,6 +473,7 @@ export default function ComplainantDashboard() {
                     <View style={{ flex: 1 }}>
                       <Text style={s.sheetNotifTitle}>{item.title}</Text>
                       <Text style={s.sheetNotifMessage}>{item.message || item.text}</Text>
+                      <Text style={s.sheetNotifTime}>{formatNotificationTime(item.created_at)}</Text>
                     </View>
                   </View>
                 ))
@@ -763,6 +766,7 @@ heroOverlay: {
   },
   notifTitle: { fontSize: 12, color: TEAL, fontWeight: '800', marginBottom: 2 },
   notifText: { fontSize: 13, color: '#1a1a1a' },
+  notifTime: { fontSize: 11, color: '#9ca3af', marginTop: 3, fontWeight: '600' },
   notifEmpty: { color: '#6b7280', fontSize: 13, paddingVertical: 8 },
 
   // Notification sheet
@@ -826,6 +830,7 @@ heroOverlay: {
   },
   sheetNotifTitle: { fontSize: 14, fontWeight: '900', color: '#111827', marginBottom: 3 },
   sheetNotifMessage: { fontSize: 12, color: '#4b5563', lineHeight: 18 },
+  sheetNotifTime: { fontSize: 11, color: '#9ca3af', marginTop: 5, fontWeight: '600' },
   sheetEmpty: { alignItems: 'center', gap: 8, paddingVertical: 28 },
   sheetEmptyText: { color: '#6b7280', fontSize: 13, textAlign: 'center' },
 

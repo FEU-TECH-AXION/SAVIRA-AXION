@@ -13,6 +13,24 @@ const USER_COOKIE_OPTIONS = {
 }
 
 const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
+const AVATAR_BUCKET = 'avatars'
+
+async function ensureAvatarBucket() {
+  const { data: bucket, error: getError } = await supabase.storage.getBucket(AVATAR_BUCKET)
+  if (bucket) return
+
+  if (getError && getError.statusCode && getError.statusCode !== '404') {
+    throw getError
+  }
+
+  const { error: createError } = await supabase.storage.createBucket(AVATAR_BUCKET, {
+    public: true,
+    fileSizeLimit: 5 * 1024 * 1024,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  })
+
+  if (createError && createError.statusCode !== '409') throw createError
+}
 
 function toSafeUser(user) {
   if (!user) return user
@@ -191,17 +209,19 @@ const uploadAvatar = async (req, res) => {
       return res.status(400).json({ error: 'Please select an image to upload.' })
     }
 
+    await ensureAvatarBucket()
+
     const extension = (req.file.originalname.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '')
     const path = `profiles/${id}-${Date.now()}.${extension}`
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
+      .from(AVATAR_BUCKET)
       .upload(path, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: true,
       })
     if (uploadError) throw uploadError
 
-    const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    const { data: publicUrlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path)
     const profile_img = publicUrlData.publicUrl
 
     const { data, error } = await supabase

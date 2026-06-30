@@ -312,8 +312,14 @@ function UserMenu({ user, logout }) {
         aria-label="Account menu"
         aria-expanded={open}
       >
-        {user.first_name?.[0] ?? "U"}
-        {user.last_name?.[0] ?? ""}
+        {user.profile_img ? (
+          <img src={user.profile_img} alt="" className={styles.userAvatarImage} />
+        ) : (
+          <>
+            {user.first_name?.[0] ?? "U"}
+            {user.last_name?.[0] ?? ""}
+          </>
+        )}
       </button>
 
       {open && (

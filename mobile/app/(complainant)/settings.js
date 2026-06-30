@@ -19,6 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
@@ -119,6 +120,7 @@ export default function SettingsScreen() {
     email: '', contact_number: '', city: '', province: 'National Capital Region (NCR)'
   });
   const [profileSaving, setProfileSaving] = useState(false);
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -183,10 +185,59 @@ export default function SettingsScreen() {
       if (!res.ok) throw new Error(data.error || 'Profile update failed');
       Alert.alert('Success', 'Profile updated successfully!');
       setUser(data);
+      await AsyncStorage.setItem('user', JSON.stringify(data));
     } catch (err) {
       Alert.alert('Error', err.message);
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission needed', 'Please allow photo access to update your profile photo.');
+        return;
+      }
+
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (picked.canceled || !picked.assets?.length) return;
+
+      const asset = picked.assets[0];
+      const token = await AsyncStorage.getItem('user_token');
+      const filename = asset.fileName || `profile-${Date.now()}.jpg`;
+      const formData = new FormData();
+
+      formData.append('profile_img', {
+        uri: asset.uri,
+        name: filename,
+        type: asset.mimeType || 'image/jpeg',
+      });
+
+      setPhotoSaving(true);
+      const res = await fetch(`${API_URL}/api/users/${user.user_id}/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Photo upload failed');
+
+      const nextUser = data.user || { ...user, profile_img: data.profile_img };
+      setUser(nextUser);
+      await AsyncStorage.setItem('user', JSON.stringify(nextUser));
+      Alert.alert('Success', 'Profile photo updated successfully!');
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setPhotoSaving(false);
     }
   };
 
@@ -360,14 +411,22 @@ export default function SettingsScreen() {
         {/* ── Profile Card Overlay ────────────────────────── */}
         <View style={[styles.profileCard, displayStyles.section]}>
           <View style={styles.profileAvatar}>
-            <Ionicons name="person" size={34} color="#fff" />
+            {user?.profile_img ? (
+              <Image source={{ uri: user.profile_img }} style={styles.profileAvatarImage} />
+            ) : (
+              <Ionicons name="person" size={34} color="#fff" />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.profileName, displayStyles.text, { fontSize: 18 * fontScale }]}>{user ? `${user.first_name || 'Test'} ${user.last_name || 'User'}`.trim() : 'Test User'}</Text>
             <Text style={[styles.profileEmail, displayStyles.muted, { fontSize: 13 * fontScale }]}>{user?.email}</Text>
           </View>
-          <Pressable style={styles.editBtn}>
-            <Feather name="edit-2" size={15} color={COLORS.primary} />
+          <Pressable style={styles.editBtn} onPress={handlePhotoUpload} disabled={photoSaving}>
+            {photoSaving ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Feather name="camera" size={15} color={COLORS.primary} />
+            )}
           </Pressable>
         </View>
 
@@ -796,7 +855,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 15, shadowOffset: { width: 0, height: 8 }, elevation: 5,
   },
-  profileAvatar: { width: 65, height: 65, borderRadius: 32.5, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  profileAvatar: { width: 65, height: 65, borderRadius: 32.5, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginRight: 14, overflow: 'hidden' },
+  profileAvatarImage: { width: '100%', height: '100%' },
   profileName: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   profileEmail: { fontSize: 13, color: COLORS.muted, marginTop: 3 },
   editBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#ecfeff', justifyContent: 'center', alignItems: 'center' },

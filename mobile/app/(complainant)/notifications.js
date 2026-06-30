@@ -8,11 +8,16 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
-import { fetchNotifications as fetchSharedNotifications, getUnreadNotificationCount } from '../../lib/notifications';
-import { API_URL } from '../../lib/config';
+import {
+  clearNotifications,
+  deleteNotification,
+  fetchNotifications as fetchSharedNotifications,
+  formatNotificationTime,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+} from '../../lib/notifications';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
@@ -41,7 +46,12 @@ function Navbar({ onBurger, notifCount = 0 }) {
 // ── Notification type helpers ─────────────────────────────────────────────────
 function getTypeIcon(type) {
   switch (type) {
-    case 'case_update':   return 'document-text';
+    case 'case_update':
+    case 'case_report':
+    case 'case_status':   return 'document-text';
+    case 'volunteer_application': return 'people';
+    case 'bug_report':    return 'bug';
+    case 'support_message': return 'mail';
     case 'event':         return 'calendar';
     case 'system':        return 'information-circle';
     default:              return 'notifications';
@@ -49,24 +59,16 @@ function getTypeIcon(type) {
 }
 function getTypeColor(type) {
   switch (type) {
-    case 'case_update':   return TEAL;
+    case 'case_update':
+    case 'case_report':
+    case 'case_status':   return TEAL;
+    case 'volunteer_application': return ORANGE;
+    case 'bug_report':    return '#dc2626';
+    case 'support_message': return '#0ea5e9';
     case 'event':         return '#8b5cf6';
     case 'system':        return '#3b82f6';
     default:              return '#6b7280';
   }
-}
-function formatTime(timestamp) {
-  const date  = new Date(timestamp);
-  const now   = new Date();
-  const diffMs    = now - date;
-  const diffMins  = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays  = Math.floor(diffMs / 86400000);
-  if (diffMins  < 1)  return 'Just now';
-  if (diffMins  < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays  < 7)  return `${diffDays}d ago`;
-  return date.toLocaleDateString();
 }
 
 // ── Notification Item ─────────────────────────────────────────────────────────
@@ -83,7 +85,7 @@ function NotificationItem({ notification, onDelete }) {
       <View style={s.notifContent}>
         <Text style={s.notifTitle}>{notification.title}</Text>
         <Text style={s.notifMessage} numberOfLines={2}>{notification.message}</Text>
-        <Text style={s.notifTime}>{formatTime(notification.created_at)}</Text>
+        <Text style={s.notifTime}>{formatNotificationTime(notification.created_at)}</Text>
       </View>
 
       <Pressable style={s.deleteBtn} onPress={() => onDelete(notification.id)}>
@@ -107,13 +109,12 @@ export default function NotificationsScreen() {
     setLoading(true);
     try {
       const data = await fetchSharedNotifications();
-      setNotifications(data);
+      setNotifications(data.map((item) => ({ ...item, read: true, is_read: true })));
+      if (data.some((item) => !item.read)) {
+        markAllNotificationsRead().catch(() => {});
+      }
     } catch {
-      // fallback demo data
-      setNotifications([
-        { id: '1', title: 'Case Status Update', message: 'Your case has been moved to the investigation phase.', type: 'case_update', read: false, created_at: new Date(Date.now() - 600000) },
-        { id: '2', title: 'Event Reminder', message: 'Support group meeting starts in 2 hours at the community center.', type: 'event', read: true, created_at: new Date(Date.now() - 7200000) },
-      ]);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -123,12 +124,7 @@ export default function NotificationsScreen() {
     // Optimistic update
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     try {
-      const token = await AsyncStorage.getItem('token');
-      await fetch(`${API_URL}/api/notifications/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
+      await deleteNotification(id);
     } catch { /* already removed from UI */ }
   };
 
@@ -140,12 +136,7 @@ export default function NotificationsScreen() {
         onPress: async () => {
           setNotifications([]);
           try {
-            const token = await AsyncStorage.getItem('token');
-            await fetch(`${API_URL}/api/notifications`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${token}` },
-              credentials: 'include',
-            });
+            await clearNotifications();
           } catch { /* already cleared from UI */ }
         },
       },

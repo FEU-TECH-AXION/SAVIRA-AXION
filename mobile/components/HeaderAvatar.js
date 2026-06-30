@@ -49,8 +49,8 @@ export default function HeaderAvatar({ user: propUser }) {
   return (
     <>
       <Pressable onPress={() => setModalVisible(true)}>
-        {user?.profilePicture ? (
-          <Image source={{ uri: user.profilePicture }} style={styles.avatarImage} />
+        {user?.profile_img || user?.profilePicture ? (
+          <Image source={{ uri: user.profile_img || user.profilePicture }} style={styles.avatarImage} />
         ) : (
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials()}</Text>
