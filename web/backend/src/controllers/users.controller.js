@@ -211,7 +211,13 @@ const updateItem = async (req, res) => {
 const uploadAvatar = async (req, res) => {
   try {
     const { id } = req.params
-    if (String(req.user.id) !== String(id) && req.user.role !== 'Admin') {
+    const actorId = req.user?.id || req.user?.user_id
+    const actorRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    const actorRoleId = parseInt(req.user?.role_id)
+    const isAdmin = actorRole === 'admin' || actorRoleId === 3
+    const bypassCooldown = req.query.bypass_avatar_cooldown === '1' && isAdmin
+
+    if (String(actorId) !== String(id) && !isAdmin) {
       return res.status(403).json({ error: 'You are not allowed to update this profile photo.' })
     }
     if (!req.file?.buffer) {
@@ -225,7 +231,7 @@ const uploadAvatar = async (req, res) => {
       .single()
     if (existingError) throw existingError
 
-    if (existingUser?.profile_img_updated_at) {
+    if (!bypassCooldown && existingUser?.profile_img_updated_at) {
       const changedAt = new Date(existingUser.profile_img_updated_at)
       const nextChangeAt = new Date(changedAt.getTime() + AVATAR_CHANGE_INTERVAL_MS)
       if (nextChangeAt > new Date()) {

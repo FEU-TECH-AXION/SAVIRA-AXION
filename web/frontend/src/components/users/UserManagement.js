@@ -5,6 +5,7 @@ import Navbar from "@/components/navbar/navbar";
 import styles from "./UserManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
 import { fetchUsers, fetchCommittees } from "@/lib/api";
+import { authFetch } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import UsersTable from "./UsersTable";
 import UserFilterMenu from "./UserFilterMenu";
@@ -1081,19 +1082,24 @@ export default function AdminDashboard() {
     if (updated.password) payload.password = updated.password;
 
     if (updated._imageFile) {
-      const file = updated._imageFile;
-      const path = `profiles/${updated.user_id}-${Date.now()}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars").upload(path, file, { upsert: true });
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-        payload.profile_img = urlData.publicUrl;
+      const avatarForm = new FormData();
+      avatarForm.append("profile_img", updated._imageFile);
+
+      const avatarResponse = await authFetch(`${API_URL}/api/users/${updated.user_id}/avatar?bypass_avatar_cooldown=1`, {
+        method: "POST",
+        body: avatarForm,
+      });
+      const avatarBody = await avatarResponse.json().catch(() => ({}));
+      if (!avatarResponse.ok) {
+        showToast(`Error: ${avatarBody.error || `Avatar upload failed (${avatarResponse.status})`}`, "danger");
+        return;
       }
+
+      payload.profile_img = avatarBody.profile_img;
     }
 
-    const response = await fetch(`${API_URL}/api/users/${updated.user_id}`, {
+    const response = await authFetch(`${API_URL}/api/users/${updated.user_id}`, {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -1111,8 +1117,10 @@ export default function AdminDashboard() {
     setUsers((prev) =>
       prev.map((u) => (u.user_id === updated.user_id ? {
         ...u,
-        ...updated,
         ...payload,
+        ...body,
+        name: updated.name,
+        status: updated.status,
         role: roleName,
         staff: body.staff || null,
         legal_personnel: body.legal_personnel || null,
