@@ -195,6 +195,18 @@ const VIOLENCE_TYPES = [
   "Gender-based sexual harassment in institutions",
 ];
 
+const CASE_TYPE_DESCRIPTIONS = {
+  "Sexual harassment": "Unwanted sexual remarks, advances, requests, or conduct in person.",
+  "Online sexual harassment": "Sexual harassment through chat, social media, email, calls, or digital platforms.",
+  "Non-consensual sharing of intimate images/videos": "Including threats to leak them.",
+  "Sexual assault / unwanted sexual touching": "Groping, forced kissing, coercive contact.",
+  "Rape / attempted rape": "Including attempted forced sexual penetration.",
+  "Child sexual abuse": "Any sexual act, grooming, exploitation, or coercion involving a minor.",
+  "Sexual exploitation / trafficking-related sexual abuse": "Including exchange-based coercion or abuse tied to power, money, or favors.",
+  "Stalking with sexual nature or intent": "Persistent following, monitoring, threats, or repeated unwanted contact with sexual overtones.",
+  "Gender-based sexual harassment in institutions": "School, workplace, organization, training, or Scouting-related settings.",
+};
+
 const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
@@ -1253,7 +1265,25 @@ function CaseManagementTab({
         <div className={styles.formGrid}>
           <FormGroup label="Case Type(s)" required>
             <div className={styles.checkGroup}>
-              {VIOLENCE_TYPES.map((v) => <label key={v} className={styles.checkLabel}><input type="checkbox" className={styles.checkInput} checked={caseTypeVal.includes(v)} onChange={() => setCaseTypeVal((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])} />{v}</label>)}
+              {VIOLENCE_TYPES.map((v) => {
+                const checked = caseTypeVal.includes(v);
+                return (
+                  <label key={v} className={`${styles.checkLabel} ${checked ? styles.checkLabelActive : ""}`}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkInput}
+                      checked={checked}
+                      onChange={() => setCaseTypeVal((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])}
+                    />
+                    <span className={styles.checkLabelText}>
+                      <span className={styles.checkLabelTitle}>{v}</span>
+                      {checked && CASE_TYPE_DESCRIPTIONS[v] && (
+                        <span className={styles.checkDescription}>{CASE_TYPE_DESCRIPTIONS[v]}</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </FormGroup>
         </div>
