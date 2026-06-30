@@ -17,9 +17,8 @@ import {
   FiPlus,
 } from "react-icons/fi";
 import { MdAlert } from  "react-icons/md";
-import { IoIosArrowBack, IoIosWarning, IoIosInformationCircle, IoIosAlert } from "react-icons/io";
+import { IoIosArrowBack, IoIosWarning, IoIosAlert } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
-import { FaCheckCircle } from "react-icons/fa";
 import styles from "./ViewCase.module.css";
 import duplicateStyles from "./DuplicateCheckTab.module.css";
 import InterviewTab from "./interview/InterviewTab";
@@ -27,12 +26,12 @@ import UpdateStatusModal, { getAvailableTransitions } from "./UpdateStatusModals
 import StatusDetailsSection from "./StatusDetailsSection";
 import DetailAccordion from "./DetailAccordion";
 import PendingStatusApproval from "./PendingStatusApproval";
+import CaseDetailsPage from "./CaseDetailsPage";
 import FollowUpsPanel, {
   FollowUpBadge,
   FollowUpCaseHistory,
   FollowUpComposer,
 } from "./FollowUps";
-import EvidenceGallery from "./EvidenceGallery";
 import Tooltip from "@/components/ui/Tooltip";
 import {
   getWithdrawalActionType,
@@ -112,11 +111,10 @@ const mapCaseReportToViewData = (data) => {
     incidentLocationDisplay: data.incident_location_type === "Online"
       ? data.incident_location || "Online"
       : data.incident_location_type === "Physical Location" ? [data.incident_location, data.incident_city, "NCR"].filter(Boolean).join(", ") : data.incident_city || "Not provided",
-    incidentDate:         data.incident_date ? new Date(data.incident_date).toLocaleDateString("en-PH", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }) : "Not provided",
+    incidentDate:         data.incident_date || null,
+    incidentYear:         data.incident_year ?? null,
+    incidentMonth:        data.incident_month ?? null,
+    incidentDay:          data.incident_day ?? null,
     incidentTime: data.incident_time
       ? new Date(`1970-01-01T${data.incident_time}`).toLocaleTimeString("en-PH", {
           hour: "numeric",
@@ -199,102 +197,6 @@ const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercad
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
 
-const CASE_TYPE_DESCRIPTIONS = {
-  "Sexual harassment":
-    "This covers unwanted sexual remarks, advances, requests, or conduct that happens in person.",
-  "Online sexual harassment":
-    "This covers sexual harassment that takes place through chat, social media, email, calls, or any digital platform.",
-  "Non-consensual sharing of intimate images/videos":
-    "This includes sharing or threatening to share private intimate images or videos without the person's consent.",
-  "Sexual assault / unwanted sexual touching":
-    "This covers unwanted physical sexual contact such as groping, forced kissing, or coercive contact.",
-  "Rape / attempted rape":
-    "This includes forced or attempted forced sexual penetration.",
-  "Child sexual abuse":
-    "This covers any sexual act, grooming, exploitation, or coercion involving a minor.",
-  "Sexual exploitation / trafficking-related sexual abuse":
-    "This includes abuse tied to exchange, coercion, or exploitation involving power, money, or favors.",
-  "Stalking with sexual nature or intent":
-    "This covers persistent following, monitoring, threats, or repeated unwanted contact with sexual overtones.",
-  "Gender-based sexual harassment in institutions":
-    "This covers harassment in school, workplace, organization, training, or Scouting-related settings.",
-};
-
-const STATUS_EXPLANATIONS = {
-  "For Verification": {
-    title: "Your report has been received",
-    description:
-      "SASHA has received your report. An intake officer has logged your case and is checking the basic details — such as your identity, the nature of the incident, urgency, and available evidence. Your case is in the queue for initial screening. Your privacy and confidentiality are a priority at this stage.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
-  },
-  "Undergoing Review": {
-    title: "Your case is being reviewed",
-    description:
-      "A SASHA case officer is reviewing your report to determine whether it falls within SASHA's scope. They are checking for duplicate reports, identifying any immediate safety concerns, and noting any information that may still be needed. You may be contacted to clarify certain details.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
-  },
-  "Verified - True": {
-    title: "Your report has been verified",
-    description:
-      "Your report has been found sufficiently credible and falls within SASHA's scope. This means SASHA can proceed with providing you support, referral, or further case development. This does not mean a legal finding has been made — it simply means SASHA has accepted your case for action.",
-    icon: <FaCheckCircle />,
-    color: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
-  },
-  "Verified - False": {
-    title: "Your report could not be verified",
-    description:
-      "After careful review, SASHA was unable to proceed with your case. This may be because the report was outside SASHA's scope, could not be verified after reasonable efforts, was a duplicate, or was clearly submitted in error. This does not mean you are being disbelieved — your records remain confidential and controlled. If you have concerns, you may reach out to SASHA.",
-    icon: <IoIosWarning />,
-    color: { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },
-  },
-  "Under Case Evaluation": {
-    title: "Your case is being evaluated",
-    description:
-      "SASHA's team is assessing your full case file to determine the best course of action. They are identifying the most appropriate pathway — such as referral to DSWD, PNP, a school or workplace mechanism, or legal proceedings. You will be informed of the options available to you.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#ede9fe", color: "#5b21b6", border: "#c4b5fd" },
-  },
-  "Case Filed": {
-    title: "A formal complaint has been filed",
-    description:
-      "A formal complaint has been lodged with the appropriate body on your behalf. This could be with a school or workplace committee (CODI), the PNP Women and Children Protection Desk, DSWD, BSP/GSP mechanism, or a court. SASHA has recorded all filing details for monitoring.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#e0f2fe", color: "#0c4a6e", border: "#7dd3fc" },
-  },
-  "Investigation Ongoing": {
-    title: "An investigation is underway",
-    description:
-      "The institution where your complaint was filed is now taking action. Statements, documents, and evidence may be gathered. SASHA is monitoring the progress of the investigation and checking that the process is fair and that you remain safe.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#cffafe", color: "#155e75", border: "#67e8f9" },
-  },
-  "Hearing Ongoing": {
-    title: "A formal hearing is in progress",
-    description:
-      "Your case has reached a formal hearing, conference, or adjudication stage — this could be in a school/workplace process, an administrative inquiry, or a court. SASHA is monitoring the schedule and your support needs throughout this process.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#fce7f3", color: "#9d174d", border: "#f9a8d4" },
-  },
-  "Dismissed": {
-    title: "Your case has been closed by the institution",
-    description:
-      "The institution handling your case has closed it without a finding of liability. This may have been due to lack of jurisdiction, insufficient evidence, a procedural issue, or withdrawal of the complaint. SASHA has documented the reason and is assessing whether any other remedy remains available to you. You may reach out to SASHA if you need further guidance.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" },
-  },
-  "Perpetrator Convicted": {
-    title: "A decision has been reached",
-    description:
-      "A final decision has been made establishing liability in the relevant forum. This may be a criminal conviction, an administrative finding of guilt, or a civil liability finding. SASHA has recorded the outcome and any sanctions, and will assess what continuing support you may need.",
-    icon: <IoIosInformationCircle />,
-    color: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
-  },
-};
-
-// ─── Shared subcomponents ─────────────────────────────────────────────────────
-
 const STATUS_COLORS = {
   "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
   "For Verification":      { bg: "#dbeafe", color: "#1e40af" }, // Blue
@@ -323,6 +225,38 @@ function StatusBadge({ status }) {
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
       {status}
     </span>
+  );
+}
+
+function StatusHistorySection({ caseData }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const historyEntries = [...(caseData.statusHistory || [])].reverse();
+  return (
+    <section className={styles.section}>
+      <button className={styles.historyToggle} onClick={() => setShowHistory(!showHistory)}>
+        {showHistory ? <FiChevronUp /> : <FiChevronDown />}
+        {showHistory ? "Hide" : "Show"} Status History ({caseData.statusHistory?.length || 0} entries)
+      </button>
+      {showHistory && (
+        <div className={styles.historyList}>
+          {historyEntries.map((h, i) => (
+            <div key={h.historyId || `${h.status}-${h.date}-${i}`} className={styles.historyItem}>
+              <div style={{ textAlign: "center" }}>
+                <div className={styles.historyDot} />
+                {i < historyEntries.length - 1 && (
+                  <div style={{ width: 2, height: 40, background: "#e5e7eb", margin: "0 auto" }} />
+                )}
+              </div>
+              <div style={{ paddingTop: 2 }}>
+                <StatusBadge status={h.status} />
+                <p className={styles.historyMeta}>{h.date} - {h.by}</p>
+                {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1339,263 +1273,6 @@ function btnStyle(bg) {
 
 // ─── Status History section (shared) ─────────────────────────────────────────
 
-function StatusHistorySection({ caseData }) {
-  const [showHistory, setShowHistory] = useState(false);
-  const historyEntries = [...(caseData.statusHistory || [])].reverse();
-  return (
-    <section className={styles.section}>
-      <button className={styles.historyToggle} onClick={() => setShowHistory(!showHistory)}>
-        {showHistory ? <FiChevronUp /> : <FiChevronDown />}
-        {showHistory ? "Hide" : "Show"} Status History ({caseData.statusHistory?.length || 0} entries)
-      </button>
-      {showHistory && (
-        <div className={styles.historyList}>
-          {historyEntries.map((h, i) => (
-            <div key={h.historyId || `${h.status}-${h.date}-${i}`} className={styles.historyItem}>
-              <div style={{ textAlign: "center" }}>
-                <div className={styles.historyDot} />
-                {i < historyEntries.length - 1 && (
-                  <div style={{ width: 2, height: 40, background: "#e5e7eb", margin: "0 auto" }} />
-                )}
-              </div>
-              <div style={{ paddingTop: 2 }}>
-                <StatusBadge status={h.status} />
-                <p className={styles.historyMeta}>{h.date} · {h.by}</p>
-                {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-// ─── Case Details Tab ─────────────────────────────────────────────────────────
-
-function CaseDetailsTab({ caseData, isStaff }) {
-  const caseTypes = Array.isArray(caseData.caseType)
-    ? caseData.caseType.filter(Boolean)
-    : caseData.caseType ? [caseData.caseType] : [];
-  const primaryCategory = caseData.caseCategory || caseData.primaryCategory || "";
-  const additionalCategories = Array.isArray(caseData.alsoInvolves)
-    ? caseData.alsoInvolves
-    : Array.isArray(caseData.additionalCategories)
-      ? caseData.additionalCategories
-      : [];
-  const categoryDisplay = primaryCategory
-    ? additionalCategories.length > 0
-      ? `${primaryCategory} (also: ${additionalCategories.join(", ")})`
-      : primaryCategory
-    : additionalCategories.join(", ") || "Not yet classified";
-  const assignedParalegals = (caseData.assignedLegal || [])
-    .filter((person) => person.assignment_role === "paralegal")
-    .map((person) => person.name)
-    .filter(Boolean)
-    .join(", ");
-  const requestedOutcomes = Array.isArray(caseData.requestedOutcome)
-    ? caseData.requestedOutcome
-    : caseData.requestedOutcome ? [caseData.requestedOutcome] : [];
-  const evidences = Array.isArray(caseData.evidences) ? caseData.evidences : [];
-  const followUps = Array.isArray(caseData.followUps) ? caseData.followUps : [];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-
-      {/* Status explanation for complainants */}
-      {!isStaff && caseData.status && STATUS_EXPLANATIONS[caseData.status] && (() => {
-        const exp = STATUS_EXPLANATIONS[caseData.status];
-        return (
-          <section className={styles.section}>
-            <div style={{ background: exp.color.bg, border: `1px solid ${exp.color.border}`, borderRadius: 12, padding: "1.25rem 1.5rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: "1.5rem" }}>{exp.icon}</span>
-                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: exp.color.color }}>{exp.title}</h3>
-              </div>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#374151", lineHeight: 1.7 }}>{exp.description}</p>
-            </div>
-          </section>
-        );
-      })()}
-
-      {/* Complainant Details */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Complainant Details</h2>
-        <div className={styles.detailGrid}>
-          {[
-            ["Name",                    caseData.name],
-            ["Age",                     caseData.age],
-            ["Gender Identity",         caseData.genderIdentity],
-            ["Email",                   caseData.email],
-            ["Contact Number",          caseData.contactNumber],
-            ["Willing for Interview?",  caseData.isWillingForInterview ? "Yes" : "No"],
-            ["Anonymous Report?",       caseData.isAnonymous ? "Yes" : "No"],
-          ].map(([k, v]) => (
-            <div key={k} className={styles.detailItem}>
-              <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "Not provided"}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Incident Details */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Incident Details</h2>
-        <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
-          {[
-            ["Location Type", caseData.incidentLocationType],
-            ["Location",      caseData.incidentLocationDisplay],
-            ["Date",          caseData.incidentDate],
-            ["Time",          caseData.incidentTime],
-          ].map(([k, v]) => (
-            <div key={k} className={styles.detailItem}>
-              <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "Not provided"}</p>
-            </div>
-          ))}
-        </div>
-        <div>
-          <p className={styles.detailKey}>Incident Description</p>
-          <p className={styles.descriptionVal}>{caseData.description}</p>
-        </div>
-        <div style={{ marginTop: "1rem" }}>
-          <p className={styles.detailKey}>Requested Action / Outcome</p>
-          <p className={styles.descriptionVal}>
-            {requestedOutcomes.length ? requestedOutcomes.join(", ") : "No requested outcome provided."}
-          </p>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Supporting Evidence</h2>
-        <EvidenceGallery evidences={evidences} />
-      </section>
-
-      {/* Perpetrator Information */}
-      {(
-        <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>Perpetrator Information</h2>
-          <div className={styles.detailGrid}>
-            {[
-              ["Known to Complainant?", caseData.perpetratorKnown ? "Yes" : "No"],
-              ...(caseData.perpetratorKnown ? [
-                ["Name", caseData.perpetratorName],
-                ["Gender of Perpetrator (as perceived)", caseData.perpetratorGender],
-                ["Occupation", caseData.perpetratorOccupation],
-                ["Relationship to Complainant", caseData.perpetratorRelationship],
-              ] : []),
-              ...(!caseData.perpetratorKnown ? [
-                ["Gender of Perpetrator (as perceived)", caseData.perpetratorUnknownGender],
-                ["Appearance or identifying details", caseData.perpetratorUnknownAppearance],
-              ] : []),
-            ].map(([k, v]) => (
-              <div key={k} className={styles.detailItem}>
-                <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v || "Not provided"}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Witness Information */}
-      {(
-        <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>Witness Information</h2>
-          <div className={styles.detailGrid}>
-            {[
-              ["Are there witnesses?", caseData.hasWitnesses ? "Yes" : "No"],
-              ...(caseData.hasWitnesses ? [
-                ["Witness Name", caseData.witnessName],
-                ["Contact", caseData.witnessContact],
-                ["Relationship to Complainant", caseData.witnessRelationship],
-              ] : []),
-            ].map(([k, v]) => (
-              <div key={k} className={styles.detailItem}>
-                <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v || "Not provided"}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Additional Context */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Additional Context</h2>
-        <div className={styles.detailGrid}>
-          {[
-            ["Reported to Anyone Else?", caseData.reportedToOthers ? "Yes" : "No"],
-            ...(caseData.reportedToOthers && caseData.toldAnyoneWho ? [["Told To", caseData.toldAnyoneWho]] : []),
-            ["Reported to Police?",      caseData.reportedToPolice ? "Yes" : "No"],
-            ...(caseData.reportedToPolice && caseData.policeStation ? [["Police Station", caseData.policeStation]] : []),
-          ].map(([k, v]) => (
-            <div key={k} className={styles.detailItem}>
-              <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "Not provided"}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Case Classification — visible to everyone, with explanations for complainants */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionHeadingText}>Case Classification</h2>
-        <div className={styles.detailGrid} style={{ marginBottom: "1rem" }}>
-          {[
-            ["Current Status",    <StatusBadge key="current-status" status={caseData.status} />],
-            ["Case Type",         caseTypes.join(", ") || "Not yet classified"],
-            ["Case Categories",   categoryDisplay],
-            ["Referral Required", caseData.referralRequired ? "Yes" : "No"],
-            ["Referral Body",     caseData.referralBody || "Unassigned"],
-            ["Assigned Officer",  caseData.assignedOfficer || "Unassigned"],
-            ...(caseData.status === "Verified - True" || caseData.assignedParalegal || assignedParalegals
-              ? [["Assigned Paralegal", assignedParalegals || caseData.assignedParalegal || "Pending assignment"]]
-              : []),
-            ["Endorsement",       caseData.endorsementStatus || "Unassigned"],
-          ].map(([k, v]) => (
-            <div key={k} className={styles.detailItem}>
-              <p className={styles.detailKey}>{k}</p>
-              <p className={styles.detailVal}>{v || "Not provided"}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Explanations for complainants */}
-        {!isStaff && caseTypes.length === 1 && CASE_TYPE_DESCRIPTIONS[caseTypes[0]] && (
-          <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1rem 1.25rem", marginTop: "0.75rem" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-              <FiInfo style={{ color: "#16a34a", flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <p style={{ margin: "0 0 4px", fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>About this case type: {caseTypes[0]}</p>
-                <p style={{ margin: 0, fontSize: "0.875rem", color: "#374151", lineHeight: 1.6 }}>{CASE_TYPE_DESCRIPTIONS[caseTypes[0]]}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Status History — for complainants, use friendly language */}
-      {!isStaff ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionHeadingText}>Your Case History</h2>
-          <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1rem", lineHeight: 1.6 }}>
-            Below is a timeline of your case's progress. Each entry shows what status your case moved to, when it changed, and any notes from the SASHA team.
-          </p>
-          <StatusHistorySection caseData={caseData} />
-        </section>
-      ) : (
-        <StatusHistorySection caseData={caseData} />
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN VIEWCASE COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-
 function DuplicateComparePanel({ currentCase, compareCase, loading, error }) {
   const rows = [
     ["Complainant", currentCase?.name, compareCase?.name],
@@ -2165,7 +1842,7 @@ export default function ViewCase() {
 
           {/* Tab content */}
           {displayedActiveTab === "details" && userLoaded && (
-            <CaseDetailsTab caseData={caseData} isStaff={isStaff} />
+            <CaseDetailsPage caseData={caseData} isStaff={isStaff} />
           )}
 
           {displayedActiveTab === "interview" && showInterviewTab && userLoaded && (

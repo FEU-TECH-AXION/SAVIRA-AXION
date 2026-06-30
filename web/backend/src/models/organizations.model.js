@@ -7,6 +7,7 @@ async function findOrCreateOrganization(complainant) {
     complainant.organization === "BSP" ||
     complainant.organization === "GSP";
   const isOthers = complainant.organization === "Others" || complainant.organization === "Other";
+  const isIndependent = complainant.organization === "No Organization / Independent";
   const organizationName = complainant.organizationName ?? complainant.orgName ?? null;
   const organizationCity = complainant.organizationCity ?? complainant.orgCity ?? null;
 
@@ -42,7 +43,7 @@ async function findOrCreateOrganization(complainant) {
                                           ? complainant.organizationTypeOther  ?? null : null,
       organization_name:       isOthers   ? organizationName                           : null,
       organization_city:       isOthers   ? organizationCity                           : null,
-      user_city:               isOthers   ? complainant.userCity               ?? null : null,
+      user_city:               isOthers || isIndependent ? complainant.userCity ?? null : null,
       council:                 isScoutOrg ? complainant.council                ?? null : null,
       region:                  isScoutOrg ? "National Capital Region (NCR)"          : null,
     }])

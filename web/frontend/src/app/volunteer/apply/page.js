@@ -358,6 +358,7 @@ function validateStep0(data) {
   if (!data.organization) errors.organization = "Organization is required.";
 
   const isScoutOrg = data.organization === "BSP" || data.organization === "GSP";
+  const isIndependent = data.organization === "No Organization / Independent";
 
   if (isScoutOrg) {
     if (!data.council) errors.council = "Council is required.";
@@ -376,7 +377,10 @@ function validateStep0(data) {
       if (!data.orgName) errors.orgName = "Organization name is required.";
       if (!data.orgCity) errors.orgCity = "Organization city is required.";
     }
-    if (!data.userCity) errors.userCity = "Your city/municipality is required.";
+  }
+
+  if ((data.organization === "Other" || isIndependent) && !data.userCity) {
+    errors.userCity = "Your city/municipality is required.";
   }
 
   return errors;
@@ -403,6 +407,7 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
   };
 
   const isScoutOrg = data.organization === "BSP" || data.organization === "GSP";
+  const isIndependent = data.organization === "No Organization / Independent";
 
   return (
     <div>
@@ -491,6 +496,7 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             <option value="">Select organization</option>
             <option value="BSP">Boy Scouts of the Philippines (BSP)</option>
             <option value="GSP">Girl Scouts of the Philippines (GSP)</option>
+            <option value="No Organization / Independent">No Organization / Independent</option>
             <option value="Other">Other</option>
           </Select>
         </Field>
@@ -561,7 +567,6 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
           <h3 className={styles.subSectionTitle}>Affiliation Details</h3>
           <p className={styles.stepDesc}>
             Tell us whether you are affiliated with any group, institution, or organization.
-            If none, you may select &quot;No Organization / Independent&quot;.
           </p>
 
           <div className={styles.formGrid}>
@@ -577,7 +582,6 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
                 error={errors.organizationType}
               >
                 <option value="">Select organization type</option>
-                <option value="No Organization / Independent">No Organization / Independent</option>
                 <option value="School / University">School / University</option>
                 <option value="Workplace / Company">Workplace / Company</option>
                 <option value="Government Agency">Government Agency</option>
@@ -639,6 +643,32 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             </>
           )}
 
+          <div className={styles.formDivider} />
+          <h3 className={styles.subSectionTitle}>Your Location</h3>
+          <p className={styles.stepDesc}>
+            Where are you currently located?
+          </p>
+          <div className={styles.formGrid}>
+            <Field
+              label="City / Municipality"
+              required
+              hint="Select the city or municipality where you currently reside or stay."
+              error={errors.userCity}
+            >
+              <Select value={data.userCity || ""} onChange={set("userCity")} error={errors.userCity}>
+                <option value="">Select city / municipality</option>
+                {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Region">
+              <Input value="National Capital Region (NCR)" readOnly className={`${styles.input} ${styles.inputReadonly}`} />
+            </Field>
+          </div>
+        </>
+      )}
+
+      {isIndependent && (
+        <>
           <div className={styles.formDivider} />
           <h3 className={styles.subSectionTitle}>Your Location</h3>
           <p className={styles.stepDesc}>
@@ -1057,6 +1087,9 @@ function StepReview({
             )}
             <ReviewRow label="Your City / Municipality" value={applicant.userCity} />
           </>
+        )}
+        {applicant.organization === "No Organization / Independent" && (
+          <ReviewRow label="Your City / Municipality" value={applicant.userCity} />
         )}
         <ReviewRow label="Willing to be interviewed" value={applicant.interview} />
         <ReviewRow label="Contact Number" value={applicant.contactNumber} />

@@ -43,13 +43,27 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const OUTCOME_OPTIONS = [
   "Safety planning and support",
   "Counseling or psychosocial support",
-  "Legal advice or legal action",
-  "Mediation or restorative process",
+  "Legal advice",
   "Referral to police or another agency",
   "Financial support",
-  "Medical support",
   "Documentation only",
   "I am not sure yet",
+  "Others",
+];
+
+const INCIDENT_MONTH_OPTIONS = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
 ];
 
 const CASE_REPORT_DRAFT_KEY = "savira_case_report_draft";
@@ -75,7 +89,7 @@ const INITIAL_COMPLAINANT = {
 };
 
 const INITIAL_INCIDENT = {
-  date: "", time: "", locationType: "", incidentCity: "", incidentVenue: "",
+  date: "", incidentMonth: "", incidentMonthText: "", incidentDay: "", incidentYear: "", time: "", locationType: "", incidentCity: "", incidentVenue: "",
   description: "", outcome: [],
   perpetratorKnown: "", perpetratorName: "", perpetratorOccupation: "",
   perpetratorRelationship: "", perpetratorGender: "",
@@ -90,14 +104,23 @@ const INITIAL_EVIDENCE = {
 };
 
 function normalizeOutcomeSelection(value) {
+  const normalizeSavedValue = (item) =>
+    item === "Legal advice or legal action" ? ["Legal advice"] : [item];
+
   if (Array.isArray(value)) {
-    return [...new Set(value.filter((item) => OUTCOME_OPTIONS.includes(item)))];
+    return [
+      ...new Set(
+        value.flatMap(normalizeSavedValue).filter((item) => OUTCOME_OPTIONS.includes(item))
+      ),
+    ];
   }
   if (typeof value !== "string" || !value.trim()) return [];
 
-  if (OUTCOME_OPTIONS.includes(value.trim())) return [value.trim()];
+  const trimmed = value.trim();
+  if (OUTCOME_OPTIONS.includes(trimmed)) return [trimmed];
+  if (trimmed === "Legal advice or legal action") return ["Legal advice"];
 
-  const savedValues = value.split(",").map((item) => item.trim());
+  const savedValues = value.split(",").flatMap((item) => normalizeSavedValue(item.trim()));
   return OUTCOME_OPTIONS.filter((option) => savedValues.includes(option));
 }
 
@@ -161,11 +184,73 @@ function getCurrentTimeInputValue() {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-function isFutureIncident(date, time) {
+function getDaysInMonth(year, month) {
+  const parsedYear = Number.parseInt(year, 10);
+  const parsedMonth = Number.parseInt(month, 10);
+  if (!parsedMonth || parsedMonth < 1 || parsedMonth > 12) return 31;
+  const safeYear = parsedYear || new Date().getFullYear();
+  return new Date(safeYear, parsedMonth, 0).getDate();
+}
+
+function splitIncidentDate(date) {
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { incidentYear: "", incidentMonth: "", incidentMonthText: "", incidentDay: "" };
+  }
+  const [year, month, day] = date.split("-");
+  const normalizedMonth = String(Number.parseInt(month, 10));
+  return {
+    incidentYear: year,
+    incidentMonth: normalizedMonth,
+    incidentMonthText: INCIDENT_MONTH_OPTIONS.find((option) => option.value === normalizedMonth)?.label || "",
+    incidentDay: String(Number.parseInt(day, 10)),
+  };
+}
+
+function buildIncidentDate(incident) {
+  const year = Number.parseInt(incident.incidentYear, 10);
+  const month = Number.parseInt(incident.incidentMonth, 10);
+  const day = Number.parseInt(incident.incidentDay, 10);
+  if (!year || !month || !day) return "";
+  if (month < 1 || month > 12) return "";
+  if (day < 1 || day > getDaysInMonth(year, month)) return "";
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function formatIncidentDateParts(incident) {
+  const monthLabel = INCIDENT_MONTH_OPTIONS.find(
+    (month) => month.value === String(incident.incidentMonth)
+  )?.label;
+  return [monthLabel, incident.incidentDay, incident.incidentYear].filter(Boolean).join(" ");
+}
+
+function isFutureIncident(incident, time) {
+  const date = buildIncidentDate(incident);
   if (!date) return false;
   const incidentDateTime = new Date(`${date}T${time || "23:59"}`);
   if (Number.isNaN(incidentDateTime.getTime())) return false;
   return incidentDateTime > new Date();
+}
+
+function getEarliestIncidentYear(age) {
+  const parsedAge = Number.parseInt(age, 10);
+  const currentYear = new Date().getFullYear();
+  if (Number.isNaN(parsedAge) || parsedAge < 0 || parsedAge > 120) return 1900;
+  return currentYear - parsedAge;
+}
+
+function isPartialIncidentDateInFuture(incident) {
+  const year = Number.parseInt(incident.incidentYear, 10);
+  const month = Number.parseInt(incident.incidentMonth, 10);
+  const day = Number.parseInt(incident.incidentDay, 10);
+  const today = new Date();
+  if (!year || Number.isNaN(year)) return false;
+  if (year > today.getFullYear()) return true;
+  if (year < today.getFullYear()) return false;
+  if (!month || Number.isNaN(month)) return false;
+  if (month > today.getMonth() + 1) return true;
+  if (month < today.getMonth() + 1) return false;
+  if (!day || Number.isNaN(day)) return false;
+  return day > today.getDate();
 }
 
 async function searchPoliceStations(query) {
@@ -439,6 +524,7 @@ export function validateStep0(data) {
   const isScoutOrg =
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
+  const isIndependent = data.organization === "No Organization / Independent";
 
   if (isScoutOrg) {
     if (!data.council) errors.council = "Council is required.";
@@ -454,26 +540,59 @@ export function validateStep0(data) {
       if (!data.orgName) errors.orgName = "Organization name is required.";
       if (!data.orgCity) errors.orgCity = "Organization city is required.";
     }
-    if (!data.userCity) errors.userCity = "Your city/municipality is required.";
+  }
+
+  if ((data.organization === "Others" || isIndependent) && !data.userCity) {
+    errors.userCity = "Your city/municipality is required.";
   }
 
   return errors;
 }
 
-export function validateStep1(data) {
+export function validateStep1(data, complainantAge) {
   const errors = {};
 
-  if (!data.date)
-    errors.date = "Please let us know when this happened — the date helps us document your case accurately.";
+  const currentYear = new Date().getFullYear();
+  const earliestYear = getEarliestIncidentYear(complainantAge);
+  const incidentYear = Number.parseInt(data.incidentYear, 10);
+  const incidentMonth = Number.parseInt(data.incidentMonth, 10);
+  const incidentDay = Number.parseInt(data.incidentDay, 10);
 
-  if (!data.time)
-    errors.time = "An approximate time is completely fine — this helps us piece together the full picture.";
-
-  if (data.date && isFutureIncident(data.date, data.time)) {
-    errors.date = "The incident date and time cannot be in the future. Please choose the date and time when it already happened.";
-    if (data.time) errors.time = "The incident time cannot be in the future for the selected date.";
+  if (!data.incidentYear) {
+    errors.incidentYear = "Incident year is required.";
+  } else if (
+    Number.isNaN(incidentYear) ||
+    incidentYear < earliestYear ||
+    incidentYear > currentYear
+  ) {
+    errors.incidentYear = `Enter a valid year from ${earliestYear} to ${currentYear}.`;
   }
 
+  if (data.incidentMonthText && !data.incidentMonth) {
+    errors.incidentMonth = "Choose a month from the suggestions.";
+  } else if (data.incidentMonth && (Number.isNaN(incidentMonth) || incidentMonth < 1 || incidentMonth > 12)) {
+    errors.incidentMonth = "Enter a valid month.";
+  }
+
+  if (data.incidentDay && !data.incidentMonth) {
+    errors.incidentMonth = "Choose a month if you include a date.";
+  }
+
+  if (data.incidentDay && (Number.isNaN(incidentDay) || incidentDay < 1 || incidentDay > 31)) {
+    errors.incidentDay = "Enter a valid date.";
+  }
+
+  if (data.incidentMonth && data.incidentDay && incidentYear) {
+    const daysInMonth = getDaysInMonth(incidentYear, incidentMonth);
+    if (incidentDay > daysInMonth) {
+      errors.incidentDay = "Enter a valid date for the selected month and year.";
+    }
+  }
+
+  if (data.incidentYear && (isPartialIncidentDateInFuture(data) || isFutureIncident(data, data.time))) {
+    errors.incidentYear = "The incident date and time cannot be in the future.";
+    if (data.time) errors.time = "The incident time cannot be in the future for the selected date.";
+  }
   if (!data.locationType)
     errors.locationType = "Please let us know whether this happened in person or online — this helps us understand the nature of the incident.";
 
@@ -755,6 +874,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
   const isScoutOrg =
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
+  const isIndependent = data.organization === "No Organization / Independent";
 
   // ── Autofill from logged-in user ──────────────────────────
   return (
@@ -834,6 +954,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
             <option value="">Select organization</option>
             <option>Boy Scouts of the Philippines (BSP)</option>
             <option>Girl Scouts of the Philippines (GSP)</option>
+            <option>No Organization / Independent</option>
             <option>Others</option>
           </Select>
         </Field>
@@ -868,7 +989,6 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
     <h3 className={styles.subSectionTitle}>Affiliation Details</h3>
     <p className={styles.stepDesc}>
       Tell us whether you are affiliated with any group, institution, or organization.
-      If none, you may select “No Organization / Independent”.
     </p>
 
     <div className={styles.formGrid}>
@@ -884,10 +1004,6 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
           error={errors.organizationType}
         >
           <option value="">Select organization type</option>
-
-          <option value="No Organization / Independent">
-            No Organization / Independent
-          </option>
 
           <option value="School / University">
             School / University
@@ -1040,6 +1156,48 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
     </div>
   </>
 )}
+
+      {isIndependent && (
+        <>
+          <div className={styles.formDivider} />
+
+          <h3 className={styles.subSectionTitle}>Your Location</h3>
+
+          <p className={styles.stepDesc}>
+            Where are you currently located? This helps us determine the nearest
+            appropriate support or referral channel if needed.
+          </p>
+
+          <div className={styles.formGrid}>
+            <Field
+              label="City / Municipality"
+              required
+              hint="Select the city or municipality where you currently reside or stay."
+              error={errors.userCity}
+            >
+              <Select
+                value={data.userCity || ""}
+                onChange={set("userCity")}
+                error={errors.userCity}
+              >
+                <option value="">Select city / municipality</option>
+
+                {NCR_CITIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Region">
+              <Input
+                value="National Capital Region (NCR)"
+                readOnly
+                className={`${styles.input} ${styles.inputReadonly}`}
+              />
+            </Field>
+          </div>
+        </>
+      )}
 
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Mode of Contact</h3>
@@ -1388,15 +1546,122 @@ export function IncidentLocationTypeahead({ value, onChange, city }) {
   );
 }
 
-function StepIncidentDetails({ data, onChange, errors, clearError }) {
+function IncidentMonthTypeahead({ value, textValue, onChange, error }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const query = textValue || "";
+  const normalizedQuery = query.trim().toLowerCase();
+  const suggestions = INCIDENT_MONTH_OPTIONS.filter((month) => {
+    if (!normalizedQuery) return true;
+    return (
+      month.label.toLowerCase().startsWith(normalizedQuery) ||
+      month.value === normalizedQuery
+    );
+  });
+
+  const selectMonth = (month) => {
+    onChange(month.value, month.label);
+    setIsOpen(false);
+  };
+
+  const handleInputChange = (event) => {
+    const sanitized = event.target.value.replace(/[^a-zA-Z\s0-9]/g, "").slice(0, 9);
+    const exactMatch = INCIDENT_MONTH_OPTIONS.find(
+      (month) =>
+        month.label.toLowerCase() === sanitized.trim().toLowerCase() ||
+        month.value === sanitized.trim()
+    );
+    onChange(exactMatch?.value || "", exactMatch?.label || sanitized);
+    setIsOpen(true);
+  };
+
+  const handleBlur = () => {
+    window.setTimeout(() => {
+      const exactMatch = INCIDENT_MONTH_OPTIONS.find(
+        (month) =>
+          month.label.toLowerCase() === query.trim().toLowerCase() ||
+          month.value === query.trim()
+      );
+      if (exactMatch) {
+        onChange(exactMatch.value, exactMatch.label);
+      } else if (!query.trim()) {
+        onChange("", "");
+      }
+      setIsOpen(false);
+    }, 120);
+  };
+
+  return (
+    <div className={styles.typeahead}>
+      <Input
+        type="text"
+        placeholder="Month"
+        value={value ? INCIDENT_MONTH_OPTIONS.find((month) => month.value === value)?.label || query : query}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        onBlur={handleBlur}
+        error={error}
+        role="combobox"
+        aria-expanded={isOpen && suggestions.length > 0}
+        aria-controls="incident-month-suggestions"
+        autoComplete="off"
+      />
+      {isOpen && suggestions.length > 0 && (
+        <div id="incident-month-suggestions" className={styles.suggestionsList} role="listbox">
+          {suggestions.map((month) => (
+            <button
+              type="button"
+              key={month.value}
+              className={styles.suggestionItem}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => selectMonth(month)}
+              role="option"
+              aria-selected={value === month.value}
+            >
+              <span className={styles.suggestionName}>{month.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepIncidentDetails({ data, complainantAge, onChange, errors, clearError }) {
   const set = (key) => (e) => {
     clearError(key);
     onChange({ ...data, [key]: e.target.value });
+  };
+  const setIncidentMonth = (monthValue, monthText) => {
+    clearError("incidentMonth");
+    clearError("time");
+    const next = {
+      ...data,
+      incidentMonth: monthValue,
+      incidentMonthText: monthText,
+    };
+    onChange({ ...next, date: buildIncidentDate(next) });
+  };
+  const setIncidentDay = (e) => {
+    clearError("incidentDay");
+    clearError("incidentMonth");
+    clearError("time");
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+    const next = { ...data, incidentDay: digits };
+    onChange({ ...next, date: buildIncidentDate(next) });
+  };
+  const setIncidentYear = (e) => {
+    clearError("incidentYear");
+    clearError("time");
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+    const next = { ...data, incidentYear: digits };
+    onChange({ ...next, date: buildIncidentDate(next) });
   };
   const setRadio = (key) => (v) => {
     clearError(key);
     onChange({ ...data, [key]: v });
   };
+  const currentYear = new Date().getFullYear();
+  const earliestYear = getEarliestIncidentYear(complainantAge);
 
   return (
     <div>
@@ -1410,21 +1675,48 @@ function StepIncidentDetails({ data, onChange, errors, clearError }) {
       {/* ── Date & Time ── */}
       <h3 className={styles.subSectionTitle}>Date and Time of Incident</h3>
       <div className={styles.formGrid3}>
-        <Field label="Date" required hint="When did the incident happen?" error={errors.date}>
-          <Input type="date" value={data.date} onChange={set("date")} max={getTodayInputValue()} error={errors.date} />
+        <Field label="Month" hint="Optional if you only remember the year." error={errors.incidentMonth}>
+          <IncidentMonthTypeahead
+            value={data.incidentMonth || ""}
+            textValue={data.incidentMonthText || ""}
+            onChange={setIncidentMonth}
+            error={errors.incidentMonth}
+          />
         </Field>
-        <Field label="Time" hint="Approximate time is fine if exact time is unknown." error={errors.time}>
+        <Field label="Date" hint="Optional if you only remember the month or year." error={errors.incidentDay}>
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Date"
+            value={data.incidentDay || ""}
+            onChange={setIncidentDay}
+            maxLength={2}
+            error={errors.incidentDay}
+          />
+        </Field>
+        <Field label="Year" required hint={`Enter a year from ${earliestYear} to ${currentYear}.`} error={errors.incidentYear}>
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Year"
+            value={data.incidentYear || ""}
+            onChange={setIncidentYear}
+            maxLength={4}
+            error={errors.incidentYear}
+          />
+        </Field>
+        <Field label="Time" hint="Optional; approximate time is fine if exact time is unknown." error={errors.time}>
           <Input
             type="time"
             value={data.time}
             onChange={set("time")}
-            max={data.date === getTodayInputValue() ? getCurrentTimeInputValue() : undefined}
+            max={buildIncidentDate(data) === getTodayInputValue() ? getCurrentTimeInputValue() : undefined}
             error={errors.time}
           />
         </Field>
       </div>
-
-      {/* ── Incident Location ── */}
       <div className={styles.formDivider} />
       <h3 className={styles.subSectionTitle}>Location of Incident</h3>
       <p className={styles.stepDesc}>Where did the incident take place? Avoid including exact home addresses if you prefer privacy.</p>
@@ -1814,6 +2106,7 @@ function StepReview({ complainant, incident, evidence }) {
   const incidentLocation = incident.locationType === "Online" 
     ? incident.incidentVenue || "Online"
     : [incident.incidentVenue, incident.incidentCity, "NCR"].filter(Boolean).join(", ");
+  const incidentDateDisplay = formatIncidentDateParts(incident);
 
   return (
     <div>
@@ -1846,6 +2139,9 @@ function StepReview({ complainant, incident, evidence }) {
             <ReviewRow label="Your Location"      value={userAddress} />
           </>
         )}
+        {complainant.organization === "No Organization / Independent" && (
+          <ReviewRow label="Your Location"        value={userAddress} />
+        )}
         <ReviewRow label="Willing to be interviewed" value={complainant.interview} />
         <ReviewRow label="Contact Number"         value={complainant.contactNumber} />
         <ReviewRow label="Email"                  value={complainant.email} />
@@ -1853,7 +2149,7 @@ function StepReview({ complainant, incident, evidence }) {
 
       <div className={styles.reviewSection}>
         <h3 className={styles.reviewSectionTitle}>Incident Details</h3>
-        <ReviewRow label="Date"                   value={incident.date} />
+        <ReviewRow label="Date"                   value={incidentDateDisplay} />
         <ReviewRow label="Time"                   value={incident.time} />
         <ReviewRow label="Location Type"          value={incident.locationType} />
         <ReviewRow label="Location"               value={incidentLocation} />
@@ -2091,10 +2387,21 @@ export default function CreateReport({
       const timer = setTimeout(() => {
         if (draft.complainant) setComplainant(draft.complainant);
         if (draft.incident) {
+          const draftIncident = { ...draft.incident };
+          if (draftIncident.date && !draftIncident.incidentYear) {
+            Object.assign(draftIncident, splitIncidentDate(draftIncident.date));
+          }
+          if (draftIncident.incidentMonth && !draftIncident.incidentMonthText) {
+            draftIncident.incidentMonthText =
+              INCIDENT_MONTH_OPTIONS.find(
+                (month) => month.value === String(draftIncident.incidentMonth)
+              )?.label || "";
+          }
           setIncident((current) => ({
             ...current,
-            ...draft.incident,
-            outcome: normalizeOutcomeSelection(draft.incident.outcome),
+            ...draftIncident,
+            date: buildIncidentDate(draftIncident),
+            outcome: normalizeOutcomeSelection(draftIncident.outcome),
           }));
         }
         if (draft.evidence) setEvidence(draft.evidence);
@@ -2144,7 +2451,7 @@ export default function CreateReport({
     let errors = {};
     if (step === 0) errors = validateConsentStep(complainant, consents);
     if (step === 1) errors = validateStep0(complainant);
-    if (step === 2) errors = validateStep1(incident);
+    if (step === 2) errors = validateStep1(incident, complainant.age);
 
     if (Object.keys(errors).length > 0) {
       setStepErrors(errors);
@@ -2194,6 +2501,10 @@ export default function CreateReport({
           'incident',
           JSON.stringify({
             ...incident,
+            date: buildIncidentDate(incident),
+            incident_year: incident.incidentYear ? Number.parseInt(incident.incidentYear, 10) : null,
+            incident_month: incident.incidentMonth ? Number.parseInt(incident.incidentMonth, 10) : null,
+            incident_day: incident.incidentDay ? Number.parseInt(incident.incidentDay, 10) : null,
             outcome: formatOutcomeSelection(incident.outcome),
           })
         );
@@ -2339,6 +2650,7 @@ export default function CreateReport({
                 {step === 2 && (
                   <StepIncidentDetails
                     data={incident}
+                    complainantAge={complainant.age}
                     onChange={setIncident}
                     errors={stepErrors}
                     clearError={clearError}
