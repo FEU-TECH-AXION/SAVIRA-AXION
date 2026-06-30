@@ -16,7 +16,7 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
-import { useAuth, authFetch } from "@/lib/AuthContext";
+import { authFetch } from "@/lib/AuthContext";
 import FollowUpFieldEditor, {
   AMENDMENT_GROUPS,
   buildAmendmentValues,
@@ -578,7 +578,6 @@ function relativeDate(value) {
 }
 
 function Thread({ request, currentUserId, isStaff, onChanged }) {
-  const { authFetch } = useAuth();
   const [reply, setReply] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
