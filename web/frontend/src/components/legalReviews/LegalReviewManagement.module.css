@@ -354,6 +354,22 @@
 .searchInput:focus { border-color: var(--sasha-teal); }
 .searchIcon { position: absolute; right: 0.6rem; font-size: 0.85rem; pointer-events: none; color: var(--sasha-muted); }
 
+:global(html[data-theme="dark"]) .searchInput {
+  background: var(--sasha-surface-inset);
+  border-color: var(--sasha-border);
+  color: var(--sasha-text);
+}
+
+:global(html[data-theme="dark"]) .searchInput::placeholder {
+  color: #8b98a8;
+}
+
+:global(html[data-theme="dark"]) .searchInput:focus {
+  background: #111c27;
+  border-color: var(--sasha-teal);
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22);
+}
+
 .filterList { display: flex; flex-direction: column; gap: 0.4rem; }
 .filterBtn {
   width: 100%;
@@ -614,6 +630,30 @@
   cursor: pointer; transition: background 0.12s, border-color 0.12s;
 }
 .btnSecondary:hover { background: var(--sasha-offwhite); border-color: var(--sasha-muted); }
+
+.btnLight {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #292929;
+}
+
+.btnLight:hover {
+  background: #f5f7f8;
+  border-color: #8b98a8;
+  color: #292929;
+}
+
+:global(html[data-theme="dark"]) .btnLight {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #292929;
+}
+
+:global(html[data-theme="dark"]) .btnLight:hover {
+  background: #f5f7f8;
+  border-color: #8b98a8;
+  color: #292929;
+}
 
 .btnDanger {
   background: var(--sasha-orange); color: var(--sasha-white);

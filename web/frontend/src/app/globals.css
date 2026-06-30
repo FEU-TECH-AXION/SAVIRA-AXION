@@ -439,6 +439,11 @@ html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:hove
 html[data-theme="dark"] .appMain .react-calendar__navigation button:enabled:focus {
   background: var(--sasha-surface-soft) !important;
 }
+html[data-theme="dark"] .appMain .react-calendar__tile--now:not(.react-calendar__tile--active) {
+  background: var(--sasha-teal) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
 html[data-theme="dark"] .appMain .react-calendar__month-view__days__day--neighboringMonth {
   color: var(--sasha-muted) !important;
 }
@@ -462,6 +467,123 @@ html[data-theme="dark"] .appMain textarea:focus {
   background: #111c27 !important;
   border-color: var(--sasha-teal) !important;
   box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22) !important;
+}
+
+html[data-theme="dark"] .appMain input[class*="LegalReviewManagement"][class*="searchInput"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .appMain input[class*="LegalReviewManagement"][class*="searchInput"]::placeholder {
+  color: #8b98a8 !important;
+}
+
+html[data-theme="dark"] .appMain input[class*="LegalReviewManagement"][class*="searchInput"]:focus {
+  background: #111c27 !important;
+  border-color: var(--sasha-teal) !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22) !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  [class*="supportMessages"][class*="btnSecondary"],
+  [class*="supportMessages"][class*="listItem"],
+  [class*="supportMessages"][class*="detail"]
+) {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="supportMessages"][class*="listItem"]:hover,
+html[data-theme="dark"] .appMain [class*="supportMessages"][class*="listItemActive"] {
+  background: var(--sasha-surface-soft) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="supportMessages"][class*="btnSecondary"]:hover {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-teal) !important;
+  color: var(--sasha-teal) !important;
+}
+
+html[data-theme="dark"] .appMain [class*="supportMessages"][class*="detail"] [class*="messageBody"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  input[class*="ProjectManagement"][class*="searchInput"],
+  input[class*="ProjectFilterMenu"][class*="searchInput"],
+  input[class*="TaskFilterMenu"][class*="searchInput"],
+  input[class*="UserManagement"][class*="searchInput"],
+  input[class*="CaseManagement"][class*="searchInput"]
+) {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .appMain :is(
+  input[class*="ProjectManagement"][class*="searchInput"],
+  input[class*="ProjectFilterMenu"][class*="searchInput"],
+  input[class*="TaskFilterMenu"][class*="searchInput"],
+  input[class*="UserManagement"][class*="searchInput"],
+  input[class*="CaseManagement"][class*="searchInput"]
+)::placeholder {
+  color: #8b98a8 !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  input[class*="ProjectManagement"][class*="searchInput"],
+  input[class*="ProjectFilterMenu"][class*="searchInput"],
+  input[class*="TaskFilterMenu"][class*="searchInput"],
+  input[class*="UserManagement"][class*="searchInput"],
+  input[class*="CaseManagement"][class*="searchInput"]
+):focus {
+  background: #111c27 !important;
+  border-color: var(--sasha-teal) !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.22) !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  [class*="ViewCase"][class*="contentCard"],
+  [class*="ViewLegalCase"][class*="contentCard"],
+  [class*="ViewCase"][class*="reviewDetailBlock"],
+  [class*="ViewLegalCase"][class*="reviewDetailBlock"]
+) {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  [class*="ViewCase"][class*="section"],
+  [class*="ViewLegalCase"][class*="section"]
+) {
+  border-color: var(--sasha-border) !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  [class*="ViewCase"][class*="sectionHeadingText"],
+  [class*="ViewLegalCase"][class*="sectionHeadingText"],
+  [class*="ViewCase"][class*="detailVal"],
+  [class*="ViewLegalCase"][class*="detailVal"],
+  [class*="ViewCase"][class*="descriptionVal"],
+  [class*="ViewLegalCase"][class*="descriptionVal"]
+) {
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] .appMain :is(
+  [class*="ViewCase"][class*="detailKey"],
+  [class*="ViewLegalCase"][class*="detailKey"],
+  [class*="ViewCase"][class*="emptyState"],
+  [class*="ViewLegalCase"][class*="emptyState"]
+) {
+  color: var(--sasha-muted) !important;
 }
 
 html[data-theme="dark"] .appMain [class*="pageWrapper"],

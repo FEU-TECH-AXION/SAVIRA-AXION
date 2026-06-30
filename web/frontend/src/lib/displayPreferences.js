@@ -3,7 +3,8 @@
 export const DISPLAY_PREFS_KEY = "savira_display_prefs";
 
 export const DEFAULT_DISPLAY_PREFS = {
-  theme: "system",
+  theme: "light",
+  themeDefaultMigrated: true,
   fontSize: "md",
   reducedMotion: false,
   highContrast: false,
@@ -23,7 +24,13 @@ export function readDisplayPrefs() {
 
   try {
     const raw = window.localStorage.getItem(DISPLAY_PREFS_KEY);
-    return normalizeDisplayPrefs(raw ? JSON.parse(raw) : null);
+    const prefs = normalizeDisplayPrefs(raw ? JSON.parse(raw) : null);
+    if (prefs.theme === "system" && prefs.themeDefaultMigrated !== true) {
+      const migrated = { ...prefs, theme: "light", themeDefaultMigrated: true };
+      window.localStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+    return prefs;
   } catch {
     return DEFAULT_DISPLAY_PREFS;
   }

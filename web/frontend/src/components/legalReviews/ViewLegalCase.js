@@ -262,10 +262,10 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
   }, [caseReportId]);
 
   const CategoryBadge = ({ label }) => (
-    <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#e1f5f5", color: "#037F81", marginRight: 6, marginBottom: 4 }}>{label}</span>
+    <span className={`${styles.nlpBadge} ${styles.nlpBadgeCategory}`}>{label}</span>
   );
   const CaseTypeBadge = ({ label }) => (
-    <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600, background: "#f3e8ff", color: "#6b21a8", marginRight: 6, marginBottom: 4 }}>{label}</span>
+    <span className={`${styles.nlpBadge} ${styles.nlpBadgeType}`}>{label}</span>
   );
   const getClassificationLabel = (item, field) => {
     if (!item) return "";
@@ -348,8 +348,8 @@ function NLPAnalysisTab({ caseReportId, isAdmin }) {
             ) : <p style={{ margin: 0, fontSize: "0.82rem", color: "#9ca3af" }}>No steps suggested.</p>}
           </div>
 
-          <div style={{ background: nlpData.referral_suggested ? "#fffbeb" : "#f0fdf4", border: `1px solid ${nlpData.referral_suggested ? "#fcd34d" : "#86efac"}`, borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700, color: nlpData.referral_suggested ? "#92400e" : "#166534" }}>
+          <div className={`${styles.nlpResultBox} ${nlpData.referral_suggested ? styles.nlpResultWarning : styles.nlpResultSuccess}`}>
+            <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700 }}>
               {nlpData.referral_suggested ? "Referral may be appropriate" : "May be resolvable internally"}
             </h4>
             {nlpData.referral_notes && <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.referral_notes}</p>}

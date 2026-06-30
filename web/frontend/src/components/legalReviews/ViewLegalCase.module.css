@@ -452,6 +452,70 @@
 }
 .historyToggle:hover { color: var(--sasha-teal); }
 
+.nlpBadge {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  margin-right: 6px;
+  padding: 3px 10px;
+}
+
+.nlpBadgeCategory {
+  background: #e1f5f5;
+  color: #037f81;
+}
+
+.nlpBadgeType {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.nlpResultBox {
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.nlpResultWarning {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.nlpResultSuccess {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+:global(html[data-theme="dark"]) .nlpBadgeCategory {
+  background: #123f43;
+  color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .nlpBadgeType {
+  background: #2e2350;
+  color: #c4b5fd;
+}
+
+:global(html[data-theme="dark"]) .nlpResultWarning {
+  background: #3b2f12;
+  border-color: #8a6d1f;
+  color: #facc15;
+}
+
+:global(html[data-theme="dark"]) .nlpResultSuccess {
+  background: #12351f;
+  border-color: #22c55e;
+  color: #86efac;
+}
+
+:global(html[data-theme="dark"]) .nlpResultBox p {
+  color: var(--sasha-text) !important;
+}
+
 .historyList {
   display: flex;
   flex-direction: column;
