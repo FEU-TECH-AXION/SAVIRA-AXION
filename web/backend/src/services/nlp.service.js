@@ -104,7 +104,7 @@ async function runNLPAnalysis(report) {
         console.log(`[NLP] ✅ Analysis completed for report ${case_report_id}`);
 
     } catch (err) {
-        console.error(`[NLP] ❌ Analysis failed for report ${case_report_id}:`, err.message);
+        console.error(`[NLP] ❌ Analysis failed for report ${case_report_id} using ${NLP_URL}:`, err.message);
         try {
             if (pendingAnalysis?.analysis_id) {
                 await updateAnalysisById(pendingAnalysis.analysis_id, { status: 'failed' });

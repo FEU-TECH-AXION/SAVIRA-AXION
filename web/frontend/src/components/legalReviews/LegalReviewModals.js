@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FiX } from "react-icons/fi";
+import { FiChevronDown, FiX } from "react-icons/fi";
 import Tooltip from "@/components/ui/Tooltip";
 import styles from "./LegalReviewModals.module.css";
 
@@ -77,8 +77,10 @@ function emptyEvidence() {
 }
 
 export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorName }) {
+  const [expandedEvidenceLabels, setExpandedEvidenceLabels] = useState([]);
   const [form, setForm] = useState({
     evidenceItems: emptyEvidence(),
+    selectedEvidenceLabels: [],
     incidentDetails: "",
     otherNotes: "",
     explainedToSurvivor: "",
@@ -90,21 +92,36 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
     if (!open || !caseData) return;
     const record = caseData.paralegalRecord || {};
     const legacyObtained = new Set(record.documents?.split(", ").filter(Boolean) || []);
+    const evidenceItems = Object.fromEntries(PARALEGAL_EVIDENCE_LABELS.map((label) => [
+      label,
+      record.evidenceItems?.[label] || {
+        status: legacyObtained.has(label) ? "Obtained" : "Not started",
+        notes: "",
+        fileLink: "",
+      },
+    ]));
+    const selectedEvidenceLabels = Array.isArray(record.selectedEvidenceLabels)
+      ? record.selectedEvidenceLabels.filter((label) => PARALEGAL_EVIDENCE_LABELS.includes(label))
+      : PARALEGAL_EVIDENCE_LABELS.filter((label) => {
+          const item = evidenceItems[label];
+          return legacyObtained.has(label) ||
+            item?.status === "Obtained" ||
+            item?.status === "In progress" ||
+            item?.status === "Survivor declined" ||
+            Boolean(item?.notes) ||
+            Boolean(item?.fileLink);
+        });
+
     setForm({
-      evidenceItems: Object.fromEntries(PARALEGAL_EVIDENCE_LABELS.map((label) => [
-        label,
-        record.evidenceItems?.[label] || {
-          status: legacyObtained.has(label) ? "Obtained" : "Not started",
-          notes: "",
-          fileLink: "",
-        },
-      ])),
+      evidenceItems,
+      selectedEvidenceLabels,
       incidentDetails: record.incidentDetails || "",
       otherNotes: record.otherNotes || "",
       explainedToSurvivor: record.explainedToSurvivor || "",
       survivorUnderstood: Boolean(record.survivorUnderstood),
       readyForLawyerReview: Boolean(record.readyForLawyerReview),
     });
+    setExpandedEvidenceLabels(selectedEvidenceLabels.slice(0, 1));
   }, [open, caseData]);
 
   if (!caseData) return null;
@@ -117,9 +134,30 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
     },
   }));
 
+  const toggleEvidence = (label, checked) => setForm((previous) => ({
+    ...previous,
+    selectedEvidenceLabels: checked
+      ? [...new Set([...previous.selectedEvidenceLabels, label])]
+      : previous.selectedEvidenceLabels.filter((item) => item !== label),
+  }));
+
+  const handleEvidenceChecked = (label, checked) => {
+    toggleEvidence(label, checked);
+    setExpandedEvidenceLabels((previous) => checked
+      ? [...new Set([...previous, label])]
+      : previous.filter((item) => item !== label));
+  };
+
+  const toggleEvidencePanel = (label) => setExpandedEvidenceLabels((previous) => (
+    previous.includes(label)
+      ? previous.filter((item) => item !== label)
+      : [...previous, label]
+  ));
+
   async function handleSave() {
-    const obtained = PARALEGAL_EVIDENCE_LABELS.filter((label) => form.evidenceItems[label]?.status === "Obtained");
-    const linkedDocuments = PARALEGAL_EVIDENCE_LABELS
+    const selectedEvidenceLabels = form.selectedEvidenceLabels.filter((label) => PARALEGAL_EVIDENCE_LABELS.includes(label));
+    const obtained = selectedEvidenceLabels.filter((label) => form.evidenceItems[label]?.status === "Obtained");
+    const linkedDocuments = selectedEvidenceLabels
       .filter((label) => form.evidenceItems[label]?.fileLink)
       .map((label) => ({
         name: label,
@@ -136,6 +174,7 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
         date: new Date().toLocaleDateString("en-PH"),
         documents: obtained.join(", "),
         evidenceItems: form.evidenceItems,
+        selectedEvidenceLabels,
         incidentDetails: form.incidentDetails,
         otherNotes: form.otherNotes,
         explainedToSurvivor: form.explainedToSurvivor,
@@ -153,20 +192,55 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
       <p className={styles.formDesc}>Track each evidence item, record what was explained to the survivor, and mark the file ready for lawyer review.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData.caseId || caseData.id} disabled /></FormGroup>
-        {PARALEGAL_EVIDENCE_LABELS.map((label) => (
-          <div key={label} className={styles.evidenceCard}>
-            <h3 className={styles.evidenceTitle}>{label}</h3>
-            <FormGroup label="Status">
-              <FSelect value={form.evidenceItems[label]?.status || "Not started"} onChange={(event) => setEvidence(label, "status", event.target.value)}>
-                <option>Not started</option>
-                <option>In progress</option>
-                <option>Obtained</option>
-                <option>Survivor declined</option>
-              </FSelect>
-            </FormGroup>
-            <FormGroup label="Notes"><FTextarea value={form.evidenceItems[label]?.notes || ""} onChange={(event) => setEvidence(label, "notes", event.target.value)} /></FormGroup>
-            <FormGroup label="Optional secure file link"><FInput type="url" value={form.evidenceItems[label]?.fileLink || ""} onChange={(event) => setEvidence(label, "fileLink", event.target.value)} /></FormGroup>
+        <FormGroup label="Evidence to document" hint="Select an item to open its evidence card.">
+          <div className={styles.evidenceSelector}>
+            {PARALEGAL_EVIDENCE_LABELS.map((label) => (
+              <label key={label} className={styles.checkLabel}>
+                <input
+                  className={styles.checkInput}
+                  type="checkbox"
+                  checked={form.selectedEvidenceLabels.includes(label)}
+                  onChange={(event) => handleEvidenceChecked(label, event.target.checked)}
+                />
+                {label}
+              </label>
+            ))}
           </div>
+        </FormGroup>
+        {PARALEGAL_EVIDENCE_LABELS.map((label) => (
+          form.selectedEvidenceLabels.includes(label) && (
+            <div key={label} className={styles.evidenceCard}>
+              <button
+                type="button"
+                className={styles.evidenceAccordionButton}
+                onClick={() => toggleEvidencePanel(label)}
+                aria-expanded={expandedEvidenceLabels.includes(label)}
+              >
+                <span className={styles.evidenceTitle}>{label}</span>
+                <span className={styles.evidenceAccordionMeta}>
+                  {form.evidenceItems[label]?.status || "Not started"}
+                  <FiChevronDown
+                    className={`${styles.evidenceChevron} ${expandedEvidenceLabels.includes(label) ? styles.evidenceChevronOpen : ""}`}
+                    aria-hidden="true"
+                  />
+                </span>
+              </button>
+              {expandedEvidenceLabels.includes(label) && (
+                <div className={styles.evidenceAccordionBody}>
+                  <FormGroup label="Status">
+                    <FSelect value={form.evidenceItems[label]?.status || "Not started"} onChange={(event) => setEvidence(label, "status", event.target.value)}>
+                      <option>Not started</option>
+                      <option>In progress</option>
+                      <option>Obtained</option>
+                      <option>Survivor declined</option>
+                    </FSelect>
+                  </FormGroup>
+                  <FormGroup label="Notes"><FTextarea value={form.evidenceItems[label]?.notes || ""} onChange={(event) => setEvidence(label, "notes", event.target.value)} /></FormGroup>
+                  <FormGroup label="Optional secure file link"><FInput type="url" value={form.evidenceItems[label]?.fileLink || ""} onChange={(event) => setEvidence(label, "fileLink", event.target.value)} /></FormGroup>
+                </div>
+              )}
+            </div>
+          )
         ))}
         <FormGroup label="Key incident details"><FTextarea value={form.incidentDetails} onChange={(event) => setForm((previous) => ({ ...previous, incidentDetails: event.target.value }))} /></FormGroup>
         <FormGroup label="What was explained to the survivor?"><FTextarea value={form.explainedToSurvivor} onChange={(event) => setForm((previous) => ({ ...previous, explainedToSurvivor: event.target.value }))} /></FormGroup>

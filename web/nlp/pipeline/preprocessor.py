@@ -52,6 +52,7 @@ CUSTOM_STOPWORDS = BASE_STOPWORDS - LEGAL_TERMS_TO_KEEP
 
 # ── Spell checker ─────────────────────────────────────────────────
 _spell = None
+SPELLCHECK_WORD_LIMIT = 150
 
 def get_spell():
     global _spell
@@ -79,7 +80,11 @@ def correct_spelling(text):
     """Correct spelling errors while preserving legal terms."""
     words = text.split()
     corrected = []
-    for word in words:
+    for index, word in enumerate(words):
+        if index >= SPELLCHECK_WORD_LIMIT:
+            corrected.append(word)
+            continue
+
         # Don't correct legal terms or short words
         if word in LEGAL_TERMS_TO_KEEP or len(word) <= 3:
             corrected.append(word)

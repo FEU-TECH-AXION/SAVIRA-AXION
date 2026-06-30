@@ -1,5 +1,7 @@
 import os
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from json import JSONDecodeError
 from groq import Groq
 from dotenv import load_dotenv
@@ -18,7 +20,7 @@ def get_client():
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
             raise ValueError("GROQ_API_KEY not set in environment")
-        _client = Groq(api_key=api_key)
+        _client = Groq(api_key=api_key, timeout=20.0, max_retries=2)
     return _client
 
 
@@ -255,29 +257,41 @@ def call_groq(prompt, task_name="Groq"):
     return parse_json_response(raw_text, task_name)
 
 
+def timed_call_groq(prompt, task_name="Groq"):
+    started = time.perf_counter()
+    try:
+        return call_groq(prompt, task_name)
+    finally:
+        print(f"[NLP][timing] {task_name} completed in {time.perf_counter() - started:.2f}s")
+
+
 # ── Main analysis function ────────────────────────────────────────
 def analyze(processed_text, anonymized_text):
-    # Task 1 — Classification + quality assessment
-    classification = call_groq(
-        build_classification_prompt(processed_text),
-        "Case classification",
-    )
+    # Task 1 + 2: classification and summary are independent.
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        classification_future = executor.submit(
+            timed_call_groq,
+            build_classification_prompt(processed_text),
+            "Case classification",
+        )
+        summary_future = executor.submit(
+            timed_call_groq,
+            build_summary_prompt(anonymized_text),
+            "Case summary",
+        )
+
+        classification = classification_future.result()
+        summary_result = summary_future.result()
 
     primary_categories = classification.get("primary_categories", [])
     case_types         = classification.get("case_types", [])
-
-    # Task 2 — Summary
-    summary_result = call_groq(
-        build_summary_prompt(anonymized_text),
-        "Case summary",
-    )
 
     # Task 3 — Recommendations
     # Extract just the category/type names for the recommendation prompt
     category_names = [c.get("category", c) if isinstance(c, dict) else c for c in primary_categories]
     type_names     = [t.get("type", t)     if isinstance(t, dict) else t for t in case_types]
 
-    recommendation_result = call_groq(
+    recommendation_result = timed_call_groq(
         build_recommendation_prompt(anonymized_text, category_names, type_names),
         "Case recommendation",
     )

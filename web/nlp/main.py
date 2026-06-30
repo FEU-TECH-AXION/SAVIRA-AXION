@@ -1,10 +1,11 @@
 import asyncio
 import re
+import time
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from pipeline.preprocessor import preprocess
+from pipeline.preprocessor import detect_language, preprocess
 from pipeline.anonymizer import anonymize
 from pipeline.groq_client import analyze
 from pipeline.essay_grader import grade_essay
@@ -111,7 +112,9 @@ async def analyze_report(report: ReportRequest):
 
         # Step 2 — Anonymize FIRST on raw text
         # Names/PII are still capitalized and in context here
+        started = time.perf_counter()
         anonymized = anonymize(combined_text)
+        print(f"[NLP][timing] anonymize completed in {time.perf_counter() - started:.2f}s")
         # Safety check — if anonymization removed more than 40% of words, it over-masked
         original_words   = len(combined_text.split())
         anonymized_words = len(anonymized["anonymized_text"].replace("[PERSON]", "").replace("[PHONE_NUMBER]", "").replace("[EMAIL]", "").replace("[LOCATION]", "").split())
@@ -120,14 +123,16 @@ async def analyze_report(report: ReportRequest):
         # Use anonymized text for storage but send to Groq only if it preserves enough context
         groq_input = anonymized["anonymized_text"] if not over_masked else combined_text
 
-        # Step 3 — Preprocess the ANONYMIZED text
-        # Now [PERSON], [LOCATION] placeholders go through preprocessing
-        # Only language_detected is used from this result — processed_text is NOT sent to Groq
-        preprocessed = preprocess(anonymized["anonymized_text"])
+        # Step 3 — Detect language only.
+        # processed_text is NOT sent to Groq, so skip full preprocessing/spellcheck here.
+        started = time.perf_counter()
+        language_detected = detect_language(anonymized["anonymized_text"])
+        print(f"[NLP][timing] detect_language completed in {time.perf_counter() - started:.2f}s")
 
         # Step 4 — Run Groq analysis
         # Send anonymized_text (natural language) to BOTH summary and classifier
         # Do NOT send processed_text to Groq — it strips too much context
+        started = time.perf_counter()
         result = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: analyze(
@@ -135,6 +140,7 @@ async def analyze_report(report: ReportRequest):
                 groq_input,
             )
         )
+        print(f"[NLP][timing] analyze completed in {time.perf_counter() - started:.2f}s")
 
         clarification_reason_raw = result.get("clarification_reason", "")
         clarification_reason = ", ".join(clarification_reason_raw) if isinstance(clarification_reason_raw, list) else clarification_reason_raw
@@ -143,7 +149,7 @@ async def analyze_report(report: ReportRequest):
         return AnalysisResponse(
             case_report_id       = report.case_report_id,
             model_used           = result["model_used"],
-            language_detected    = preprocessed["language"],
+            language_detected    = language_detected,
             anonymized_text      = anonymized["anonymized_text"],
             detected_pii         = anonymized["detected_pii"],
             primary_categories   = result["primary_categories"],

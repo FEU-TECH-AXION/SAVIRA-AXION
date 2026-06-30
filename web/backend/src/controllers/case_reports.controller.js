@@ -159,22 +159,35 @@ async function submitReport(req, res) {
     }
 
     let uploadedFiles = [];
+    let failedFiles = [];
+    let fileUploadWarning = null;
     try {
-      uploadedFiles = await uploadEvidenceFiles(newReport.case_report_id, req.files, userId);
+      const uploadResult = await uploadEvidenceFiles(newReport.case_report_id, req.files, userId);
+      uploadedFiles = uploadResult.uploaded;
+      failedFiles = uploadResult.failedFiles;
+      if (failedFiles.length > 0) {
+        fileUploadWarning = 'Report submitted, but some evidence files failed to upload. Please contact support to add them.';
+      }
     } catch (fileErr) {
       console.error('[submitReport] evidence upload error:', fileErr.message);
-      return res.status(201).json({
-        data: newReport,
-        warning: 'Report submitted, but some evidence files failed to upload. Please contact support to add them.',
-      });
+      fileUploadWarning = 'Report submitted, but some evidence files failed to upload. Please contact support to add them.';
+      failedFiles = (req.files || []).map((file) => ({
+        original_name: file.originalname,
+        error: fileErr.message,
+      }));
     }
 
-  runNLPAnalysis({
+    runNLPAnalysis({
       case_report_id:       newReport.case_report_id,
       incident_description: newReport.incident_description,
-  });
+    });
 
-    return res.status(201).json({ data: newReport, files: uploadedFiles });
+    return res.status(201).json({
+      data: newReport,
+      files: uploadedFiles,
+      ...(fileUploadWarning ? { warning: fileUploadWarning } : {}),
+      ...(failedFiles.length > 0 ? { failedFiles } : {}),
+    });
   } catch (err) {
     console.error('[submitReport]', err?.message ?? err, err?.stack ?? '');
     return res.status(500).json({ error: formatErrorMessage(err) });
@@ -544,51 +557,58 @@ function getEvidenceType(mimetype) {
 }
 
 async function uploadEvidenceFiles(caseReportId, files, uploadedById) {
-  if (!files || files.length === 0) return [];
+  if (!files || files.length === 0) return { uploaded: [], failedFiles: [] };
 
   const supabase = require('../config/supabase');
   const uploaded = [];
+  const failedFiles = [];
 
   for (const file of files) {
-    const ext = file.originalname.split('.').pop();
-    const storagePath = `${caseReportId}/${randomUUID()}.${ext}`;
+    try {
+      const ext = file.originalname.split('.').pop();
+      const storagePath = `${caseReportId}/${randomUUID()}.${ext}`;
 
-    const { error: uploadErr } = await supabase
-      .storage
-      .from(EVIDENCE_BUCKET)
-      .upload(storagePath, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false,
+      const { error: uploadErr } = await supabase
+        .storage
+        .from(EVIDENCE_BUCKET)
+        .upload(storagePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+
+      if (uploadErr) {
+        throw new Error(`Storage upload failed: ${uploadErr.message}`);
+      }
+
+      const { data: row, error: insertErr } = await supabase
+        .from('evidences')
+        .insert([{
+          case_report_id: caseReportId,
+          evidence_type:  getEvidenceType(file.mimetype),
+          file_path:      storagePath,
+          original_name:  file.originalname,
+          mime_type:      file.mimetype,
+          size_bytes:     file.size,
+          uploaded_by_id: uploadedById ?? null,
+        }])
+        .select()
+        .single();
+
+      if (insertErr) {
+        throw new Error(`Metadata insert failed: ${insertErr.message}`);
+      }
+
+      uploaded.push(row);
+    } catch (err) {
+      console.error(`[uploadEvidenceFiles] failed for ${file.originalname}:`, err.message);
+      failedFiles.push({
+        original_name: file.originalname,
+        error: err.message,
       });
-
-    if (uploadErr) {
-      console.error('[uploadEvidenceFiles] storage upload failed:', uploadErr.message);
-      throw new Error(`Failed to upload ${file.originalname}: ${uploadErr.message}`);
     }
-
-    const { data: row, error: insertErr } = await supabase
-      .from('evidences')
-      .insert([{
-        case_report_id: caseReportId,
-        evidence_type:  getEvidenceType(file.mimetype),
-        file_path:      storagePath,
-        original_name:  file.originalname,
-        mime_type:      file.mimetype,
-        size_bytes:     file.size,
-        uploaded_by_id: uploadedById ?? null,
-      }])
-      .select()
-      .single();
-
-    if (insertErr) {
-      console.error('[uploadEvidenceFiles] metadata insert failed:', insertErr.message);
-      throw new Error(`Failed to save metadata for ${file.originalname}.`);
-    }
-
-    uploaded.push(row);
   }
 
-  return uploaded;
+  return { uploaded, failedFiles };
 }
 
 module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate, uploadEvidenceFiles }

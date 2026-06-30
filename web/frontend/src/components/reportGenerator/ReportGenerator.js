@@ -1318,7 +1318,6 @@ export default function ReportGenerator() {
   // Build insight strip for the analytics overview
   const insights = analyticsData ? [
     `Cases in period: ${analyticsData.caseSummary?.total ?? 0}`,
-    `Avg. resolution: ${analyticsData.caseSummary?.avgResolutionDays ?? 0} days`,
     `Volunteer approval rate: ${analyticsData.volunteerSummary?.approvalRate ?? 0}%`,
     // `Health score: ${analyticsData.healthScore}/100`,
   ] : [];
@@ -1434,7 +1433,6 @@ export default function ReportGenerator() {
                 <StatCard label="Under Investigation" value={analyticsData.underInvestigation} sub="Investigation / Hearing / Eval" border="#60a5fa" />
                 <StatCard label="Completed Reports"   value={caseData.closedCases}       sub="Resolved, dismissed, or withdrawn" border="#16a34a" />
                 <StatCard label="Total Cases"         value={caseData.total}             sub="In selected period"               border="#E8663A" />
-                <StatCard label="Avg. Resolution"     value={`${caseData.avgResolutionDays}d`} sub="Days from submission"       border="#8b5cf6" />
               </div>
 
               {/* Trend charts */}
@@ -1460,9 +1458,6 @@ export default function ReportGenerator() {
                   <StackedAreaChart data={analyticsData.stackedTrend} height={130} />
                 </div>
               </div>
-
-              {/* Insight strip */}
-              <InsightStrip items={insights} />
 
               {/* BREAKDOWNS — like the image */}
               <div className={styles.breakdownSection}>
@@ -1517,7 +1512,6 @@ export default function ReportGenerator() {
                 <StatCard label="Cases in Legal"       value={legalData.total}            accent />
                 <StatCard label="Cases Filed"          value={legalData.casesFiled}        sub="Elevated to formal filing" />
                 <StatCard label="Cases Resolved"       value={legalData.casesResolved}     sub="Convictions + dismissals" />
-                <StatCard label="Avg. Days in Legal"   value={`${legalData.avgDaysInLegal}d`} />
                 <StatCard label="Referrals Suggested"  value={legalData.referralSuggested} sub="NLP-flagged" />
               </div>
 

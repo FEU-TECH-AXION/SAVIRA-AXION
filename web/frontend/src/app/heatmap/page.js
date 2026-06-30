@@ -68,7 +68,6 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
         map.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Re-render choropleth when data or aggregation changes ──────────────────
@@ -84,7 +83,6 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
     } else {
       map.current.once("style.load", doUpdate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heatmapData, aggregation]);
 
   return (
@@ -182,9 +180,8 @@ function StatCard({ title, value, subtext }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FilterSection({ filters, onChange, meta }) {
-  const { regions = [], cities = [], caseTypes = [], statuses = [] } = meta;
+  const { regions = [], cities = [], caseTypes = [] } = meta;
   const ALL_STATUSES = [
-    "Submitted",
     "For Verification",
     "Undergoing Review",
     "Verified - True",
@@ -210,16 +207,16 @@ function FilterSection({ filters, onChange, meta }) {
   return (
     <div className={styles.filterContainer}>
       {[
-        {
-          label: "Region",
-          key: "region",
-          options: regions.map((r) => ({ value: r.key, label: r.label })),
-          placeholder: "All Regions",
-          onChange: (v) => {
-            onChange("region", v);
-            onChange("city", "");
-          },
-        },
+        // {
+        //   label: "Region",
+        //   key: "region",
+        //   options: regions.map((r) => ({ value: r.key, label: r.label })),
+        //   placeholder: "All Regions",
+        //   onChange: (v) => {
+        //     onChange("region", v);
+        //     onChange("city", "");
+        //   },
+        // },
         {
           label: "City",
           key: "city",
@@ -508,7 +505,7 @@ export default function HeatmapPage() {
         />
 
         {/* ── Aggregation Toggle ── */}
-        <div className={styles.aggregationRow}>
+        {/* <div className={styles.aggregationRow}>
           <span className={styles.aggregationLabel}>View by:</span>
           {["city", "region", "council"].map((agg) => (
             <button
@@ -519,7 +516,7 @@ export default function HeatmapPage() {
               {agg.charAt(0).toUpperCase() + agg.slice(1)}
             </button>
           ))}
-        </div>
+        </div> */}
 
         {/* ── Map ── */}
         <div className={styles.sectionHeading}>
