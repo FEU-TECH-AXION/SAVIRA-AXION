@@ -16,7 +16,9 @@ function senderName(message) {
 }
 
 function isImageAttachment(message) {
-  return String(message?.attachment_mime_type || "").startsWith("image/");
+  const mimeType = String(message?.attachment_mime_type || "").toLowerCase();
+  const fileName = String(message?.attachment_name || "").toLowerCase();
+  return mimeType.startsWith("image/") || /\.(apng|avif|gif|jpe?g|png|webp|bmp|svg)$/i.test(fileName);
 }
 
 export default function SupportMessagesPage() {
@@ -233,16 +235,20 @@ export default function SupportMessagesPage() {
               {selected.page_url && <p className={styles.meta}>Page: {selected.page_url}</p>}
               {selected.attachment_name && (
                 <div className={styles.attachmentBox}>
-                  <p className={styles.meta}>Attachment: {selected.attachment_name}</p>
                   {selected.attachment_url && isImageAttachment(selected) ? (
                     <a href={selected.attachment_url} target="_blank" rel="noreferrer" className={styles.attachmentImageLink}>
                       <img src={selected.attachment_url} alt={selected.attachment_name} className={styles.attachmentImage} />
                     </a>
                   ) : selected.attachment_url ? (
-                    <a href={selected.attachment_url} target="_blank" rel="noreferrer" className={styles.attachmentLink}>
-                      Open attachment
-                    </a>
-                  ) : null}
+                    <>
+                      <p className={styles.meta}>Attachment: {selected.attachment_name}</p>
+                      <a href={selected.attachment_url} target="_blank" rel="noreferrer" className={styles.attachmentLink}>
+                        Open attachment
+                      </a>
+                    </>
+                  ) : (
+                    <p className={styles.meta}>Attachment: {selected.attachment_name}</p>
+                  )}
                 </div>
               )}
 

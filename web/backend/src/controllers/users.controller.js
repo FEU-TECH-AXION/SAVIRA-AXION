@@ -47,6 +47,7 @@ const createItem = async (req, res) => {
       return res.status(400).json({ error: 'legal_personnel_type must be Lawyer or Paralegal for Legal Personnel role.' })
     }
 
+    const usesDefaultPassword = !password || password === 'Savira@2026'
     const hashedPassword = await bcrypt.hash(password || 'Savira@2026', 10)
 
     const item = await UserModel.create({
@@ -54,6 +55,7 @@ const createItem = async (req, res) => {
       user_id: randomUUID(),
       password: hashedPassword,
       role_id,
+      must_change_password: usesDefaultPassword,
     })
 
     if (item?.user_id && role_id) {
@@ -140,7 +142,10 @@ const updateItem = async (req, res) => {
     }
 
     if (role_id !== undefined) payload.role_id = role_id
-    if (password) payload.password = await bcrypt.hash(password, 10)
+    if (password) {
+      payload.password = await bcrypt.hash(password, 10)
+      payload.must_change_password = false
+    }
 
     const { data, error } = await supabase
       .from('users')

@@ -153,7 +153,7 @@ router.post('/reset-password', async (req, res) => {
 
     const { error: updateError } = await supabase
       .from('users')
-      .update({ password: hashedPassword })
+      .update({ password: hashedPassword, must_change_password: false })
       .eq('user_id', decoded.user_id)
 
     if (updateError) throw updateError

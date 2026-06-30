@@ -518,7 +518,8 @@ html[data-theme="dark"] .appMain :is(
   input[class*="ProjectFilterMenu"][class*="searchInput"],
   input[class*="TaskFilterMenu"][class*="searchInput"],
   input[class*="UserManagement"][class*="searchInput"],
-  input[class*="CaseManagement"][class*="searchInput"]
+  input[class*="CaseManagement"][class*="searchInput"],
+  input[class*="FilterMenu"][class*="searchInput"]
 ) {
   background: var(--sasha-surface-inset) !important;
   border-color: var(--sasha-border) !important;
@@ -531,7 +532,8 @@ html[data-theme="dark"] .appMain :is(
   input[class*="ProjectFilterMenu"][class*="searchInput"],
   input[class*="TaskFilterMenu"][class*="searchInput"],
   input[class*="UserManagement"][class*="searchInput"],
-  input[class*="CaseManagement"][class*="searchInput"]
+  input[class*="CaseManagement"][class*="searchInput"],
+  input[class*="FilterMenu"][class*="searchInput"]
 )::placeholder {
   color: #8b98a8 !important;
 }
@@ -541,7 +543,8 @@ html[data-theme="dark"] .appMain :is(
   input[class*="ProjectFilterMenu"][class*="searchInput"],
   input[class*="TaskFilterMenu"][class*="searchInput"],
   input[class*="UserManagement"][class*="searchInput"],
-  input[class*="CaseManagement"][class*="searchInput"]
+  input[class*="CaseManagement"][class*="searchInput"],
+  input[class*="FilterMenu"][class*="searchInput"]
 ):focus {
   background: #111c27 !important;
   border-color: var(--sasha-teal) !important;

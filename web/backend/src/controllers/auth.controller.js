@@ -417,4 +417,5 @@ module.exports = {
   verifyEmailChange,
   logout,
   me,
+  sendSession,
 };
