@@ -19,6 +19,7 @@ import {
   FTextarea,
   FSelect,
   ParalegalSupportModal,
+  LawyerConsultModal as SharedLawyerConsultModal,
   EndorseModal,
   MonitoringModal,
 } from "./LegalReviewModals";
@@ -1733,7 +1734,7 @@ export default function LegalReviewManagement() {
 
       {/* ══ MODALS ══ */}
       <ParalegalSupportModal open={modal === "paralegal"} onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
-      <LawyerConsultModal   open={modal === "lawyer"}       onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
+      <SharedLawyerConsultModal open={modal === "lawyer"} onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <EndorseModal         open={modal === "endorse"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <MonitoringModal      open={modal === "monitor"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <UpdateStatusModal

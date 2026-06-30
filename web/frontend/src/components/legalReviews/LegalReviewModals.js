@@ -23,6 +23,60 @@ export const PARALEGAL_EVIDENCE_LABELS = [
   "Witness statements",
 ];
 
+const LAW_OPTIONS = [
+  {
+    label: "RA 11313 (Safe Spaces Act)",
+    description: "Covers gender-based sexual harassment in streets, public spaces, online spaces, workplaces, and educational or training institutions.",
+  },
+  {
+    label: "RA 9262 (VAWC)",
+    description: "Applies to violence against women and their children committed by a spouse, former spouse, or person with whom the survivor has or had a sexual or dating relationship.",
+  },
+  {
+    label: "RA 7877 (Anti-Sexual Harassment Act)",
+    description: "Addresses sexual harassment involving authority, influence, or moral ascendancy in work, education, or training settings.",
+  },
+  {
+    label: "RA 9995 (Anti-Photo and Video Voyeurism Act)",
+    description: "Covers non-consensual recording, reproduction, distribution, publication, or broadcasting of sexual images or videos.",
+  },
+  {
+    label: "RA 10175 (Cybercrime Prevention Act)",
+    description: "Provides cybercrime provisions that may apply when abuse, threats, identity misuse, or sexual exploitation occurs through computer systems.",
+  },
+  {
+    label: "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)",
+    description: "Covers online sexual abuse or exploitation of children and child sexual abuse or exploitation materials.",
+  },
+  {
+    label: "Revised Penal Code - Rape provisions",
+    description: "Applies to rape and related criminal offenses under the Revised Penal Code, as amended by later special laws.",
+  },
+  {
+    label: "RA 9208 (Anti-Trafficking in Persons Act)",
+    description: "Applies to trafficking, recruitment, transport, harboring, or exploitation for sexual exploitation or other prohibited purposes.",
+  },
+  {
+    label: "Administrative / institutional rules",
+    description: "Applies to school, workplace, organizational, or agency procedures such as CODI processes, student discipline, HR action, or professional sanctions.",
+  },
+];
+
+const ACTION_OPTIONS = [
+  {
+    label: "Administrative action",
+    description: "Pursue remedies through school, workplace, organizational, agency, or professional disciplinary channels.",
+  },
+  {
+    label: "Civil action",
+    description: "Consider civil remedies such as damages, protection orders, or other court relief focused on survivor protection or compensation.",
+  },
+  {
+    label: "Criminal action",
+    description: "Refer or prepare for police, prosecutor, or court processes where the facts may support criminal liability.",
+  },
+];
+
 export function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
     if (!open) return undefined;
@@ -422,6 +476,153 @@ export function MonitoringModal({ open, onClose, caseData, onSave, actorName }) 
       <div className={styles.modalFooter}>
         <button type="button" className={styles.btnSecondary} onClick={onClose}>Cancel</button>
         <button type="button" className={styles.btnPrimary} onClick={handleSave} disabled={!update.trim()}>Add Entry</button>
+      </div>
+    </Modal>
+  );
+}
+
+function DescribedCheckbox({ option, checked, onChange }) {
+  return (
+    <label className={`${styles.describedCheckLabel} ${checked ? styles.describedCheckLabelSelected : ""}`}>
+      <span className={styles.describedCheckTop}>
+        <input
+          type="checkbox"
+          className={styles.checkInput}
+          checked={checked}
+          onChange={onChange}
+        />
+        <span className={styles.describedCheckText}>{option.label}</span>
+      </span>
+      {checked && <span className={styles.describedCheckDescription}>{option.description}</span>}
+    </label>
+  );
+}
+
+export function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
+  if (!open || !caseData) return null;
+  return (
+    <LawyerConsultModalForm
+      open={open}
+      onClose={onClose}
+      caseData={caseData}
+      onSave={onSave}
+      actorName={actorName}
+    />
+  );
+}
+
+function LawyerConsultModalForm({ open, onClose, caseData, onSave, actorName }) {
+  const automaticGaps = Object.entries(caseData?.paralegalRecord?.evidenceItems || {})
+    .filter(([, item]) => item.status !== "Obtained")
+    .map(([label, item]) => `${label}: ${item.status}`)
+    .join("\n");
+  const record = caseData.lawyerRecord || {};
+  const [publicUpdate, setPublicUpdate] = useState({ isPublic: false, publicMessage: "" });
+  const [form, setForm] = useState(() => ({
+    consultationType: record.consultationType ? "Follow-up" : "Initial",
+    consultationDate: new Date().toISOString().split("T")[0],
+    engagementStatus: record.engagementStatus || "Advisory input only",
+    applicableLaws: record.applicableLaws || [],
+    actionType: record.actionType || [],
+    evidenceGaps: record.evidenceGaps || automaticGaps,
+    recommendation: record.recommendation || "",
+    additionalNotes: record.additionalNotes || "",
+  }));
+
+  const toggle = (key, value) => setForm((previous) => ({
+    ...previous,
+    [key]: previous[key].includes(value)
+      ? previous[key].filter((item) => item !== value)
+      : [...previous[key], value],
+  }));
+
+  async function handleSave() {
+    const consultation = {
+      assessedBy: actorName,
+      date: form.consultationDate,
+      consultationType: form.consultationType,
+      engagementStatus: form.engagementStatus,
+      applicableLaws: form.applicableLaws,
+      actionType: form.actionType,
+      evidenceGaps: form.evidenceGaps,
+      recommendation: form.recommendation,
+      additionalNotes: form.additionalNotes,
+      savedAt: new Date().toISOString(),
+    };
+    await onSave({
+      ...caseData,
+      lawyerRecord: {
+        ...consultation,
+        consultations: [...(caseData.lawyerRecord?.consultations || []), consultation],
+      },
+      is_public: publicUpdate.isPublic,
+      public_message: publicUpdate.publicMessage,
+    });
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Lawyer Consultation - Legal Assessment" wide>
+      {caseData.paralegalRecord?.readyForLawyerReview && <p className={styles.approvalNotice}>The paralegal marked this file ready for lawyer review.</p>}
+      <div className={styles.formGrid}>
+        <FormGroup label="Consultation type">
+          <FSelect value={form.consultationType} onChange={(event) => setForm((previous) => ({ ...previous, consultationType: event.target.value }))}>
+            <option>Initial</option>
+            <option>Follow-up</option>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Consultation date">
+          <FInput type="date" value={form.consultationDate} onChange={(event) => setForm((previous) => ({ ...previous, consultationDate: event.target.value }))} />
+        </FormGroup>
+        <FormGroup label="Engagement status">
+          <FSelect value={form.engagementStatus} onChange={(event) => setForm((previous) => ({ ...previous, engagementStatus: event.target.value }))}>
+            <option>Advisory input only</option>
+            <option>Counsel of record</option>
+          </FSelect>
+        </FormGroup>
+        <FormGroup label="Applicable laws / provisions">
+          <div className={styles.checkGroup}>
+            {LAW_OPTIONS.map((law) => (
+              <DescribedCheckbox
+                key={law.label}
+                option={law}
+                checked={form.applicableLaws.includes(law.label)}
+                onChange={() => toggle("applicableLaws", law.label)}
+              />
+            ))}
+          </div>
+        </FormGroup>
+        <FormGroup label="Possible courses of action">
+          <div className={styles.checkGroup}>
+            {ACTION_OPTIONS.map((action) => (
+              <DescribedCheckbox
+                key={action.label}
+                option={action}
+                checked={form.actionType.includes(action.label)}
+                onChange={() => toggle("actionType", action.label)}
+              />
+            ))}
+          </div>
+        </FormGroup>
+        <FormGroup label="Evidence gaps identified" hint="Pre-filled from evidence items that are not yet obtained.">
+          <FTextarea value={form.evidenceGaps} onChange={(event) => setForm((previous) => ({ ...previous, evidenceGaps: event.target.value }))} />
+        </FormGroup>
+        <FormGroup label="Legal recommendation" required>
+          <FTextarea value={form.recommendation} onChange={(event) => setForm((previous) => ({ ...previous, recommendation: event.target.value }))} />
+        </FormGroup>
+        <FormGroup label="Additional notes">
+          <FTextarea value={form.additionalNotes} onChange={(event) => setForm((previous) => ({ ...previous, additionalNotes: event.target.value }))} />
+        </FormGroup>
+        <PublicMessageField
+          actionType="lawyer_consultation_saved"
+          contextFields={{ consultationType: form.consultationType }}
+          value={publicUpdate}
+          onChange={setPublicUpdate}
+        />
+      </div>
+      <div className={styles.modalFooter}>
+        <button type="button" className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+        <button type="button" className={styles.btnPrimary} onClick={handleSave} disabled={!form.recommendation.trim()}>Save Consultation</button>
       </div>
     </Modal>
   );

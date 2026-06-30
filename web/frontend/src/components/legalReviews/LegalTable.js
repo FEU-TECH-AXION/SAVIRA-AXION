@@ -284,9 +284,11 @@ export default function LegalTable({
               </Tooltip>
             )}
           </div>
-          <Tooltip text="Clear selected rows">
-            <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>Clear</button>
-          </Tooltip>
+          <div className={styles.bulkClearWrap}>
+            <Tooltip text="Clear selected rows">
+              <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>Clear</button>
+            </Tooltip>
+          </div>
         </div>
       )}
 

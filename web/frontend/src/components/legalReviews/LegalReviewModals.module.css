@@ -125,6 +125,54 @@
   accent-color: #037f81;
 }
 
+.describedCheckLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  color: #292929;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.describedCheckLabelSelected {
+  background: #ecfeff;
+  border-color: #67e8f9;
+  box-shadow: inset 3px 0 0 #037f81;
+}
+
+.describedCheckTop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.describedCheckText {
+  font-weight: 700;
+}
+
+.describedCheckDescription {
+  display: block;
+  padding-left: 1.45rem;
+  color: #155e75;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.approvalNotice {
+  padding: 0.85rem 1rem;
+  margin: 0 0 1rem;
+  color: #065f46;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-radius: 10px;
+}
+
 .evidenceSelector {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -249,7 +297,8 @@
 
 :global(html[data-theme="dark"]) .modalTitle,
 :global(html[data-theme="dark"]) .formLabel,
-:global(html[data-theme="dark"]) .checkLabel {
+:global(html[data-theme="dark"]) .checkLabel,
+:global(html[data-theme="dark"]) .describedCheckLabel {
   color: #f3f6f8;
 }
 
@@ -294,6 +343,22 @@
 
 :global(html[data-theme="dark"]) .evidenceChevron {
   color: #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .describedCheckLabelSelected {
+  background: #12333a;
+  border-color: #1a6a73;
+  box-shadow: inset 3px 0 0 #6fd3cc;
+}
+
+:global(html[data-theme="dark"]) .describedCheckDescription {
+  color: #9de7e1;
+}
+
+:global(html[data-theme="dark"]) .approvalNotice {
+  background: #123226;
+  border-color: #1f7a57;
+  color: #9ee9c7;
 }
 
 :global(html[data-theme="dark"]) .notice {

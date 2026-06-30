@@ -40,7 +40,14 @@ export const PUBLIC_UPDATE_TEMPLATES = {
     { id: "ready", label: "File ready for lawyer review", build: () => "Your case file has been reviewed and is now ready for legal review." },
     { id: "custom", label: "Write a custom message", build: null },
   ],
+  lawyer_consultation_saved: [
+    { id: "reviewed", label: "Legal review completed", build: () => "A lawyer has reviewed your case and added legal guidance for the team." },
+    { id: "follow_up", label: "Follow-up may be needed", build: () => "A lawyer has reviewed your case. Your legal support team may contact you about possible next steps." },
+    { id: "custom", label: "Write a custom message", build: null },
+  ],
 };
 
 // Paralegal templates must never interpolate evidence items, survivor disclosures,
 // incident details, internal notes, or explanation fields. Those remain internal.
+// Lawyer consultation templates must not expose legal theories, evidence gaps,
+// recommended causes of action, or privileged/confidential assessment notes.
