@@ -552,6 +552,12 @@ function isWithinCancellationRescheduleWindow(interview) {
   return Date.now() - timestamp <= 15 * 24 * 60 * 60 * 1000;
 }
 
+function wasRescheduledFromCancellation(interview) {
+  const status = interview?.interviewStatus || interview?.status;
+  if (!["Scheduled", "Confirmed"].includes(status)) return false;
+  return Boolean(interview?.cancellationReason || interview?.cancellation_reason);
+}
+
 // ─── Invite to Interview Modal ────────────────────────────────────────────────
 
 function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast, userId, userRole }) {
@@ -1110,7 +1116,7 @@ function RescheduleReasonModal({ open, onClose, onContinue }) {
   );
 }
 
-function ScheduledView({ interview, onReschedule }) {
+function ScheduledView({ interview, onReschedule, officerRescheduled = false }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -1126,10 +1132,12 @@ function ScheduledView({ interview, onReschedule }) {
         <div>
           <h2 className={styles.statusTitle}>Waiting for Meeting Link</h2>
           <p className={styles.statusDesc}>
-            Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly.
+            {officerRescheduled
+              ? "Your case officer has rescheduled this interview. They will confirm and send you the meeting link shortly."
+              : "Your slot has been reserved. Your case officer will confirm and send you the meeting link shortly."}
           </p>
         </div>
-        {onReschedule && (
+        {onReschedule && !officerRescheduled && (
           <button className={styles.rescheduleBtn} onClick={onReschedule}>
             Reschedule
           </button>
@@ -1169,7 +1177,9 @@ function ScheduledView({ interview, onReschedule }) {
       </div>
 
       <div className={styles.waitingMessage}>
-        You will be notified once the meeting link is ready. Please check back here or watch for a notification.
+        {officerRescheduled
+          ? "Please review the updated schedule below. You will be notified once the meeting link is ready."
+          : "You will be notified once the meeting link is ready. Please check back here or watch for a notification."}
       </div>
     </div>
   );
@@ -1177,7 +1187,7 @@ function ScheduledView({ interview, onReschedule }) {
 
 // ─── Complainant: Confirmed view (Interview is Confirmed) ─────────────────────
 
-function ConfirmedView({ interview, onReschedule }) {
+function ConfirmedView({ interview, onReschedule, officerRescheduled = false }) {
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -1194,10 +1204,12 @@ function ConfirmedView({ interview, onReschedule }) {
         <div>
           <h2 className={styles.statusTitle}>Your Interview is Confirmed</h2>
           <p className={styles.statusDesc}>
-            Everything is set. See the details below and join at the scheduled time.
+            {officerRescheduled
+              ? "Your case officer rescheduled this interview and confirmed the updated details below."
+              : "Everything is set. See the details below and join at the scheduled time."}
           </p>
         </div>
-        {onReschedule && (
+        {onReschedule && !officerRescheduled && (
           <button className={styles.rescheduleBtn} onClick={onReschedule}>
             Reschedule
           </button>
@@ -1600,6 +1612,7 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
               notes: parsedNotes.notes || null,
               availabilityRequest: iv.availability_request_reason || null,
               availabilityRequested: Boolean(iv.availability_requested),
+              cancellationReason: iv.cancellation_reason || null,
               rawNotes: iv.notes || null,
               meetingLink: iv.meeting_link || iv.meetingLink || null,
             };
@@ -1963,35 +1976,43 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
     }
 
     if (status === "Scheduled") {
+      const officerRescheduled = wasRescheduledFromCancellation(activeInterview);
       return (
         <>
           <ScheduledView
             interview={activeInterview}
+            officerRescheduled={officerRescheduled}
             onReschedule={() => setComplainantReschedulePrompt(true)}
           />
-          <AvailabilityRequestModal
-            open={complainantReschedulePrompt}
-            onClose={() => setComplainantReschedulePrompt(false)}
-            scheduled
-            onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
-          />
+          {!officerRescheduled && (
+            <AvailabilityRequestModal
+              open={complainantReschedulePrompt}
+              onClose={() => setComplainantReschedulePrompt(false)}
+              scheduled
+              onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
+            />
+          )}
         </>
       );
     }
 
     if (status === "Confirmed") {
+      const officerRescheduled = wasRescheduledFromCancellation(activeInterview);
       return (
         <>
           <ConfirmedView
             interview={activeInterview}
+            officerRescheduled={officerRescheduled}
             onReschedule={() => setComplainantReschedulePrompt(true)}
           />
-          <AvailabilityRequestModal
-            open={complainantReschedulePrompt}
-            onClose={() => setComplainantReschedulePrompt(false)}
-            scheduled
-            onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
-          />
+          {!officerRescheduled && (
+            <AvailabilityRequestModal
+              open={complainantReschedulePrompt}
+              onClose={() => setComplainantReschedulePrompt(false)}
+              scheduled
+              onSubmit={(reason) => requestAvailabilityChange(activeInterview, reason)}
+            />
+          )}
         </>
       );
     }
