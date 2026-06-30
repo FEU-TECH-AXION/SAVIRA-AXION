@@ -104,18 +104,6 @@ function formatOutcome(value) {
   return normalizeOutcome(value).join(", ") || "—";
 }
 
-function parseMobileDate(value) {
-  if (!value) return { isoDate: "", year: null, month: null, day: null };
-  const parts = String(value).split("/");
-  if (parts.length !== 3) return { isoDate: "", year: null, month: null, day: null };
-  const month = Number.parseInt(parts[0], 10);
-  const day = Number.parseInt(parts[1], 10);
-  const year = Number.parseInt(parts[2], 10);
-  if (!year || !month || !day) return { isoDate: "", year: null, month: null, day: null };
-  const isoDate = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  return { isoDate, year, month, day };
-}
-
 function getDaysInMonth(year, month) {
   return new Date(year || new Date().getFullYear(), month, 0).getDate();
 }
@@ -130,6 +118,40 @@ function isPartialIncidentDateInFuture(year, month, day) {
   if (month < today.getMonth() + 1) return false;
   if (!day || Number.isNaN(day)) return false;
   return day > today.getDate();
+}
+
+function buildIncidentDate(incident) {
+  if (!incident?.incidentYear) return "";
+  const year = String(incident.incidentYear).padStart(4, "0");
+  if (!incident.incidentMonth) return year;
+  const month = String(incident.incidentMonth).padStart(2, "0");
+  if (!incident.incidentDay) return `${year}-${month}`;
+  const day = String(incident.incidentDay).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseIncidentParts(incident) {
+  const legacy = incident?.date ? String(incident.date).split("/") : [];
+  const legacyMonth = legacy.length === 3 ? legacy[0] : "";
+  const legacyDay = legacy.length === 3 ? legacy[1] : "";
+  const legacyYear = legacy.length === 3 ? legacy[2] : "";
+  const year = Number.parseInt(incident?.incidentYear || legacyYear, 10);
+  const month = Number.parseInt(incident?.incidentMonth || legacyMonth, 10);
+  const day = Number.parseInt(incident?.incidentDay || legacyDay, 10);
+  return { year, month, day };
+}
+
+function toTwentyFourHourTime(value) {
+  if (!value) return "";
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+  const match = String(value).match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return value;
+  let hour = Number.parseInt(match[1], 10);
+  const minute = match[2];
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hour < 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minute}`;
 }
 
 
@@ -1170,9 +1192,13 @@ function StepComplainantInfo({ data, onChange, errors }) {
 }
 
 // ── STEP 2: Incident Details ──────────────────────────────────────────────────
-function StepIncidentDetails({ data, onChange, errors }) {
+function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
   const set = (key) => (val) => onChange({ ...data, [key]: val });
   const setTxt = (key) => (e) => onChange({ ...data, [key]: e });
+  const setIncidentPart = (key) => (value) => {
+    const next = { ...data, [key]: value };
+    onChange({ ...next, date: buildIncidentDate(next) });
+  };
   const setPerpetratorKnown = (value) => {
     onChange({
       ...data,
@@ -1200,15 +1226,59 @@ function StepIncidentDetails({ data, onChange, errors }) {
 
       <Text style={s.subSectionTitle}>Date and Time of Incident</Text>
       <Field
-        label="Date"
-        required
-        hint="When did the incident happen?"
-        error={errors.date}
+        label="Month"
+        hint="Optional if you only remember the year."
+        error={errors.incidentMonth}
       >
-        <DatePickerField
-          value={data.date}
-          onChange={set("date")}
-          error={errors.date}
+        <SelectBox
+          value={MONTH_NAMES[Number(data.incidentMonth) - 1] || ""}
+          placeholder="Select month"
+          options={MONTH_NAMES}
+          onSelect={(monthName) => {
+            const monthIndex = MONTH_NAMES.indexOf(monthName) + 1;
+            setIncidentPart("incidentMonth")(monthIndex ? String(monthIndex) : "");
+          }}
+          error={errors.incidentMonth}
+        />
+        {data.incidentMonth ? (
+          <Pressable
+            onPress={() => {
+              const next = { ...data, incidentMonth: "", incidentDay: "" };
+              onChange({ ...next, date: buildIncidentDate(next) });
+            }}
+            style={{ alignSelf: "flex-start", marginTop: 8 }}
+          >
+            <Text style={{ color: TEAL, fontSize: 12, fontWeight: "700" }}>Clear month/date</Text>
+          </Pressable>
+        ) : null}
+      </Field>
+      <Field
+        label="Date"
+        hint="Optional if you only remember the month or year."
+        error={errors.incidentDay}
+      >
+        <StyledInput
+          placeholder="Date"
+          value={data.incidentDay || ""}
+          onChangeText={(value) => setIncidentPart("incidentDay")(value.replace(/\D/g, "").slice(0, 2))}
+          keyboardType="number-pad"
+          maxLength={2}
+          error={errors.incidentDay}
+        />
+      </Field>
+      <Field
+        label="Year"
+        required
+        hint={`Enter a year from ${new Date().getFullYear() - (Number.parseInt(complainantAge, 10) || 120)} to ${new Date().getFullYear()}.`}
+        error={errors.incidentYear}
+      >
+        <StyledInput
+          placeholder="Year"
+          value={data.incidentYear || ""}
+          onChangeText={(value) => setIncidentPart("incidentYear")(value.replace(/\D/g, "").slice(0, 4))}
+          keyboardType="number-pad"
+          maxLength={4}
+          error={errors.incidentYear}
         />
       </Field>
       <Field
@@ -1982,20 +2052,34 @@ function validateStep1(data) {
 
 function validateStep2(data, complainantAge) {
   const e = {};
-  const { isoDate, year, month, day } = parseMobileDate(data.date);
+  const { year, month, day } = parseIncidentParts(data);
   const currentYear = new Date().getFullYear();
   const age = Number.parseInt(complainantAge, 10);
   const earliestYear = Number.isNaN(age) ? 1900 : currentYear - age;
-  if (!isoDate) {
-    e.date = "Date is required.";
-  } else if (year < earliestYear || year > currentYear) {
-    e.date = `A valid incident year from ${earliestYear} to ${currentYear} is required.`;
-  } else if (day > getDaysInMonth(year, month) || isPartialIncidentDateInFuture(year, month, day)) {
-    e.date = "Incident date cannot be invalid or in the future.";
+  if (!data.incidentYear) {
+    e.incidentYear = "Incident year is required.";
+  } else if (Number.isNaN(year) || year < earliestYear || year > currentYear) {
+    e.incidentYear = `A valid incident year from ${earliestYear} to ${currentYear} is required.`;
+  }
+  if (data.incidentMonth && (Number.isNaN(month) || month < 1 || month > 12)) {
+    e.incidentMonth = "A valid incident month is required.";
+  }
+  if (data.incidentDay && !data.incidentMonth) {
+    e.incidentMonth = "Choose a month if you include a date.";
+  }
+  if (data.incidentDay && (Number.isNaN(day) || day < 1 || day > 31)) {
+    e.incidentDay = "Enter a valid date.";
+  }
+  if (data.incidentMonth && data.incidentDay && year && day > getDaysInMonth(year, month)) {
+    e.incidentDay = "Enter a valid date for the selected month and year.";
+  }
+  if (data.incidentYear && isPartialIncidentDateInFuture(year, month, day)) {
+    e.incidentYear = "The incident date and time cannot be in the future.";
   } else if (data.time) {
-    const incidentDateTime = new Date(`${isoDate}T${data.time}`);
-    if (!Number.isNaN(incidentDateTime.getTime()) && incidentDateTime > new Date()) {
-      e.time = "Incident date and time cannot be in the future.";
+    const fullDate = data.incidentMonth && data.incidentDay ? buildIncidentDate(data) : "";
+    const incidentDateTime = fullDate ? new Date(`${fullDate}T${toTwentyFourHourTime(data.time)}`) : null;
+    if (incidentDateTime && !Number.isNaN(incidentDateTime.getTime()) && incidentDateTime > new Date()) {
+      e.time = "The incident time cannot be in the future for the selected date.";
     }
   }
   if (!data.locationType) e.locationType = "Please select whether the incident was physical or online.";
@@ -2227,6 +2311,9 @@ export default function ReportScreen() {
   });
   const [incident, setIncident] = useState({
     date: "",
+    incidentMonth: "",
+    incidentDay: "",
+    incidentYear: "",
     time: "",
     locationType: "",
     incidentCity: "",
@@ -2497,14 +2584,15 @@ export default function ReportScreen() {
       const userToken = await AsyncStorage.getItem("user_token");
       const formData = new FormData();
       formData.append("complainant", JSON.stringify(complainant));
-      const parsedIncidentDate = parseMobileDate(incident.date);
+      const { year, month, day } = parseIncidentParts(incident);
       
       const formattedIncident = {
         ...incident,
-        date: parsedIncidentDate.isoDate,
-        incident_year: parsedIncidentDate.year,
-        incident_month: parsedIncidentDate.month,
-        incident_day: parsedIncidentDate.day,
+        date: buildIncidentDate(incident),
+        time: toTwentyFourHourTime(incident.time),
+        incident_year: Number.isNaN(year) ? null : year,
+        incident_month: Number.isNaN(month) ? null : month,
+        incident_day: Number.isNaN(day) ? null : day,
         outcome: Array.isArray(incident.outcome) ? incident.outcome.join(", ") : incident.outcome
       };
       formData.append("incident", JSON.stringify(formattedIncident));
@@ -2565,6 +2653,9 @@ export default function ReportScreen() {
     });
     setIncident({
       date: "",
+      incidentMonth: "",
+      incidentDay: "",
+      incidentYear: "",
       time: "",
       locationType: "",
       incidentCity: "",
@@ -2701,7 +2792,7 @@ export default function ReportScreen() {
 
               {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} onOpenHelplines={() => router.push('/(complainant)/helplines')} />}
               {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
-              {step === 2 && <StepIncidentDetails data={incident} onChange={setIncident} errors={errors} />}
+              {step === 2 && <StepIncidentDetails data={incident} complainantAge={complainant.age} onChange={setIncident} errors={errors} />}
               {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} />}
               {step === 4 && <StepReview complainant={complainant} incident={incident} evidence={evidence} />}
 
