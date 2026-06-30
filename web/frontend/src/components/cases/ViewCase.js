@@ -1111,7 +1111,7 @@ function CaseManagementTab({
           {canOpenStatusModal && !caseData.pendingApproval && <button onClick={() => setModal("statusRouter")} style={btnStyle("#037F81")}>Update Status</button>}
           <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>Set Case Type</button>
           <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
-          {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>}
+          {/* {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>} */}
           <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
         </div>
       </section>

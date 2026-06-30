@@ -7,7 +7,7 @@ import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
-import { buildConfirmedInterviewDeadlines, getActorName, samePerson } from "@/lib/dashboardDeadlines";
+import { buildConfirmedInterviewDeadlines, getActorName } from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Case Officer are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -67,12 +67,10 @@ export default function CaseOfficerDashboard() {
 
   const actorName = getActorName(user);
 
-  const assignedCases = useMemo(() => {
-    return cases.filter(c => samePerson(c.assigned_officer, actorName));
-  }, [cases, actorName]);
+  const assignedCases = useMemo(() => cases, [cases]);
 
   const stats = useMemo(() => {
-    const forVerification = assignedCases.filter(c => c.case_status_id === 2).length;
+    const forVerification = assignedCases.filter(c => Number(c.case_status_id) === 2).length;
     const totalAssigned = assignedCases.length;
 
     return [
@@ -82,7 +80,7 @@ export default function CaseOfficerDashboard() {
   }, [assignedCases]);
 
   const overviewCards = useMemo(() => {
-    const forVerification = assignedCases.filter(c => c.case_status_id === 2).length;
+    const forVerification = assignedCases.filter(c => Number(c.case_status_id) === 2).length;
     const totalAssigned = assignedCases.length;
 
     return [

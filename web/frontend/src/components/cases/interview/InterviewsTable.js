@@ -7,6 +7,7 @@ const INTERVIEW_STATUS_COLORS = {
   Invited: { bg: "#dbeafe", color: "#1e40af" },
   "Awaiting New Slots": { bg: "#fff7ed", color: "#9a3412" },
   Scheduled: { bg: "#fef9c3", color: "#854d0e" },
+  Rescheduled: { bg: "#e0f2fe", color: "#0369a1" },
   Confirmed: { bg: "#dcfce7", color: "#166534" },
   Completed: { bg: "#d1fae5", color: "#065f46" },
   Cancelled: { bg: "#fee2e2", color: "#991b1b" },
@@ -23,6 +24,21 @@ function InterviewStatusBadge({ status }) {
     >
       {status}
     </span>
+  );
+}
+
+function getInterviewStartTime(interview) {
+  if (!interview?.scheduledDate || !interview?.scheduledTime) return null;
+  const timestamp = new Date(`${interview.scheduledDate}T${String(interview.scheduledTime).slice(0, 8)}`).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function canCompleteInterview(interview) {
+  const startsAt = getInterviewStartTime(interview);
+  return Boolean(
+    interview?.interviewStatus === "Confirmed" &&
+    startsAt &&
+    Date.now() >= startsAt + 10 * 60 * 1000
   );
 }
 
@@ -151,7 +167,7 @@ useEffect(() => {
 
   const selectedInterviews = interviews.filter((i) => selectedIds.includes(i.id));
   const canAddMeetingLink = selectedInterviews.every((i) => i.interviewStatus === "Scheduled");
-  const canMarkComplete = selectedInterviews.every((i) => i.interviewStatus === "Confirmed"); 
+  const canMarkComplete = selectedInterviews.length > 0 && selectedInterviews.every(canCompleteInterview);
 
   return (
     <div className={styles.tableWrapper}>
@@ -175,7 +191,7 @@ useEffect(() => {
             className={styles.bulkActionBtn}
             onClick={() => onMarkComplete(selectedIds)}
             disabled={!canMarkComplete}
-            title={!canMarkComplete ? "Only Confirmed interviews can be marked complete" : ""}
+            title={!canMarkComplete ? "Only confirmed interviews at least 10 minutes past the selected date and time can be marked complete" : ""}
             style={{ opacity: !canMarkComplete ? 0.4 : 1, cursor: !canMarkComplete ? "not-allowed" : "pointer" }}
           >
             Mark Complete

@@ -193,6 +193,17 @@ const getPreferredDateTimeFromBody = (body = {}) => {
     return preferredDate && preferredTime ? `${preferredDate}T${preferredTime}` : ''
 }
 
+const getInterviewCompletionEligibleAt = (interview) => {
+    const slotDate = interview?.slot?.slot_date
+    const slotTime = interview?.slot?.slot_time
+    if (!slotDate || !slotTime) return null
+
+    const startsAt = new Date(`${slotDate}T${String(slotTime).slice(0, 8)}`)
+    if (Number.isNaN(startsAt.getTime())) return null
+
+    return new Date(startsAt.getTime() + 10 * 60 * 1000)
+}
+
 const getItems = async (req, res) => {
     try {
         // Accepts query params: type, status, interviewer_user_id,
@@ -339,13 +350,28 @@ const reschedule = async (req, res) => {
 
         if (!interview) return res.status(404).json({ error: 'Interview not found.' })
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
+        if (!isAdmin(req) && String(interview.interviewer_user_id) !== String(actorId(req))) {
+            return res.status(403).json({ error: 'Only the assigned interviewer can reschedule this interview.' })
+        }
         if (!slot) return res.status(404).json({ error: 'Slot not found.' })
+        if (slot.slot_type !== normalizeInterviewType(interview.type)) {
+            return res.status(400).json({ error: 'Selected slot does not match this interview type.' })
+        }
+        if (
+            interview.interviewer_user_id &&
+            String(slot.created_by) !== String(interview.interviewer_user_id)
+        ) {
+            return res.status(403).json({ error: 'Selected slot is not available for this interviewer.' })
+        }
         if (!slot.is_available) {
             return res.status(409).json({ error: 'This slot has already been taken.' })
         }
 
         const previousSlotId = interview.selected_slot_id
-        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id)
+        const nextStatus = normalizeInterviewType(interview.type) === 'case_report'
+            ? 'rescheduled'
+            : 'scheduled'
+        const updatedInterview = await InterviewModel.reschedule(req.params.id, slot_id, normalizedReason, nextStatus)
 
         await InterviewSlotsModel.markUnavailable(slot_id)
         if (previousSlotId && String(previousSlotId) !== String(slot_id)) {
@@ -353,6 +379,25 @@ const reschedule = async (req, res) => {
         }
 
         res.json({ data: updatedInterview })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
+// PATCH /api/interviews/:id/accept-reschedule
+const acceptReschedule = async (req, res) => {
+    try {
+        const interview = await InterviewModel.getById(req.params.id)
+        if (!interview) return res.status(404).json({ error: 'Interview not found.' })
+        if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
+
+        const userId = actorId(req)
+        if (String(interview.interviewee_user_id) !== String(userId) && !isAdmin(req)) {
+            return res.status(403).json({ error: 'Only the interviewee can accept a rescheduled interview.' })
+        }
+
+        const data = await InterviewModel.acceptReschedule(req.params.id)
+        res.json({ data })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -433,6 +478,20 @@ const complete = async (req, res) => {
         const interview = await InterviewModel.getById(req.params.id)
         if (!interview) return res.status(404).json({ error: 'Interview not found.' })
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
+        if (!isAdmin(req) && String(interview.interviewer_user_id) !== String(actorId(req))) {
+            return res.status(403).json({ error: 'Only the assigned interviewer can mark this interview complete.' })
+        }
+
+        const eligibleAt = getInterviewCompletionEligibleAt(interview)
+        if (!eligibleAt) {
+            return res.status(400).json({ error: 'A selected interview date and time is required before marking complete.' })
+        }
+        if (Date.now() < eligibleAt.getTime()) {
+            return res.status(409).json({
+                error: 'Interview can only be marked complete 10 minutes after the selected date and time.',
+                eligible_at: eligibleAt.toISOString(),
+            })
+        }
 
         const data = await InterviewModel.complete(req.params.id)
         res.json({ data })
@@ -518,6 +577,7 @@ module.exports = {
     createItem,
     selectSlot,
     reschedule,
+    acceptReschedule,
     requestNewSlots,
     reopenSelection,
     confirm,

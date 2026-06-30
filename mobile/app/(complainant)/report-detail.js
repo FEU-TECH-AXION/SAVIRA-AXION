@@ -125,6 +125,7 @@ const FOLLOW_UP_FIELDS = [
 const INTERVIEW_STATUS_COLORS = {
   Invited: { bg: '#fff7ed', fg: '#9a3412', border: '#fed7aa' },
   Scheduled: { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' },
+  Rescheduled: { bg: '#e0f2fe', fg: '#0369a1', border: '#bae6fd' },
   Confirmed: { bg: '#ecfdf5', fg: '#047857', border: '#bbf7d0' },
   Completed: { bg: '#ecfdf5', fg: '#047857', border: '#bbf7d0' },
   Cancelled: { bg: '#fef2f2', fg: '#b91c1c', border: '#fecaca' },
@@ -226,6 +227,14 @@ function formatInterviewStatus(status) {
     .join(' ');
 }
 
+function getInterviewDisplayStatus(raw) {
+  const status = formatInterviewStatus(raw?.status || raw?.interviewStatus);
+  if (status === 'Scheduled' && Boolean(raw?.reschedule_requires_response || raw?.rescheduleRequiresResponse)) {
+    return 'Rescheduled';
+  }
+  return status;
+}
+
 function parseInterviewNotes(notes) {
   if (!notes) return { venue: null, notes: null };
   const text = String(notes);
@@ -242,7 +251,7 @@ function mapInterview(raw) {
   return {
     ...raw,
     id: raw?.interview_id || raw?.id,
-    interviewStatus: formatInterviewStatus(raw?.status),
+    interviewStatus: getInterviewDisplayStatus(raw),
     scheduledDate: raw?.slot?.slot_date || raw?.interview_date || null,
     scheduledTime: raw?.slot?.slot_time?.slice?.(0, 5) || raw?.interview_time?.slice?.(0, 5) || null,
     location: parsedNotes.venue || raw?.location || null,
@@ -250,6 +259,9 @@ function mapInterview(raw) {
     meetingLink: raw?.meeting_link || raw?.meetingLink || null,
     expiresAt: raw?.slot_expires_at || raw?.expiresAt || null,
     availabilityRequest: raw?.availability_request_reason || raw?.availabilityRequest || null,
+    rescheduleReason: raw?.reschedule_reason || raw?.rescheduleReason || null,
+    rescheduleRequiresResponse: Boolean(raw?.reschedule_requires_response || raw?.rescheduleRequiresResponse),
+    rescheduleRespondedAt: raw?.reschedule_responded_at || raw?.rescheduleRespondedAt || null,
   };
 }
 
@@ -503,6 +515,10 @@ export default function ReportDetailScreen() {
   const [availabilityPreferredTime, setAvailabilityPreferredTime] = useState('');
   const [availabilityError, setAvailabilityError] = useState('');
   const [availabilitySubmitting, setAvailabilitySubmitting] = useState(false);
+  const [cancelInterviewFor, setCancelInterviewFor] = useState(null);
+  const [cancelInterviewReason, setCancelInterviewReason] = useState('');
+  const [cancelInterviewError, setCancelInterviewError] = useState('');
+  const [cancelInterviewSubmitting, setCancelInterviewSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -850,6 +866,55 @@ export default function ReportDetailScreen() {
     }
   };
 
+  const acceptRescheduledInterview = async (interview) => {
+    setInterviewError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/interviews/${interview.id}/accept-reschedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to accept the rescheduled interview.');
+      await loadInterviews();
+    } catch (err) {
+      setInterviewError(err.message || 'Failed to accept the rescheduled interview.');
+    }
+  };
+
+  const openCancelInterview = (interview) => {
+    setCancelInterviewFor(interview);
+    setCancelInterviewReason('');
+    setCancelInterviewError('');
+    setInterviewError('');
+  };
+
+  const submitCancelInterview = async () => {
+    const reason = cancelInterviewReason.trim();
+    if (!reason) {
+      setCancelInterviewError('Enter a reason for cancelling this interview.');
+      return;
+    }
+    setCancelInterviewSubmitting(true);
+    setCancelInterviewError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/interviews/${cancelInterviewFor.id}/cancel`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cancellation_reason: `The interview is being cancelled because ${reason}` }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to cancel interview.');
+      setCancelInterviewFor(null);
+      await loadInterviews();
+    } catch (err) {
+      setCancelInterviewError(err.message || 'Failed to cancel interview.');
+    } finally {
+      setCancelInterviewSubmitting(false);
+    }
+  };
+
   const pickWithdrawFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -1170,6 +1235,8 @@ export default function ReportDetailScreen() {
                       <Text style={s.interviewHeroTitle}>
                         {currentInterview.interviewStatus === 'Invited'
                           ? 'Select an Interview Slot'
+                          : currentInterview.interviewStatus === 'Rescheduled'
+                          ? 'Review Rescheduled Interview'
                           : currentInterview.interviewStatus === 'Scheduled'
                           ? 'Waiting for Meeting Link'
                           : currentInterview.interviewStatus === 'Confirmed'
@@ -1179,6 +1246,8 @@ export default function ReportDetailScreen() {
                       <Text style={s.interviewHeroText}>
                         {currentInterview.interviewStatus === 'Invited'
                           ? 'You have been invited to an interview with your SASHA case officer. Please select a time slot that works for you.'
+                          : currentInterview.interviewStatus === 'Rescheduled'
+                          ? 'Your case officer has proposed a new interview schedule. Please accept it, cancel the interview, or request another time.'
                           : currentInterview.interviewStatus === 'Scheduled'
                           ? 'Your slot has been reserved. Your case officer will confirm and send the meeting link shortly.'
                           : currentInterview.interviewStatus === 'Confirmed'
@@ -1323,12 +1392,15 @@ export default function ReportDetailScreen() {
                     </View>
                   )}
 
-                  {['Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'Expired', 'Awaiting New Slots'].includes(currentInterview.interviewStatus) && (
+                  {['Scheduled', 'Rescheduled', 'Confirmed', 'Completed', 'Cancelled', 'Expired', 'Awaiting New Slots'].includes(currentInterview.interviewStatus) && (
                     <View style={s.interviewDetailsCard}>
                       <DetailRow label="Date" value={dateOf(currentInterview.scheduledDate)} />
                       <DetailRow label="Time" value={timeOf(currentInterview.scheduledTime)} />
                       <DetailRow label="Location / Platform" value={currentInterview.location} />
                       <DetailRow label="Notes" value={currentInterview.notes} />
+                      {currentInterview.rescheduleRequiresResponse && currentInterview.rescheduleReason ? (
+                        <DetailRow label="Reschedule Reason" value={currentInterview.rescheduleReason} />
+                      ) : null}
                       {currentInterview.interviewStatus === 'Awaiting New Slots' && (
                         <DetailRow label="Availability Request" value={currentInterview.availabilityRequest} />
                       )}
@@ -1340,7 +1412,22 @@ export default function ReportDetailScreen() {
                       ) : currentInterview.interviewStatus === 'Scheduled' ? (
                         <Text style={s.interviewWaitingText}>You will be notified once the meeting link is ready.</Text>
                       ) : null}
-                      {['Scheduled', 'Confirmed'].includes(currentInterview.interviewStatus) && (
+                      {currentInterview.interviewStatus === 'Rescheduled' && currentInterview.rescheduleRequiresResponse ? (
+                        <View style={s.rescheduleActionGroup}>
+                          <Pressable style={s.meetingLinkBtn} onPress={() => acceptRescheduledInterview(currentInterview)}>
+                            <Ionicons name="checkmark-circle-outline" size={17} color="#fff" />
+                            <Text style={s.meetingLinkText}>Accept Rescheduled Date</Text>
+                          </Pressable>
+                          <Pressable style={s.interviewOutlineBtn} onPress={() => openCancelInterview(currentInterview)}>
+                            <Ionicons name="close-circle-outline" size={16} color={TEAL} />
+                            <Text style={s.interviewOutlineText}>Cancel Interview</Text>
+                          </Pressable>
+                          <Pressable style={s.interviewOutlineBtn} onPress={() => openAvailabilityRequest(currentInterview)}>
+                            <Ionicons name="repeat-outline" size={16} color={TEAL} />
+                            <Text style={s.interviewOutlineText}>Request Another Time</Text>
+                          </Pressable>
+                        </View>
+                      ) : ['Scheduled', 'Confirmed'].includes(currentInterview.interviewStatus) && (
                         <Pressable style={s.interviewOutlineBtn} onPress={() => openAvailabilityRequest(currentInterview)}>
                           <Ionicons name="repeat-outline" size={16} color={TEAL} />
                           <Text style={s.interviewOutlineText}>Request a Different Time</Text>
@@ -1710,6 +1797,43 @@ export default function ReportDetailScreen() {
                 </Pressable>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(cancelInterviewFor)} transparent animationType="fade" onRequestClose={() => !cancelInterviewSubmitting && setCancelInterviewFor(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <View style={s.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.modalTitle}>Cancel Interview</Text>
+                <Text style={s.modalSubtitle}>Share a short reason so your case officer can update the interview record.</Text>
+              </View>
+              <Pressable disabled={cancelInterviewSubmitting} onPress={() => setCancelInterviewFor(null)}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </Pressable>
+            </View>
+            <Text style={s.modalLabel}>Cancellation reason</Text>
+            <TextInput
+              style={s.modalTextarea}
+              multiline
+              value={cancelInterviewReason}
+              onChangeText={(text) => {
+                setCancelInterviewError('');
+                setCancelInterviewReason(text);
+              }}
+              placeholder="Briefly explain why the interview should be cancelled."
+              placeholderTextColor="#9ca3af"
+            />
+            {cancelInterviewError ? <Text style={s.modalError}>{cancelInterviewError}</Text> : null}
+            <View style={s.modalActions}>
+              <Pressable style={s.modalCancelBtn} disabled={cancelInterviewSubmitting} onPress={() => setCancelInterviewFor(null)}>
+                <Text style={s.modalCancelText}>Keep Interview</Text>
+              </Pressable>
+              <Pressable style={[s.modalDangerBtn, cancelInterviewSubmitting && { opacity: 0.7 }]} disabled={cancelInterviewSubmitting} onPress={submitCancelInterview}>
+                {cancelInterviewSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalDangerText}>Cancel Interview</Text>}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -2341,6 +2465,10 @@ const s = StyleSheet.create({
     backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 11,
+  },
+  rescheduleActionGroup: {
+    marginTop: 10,
+    gap: 9,
   },
   modalOverlay: {
     flex: 1,

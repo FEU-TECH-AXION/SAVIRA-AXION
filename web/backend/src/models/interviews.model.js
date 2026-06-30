@@ -67,13 +67,40 @@ const selectSlot = async (id, slot_id, notes = null) => {
     return updateById(id, payload)
 }
 
-const reschedule = async (id, slot_id) => {
-    return updateById(id, {
+const reschedule = async (id, slot_id, reason, status = 'scheduled') => {
+    const payload = {
         selected_slot_id: slot_id,
         meeting_link: null,
-        status: 'scheduled',
+        notes: null,
+        status,
         availability_requested: false,
         availability_request_reason: null,
+        reschedule_reason: reason,
+        reschedule_requires_response: true,
+        reschedule_responded_at: null,
+    }
+
+    try {
+        return await updateById(id, payload)
+    } catch (error) {
+        const violatesStatusConstraint =
+            status === 'rescheduled' &&
+            (error?.code === '23514' || String(error?.message || '').includes('interviews_status_check'))
+
+        if (!violatesStatusConstraint) throw error
+
+        return updateById(id, {
+            ...payload,
+            status: 'scheduled',
+        })
+    }
+}
+
+const acceptReschedule = async (id) => {
+    return updateById(id, {
+        status: 'scheduled',
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
     })
 }
 
@@ -84,6 +111,8 @@ const requestNewSlots = async (id, reason) => {
         status: 'awaiting_new_slots',
         availability_requested: true,
         availability_request_reason: reason,
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
     })
 }
 
@@ -103,6 +132,8 @@ const confirm = async (id, meeting_link) => {
     return updateById(id, {
         meeting_link,
         status: 'confirmed',
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
     })
 }
 
@@ -117,6 +148,8 @@ const cancel = async (id, cancellation_reason) => {
     return updateById(id, {
         status: 'cancelled',
         cancellation_reason,
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     })
 }
@@ -154,6 +187,7 @@ module.exports = {
     create,
     selectSlot,
     reschedule,
+    acceptReschedule,
     requestNewSlots,
     reopenSelection,
     confirm,

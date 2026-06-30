@@ -23,6 +23,7 @@ import { FollowUpCaseHistory } from "../cases/FollowUps";
 import {
   Modal,
   ParalegalSupportModal,
+  LawyerConsultModal,
   EndorseModal,
   MonitoringModal,
   PARALEGAL_EVIDENCE_LABELS,
@@ -701,6 +702,13 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         paralegal_record: updated.paralegalRecord,
         document_repository: updated.documentRepository || [],
       };
+    } else if (updated.lawyerRecord !== caseData.lawyerRecord) {
+      body = {
+        ...body,
+        action_type: "lawyer_consultation_saved",
+        remarks: "Lawyer consultation record saved.",
+        lawyer_record: updated.lawyerRecord,
+      };
     } else if (updated.endorsedTo !== caseData.endorsedTo || updated.endorsementDetails !== caseData.endorsementDetails) {
       body = {
         ...body,
@@ -809,6 +817,10 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>Paralegal Support</button>
           </Tooltip>
 
+          <Tooltip text="Record a lawyer consultation and legal assessment.">
+            <button onClick={() => setModal("lawyerConsult")} style={btnStyle("#037F81")}>Consult</button>
+          </Tooltip>
+
           <Tooltip text="Endorse the case to another legal service or organization.">
             <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>Endorse</button>
           </Tooltip>
@@ -868,6 +880,14 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
       <ParalegalSupportModal
         open={modal === "paralegalSupport"}
+        onClose={() => setModal(null)}
+        caseData={caseData}
+        onSave={saveCase}
+        actorName={actorName}
+      />
+
+      <LawyerConsultModal
+        open={modal === "lawyerConsult"}
         onClose={() => setModal(null)}
         caseData={caseData}
         onSave={saveCase}

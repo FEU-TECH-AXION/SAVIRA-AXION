@@ -4,11 +4,17 @@ import { useMemo, useState } from "react";
 import {
   Field,
   Input,
+  INCIDENT_MONTH_OPTIONS,
   IncidentLocationTypeahead,
+  buildIncidentDate,
+  getCurrentTimeInputValue,
+  getEarliestIncidentYear,
+  getTodayInputValue,
   normalisePhone,
   PoliceStationTypeahead,
   RadioGroup,
   Select,
+  splitIncidentDate,
   validateStep0,
   validateStep1,
 } from "./CreateReport";
@@ -84,6 +90,9 @@ export const FIELD_LABELS = {
   "complainant.contactNumber": "Contact Number",
   "complainant.email": "Email",
   "incident.date": "Date",
+  "incident.incidentYear": "Incident Year",
+  "incident.incidentMonth": "Incident Month",
+  "incident.incidentDay": "Incident Day",
   "incident.time": "Time",
   "incident.locationType": "Incident Location Type",
   "incident.incidentCity": "City / Municipality",
@@ -135,6 +144,7 @@ const OUTCOME_OPTIONS = [
 ];
 
 const WIDE_FIELDS = new Set([
+  "incident.date",
   "incident.description",
   "incident.outcome",
   "incident.perpetratorUnknownAppearance",
@@ -189,15 +199,6 @@ function getDescriptionFeedback(value) {
   };
 }
 
-function todayInputValue() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function currentTimeInputValue() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-}
-
 function outcomeValue(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];
@@ -212,6 +213,13 @@ function outcomeValue(value) {
 }
 
 export function buildAmendmentValues(reportData = {}) {
+  const incidentDateParts = splitIncidentDate(firstValue(reportData, ["incident_date", "incidentDate"]));
+  const incidentYear = firstValue(reportData, ["incident_year", "incidentYear"], incidentDateParts.incidentYear);
+  const incidentMonth = firstValue(reportData, ["incident_month", "incidentMonth"], incidentDateParts.incidentMonth);
+  const incidentDay = firstValue(reportData, ["incident_day", "incidentDay"], incidentDateParts.incidentDay);
+  const incidentMonthText = incidentMonth
+    ? INCIDENT_MONTH_OPTIONS.find((option) => option.value === String(incidentMonth))?.label || incidentDateParts.incidentMonthText
+    : incidentDateParts.incidentMonthText;
   return {
     complainant: {
       contactNumber: firstValue(reportData, ["contact_number", "contactNumber"]),
@@ -219,6 +227,10 @@ export function buildAmendmentValues(reportData = {}) {
     },
     incident: {
       date: dateValue(firstValue(reportData, ["incident_date", "incidentDate"])),
+      incidentYear: incidentYear ? String(incidentYear) : "",
+      incidentMonth: incidentMonth ? String(Number.parseInt(incidentMonth, 10)) : "",
+      incidentMonthText,
+      incidentDay: incidentDay ? String(Number.parseInt(incidentDay, 10)) : "",
       time: timeValue(firstValue(reportData, ["incident_time", "incidentTime"])),
       locationType: firstValue(reportData, ["incident_location_type", "incidentLocationType"]),
       incidentCity: firstValue(reportData, ["incident_city", "incidentCity"]),
@@ -258,7 +270,13 @@ function getPathValue(values, path) {
 }
 
 export function buildFieldChanges(fields, original, edited) {
-  return fields
+  const expandedFields = fields.flatMap((fieldKey) =>
+    fieldKey === "incident.date"
+      ? ["incident.date", "incident.incidentYear", "incident.incidentMonth", "incident.incidentDay"]
+      : [fieldKey]
+  );
+
+  return expandedFields
     .filter((fieldKey) => fieldKey !== "evidence.files")
     .map((fieldKey) => ({
       field_key: fieldKey,
@@ -279,7 +297,11 @@ export function validateAmendmentFields(fields, values) {
   });
   const incidentErrors = validateStep1({
     ...values.incident,
-    date: fields.includes("incident.date") ? values.incident.date : "2000-01-01",
+    incidentYear: fields.includes("incident.date") ? values.incident.incidentYear : "2000",
+    incidentMonth: fields.includes("incident.date") ? values.incident.incidentMonth : "1",
+    incidentMonthText: fields.includes("incident.date") ? values.incident.incidentMonthText : "January",
+    incidentDay: fields.includes("incident.date") ? values.incident.incidentDay : "1",
+    date: fields.includes("incident.date") ? buildIncidentDate(values.incident) : "2000-01-01",
     time: fields.includes("incident.time") ? values.incident.time : "12:00",
     locationType: fields.includes("incident.locationType") ? values.incident.locationType : "Online",
     description: fields.includes("incident.description")
@@ -295,10 +317,88 @@ export function validateAmendmentFields(fields, values) {
   const errors = {};
   for (const field of fields.filter((field) => field !== "evidence.files")) {
     const [section, key] = field.split(".");
-    const error = section === "complainant" ? complainantErrors[key] : incidentErrors[key];
-    if (error && field !== "incident.time") errors[field] = error;
+    const error = section === "complainant"
+      ? complainantErrors[key]
+      : field === "incident.date"
+        ? incidentErrors.incidentYear || incidentErrors.incidentMonth || incidentErrors.incidentDay
+        : incidentErrors[key];
+    if (error) errors[field] = error;
   }
   return errors;
+}
+
+function IncidentMonthTypeahead({ value, textValue, onChange, error }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const query = textValue || "";
+  const normalizedQuery = query.trim().toLowerCase();
+  const suggestions = INCIDENT_MONTH_OPTIONS.filter((month) => {
+    if (!normalizedQuery) return true;
+    return month.label.toLowerCase().startsWith(normalizedQuery) || month.value === normalizedQuery;
+  });
+
+  const selectMonth = (month) => {
+    onChange(month.value, month.label);
+    setIsOpen(false);
+  };
+
+  const handleInputChange = (event) => {
+    const sanitized = event.target.value.replace(/[^a-zA-Z\s0-9]/g, "").slice(0, 9);
+    const exactMatch = INCIDENT_MONTH_OPTIONS.find(
+      (month) =>
+        month.label.toLowerCase() === sanitized.trim().toLowerCase() ||
+        month.value === sanitized.trim()
+    );
+    onChange(exactMatch?.value || "", exactMatch?.label || sanitized);
+    setIsOpen(true);
+  };
+
+  const handleBlur = () => {
+    window.setTimeout(() => {
+      const exactMatch = INCIDENT_MONTH_OPTIONS.find(
+        (month) =>
+          month.label.toLowerCase() === query.trim().toLowerCase() ||
+          month.value === query.trim()
+      );
+      if (exactMatch) onChange(exactMatch.value, exactMatch.label);
+      else if (!query.trim()) onChange("", "");
+      setIsOpen(false);
+    }, 120);
+  };
+
+  return (
+    <div className={styles.typeahead}>
+      <Input
+        type="text"
+        placeholder="Month"
+        value={value ? INCIDENT_MONTH_OPTIONS.find((month) => month.value === value)?.label || query : query}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        onBlur={handleBlur}
+        error={error}
+        role="combobox"
+        aria-expanded={isOpen && suggestions.length > 0}
+        aria-controls="follow-up-incident-month-suggestions"
+        autoComplete="off"
+      />
+      {isOpen && suggestions.length > 0 && (
+        <div id="follow-up-incident-month-suggestions" className={styles.suggestionsList} role="listbox">
+          {suggestions.map((month) => (
+            <button
+              type="button"
+              key={month.value}
+              className={styles.suggestionItem}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => selectMonth(month)}
+              role="option"
+              aria-selected={value === month.value}
+            >
+              <span className={styles.suggestionName}>{month.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function FollowUpFieldChecklist({
@@ -382,6 +482,29 @@ export default function FollowUpFieldEditor({
     else setLocalValues(next);
   }
 
+  function setIncidentDatePart(part, value, displayValue) {
+    const nextIncident = {
+      ...values.incident,
+      [part]: value,
+    };
+    if (part === "incidentMonth") nextIncident.incidentMonthText = displayValue;
+    nextIncident.date = buildIncidentDate(nextIncident);
+
+    const next = {
+      ...values,
+      incident: nextIncident,
+    };
+
+    setErrors((current) => {
+      const copy = { ...current };
+      delete copy["incident.date"];
+      delete copy["incident.time"];
+      return copy;
+    });
+    if (onChange) onChange(next);
+    else setLocalValues(next);
+  }
+
   function submit(event) {
     event?.preventDefault();
     const nextErrors = validateAmendmentFields(fields, values);
@@ -405,9 +528,44 @@ export default function FollowUpFieldEditor({
       case "complainant.email":
         return <Field label={FIELD_LABELS[path]} required hint="A confirmation and updates will be sent here." error={error}><Input type="email" placeholder="sample@gmail.com" {...common} onChange={(e) => setValue(path, e.target.value.trim())} /></Field>;
       case "incident.date":
-        return <Field label={FIELD_LABELS[path]} required hint="When did the incident happen?" error={error}><Input type="date" max={todayInputValue()} {...common} onChange={(e) => setValue(path, e.target.value)} /></Field>;
+        return (
+          <div className={styles.incidentDateGroup}>
+            <Field label="Month" hint="Optional if you only remember the year." error={error}>
+              <IncidentMonthTypeahead
+                value={values.incident.incidentMonth || ""}
+                textValue={values.incident.incidentMonthText || ""}
+                onChange={(monthValue, monthText) => setIncidentDatePart("incidentMonth", monthValue, monthText)}
+                error={error}
+              />
+            </Field>
+            <Field label="Date" hint="Optional if you only remember the month or year." error={error}>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Date"
+                value={values.incident.incidentDay || ""}
+                onChange={(event) => setIncidentDatePart("incidentDay", event.target.value.replace(/\D/g, "").slice(0, 2))}
+                maxLength={2}
+                error={error}
+              />
+            </Field>
+            <Field label="Year" required hint={`Enter a year from ${getEarliestIncidentYear(reportData?.age)} to ${new Date().getFullYear()}.`} error={error}>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Year"
+                value={values.incident.incidentYear || ""}
+                onChange={(event) => setIncidentDatePart("incidentYear", event.target.value.replace(/\D/g, "").slice(0, 4))}
+                maxLength={4}
+                error={error}
+              />
+            </Field>
+          </div>
+        );
       case "incident.time":
-        return <Field label={FIELD_LABELS[path]} hint="Approximate time is fine if exact time is unknown." error={error}><Input type="time" max={values.incident.date === todayInputValue() ? currentTimeInputValue() : undefined} {...common} onChange={(e) => setValue(path, e.target.value)} /></Field>;
+        return <Field label={FIELD_LABELS[path]} hint="Approximate time is fine if exact time is unknown." error={error}><Input type="time" max={buildIncidentDate(values.incident) === getTodayInputValue() ? getCurrentTimeInputValue() : undefined} {...common} onChange={(e) => setValue(path, e.target.value)} /></Field>;
       case "incident.locationType":
       case "incident.perpetratorKnown":
       case "incident.witnesses":

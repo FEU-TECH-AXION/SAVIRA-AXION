@@ -26,6 +26,14 @@ function formatInterviewStatus(status) {
     .join(" ");
 }
 
+function getInterviewDisplayStatus(interview) {
+  const status = formatInterviewStatus(interview?.status);
+  if (status === "Scheduled" && Boolean(interview?.reschedule_requires_response)) {
+    return "Rescheduled";
+  }
+  return status;
+}
+
 function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -428,7 +436,7 @@ export default function CaseInterviewManagement() {
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "—",
-            interviewStatus: formatInterviewStatus(iv.status),
+            interviewStatus: getInterviewDisplayStatus(iv),
             scheduledDate: iv.slot?.slot_date || null,
             scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
             duration: `${iv.slot?.duration_minutes || 60} minutes`,
@@ -613,12 +621,14 @@ export default function CaseInterviewManagement() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(
-        selectedIds.map((id) =>
-          fetch(`${API_URL}/api/interviews/${id}/complete`, {
+        selectedIds.map(async (id) => {
+          const res = await fetch(`${API_URL}/api/interviews/${id}/complete`, {
             method: "PATCH",
             credentials: "include",
           })
-        )
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.error || "Failed to mark complete");
+        })
       );
       setInterviews((prev) =>
         prev.map((i) =>
@@ -630,7 +640,7 @@ export default function CaseInterviewManagement() {
       setSelectedInterviews([]);
       alert("Interviews marked as complete!");
     } catch (err) {
-      alert("Failed to mark complete");
+      alert(err.message || "Failed to mark complete");
     }
   };
 
@@ -706,7 +716,7 @@ export default function CaseInterviewManagement() {
                 <span className={styles.statLabel}>Pending Invitations</span>
               </div>
               <div className={styles.statCard}>
-                <span className={styles.statNumber}>{interviews.filter((i) => i.interviewStatus === "Scheduled").length}</span>
+                <span className={styles.statNumber}>{interviews.filter((i) => ["Scheduled", "Rescheduled"].includes(i.interviewStatus)).length}</span>
                 <span className={styles.statLabel}>Scheduled</span>
               </div>
               <div className={styles.statCard}>

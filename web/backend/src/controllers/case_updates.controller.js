@@ -47,6 +47,7 @@ function actionTypeLabel(actionType) {
     referral_endorsed: 'Case Referred',
     monitoring_update_added: 'Monitoring Update',
     paralegal_record_saved: 'Legal Support Update',
+    lawyer_consultation_saved: 'Lawyer Consultation',
   }
   return labels[actionType] || 'Case Update'
 }
