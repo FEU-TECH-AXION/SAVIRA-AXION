@@ -1319,7 +1319,7 @@ export default function ReportDetailScreen() {
                       <DetailRow label="Time" value={timeOf(currentInterview.scheduledTime)} />
                       <DetailRow label="Location / Platform" value={currentInterview.location} />
                       <DetailRow label="Notes" value={currentInterview.notes} />
-                      {currentInterview.rescheduleReason ? (
+                      {currentInterview.rescheduleRequiresResponse && currentInterview.rescheduleReason ? (
                         <DetailRow label="Reschedule Reason" value={currentInterview.rescheduleReason} />
                       ) : null}
                       {currentInterview.interviewStatus === 'Awaiting New Slots' && (

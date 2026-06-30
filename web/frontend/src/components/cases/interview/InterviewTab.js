@@ -567,14 +567,7 @@ function isWithinCancellationRescheduleWindow(interview) {
 function wasRescheduledFromCancellation(interview) {
   const status = interview?.interviewStatus || interview?.status;
   if (!["Scheduled", "Rescheduled", "Confirmed"].includes(status)) return false;
-  return Boolean(
-    interview?.rescheduleRequiresResponse ||
-    interview?.reschedule_requires_response ||
-    interview?.rescheduleReason ||
-    interview?.reschedule_reason ||
-    interview?.cancellationReason ||
-    interview?.cancellation_reason
-  );
+  return requiresRescheduleResponse(interview);
 }
 
 function requiresRescheduleResponse(interview) {
@@ -1190,7 +1183,7 @@ function ScheduledView({
               <p className={styles.slotValue}>{interview.notes}</p>
             </div>
           )}
-          {interview.rescheduleReason && (
+          {rescheduleRequiresResponse && interview.rescheduleReason && (
             <div>
               <p className={styles.slotLabel}>Reschedule Reason</p>
               <p className={styles.slotValue}>{interview.rescheduleReason}</p>
@@ -1297,7 +1290,7 @@ function ConfirmedView({
             </div>
           </div>
         )}
-        {interview.rescheduleReason && (
+        {rescheduleRequiresResponse && interview.rescheduleReason && (
           <div className={styles.detailRow}>
             <div>
               <p className={styles.detailLabel}>Reschedule Reason</p>
@@ -2496,7 +2489,14 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
             setInterviews((prev) =>
               prev.map((iv) =>
                 iv.id === meetingLinkInterview.id
-                  ? { ...iv, meetingLink, interviewStatus: "Confirmed", status: "Confirmed" }
+                  ? {
+                      ...iv,
+                      meetingLink,
+                      interviewStatus: "Confirmed",
+                      status: "Confirmed",
+                      rescheduleRequiresResponse: false,
+                      rescheduleRespondedAt: new Date().toISOString(),
+                    }
                   : iv
               )
             );

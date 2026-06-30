@@ -132,6 +132,8 @@ const confirm = async (id, meeting_link) => {
     return updateById(id, {
         meeting_link,
         status: 'confirmed',
+        reschedule_requires_response: false,
+        reschedule_responded_at: new Date().toISOString(),
     })
 }
 
