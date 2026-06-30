@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FiCheck, FiAlertCircle, FiEye, FiEyeOff, FiMail, FiPhone,
   FiUser, FiTrash2,
@@ -34,6 +34,15 @@ export default function AccountPrivacyTab({ user, setUser }) {
     code: "",
     awaitingCode: false,
   });
+  const [emailCodeCooldown, setEmailCodeCooldown] = useState(0);
+
+  useEffect(() => {
+    if (emailCodeCooldown <= 0) return undefined;
+    const timer = setTimeout(() => {
+      setEmailCodeCooldown((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [emailCodeCooldown]);
 
   // ── Two-factor state ──────────────────────────────────────
   // ── Notification prefs ────────────────────────────────────
@@ -59,6 +68,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
       flash("error", "Enter the email address you want to use.");
       return;
     }
+    if (emailCodeCooldown > 0) return;
 
     setSaving(true);
     try {
@@ -73,10 +83,16 @@ export default function AccountPrivacyTab({ user, setUser }) {
         body: JSON.stringify({ newEmail: emailForm.newEmail.trim() }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not send verification code.");
+      if (!res.ok) {
+        const sendError = new Error(data.error || "Could not send verification code.");
+        sendError.retryAfter = data.retryAfter;
+        throw sendError;
+      }
       setEmailForm((p) => ({ ...p, awaitingCode: true, code: "" }));
+      setEmailCodeCooldown(60);
       flash("success", "Verification code sent. Please check your inbox.");
     } catch (err) {
+      if (err.retryAfter) setEmailCodeCooldown(Number(err.retryAfter) || 60);
       flash("error", err.message);
     } finally {
       setSaving(false);
@@ -260,9 +276,11 @@ export default function AccountPrivacyTab({ user, setUser }) {
               </div>
 
               <div className={styles.formActions}>
-                <button type="submit" className={styles.btnPrimary} disabled={saving}>
+                <button type="submit" className={styles.btnPrimary} disabled={saving || (!emailForm.awaitingCode && emailCodeCooldown > 0)}>
                   {saving
                     ? "Working..."
+                    : !emailForm.awaitingCode && emailCodeCooldown > 0
+                    ? `Send again in ${emailCodeCooldown}s`
                     : emailForm.awaitingCode
                     ? "Verify Email"
                     : "Send Verification Code"}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Modal
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Modal, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -255,40 +255,134 @@ const mapboxHtml = `
 `;
 
 
+const HEATMAP_STATUS_OPTIONS = [
+  'For Verification',
+  'Undergoing Review',
+  'Verified - True',
+  'Verified - False',
+  'Under Case Evaluation',
+  'Case Filed',
+  'Investigation Ongoing',
+  'Hearing Ongoing',
+  'Dismissed',
+  'Perpetrator Convicted',
+  'Resolved',
+  'Withdrawn',
+];
+
+const GENDER_OPTIONS = [
+  'Male',
+  'Female',
+  'Non-binary',
+  'Prefer not to say',
+];
+
+const emptyFilters = {
+  region: '',
+  city: '',
+  case_type: '',
+  status: '',
+  verification: '',
+  victim_gender: '',
+  perpetrator_gender: '',
+};
+
 function FilterModal({ visible, onClose, meta, filters, setFilters }) {
-  const { regions = [], cities = [], councils = [], statuses = [] } = meta;
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [searchQueries, setSearchQueries] = useState({});
+  const { regions = [], cities = [], caseTypes = [] } = meta;
 
   const citiesInRegion = filters.region
     ? regions.find((r) => r.key === filters.region)?.cities || []
     : cities;
 
-  const renderOptionList = (title, items, valueKey, labelKey, filterKey) => (
+  const renderDropdown = (title, items, valueKey, labelKey, filterKey) => {
+    const options = items.map((item) => ({
+      value: typeof item === 'object' ? item[valueKey] : item,
+      label: typeof item === 'object' ? item[labelKey] : item,
+    })).filter((item) => item.value && item.label);
+    const selected = options.find((item) => item.value === filters[filterKey]);
+    const searchQuery = searchQueries[filterKey] || '';
+    const filteredOptions = options.filter((item) =>
+      item.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
+    );
+    const isOpen = openDropdown === filterKey;
+
+    const chooseValue = (value) => {
+      setFilters(prev => ({
+        ...prev,
+        [filterKey]: value,
+        ...(filterKey === 'region' ? { city: '' } : {}),
+      }));
+      setSearchQueries(prev => ({ ...prev, [filterKey]: '' }));
+      setOpenDropdown(null);
+    };
+
+    return (
     <View style={s.filterGroup}>
       <Text style={s.filterLabel}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll}>
         <Pressable
-          style={[s.filterChip, !filters[filterKey] && s.filterChipActive]}
-          onPress={() => setFilters(prev => ({ ...prev, [filterKey]: '', ...(filterKey === 'region' ? {city: ''} : {}) }))}
+          style={[s.filterDropdownBtn, isOpen && s.filterDropdownBtnOpen]}
+          onPress={() => setOpenDropdown(isOpen ? null : filterKey)}
         >
-          <Text style={[s.filterChipText, !filters[filterKey] && s.filterChipTextActive]}>All</Text>
+          <Text style={[s.filterDropdownValue, !selected && s.filterDropdownPlaceholder]}>
+            {selected?.label || `All ${title}`}
+          </Text>
+          <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color="#6b7280" />
         </Pressable>
-        {items.map((item, idx) => {
-          const val = typeof item === 'object' ? item[valueKey] : item;
-          const lbl = typeof item === 'object' ? item[labelKey] : item;
-          const isActive = filters[filterKey] === val;
-          return (
+
+        {isOpen && (
+          <View style={s.filterDropdownPanel}>
+            <View style={s.filterSearchWrap}>
+              <Ionicons name="search" size={16} color="#6b7280" />
+              <TextInput
+                value={searchQuery}
+                onChangeText={(text) => setSearchQueries(prev => ({ ...prev, [filterKey]: text }))}
+                placeholder={`Search ${title.toLowerCase()}`}
+                placeholderTextColor="#9ca3af"
+                style={s.filterSearchInput}
+              />
+              {!!searchQuery && (
+                <Pressable onPress={() => setSearchQueries(prev => ({ ...prev, [filterKey]: '' }))}>
+                  <Ionicons name="close-circle" size={17} color="#9ca3af" />
+                </Pressable>
+              )}
+            </View>
+
+            <ScrollView nestedScrollEnabled style={s.filterOptionsList}>
+              <Pressable
+                style={[s.filterOption, !filters[filterKey] && s.filterOptionActive]}
+                onPress={() => chooseValue('')}
+              >
+                <Text style={[s.filterOptionText, !filters[filterKey] && s.filterOptionTextActive]}>
+                  All {title}
+                </Text>
+                {!filters[filterKey] && <Ionicons name="checkmark" size={16} color={TEAL} />}
+              </Pressable>
+
+              {filteredOptions.map((item) => {
+                const isActive = filters[filterKey] === item.value;
+                return (
             <Pressable
-              key={idx}
-              style={[s.filterChip, isActive && s.filterChipActive]}
-              onPress={() => setFilters(prev => ({ ...prev, [filterKey]: val, ...(filterKey === 'region' ? {city: ''} : {}) }))}
+                    key={item.value}
+                    style={[s.filterOption, isActive && s.filterOptionActive]}
+                    onPress={() => chooseValue(item.value)}
             >
-              <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{lbl}</Text>
+                    <Text style={[s.filterOptionText, isActive && s.filterOptionTextActive]}>{item.label}</Text>
+                    {isActive && <Ionicons name="checkmark" size={16} color={TEAL} />}
             </Pressable>
-          );
-        })}
-      </ScrollView>
+                );
+              })}
+
+              {filteredOptions.length === 0 && (
+                <Text style={s.filterEmptyText}>No matches found</Text>
+              )}
+            </ScrollView>
+          </View>
+        )}
     </View>
-  );
+    );
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -301,11 +395,19 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
             </Pressable>
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
-            {renderOptionList('Region', regions, 'key', 'label', 'region')}
-            {renderOptionList('City', citiesInRegion, null, null, 'city')}
-            {renderOptionList('Council', councils, null, null, 'council')}
-            {renderOptionList('Status', statuses, null, null, 'status')}
-            
+            {renderDropdown('City', citiesInRegion, null, null, 'city')}
+            {renderDropdown('Status', HEATMAP_STATUS_OPTIONS, null, null, 'status')}
+            {renderDropdown('Case Type', caseTypes, null, null, 'case_type')}
+            {renderDropdown('Verification', [
+              { value: 'verified', label: 'Verified' },
+              { value: 'unverified', label: 'Unverified' },
+            ], 'value', 'label', 'verification')}
+            {renderDropdown('Victim Gender', GENDER_OPTIONS, null, null, 'victim_gender')}
+            {renderDropdown('Perpetrator Gender', GENDER_OPTIONS, null, null, 'perpetrator_gender')}
+
+            <Pressable style={s.resetFiltersBtn} onPress={() => setFilters(emptyFilters)}>
+              <Text style={s.resetFiltersText}>Reset Filters</Text>
+            </Pressable>
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
@@ -319,12 +421,10 @@ export default function HeatmapScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [heatmapData, setHeatmapData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [meta, setMeta] = useState({ regions: [], cities: [], councils: [], statuses: [] });
+  const [meta, setMeta] = useState({ regions: [], cities: [], caseTypes: [], statuses: [] });
   const [totalReports, setTotalReports] = useState(0);
 
-  const [filters, setFilters] = useState({
-    region: '', city: '', council: '', status: ''
-  });
+  const [filters, setFilters] = useState(emptyFilters);
 
   const webViewRef = useRef(null);
   const heatmapDataRef = useRef([]); // always hold latest data for MAP_READY callback
@@ -333,19 +433,26 @@ export default function HeatmapScreen() {
   useEffect(() => {
     async function fetchMeta() {
       try {
-        const [geoRes, statusRes] = await Promise.all([
+        const [geoRes, statusRes, caseTypeRes] = await Promise.all([
           fetch(`${API_URL}/api/case_reports/heatmap/meta`),
           fetch(`${API_URL}/api/case_status`),
+          fetch(`${API_URL}/api/case_types`),
         ]);
         const geo = geoRes.ok ? await geoRes.json() : {};
         const statusRows = statusRes.ok ? await statusRes.json() : [];
+        const caseTypeRows = caseTypeRes.ok ? await caseTypeRes.json() : [];
         const statuses = Array.isArray(statusRows)
           ? statusRows.map((r) => r.status_name).filter(Boolean)
+          : [];
+        const caseTypes = Array.isArray(caseTypeRows)
+          ? caseTypeRows
+              .map((r) => r.case_type_name || r.name || r.type || r.label)
+              .filter(Boolean)
           : [];
         setMeta({
           regions: geo.regions || [],
           cities: geo.cities || [],
-          councils: geo.councils || [],
+          caseTypes,
           statuses,
         });
       } catch (err) {
@@ -363,8 +470,11 @@ export default function HeatmapScreen() {
         queryParams.append("aggregation", "city");
         if (filters.city) queryParams.append("city", filters.city);
         if (filters.region) queryParams.append("region", filters.region);
-        if (filters.council) queryParams.append("council", filters.council);
         if (filters.status) queryParams.append("status", filters.status);
+        if (filters.case_type) queryParams.append("case_type", filters.case_type);
+        if (filters.verification) queryParams.append("verification", filters.verification);
+        if (filters.victim_gender) queryParams.append("victim_gender", filters.victim_gender);
+        if (filters.perpetrator_gender) queryParams.append("perpetrator_gender", filters.perpetrator_gender);
 
         const res = await fetch(`${API_URL}/api/case_reports/heatmap/data?${queryParams.toString()}`);
         if (!res.ok) throw new Error("Failed to fetch data");
@@ -566,19 +676,62 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: 'bold' },
   closeBtn: { padding: 4 },
   
-  filterGroup: { marginBottom: 20 },
-  filterLabel: { fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 12 },
-  filterScroll: { flexDirection: 'row' },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
+  filterGroup: { marginBottom: 16 },
+  filterLabel: { fontSize: 14, fontWeight: '800', color: '#374151', marginBottom: 8 },
+  filterDropdownBtn: {
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: '#f9fafb',
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  filterChipActive: { backgroundColor: '#e6f7f7', borderColor: TEAL },
-  filterChipText: { color: '#4b5563', fontWeight: '500' },
-  filterChipTextActive: { color: TEAL, fontWeight: '700' },
+  filterDropdownBtnOpen: { borderColor: TEAL, backgroundColor: '#fff' },
+  filterDropdownValue: { flex: 1, color: '#111827', fontSize: 14, fontWeight: '700', marginRight: 10 },
+  filterDropdownPlaceholder: { color: '#6b7280', fontWeight: '600' },
+  filterDropdownPanel: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  filterSearchWrap: {
+    height: 44,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eef2f7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterSearchInput: { flex: 1, color: '#111827', fontSize: 14, paddingVertical: 0 },
+  filterOptionsList: { maxHeight: 190 },
+  filterOption: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterOptionActive: { backgroundColor: '#f0fafb' },
+  filterOptionText: { flex: 1, color: '#374151', fontSize: 14, fontWeight: '600', marginRight: 10 },
+  filterOptionTextActive: { color: TEAL, fontWeight: '800' },
+  filterEmptyText: { color: '#6b7280', fontSize: 13, fontWeight: '600', padding: 14, textAlign: 'center' },
+  resetFiltersBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: TEAL,
+    backgroundColor: '#fff',
+    marginTop: 4,
+  },
+  resetFiltersText: { color: TEAL, fontWeight: '800' },
 });

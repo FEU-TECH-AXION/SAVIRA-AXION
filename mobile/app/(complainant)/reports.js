@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   NativeModules,
+  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons, Feather } from "@expo/vector-icons";
@@ -35,7 +36,30 @@ const HISTORY_PAGE_SIZE = 5;
 const MAX_EVIDENCE_FILES = 10;
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_EVIDENCE_FILE_SIZE_LABEL = "50 MB";
+const ALLOWED_EVIDENCE_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "video/mp4",
+]);
+const ALLOWED_EVIDENCE_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png", "mp4"]);
+const ALLOWED_EVIDENCE_FILE_TYPES_LABEL = "PDF, JPG, JPEG, PNG, and MP4";
 const INPUT_PLACEHOLDER_COLOR = "#6b7280";
+const FormInputFocusContext = createContext(() => {});
+
+function getFileExtension(file) {
+  const name = String(file?.name || file?.fileName || file?.uri || "");
+  const cleanName = name.split("?")[0].split("#")[0];
+  const parts = cleanName.split(".");
+  return parts.length > 1 ? parts.pop().toLowerCase() : "";
+}
+
+function isAllowedEvidenceFileType(file) {
+  const mimeType = String(file?.mimeType || file?.type || "").toLowerCase();
+  if (ALLOWED_EVIDENCE_MIME_TYPES.has(mimeType)) return true;
+  return ALLOWED_EVIDENCE_EXTENSIONS.has(getFileExtension(file));
+}
 
 function formatErrorMessage(error, fallback = "Failed to submit report.") {
   if (!error) return fallback;
@@ -298,9 +322,13 @@ function Field({ label, required, children, error, hint }) {
   );
 }
 
-function StyledInput({ error, multiline, numberOfLines, ...props }) {
+function StyledInput({ error, multiline, numberOfLines, onFocus, focusLift = 0, ...props }) {
+  const inputRef = useRef(null);
+  const scrollFocusedInputIntoView = useContext(FormInputFocusContext);
+
   return (
     <TextInput
+      ref={inputRef}
       style={[
         s.input,
         error && s.inputError,
@@ -313,6 +341,10 @@ function StyledInput({ error, multiline, numberOfLines, ...props }) {
       placeholderTextColor={INPUT_PLACEHOLDER_COLOR}
       multiline={multiline}
       numberOfLines={numberOfLines}
+      onFocus={(event) => {
+        onFocus?.(event);
+        scrollFocusedInputIntoView(inputRef.current, focusLift);
+      }}
       {...props}
     />
   );
@@ -962,6 +994,7 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
 // ── STEP 1: Complainant Info ──────────────────────────────────────────────────
 function StepComplainantInfo({ data, onChange, errors }) {
   const set = (key) => (val) => onChange({ ...data, [key]: val });
+  const setContactNumber = (val) => onChange({ ...data, contactNumber: normalisePhone(val) });
   const isScoutOrg =
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
@@ -1168,7 +1201,7 @@ function StepComplainantInfo({ data, onChange, errors }) {
         <StyledInput
           placeholder="+639XXXXXXXXX"
           value={data.contactNumber}
-          onChangeText={set("contactNumber")}
+          onChangeText={setContactNumber}
           keyboardType="phone-pad"
           error={errors.contactNumber}
         />
@@ -1184,6 +1217,7 @@ function StepComplainantInfo({ data, onChange, errors }) {
           value={data.email}
           onChangeText={set("email")}
           keyboardType="email-address"
+          focusLift={90}
           error={errors.email}
         />
       </Field>
@@ -1607,10 +1641,19 @@ function StepEvidence({ data, onChange }) {
     });
 
   const appendValidFiles = (files) => {
-    const oversizedFiles = files.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
+    const unsupportedFiles = files.filter((file) => !isAllowedEvidenceFileType(file));
+    const typeAllowedFiles = files.filter(isAllowedEvidenceFileType);
+    const oversizedFiles = typeAllowedFiles.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
     const remainingSlots = MAX_EVIDENCE_FILES - (data.files || []).length;
-    const allowedFiles = files.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
-    const validFiles = allowedFiles.slice(0, Math.max(remainingSlots, 0));
+    const sizeAllowedFiles = typeAllowedFiles.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
+    const validFiles = sizeAllowedFiles.slice(0, Math.max(remainingSlots, 0));
+
+    if (unsupportedFiles.length > 0) {
+      Alert.alert(
+        "File Type Not Allowed",
+        `Cannot upload this file type. Available file types are: ${ALLOWED_EVIDENCE_FILE_TYPES_LABEL}.`
+      );
+    }
 
     if (oversizedFiles.length > 0) {
       Alert.alert(
@@ -1627,7 +1670,7 @@ function StepEvidence({ data, onChange }) {
       return;
     }
 
-    if (allowedFiles.length > validFiles.length) {
+    if (sizeAllowedFiles.length > validFiles.length) {
       Alert.alert(
         "File Limit Reached",
         `Only ${remainingSlots} more file${remainingSlots === 1 ? "" : "s"} can be added. You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`
@@ -1744,7 +1787,7 @@ function StepEvidence({ data, onChange }) {
       const result = DeviceFilePicker && Platform.OS === "android"
         ? await DeviceFilePicker.openFiles()
         : await DocumentPicker.getDocumentAsync({
-            type: "*/*",
+            type: ["application/pdf", "image/jpeg", "image/png", "image/jpg", "video/mp4"],
             multiple: true,
             copyToCacheDirectory: true,
           });
@@ -2003,6 +2046,17 @@ function StepReview({ complainant, incident, evidence }) {
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function normalisePhone(raw) {
+  let digits = String(raw || "").replace(/[^\d]/g, "");
+
+  if (digits.startsWith("63")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+
+  digits = digits.slice(0, 10);
+
+  return digits ? `+63${digits}` : "";
+}
+
 function validateStep0(complainant, consents) {
   const e = {};
   if (!complainant.interview) e.interview = "Please select your interview preference.";
@@ -2257,6 +2311,7 @@ export default function ReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const formScrollRef = useRef(null);
+  const formScrollYRef = useRef(0);
   const [navOpen, setNavOpen] = useState(false);
   const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(tab === 'history' ? 'history' : 'submit'); // 'submit' | 'history'
@@ -2339,12 +2394,34 @@ export default function ReportScreen() {
   const [evidence, setEvidence] = useState({ files: [] });
 
   const totalSteps = STEPS.length;
+  const scrollFocusedInputIntoView = useCallback((input, extraLift = 0) => {
+    if (!input?.measureInWindow) return;
+
+    setTimeout(() => {
+      input.measureInWindow((x, y, width, height) => {
+        const windowHeight = Dimensions.get("window").height;
+        const visibleBottom = windowHeight - (Platform.OS === "ios" ? 260 : 230);
+        const inputBottom = y + height;
+
+        if (inputBottom > visibleBottom) {
+          formScrollRef.current?.scrollTo({
+            y: formScrollYRef.current + inputBottom - visibleBottom + 24 + extraLift,
+            animated: true,
+          });
+        }
+      });
+    }, Platform.OS === "ios" ? 120 : 280);
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+    });
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -2569,6 +2646,16 @@ export default function ReportScreen() {
     const oversizedFiles = (evidence.files || []).filter(
       (file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE
     );
+    const unsupportedFiles = (evidence.files || []).filter(
+      (file) => !isAllowedEvidenceFileType(file)
+    );
+    if (unsupportedFiles.length > 0) {
+      setSubmitError(
+        `Cannot upload this file type. Available file types are: ${ALLOWED_EVIDENCE_FILE_TYPES_LABEL}.`
+      );
+      setStep(3);
+      return;
+    }
     if (oversizedFiles.length > 0) {
       setSubmitError(`Each evidence file must be ${MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller.`);
       setStep(3);
@@ -2769,42 +2856,52 @@ export default function ReportScreen() {
             <ScrollView
               ref={formScrollRef}
               style={s.scroll}
-              contentContainerStyle={[s.scrollContent, { paddingTop: 0, paddingBottom: 120 }]}
+              contentContainerStyle={[
+                s.scrollContent,
+                { paddingTop: 0, paddingBottom: keyboardVisible ? 150 : 120 },
+              ]}
+              keyboardDismissMode="on-drag"
               keyboardShouldPersistTaps="handled"
+              onScroll={(event) => {
+                formScrollYRef.current = event.nativeEvent.contentOffset.y;
+              }}
+              scrollEventThrottle={16}
             >
-              <View style={s.formHeader}>
-                <View style={s.heroLabel}>
-                  <View style={s.heroLabelLine} />
-                  <Text style={s.heroLabelText}>Submit a Report</Text>
+              <FormInputFocusContext.Provider value={scrollFocusedInputIntoView}>
+                <View style={s.formHeader}>
+                  <View style={s.heroLabel}>
+                    <View style={s.heroLabelLine} />
+                    <Text style={s.heroLabelText}>Submit a Report</Text>
+                  </View>
+                  <Text style={s.heroTitle}>
+                    <Text style={{ color: TEAL }}>We're Here </Text>
+                    <Text style={{ color: ORANGE }}>to Help</Text>
+                  </Text>
+                  <Text style={s.heroDesc}>
+                    Please provide accurate and detailed information. All reports are
+                    handled with strict confidentiality.
+                  </Text>
+                  <Text style={s.formCardTitle}>Report Submission Form</Text>
                 </View>
-                <Text style={s.heroTitle}>
-                  <Text style={{ color: TEAL }}>We're Here </Text>
-                  <Text style={{ color: ORANGE }}>to Help</Text>
-                </Text>
-                <Text style={s.heroDesc}>
-                  Please provide accurate and detailed information. All reports are
-                  handled with strict confidentiality.
-                </Text>
-                <Text style={s.formCardTitle}>Report Submission Form</Text>
-              </View>
 
-              <WizardStepper current={step} />
+                <WizardStepper current={step} />
 
-              {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} onOpenHelplines={() => router.push('/(complainant)/helplines')} />}
-              {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
-              {step === 2 && <StepIncidentDetails data={incident} complainantAge={complainant.age} onChange={setIncident} errors={errors} />}
-              {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} />}
-              {step === 4 && <StepReview complainant={complainant} incident={incident} evidence={evidence} />}
+                {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} onOpenHelplines={() => router.push('/(complainant)/helplines')} />}
+                {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
+                {step === 2 && <StepIncidentDetails data={incident} complainantAge={complainant.age} onChange={setIncident} errors={errors} />}
+                {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} />}
+                {step === 4 && <StepReview complainant={complainant} incident={incident} evidence={evidence} />}
 
-              {submitError && (
-                <View style={s.errorAlert}>
-                  <Ionicons name="alert-circle-outline" size={16} color={ERROR} />
-                  <Text style={s.errorAlertText}>{submitError}</Text>
-                </View>
-              )}
+                {submitError && (
+                  <View style={s.errorAlert}>
+                    <Ionicons name="alert-circle-outline" size={16} color={ERROR} />
+                    <Text style={s.errorAlertText}>{submitError}</Text>
+                  </View>
+                )}
+              </FormInputFocusContext.Provider>
             </ScrollView>
 
-            <View style={[s.formNav, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 12) }]}>
+            {!keyboardVisible && <View style={[s.formNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               {step > 0 ? (
                 <Pressable style={s.backBtn} onPress={handleBack}>
                   <Ionicons name="chevron-back" size={17} color={TEAL} />
@@ -2827,7 +2924,7 @@ export default function ReportScreen() {
                   {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Submit Report</Text>}
                 </Pressable>
               )}
-            </View>
+            </View>}
           </KeyboardAvoidingView>
         )
       )}

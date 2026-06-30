@@ -261,6 +261,7 @@ export default function SettingsScreen() {
   const [apSection, setApSection] = useState('email'); // email, password, notifications, policies, deactivate
   const [emailForm, setEmailForm] = useState({ newEmail: '', code: '', awaitingCode: false });
   const [emailSaving, setEmailSaving] = useState(false);
+  const [emailCodeCooldown, setEmailCodeCooldown] = useState(0);
   const [pwForm, setPwForm] = useState({ current: '', new: '', confirm: '' });
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
   const [pwSaving, setPwSaving] = useState(false);
@@ -273,11 +274,20 @@ export default function SettingsScreen() {
     }
   }, [user?.email]);
 
+  useEffect(() => {
+    if (emailCodeCooldown <= 0) return undefined;
+    const timer = setTimeout(() => {
+      setEmailCodeCooldown((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [emailCodeCooldown]);
+
   const handleEmailRequest = async () => {
     if (!emailForm.newEmail.trim()) {
       Alert.alert('Error', 'Enter the email address you want to use.');
       return;
     }
+    if (emailCodeCooldown > 0) return;
 
     setEmailSaving(true);
     try {
@@ -288,10 +298,16 @@ export default function SettingsScreen() {
         body: JSON.stringify({ newEmail: emailForm.newEmail.trim() }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Could not send verification code.');
+      if (!res.ok) {
+        const sendError = new Error(data.error || 'Could not send verification code.');
+        sendError.retryAfter = data.retryAfter;
+        throw sendError;
+      }
       setEmailForm((prev) => ({ ...prev, awaitingCode: true, code: '' }));
+      setEmailCodeCooldown(60);
       Alert.alert('Success', 'Verification code sent. Please check your inbox.');
     } catch (err) {
+      if (err.retryAfter) setEmailCodeCooldown(Number(err.retryAfter) || 60);
       Alert.alert('Error', err.message);
     } finally {
       setEmailSaving(false);
@@ -687,12 +703,18 @@ export default function SettingsScreen() {
                 <Pressable
                   style={styles.btnPrimary}
                   onPress={emailForm.awaitingCode ? handleEmailVerify : handleEmailRequest}
-                  disabled={emailSaving}
+                  disabled={emailSaving || (!emailForm.awaitingCode && emailCodeCooldown > 0)}
                 >
                   {emailSaving ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.btnPrimaryText}>{emailForm.awaitingCode ? 'Verify Email' : 'Send Verification Code'}</Text>
+                    <Text style={styles.btnPrimaryText}>
+                      {!emailForm.awaitingCode && emailCodeCooldown > 0
+                        ? `Send again in ${emailCodeCooldown}s`
+                        : emailForm.awaitingCode
+                          ? 'Verify Email'
+                          : 'Send Verification Code'}
+                    </Text>
                   )}
                 </Pressable>
               </View>

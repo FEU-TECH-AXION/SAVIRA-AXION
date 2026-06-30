@@ -7,6 +7,7 @@ const { sendWelcomeEmail, sendVerificationCodeEmail } = require('../config/maile
 const isProduction = process.env.NODE_ENV === 'production';
 const VERIFICATION_DAILY_LIMIT = 15;
 const VERIFICATION_EXPIRY_MINUTES = 10;
+const VERIFICATION_RESEND_COOLDOWN_SECONDS = 60;
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -99,10 +100,32 @@ async function attachRoleDetails(flatUser) {
 }
 
 async function ensureCanSendVerification(email, purpose) {
+  const normalizedEmail = normalizeEmail(email);
+  const { data: latest, error: latestError } = await supabase
+    .from('email_verification_codes')
+    .select('sent_at')
+    .eq('email', normalizedEmail)
+    .eq('purpose', purpose)
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError) throw latestError;
+  if (latest?.sent_at) {
+    const elapsedSeconds = Math.floor((Date.now() - new Date(latest.sent_at).getTime()) / 1000);
+    const remainingSeconds = VERIFICATION_RESEND_COOLDOWN_SECONDS - elapsedSeconds;
+    if (remainingSeconds > 0) {
+      const err = new Error(`Please wait ${remainingSeconds} seconds before requesting another verification code.`);
+      err.status = 429;
+      err.retryAfter = remainingSeconds;
+      throw err;
+    }
+  }
+
   const { count, error } = await supabase
     .from('email_verification_codes')
     .select('verification_id', { count: 'exact', head: true })
-    .eq('email', normalizeEmail(email))
+    .eq('email', normalizedEmail)
     .eq('purpose', purpose)
     .gte('sent_at', `${todayIso()}T00:00:00.000Z`);
 
@@ -216,7 +239,7 @@ const signup = async (req, res) => {
     });
   } catch (err) {
     console.error('[auth.signup]', err);
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 
@@ -257,7 +280,7 @@ const verifySignup = async (req, res) => {
 
     return sendSession(res, newUser, 201);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 
@@ -284,7 +307,7 @@ const login = async (req, res) => {
 
     return sendSession(res, user);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 
@@ -305,7 +328,7 @@ const verifyLogin = async (req, res) => {
     await markCodeUsed(verification.verification_id);
     return sendSession(res, user);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 
@@ -326,7 +349,7 @@ const requestEmailChange = async (req, res) => {
     await createVerificationCode(normalizedEmail, 'email_change', { user_id: req.user.id });
     res.status(202).json({ email: normalizedEmail, message: 'Verification code sent to your new email.' });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 
@@ -348,7 +371,7 @@ const verifyEmailChange = async (req, res) => {
     await markCodeUsed(verification.verification_id);
     return sendSession(res, user);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 
@@ -380,7 +403,7 @@ const resendVerification = async (req, res) => {
     await createVerificationCode(email, purpose, metadata);
     res.status(202).json({ message: 'A new verification code has been sent.' });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, retryAfter: err.retryAfter });
   }
 };
 

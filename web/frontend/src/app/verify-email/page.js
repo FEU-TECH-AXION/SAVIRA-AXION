@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { ConfirmDialog } from "@/components/ui/Dialog";
@@ -16,8 +16,17 @@ function VerifyEmailContent() {
   const [digits, setDigits] = useState(Array(6).fill(""));
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(60);
   const [error, setError] = useState("");
   const [modal, setModal] = useState(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = setTimeout(() => {
+      setResendCooldown((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const setDigit = (index, value) => {
     const nextValue = value.replace(/\D/g, "").slice(-1);
@@ -83,6 +92,7 @@ function VerifyEmailContent() {
   };
 
   const handleResend = async () => {
+    if (resendCooldown > 0) return;
     setResending(true);
     setError("");
     try {
@@ -93,13 +103,19 @@ function VerifyEmailContent() {
         body: JSON.stringify({ email, purpose }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not resend verification code.");
+      if (!res.ok) {
+        const resendError = new Error(data.error || "Could not resend verification code.");
+        resendError.retryAfter = data.retryAfter;
+        throw resendError;
+      }
       setDigits(Array(6).fill(""));
+      setResendCooldown(60);
       setModal({
         title: "Code sent",
         description: "We sent a new verification code. Please check your inbox.",
       });
     } catch (err) {
+      if (err.retryAfter) setResendCooldown(Number(err.retryAfter) || 60);
       setModal({
         title: "Could not resend code",
         description: err.message || "Please try again later.",
@@ -163,7 +179,7 @@ function VerifyEmailContent() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={resending}
+              disabled={resending || resendCooldown > 0}
               style={{
                 width: "100%",
                 marginTop: "14px",
@@ -171,10 +187,15 @@ function VerifyEmailContent() {
                 background: "transparent",
                 color: "#037F81",
                 fontWeight: 800,
-                cursor: resending ? "not-allowed" : "pointer",
+                cursor: resending || resendCooldown > 0 ? "not-allowed" : "pointer",
+                opacity: resending || resendCooldown > 0 ? 0.65 : 1,
               }}
             >
-              {resending ? "Sending new code..." : "Didn't receive a code? Resend"}
+              {resending
+                ? "Sending new code..."
+                : resendCooldown > 0
+                ? `Resend available in ${resendCooldown}s`
+                : "Didn't receive a code? Resend"}
             </button>
           </form>
         </div>

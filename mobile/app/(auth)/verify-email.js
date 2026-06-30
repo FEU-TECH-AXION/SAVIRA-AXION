@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, Alert, ScrollView, Image, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { API_URL } from '../../lib/config';
@@ -12,9 +12,18 @@ export default function VerifyEmail() {
   const purpose = String(params.purpose || 'signup');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(60);
   const inputRefs = useRef([]);
 
   const codeDigits = Array.from({ length: 6 }, (_, index) => code[index] || '');
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = setTimeout(() => {
+      setResendCooldown((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const updateCode = (value, index) => {
     const digits = String(value || '').replace(/\D/g, '');
@@ -76,6 +85,7 @@ export default function VerifyEmail() {
   };
 
   const resend = async () => {
+    if (resendCooldown > 0) return;
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/auth/verification/resend`, {
@@ -84,6 +94,11 @@ export default function VerifyEmail() {
         body: JSON.stringify({ email, purpose }),
       });
       const data = await res.json();
+      if (res.ok) {
+        setResendCooldown(60);
+      } else if (data.retryAfter) {
+        setResendCooldown(Number(data.retryAfter) || 60);
+      }
       Alert.alert(res.ok ? 'Code sent' : 'Error', data.message || data.error || 'Please try again.');
     } catch {
       Alert.alert('Error', `Unable to connect to the server at ${API_URL}.`);
@@ -143,8 +158,14 @@ export default function VerifyEmail() {
           <Text style={styles.btnText}>{loading ? 'Checking...' : 'Verify'}</Text>
         </Pressable>
 
-        <Pressable disabled={loading} onPress={resend} style={local.resendBtn}>
-          <Text style={local.resendText}>Resend code</Text>
+        <Pressable
+          disabled={loading || resendCooldown > 0}
+          onPress={resend}
+          style={[local.resendBtn, (loading || resendCooldown > 0) && local.resendBtnDisabled]}
+        >
+          <Text style={[local.resendText, (loading || resendCooldown > 0) && local.resendTextDisabled]}>
+            {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : 'Resend code'}
+          </Text>
         </Pressable>
 
         <Pressable disabled={loading} onPress={() => router.replace('/(auth)/login')} style={local.backBtn}>
@@ -192,10 +213,16 @@ const local = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
+  resendBtnDisabled: {
+    opacity: 0.65,
+  },
   resendText: {
     color: '#E96433',
     fontSize: 14,
     fontWeight: '800',
+  },
+  resendTextDisabled: {
+    color: '#64748b',
   },
   backBtn: {
     alignItems: 'center',
