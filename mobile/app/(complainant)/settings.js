@@ -284,6 +284,7 @@ export default function SettingsScreen() {
   const [reportForm, setReportForm] = useState({ issueType: 'bug', description: '', pageUrl: '' });
   const [reportFile, setReportFile] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   const pickReportFile = async () => {
     try {
@@ -317,9 +318,9 @@ export default function SettingsScreen() {
         body: formData,
       });
       if (!res.ok) throw new Error('Submission failed');
-      Alert.alert('Success', 'Report submitted successfully!');
       setReportForm({ issueType: 'bug', description: '', pageUrl: '' });
       setReportFile(null);
+      setReportSubmitted(true);
     } catch (err) { Alert.alert('Error', err.message); }
     finally { setReportSubmitting(false); }
   };
@@ -695,6 +696,28 @@ export default function SettingsScreen() {
         {/* ======================= REPORT ======================= */}
         {activeTab === 'Report' && (
           <View style={styles.section}>
+            {reportSubmitted ? (
+              <View style={styles.submittedCard}>
+                <View style={styles.submittedIcon}>
+                  <Ionicons name="checkmark" size={34} color="#fff" />
+                </View>
+                <Text style={styles.submittedEyebrow}>Report Submitted</Text>
+                <Text style={styles.submittedTitle}>Your support report was sent successfully.</Text>
+                <Text style={styles.submittedDesc}>
+                  Our team will review what you shared and use your contact details if we need to follow up.
+                </Text>
+                <View style={styles.submittedInfoBox}>
+                  <Text style={styles.submittedInfoTitle}>What happens next?</Text>
+                  <Text style={styles.submittedInfoText}>We will check the details and any attachment you included.</Text>
+                  <Text style={styles.submittedInfoText}>Critical access or safety issues are prioritized first.</Text>
+                  <Text style={styles.submittedInfoText}>You can submit another report if you notice a separate issue.</Text>
+                </View>
+                <Pressable style={styles.btnPrimary} onPress={() => setReportSubmitted(false)}>
+                  <Text style={styles.btnPrimaryText}>Submit Another Report</Text>
+                </Pressable>
+              </View>
+            ) : (
+            <>
             <Text style={styles.sectionTitle}>Report a Problem</Text>
             <Text style={styles.cardDesc}>Let us know what went wrong. The more detail you give, the faster we can fix it.</Text>
 
@@ -738,6 +761,8 @@ export default function SettingsScreen() {
             <Pressable style={[styles.btnPrimary, {marginTop: 10}]} onPress={handleReportSubmit} disabled={reportSubmitting}>
               {reportSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Submit Report</Text>}
             </Pressable>
+            </>
+            )}
           </View>
         )}
 
@@ -791,6 +816,60 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 15 },
   cardDesc: { fontSize: 14, color: COLORS.muted, marginBottom: 20 },
+  submittedCard: { alignItems: 'center' },
+  submittedIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 6,
+    borderColor: '#e6f5f5',
+  },
+  submittedEyebrow: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  submittedTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  submittedDesc: {
+    color: COLORS.muted,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  submittedInfoBox: {
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  submittedInfoTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  submittedInfoText: {
+    color: COLORS.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 5,
+  },
 
   field: { marginBottom: 18 },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: 8 },

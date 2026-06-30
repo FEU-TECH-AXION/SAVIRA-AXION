@@ -19,6 +19,7 @@ export default function ReportProblemTab({ user }) {
   const [pageUrl, setPageUrl] = useState("");
   const [attachment, setAttachment] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
@@ -63,13 +64,43 @@ export default function ReportProblemTab({ user }) {
       setAttachment(null);
       setPageUrl("");
       setIssueType("bug");
-      flash("success", "Thanks — your report has been submitted. Our team will review it shortly.");
+      setSubmitted(true);
+      setSuccess("");
+      setError("");
     } catch (err) {
       flash("error", err.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <div className={`${styles.card} ${styles.successCard}`}>
+        <div className={styles.successIcon}><FiCheck size={28} /></div>
+        <div className={styles.cardTitle}>Report Submitted</div>
+        <h3 className={styles.successTitle}>Thank you. Your support report was sent successfully.</h3>
+        <p className={styles.successDesc}>
+          Our team will review what you shared and use your contact details if we need to follow up.
+        </p>
+        <div className={styles.successNext}>
+          <p>What happens next?</p>
+          <ul>
+            <li>We will check the details and any attachment you included.</li>
+            <li>Critical access or safety issues are prioritized first.</li>
+            <li>You can submit another report if you notice a separate issue.</li>
+          </ul>
+        </div>
+        <button
+          type="button"
+          className={styles.btnPrimary}
+          onClick={() => setSubmitted(false)}
+        >
+          Submit Another Report
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form className={styles.card} onSubmit={handleSubmit}>

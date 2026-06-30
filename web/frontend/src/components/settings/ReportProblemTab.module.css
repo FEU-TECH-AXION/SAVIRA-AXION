@@ -175,6 +175,64 @@
 .btnPrimary:hover:not(:disabled) { background: var(--settings-accent-strong, #025f61); transform: translateY(-1px); }
 .btnPrimary:disabled { opacity: 0.65; cursor: not-allowed; }
 
+/* ── Submitted state ───────────────────────────────────────── */
+.successCard {
+  text-align: center;
+}
+
+.successIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--settings-success-bg, #e6f9f5);
+  color: var(--settings-accent, #037F81);
+  border: 1px solid var(--settings-success-border, #a7e9d8);
+}
+
+.successTitle {
+  margin: 0 auto 0.65rem;
+  max-width: 560px;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  color: var(--settings-text-primary, #1a1a1a);
+}
+
+.successDesc {
+  max-width: 580px;
+  margin: 0 auto 1.25rem;
+  color: var(--settings-muted, #666);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.successNext {
+  max-width: 580px;
+  margin: 0 auto 1.35rem;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  background: var(--settings-control-bg, #fafafa);
+  border: 1px solid var(--settings-border, #dde3ea);
+  text-align: left;
+}
+
+.successNext p {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  color: var(--settings-text-primary, #1a1a1a);
+}
+
+.successNext ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--settings-muted, #666);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
 /* ── Flash messages ─────────────────────────────────────────── */
 .flashSuccess,
 .flashError {
