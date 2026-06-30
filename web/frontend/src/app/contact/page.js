@@ -1,21 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import styles from "./contact.module.css";
-import { FaFacebook, FaInstagram} from "react-icons/fa6";
-import { FaCheck } from "react-icons/fa6";
+import { FaFacebook, FaInstagram, FaCheck } from "react-icons/fa6";
 
+const emptyForm = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  subject: "",
+  message: "",
+};
 
 export default function ContactPage() {
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    subject: "",
-    message: "",
-  });
+  const [form, setForm] = useState(emptyForm);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -35,6 +34,7 @@ export default function ContactPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not send your message.");
       setSubmitted(true);
+      setForm(emptyForm);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -44,7 +44,6 @@ export default function ContactPage() {
 
   return (
     <main className={styles.main}>
-      {/* ── Hero ── */}
       <section className={styles.hero}>
         <div className={styles.heroOverlay} />
         <h1 className={styles.heroTitle}>
@@ -52,7 +51,6 @@ export default function ContactPage() {
         </h1>
       </section>
 
-      {/* ── Intro ── */}
       <section className={styles.intro}>
         <p className={styles.sectionLabel}>
           <span className={styles.labelLine} /> Contact Us
@@ -67,96 +65,85 @@ export default function ContactPage() {
         </p>
       </section>
 
-      {/* ── Form + Info card ── */}
       <section className={styles.formSection}>
         <div className={styles.formCard}>
-          {/* ── Left: form ── */}
           <div className={styles.formLeft}>
-            {submitted ? (
-              <div className={styles.successMsg}>
-                <span className={styles.successIcon}><FaCheck /></span>
-                <h3>Message Sent!</h3>
-                <p>Thank you for reaching out. We&apos;ll get back to you shortly.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className={styles.form}>
-                {error && <p style={{ color: "red", fontSize: "13px" }}>{error}</p>}
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>First Name</label>
-                    <input
-                      type="text"
-                      placeholder="First Name"
-                      className={styles.input}
-                      value={form.firstName}
-                      onChange={set("firstName")}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Last Name</label>
-                    <input
-                      type="text"
-                      placeholder="Last Name"
-                      className={styles.input}
-                      value={form.lastName}
-                      onChange={set("lastName")}
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>E-mail</label>
-                    <input
-                      type="email"
-                      placeholder="user@gmail.com"
-                      className={styles.input}
-                      value={form.email}
-                      onChange={set("email")}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Phone Number</label>
-                    <input
-                      type="tel"
-                      placeholder="Number"
-                      className={styles.input}
-                      value={form.phone}
-                      onChange={set("phone")}
-                    />
-                  </div>
-                </div>
-
+            <form onSubmit={handleSubmit} className={styles.form}>
+              {error && <p className={styles.errorMsg}>{error}</p>}
+              <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Subject</label>
+                  <label className={styles.label}>First Name</label>
                   <input
                     type="text"
-                    placeholder="Enter subject here…"
+                    placeholder="First Name"
                     className={styles.input}
-                    value={form.subject}
-                    onChange={set("subject")}
+                    value={form.firstName}
+                    onChange={set("firstName")}
                   />
                 </div>
-
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Your Message</label>
-                  <textarea
-                    placeholder="Enter here…"
-                    className={styles.textarea}
-                    rows={5}
-                    value={form.message}
-                    onChange={set("message")}
+                  <label className={styles.label}>Last Name</label>
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    className={styles.input}
+                    value={form.lastName}
+                    onChange={set("lastName")}
                   />
                 </div>
+              </div>
 
-                <button type="submit" className={styles.submitBtn}>
-                  {submitting ? "Sending..." : "Send Message"}
-                </button>
-              </form>
-            )}
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>E-mail</label>
+                  <input
+                    type="email"
+                    placeholder="user@gmail.com"
+                    className={styles.input}
+                    value={form.email}
+                    onChange={set("email")}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="Number"
+                    className={styles.input}
+                    value={form.phone}
+                    onChange={set("phone")}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Subject</label>
+                <input
+                  type="text"
+                  placeholder="Enter subject here..."
+                  className={styles.input}
+                  value={form.subject}
+                  onChange={set("subject")}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Your Message</label>
+                <textarea
+                  placeholder="Enter here..."
+                  className={styles.textarea}
+                  rows={5}
+                  value={form.message}
+                  onChange={set("message")}
+                />
+              </div>
+
+              <button type="submit" className={styles.submitBtn} disabled={submitting}>
+                {submitting ? "Sending..." : "Send Message"}
+              </button>
+            </form>
           </div>
 
-          {/* ── Right: info ── */}
           <div className={styles.infoPanel}>
             <div className={styles.infoOverlay} />
             <div className={styles.infoBlock}>
@@ -181,9 +168,9 @@ export default function ContactPage() {
               <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Open Hours</h4>
               <p className={styles.infoText}>
-                Monday – Friday: 9:00 AM – 5:00 PM
+                Monday - Friday: 9:00 AM - 5:00 PM
                 <br />
-                Saturday: 9:00 AM – 12:00 PM
+                Saturday: 9:00 AM - 12:00 PM
               </p>
             </div>
 
@@ -193,25 +180,24 @@ export default function ContactPage() {
               <div className={styles.socials}>
                 <a href="https://www.facebook.com/PHsasha" aria-label="Facebook"><FaFacebook /></a>
                 <a href="https://www.instagram.com/phsasha_official/?g=5" aria-label="Instagram"><FaInstagram /></a>
-                {/* <a href="#" aria-label="YouTube"><FaYoutube /></a>
-                <a href="#" aria-label="LinkedIn"><FaLinkedin /></a> */}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Map ── */}
-      {/* <section className={styles.mapSection}>
-        <iframe
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3860.4!2d121.0!3d14.65!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDM5JzAwLjAiTiAxMjHCsDAwJzAwLjAiRQ!5e0!3m2!1sen!2sph!4v1620000000000!5m2!1sen!2sph"
-          className={styles.map}
-          allowFullScreen=""
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title="SASHA Office Location"
-        />
-      </section> */}
+      {submitted && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <div className={styles.sentModal} role="dialog" aria-modal="true" aria-labelledby="contact-sent-title">
+            <span className={styles.modalIcon}><FaCheck /></span>
+            <h3 id="contact-sent-title">Message Sent</h3>
+            <p>Thank you for reaching out. We&apos;ll get back to you shortly.</p>
+            <button type="button" className={styles.modalButton} onClick={() => setSubmitted(false)}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

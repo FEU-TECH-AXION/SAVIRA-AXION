@@ -6,7 +6,7 @@ import NotificationBell from '../../components/NotificationBell';
 
 import {
   View, Text, ScrollView, Pressable, Image,
-  StyleSheet, Modal, ImageBackground,
+  StyleSheet, ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -83,21 +83,32 @@ export default function AboutScreen() {
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
         {/* Hero */}
-        <View style={s.hero}>
+        <ImageBackground
+          source={require('../../assets/sasha-img-1.png')}
+          style={s.hero}
+          imageStyle={s.heroImage}
+          resizeMode="cover"
+        >
           <View style={s.heroOverlay}>
             <Text style={s.heroTitle}>
               Know More <Text style={{ color: ORANGE }}>About SASHA</Text>
             </Text>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Photo collage + years badge */}
         <View style={s.collageSection}>
           <View style={s.collageWrap}>
-            {/* Main image placeholder */}
-            <View style={s.collageMain} />
-            {/* Overlay image placeholder */}
-            <View style={s.collageOverlay} />
+            <Image
+              source={require('../../assets/about-photo-1.png')}
+              style={s.collageMain}
+              resizeMode="cover"
+            />
+            <Image
+              source={require('../../assets/about-photo-2.png')}
+              style={s.collageOverlay}
+              resizeMode="cover"
+            />
             {/* Years badge */}
             <View style={s.yearsBadge}>
               <Text style={s.yearsBadgeText}>3 years</Text>
@@ -118,24 +129,34 @@ export default function AboutScreen() {
         </View>
 
         {/* Mission */}
-        <View style={s.missionSection}>
+        <ImageBackground
+          source={require('../../assets/mv-bg.png')}
+          style={s.missionSection}
+          imageStyle={s.mvImage}
+          resizeMode="cover"
+        >
           <Text style={s.missionLabel}>Our Mission</Text>
           <View style={s.missionCard}>
             <Text style={s.missionText}>
               To defend and uphold the rights of vulnerable sectors against sexual harassment and abuse by providing structured reporting mechanisms, responsible case management, and sustained advocacy.
             </Text>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Vision */}
-        <View style={s.visionSection}>
+        <ImageBackground
+          source={require('../../assets/mv-bg.png')}
+          style={s.visionSection}
+          imageStyle={s.mvImage}
+          resizeMode="cover"
+        >
           <Text style={s.visionLabel}>Our Vision</Text>
           <View style={s.visionCard}>
             <Text style={s.visionText}>
               A society where safe spaces are ensured, abuse is not tolerated, and survivors are supported with dignity, respect, and justice.
             </Text>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Core Values */}
         <View style={s.section}>
@@ -178,12 +199,18 @@ const s = StyleSheet.create({
 avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Hero
-  hero: { height: 170, backgroundColor: '#b2d8d8', justifyContent: 'flex-end' },
+  hero: { height: 190, backgroundColor: '#f3f4f6', justifyContent: 'center' },
+  heroImage: { opacity: 0.58 },
   heroOverlay: {
-    backgroundColor: 'rgba(3,127,129,0.4)',
     paddingHorizontal: 20, paddingVertical: 18,
+    alignItems: 'center',
   },
-  heroTitle: { fontSize: 22, fontWeight: '900', color: '#fff' },
+  heroTitle: {
+    fontSize: 25,
+    fontWeight: '900',
+    color: TEAL,
+    textAlign: 'center',
+  },
 
   // Collage
   collageSection: { alignItems: 'center', paddingVertical: 24, backgroundColor: '#fff' },
@@ -217,6 +244,7 @@ avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
     backgroundColor: BG,
     paddingVertical: 28, paddingHorizontal: 20,
   },
+  mvImage: { opacity: 0.34 },
   missionLabel: {
     fontSize: 28, fontWeight: '900', color: ORANGE,
     marginBottom: 14,

@@ -211,6 +211,23 @@
   transform: scale(0.98);
 }
 
+.submitBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.errorMsg {
+  margin: 0;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 /* Success state */
 .successMsg {
   display: flex;
@@ -444,4 +461,74 @@
   padding: 1.25rem 0;
   font-size: 0.82rem;
   color: rgba(255, 255, 255, 0.55);
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(17, 24, 39, 0.54);
+}
+
+.sentModal {
+  width: min(100%, 420px);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--text);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  padding: 2rem;
+  text-align: center;
+}
+
+.modalIcon {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  margin-bottom: 1rem;
+}
+
+.sentModal h3 {
+  color: var(--teal);
+  font-size: 1.35rem;
+  line-height: 1.25;
+  margin: 0 0 0.55rem;
+}
+
+.sentModal p {
+  color: var(--gray-600);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0 0 1.4rem;
+}
+
+.modalButton {
+  min-width: 112px;
+  border: none;
+  border-radius: 8px;
+  background: var(--orange);
+  color: var(--white);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.75rem 1.25rem;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.modalButton:hover {
+  background: #c7440a;
+}
+
+.modalButton:active {
+  transform: scale(0.98);
 }

@@ -24,25 +24,26 @@ const TABS = [
 // ── Completion helpers ────────────────────────────────────────
 function getCompletionFields(user) {
   return [
+    { key: "first_name",      label: "First Name",      optional: false },
     { key: "middle_name",     label: "Middle Name",     optional: true  },
+    { key: "last_name",       label: "Last Name",       optional: false },
     { key: "extension_name",  label: "Extension Name",  optional: true  },
     { key: "user_name",       label: "Username",        optional: false },
+    { key: "email",           label: "Email",           optional: false },
     { key: "contact_number",  label: "Contact Number",  optional: false },
     { key: "city",            label: "City",            optional: false },
     { key: "province",        label: "Province",        optional: false },
     { key: "profile_img",     label: "Profile Photo",   optional: true  },
     { key: "birthday",        label: "Birthday",        optional: true  },
     { key: "gender_identity", label: "Gender Identity",  optional: true  },
-  ].map((f) => ({ ...f, filled: !!(user?.[f.key]) }));
+  ].map((f) => ({ ...f, filled: !!String(user?.[f.key] || "").trim() }));
 }
 
 function calcCompletion(user) {
   const required = getCompletionFields(user).filter((f) => !f.optional);
   const filled   = required.filter((f) => f.filled).length;
-  const base  = 4; // first_name, last_name, email, password always filled after signup
-  const total = base + required.length;
-  const done  = base + filled;
-  return Math.round((done / total) * 100);
+  if (required.length === 0) return 0;
+  return Math.round((filled / required.length) * 100);
 }
 
 function SettingsPageContent() {
@@ -96,8 +97,8 @@ function SettingsPageContent() {
   }, [loading, user, router]);
 
   // ── Derived ───────────────────────────────────────────────
-  const completion    = calcCompletion(user);
-  const missingFields  = getCompletionFields(user).filter((f) => !f.filled && !f.optional);
+  const completion    = calcCompletion(form);
+  const missingFields  = getCompletionFields(form).filter((f) => !f.filled && !f.optional);
   const initials = `${user?.first_name?.[0] || ""}${user?.last_name?.[0] || ""}`.toUpperCase() || "?";
 
   // ── Profile photo upload (lives in the hero, shared across all tabs) ──

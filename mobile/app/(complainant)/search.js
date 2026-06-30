@@ -10,7 +10,7 @@ const SEARCH_ITEMS = [
     title: 'Dashboard',
     description: 'Your reports, notifications, events, and quick actions',
     href: '/(complainant)/dashboard',
-    icon: 'home-outline',
+    icon: 'grid-outline',
     keywords: ['home', 'overview', 'notifications'],
   },
   {

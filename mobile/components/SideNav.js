@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { clearSession } from '../lib/session';
@@ -23,7 +24,7 @@ const NAV_SECTIONS = [
   {
     type: 'link',
     label: 'Home',
-    icon: 'home-outline',
+    icon: 'grid-outline',
     href: '/(complainant)/dashboard',
   },
   {
@@ -40,6 +41,18 @@ const NAV_SECTIONS = [
     label: 'Events',
     icon: 'calendar-outline',
     href: '/(complainant)/events',
+  },
+  {
+    type: 'link',
+    label: 'About SASHA',
+    icon: 'information-circle-outline',
+    href: '/(complainant)/about',
+  },
+  {
+    type: 'link',
+    label: 'Contact Us',
+    icon: 'mail-outline',
+    href: '/(complainant)/contact',
   },
   {
     type: 'link',
@@ -80,6 +93,22 @@ const NAV_SECTIONS = [
 export default function SideNav({ open, onClose }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState({});
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const loadUser = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('user');
+        setUser(stored ? JSON.parse(stored) : null);
+      } catch {
+        setUser(null);
+      }
+    };
+
+    loadUser();
+  }, [open]);
 
   const toggle = (label) =>
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -89,11 +118,23 @@ export default function SideNav({ open, onClose }) {
     onClose();
   };
 
+  const navigateToProfile = () => {
+    router.push({ pathname: '/(complainant)/settings', params: { tab: 'Profile' } });
+    onClose();
+  };
+
   const handleLogout = async () => {
     await clearSession();
     router.replace('/(auth)/login');
     onClose();
   };
+
+  const firstName = user?.firstName || user?.first_name || '';
+  const lastName = user?.lastName || user?.last_name || '';
+  const displayName = `${firstName} ${lastName}`.trim() || user?.name || user?.email || 'User';
+  const displayRole = user?.role_name || user?.roleName || user?.role || 'Complainant';
+  const profileImage = user?.profile_img || user?.profilePicture || user?.profile_picture;
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   return (
     <Modal
@@ -108,11 +149,26 @@ export default function SideNav({ open, onClose }) {
         <View style={s.drawer}>
           {/* Header */}
           <View style={s.drawerHeader}>
-            <Image
-              source={require('../assets/sasha-icon-teal.png')}
-              style={s.drawerLogo}
-              resizeMode="contain"
-            />
+            <Pressable
+              onPress={navigateToProfile}
+              style={({ pressed }) => [s.userPill, pressed && s.userPillPressed]}
+            >
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={s.userAvatarImage} />
+              ) : (
+                <View style={s.userAvatar}>
+                  {initials ? (
+                    <Text style={s.userAvatarText}>{initials}</Text>
+                  ) : (
+                    <Ionicons name="person-outline" size={18} color="#fff" />
+                  )}
+                </View>
+              )}
+              <View style={s.userInfo}>
+                <Text style={s.userName} numberOfLines={1}>{displayName}</Text>
+                <Text style={s.userRole} numberOfLines={1}>{displayRole}</Text>
+              </View>
+            </Pressable>
             <Pressable onPress={onClose} style={s.closeBtn}>
               <Ionicons name="close" size={22} color="#6b7280" />
             </Pressable>
@@ -232,7 +288,62 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
 
-  drawerLogo: { width: 48, height: 48 },
+  userPill: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+
+  userPillPressed: {
+    backgroundColor: '#f0fafa',
+  },
+
+  userAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  userAvatarImage: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    flexShrink: 0,
+  },
+
+  userAvatarText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  userInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  userName: {
+    color: '#1f2937',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  userRole: {
+    color: TEAL,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
 
   closeBtn: {
     width: 34,

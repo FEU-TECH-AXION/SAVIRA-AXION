@@ -5,11 +5,11 @@ import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 
 import {
-  View, Text, ScrollView, Pressable, Image, StyleSheet,
-  TextInput, Modal, Linking,
+  View, Text, ScrollView, Pressable, StyleSheet, ImageBackground,
+  TextInput, Linking, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons, Feather, FontAwesome } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { API_URL } from '../../lib/config';
 
 const TEAL  = '#037F81';
 const ORANGE = '#E96433';
@@ -78,8 +78,9 @@ function InfoBlock({ icon, title, children }) {
 // ── Social Button ─────────────────────────────────────────────────────────────
 function SocialBtn({ name, onPress }) {
   const iconMap = {
+    facebook:  { icon: 'logo-facebook',  bg: ORANGE },
     twitter:   { icon: 'logo-twitter',   bg: '#000' },
-    instagram: { icon: 'logo-instagram', bg: '#E1306C' },
+    instagram: { icon: 'logo-instagram', bg: ORANGE },
     youtube:   { icon: 'logo-youtube',   bg: '#FF0000' },
     linkedin:  { icon: 'logo-linkedin',  bg: '#0077B5' },
   };
@@ -103,6 +104,60 @@ export default function ContactScreen() {
   const [phone, setPhone]         = useState('');
   const [subject, setSubject]     = useState('');
   const [message, setMessage]     = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const resetForm = () => {
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setPhone('');
+    setSubject('');
+    setMessage('');
+  };
+
+  const submitContactForm = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanMessage = message.trim();
+    setSubmitted(false);
+
+    if (!cleanEmail || !cleanMessage) {
+      setFormError('Email and message are required.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setFormError('Enter a valid email address.');
+      return;
+    }
+
+    setSubmitting(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${API_URL}/api/support/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email: cleanEmail,
+          phone,
+          subject,
+          message: cleanMessage,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not send your message.');
+
+      resetForm();
+      setSubmitted(true);
+    } catch (err) {
+      setFormError(err.message || 'Could not send your message.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <View style={s.container}>
@@ -112,13 +167,18 @@ export default function ContactScreen() {
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
         {/* Hero */}
-        <View style={s.hero}>
+        <ImageBackground
+          source={require('../../assets/hero-bg-2.png')}
+          style={s.hero}
+          imageStyle={s.heroImage}
+          resizeMode="cover"
+        >
           <View style={s.heroOverlay}>
             <Text style={s.heroTitle}>
               Get <Text style={{ color: ORANGE }}>In Touch</Text>
             </Text>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Intro */}
         <View style={s.introSection}>
@@ -137,6 +197,19 @@ export default function ContactScreen() {
 
         {/* Contact Form Card */}
         <View style={s.formCard}>
+          {submitted && (
+            <View style={s.successBox}>
+              <Ionicons name="checkmark-circle-outline" size={20} color="#047857" />
+              <Text style={s.successText}>Message sent. Thank you for reaching out.</Text>
+            </View>
+          )}
+
+          {formError ? (
+            <View style={s.errorBox}>
+              <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
+              <Text style={s.errorText}>{formError}</Text>
+            </View>
+          ) : null}
 
           {/* Name row */}
           <View style={s.twoCol}>
@@ -191,22 +264,35 @@ export default function ContactScreen() {
           />
 
           {/* Send Button */}
-          <Pressable style={s.sendBtn}>
-            <Text style={s.sendBtnText}>Send Message</Text>
+          <Pressable
+            style={[s.sendBtn, submitting && s.sendBtnDisabled]}
+            disabled={submitting}
+            onPress={submitContactForm}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={s.sendBtnText}>Send Message</Text>
+            )}
           </Pressable>
         </View>
 
         {/* Info & Social Footer */}
-        <View style={s.infoFooter}>
+        <ImageBackground
+          source={require('../../assets/sasha-bg-1.png')}
+          style={s.infoFooter}
+          imageStyle={s.infoFooterImage}
+          resizeMode="cover"
+        >
 
           <InfoBlock title="Address">
-            <Text style={s.infoText}>2nd Floor, Community Development</Text>
-            <Text style={s.infoText}>Quezon City, Metro Manila, 1101</Text>
+            <Text style={s.infoText}>270A ML Quezon Street</Text>
+            <Text style={s.infoText}>Buli, Muntinlupa City</Text>
           </InfoBlock>
 
           <InfoBlock title="Contact">
-            <Text style={s.infoText}>Email: info@sasha-ph.org</Text>
-            <Text style={s.infoText}>Contact Number: +63 9 1234 5678</Text>
+            <Text style={s.infoText}>Email: sasha@oneamaps.com</Text>
+            <Text style={s.infoText}>Contact Number: 0977 319 6087</Text>
           </InfoBlock>
 
           <InfoBlock title="Open Hours">
@@ -216,14 +302,12 @@ export default function ContactScreen() {
 
           <InfoBlock title="Stay Connected">
             <View style={s.socialRow}>
-              <SocialBtn name="twitter"   onPress={() => {}} />
-              <SocialBtn name="instagram" onPress={() => {}} />
-              <SocialBtn name="youtube"   onPress={() => {}} />
-              <SocialBtn name="linkedin"  onPress={() => {}} />
+              <SocialBtn name="facebook"  onPress={() => Linking.openURL('https://www.facebook.com/PHsasha')} />
+              <SocialBtn name="instagram" onPress={() => Linking.openURL('https://www.instagram.com/phsasha_official/?g=5')} />
             </View>
           </InfoBlock>
 
-        </View>
+        </ImageBackground>
 
         {/* Map Placeholder */}
         <View style={s.mapPlaceholder}>
@@ -258,12 +342,18 @@ const s = StyleSheet.create({
     avatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Hero
-  hero: { height: 160, backgroundColor: '#cde8e8', justifyContent: 'flex-end' },
+  hero: { height: 170, backgroundColor: '#f3f4f6', justifyContent: 'center' },
+  heroImage: { opacity: 0.58 },
   heroOverlay: {
-    backgroundColor: 'rgba(3,127,129,0.45)',
     paddingHorizontal: 20, paddingVertical: 18,
+    alignItems: 'center',
   },
-  heroTitle: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: TEAL,
+    textAlign: 'center',
+  },
 
   // Intro
   introSection: { padding: 20, paddingBottom: 8 },
@@ -285,6 +375,30 @@ const s = StyleSheet.create({
   },
   twoCol: { flexDirection: 'row', gap: 10 },
 
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#ecfdf5',
+    borderColor: '#bbf7d0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 11,
+  },
+  successText: { flex: 1, color: '#047857', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 11,
+  },
+  errorText: { flex: 1, color: '#b91c1c', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
   input: {
     borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
@@ -299,6 +413,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
   },
+  sendBtnDisabled: {
+    opacity: 0.72,
+  },
   sendBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
   // Info Footer
@@ -309,6 +426,9 @@ const s = StyleSheet.create({
     padding: 20,
     gap: 20,
     overflow: 'hidden',
+  },
+  infoFooterImage: {
+    opacity: 0.28,
   },
   infoBlock: { gap: 4 },
   infoIconLine: {

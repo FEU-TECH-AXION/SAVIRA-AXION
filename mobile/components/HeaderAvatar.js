@@ -30,11 +30,16 @@ export default function HeaderAvatar({ user: propUser }) {
   };
 
   const getInitials = () => {
-    if (!user) return 'TU';
-    const first = (user.firstName || user.first_name || 'Test').charAt(0).toUpperCase();
-    const last = (user.lastName || user.last_name || 'User').charAt(0).toUpperCase();
-    return `${first}${last}`;
+    const first = user?.firstName || user?.first_name || '';
+    const last = user?.lastName || user?.last_name || '';
+    const initials = `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+    return initials || null;
   };
+
+  const initials = getInitials();
+  const displayName = user
+    ? `${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`.trim()
+    : '';
 
   const handleLogout = async () => {
     setModalVisible(false);
@@ -53,7 +58,11 @@ export default function HeaderAvatar({ user: propUser }) {
           <Image source={{ uri: user.profile_img || user.profilePicture }} style={styles.avatarImage} />
         ) : (
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
+            {initials ? (
+              <Text style={styles.avatarText}>{initials}</Text>
+            ) : (
+              <Ionicons name="person-outline" size={18} color="#fff" />
+            )}
           </View>
         )}
       </Pressable>
@@ -62,7 +71,7 @@ export default function HeaderAvatar({ user: propUser }) {
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
           <Pressable style={styles.menuContainer} onPress={() => {}}>
             <View style={styles.menuHeader}>
-              <Text style={styles.userName}>{user ? `${user.firstName || user.first_name || 'Test'} ${user.lastName || user.last_name || 'User'}`.trim() : 'Test User'}</Text>
+              <Text style={styles.userName}>{displayName || user?.email || 'User'}</Text>
               <Text style={styles.userRole}>{user?.role || 'User'}</Text>
             </View>
             <View style={styles.menuDivider} />

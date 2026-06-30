@@ -46,6 +46,7 @@ const ALLOWED_EVIDENCE_MIME_TYPES = new Set([
 const ALLOWED_EVIDENCE_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png", "mp4"]);
 const ALLOWED_EVIDENCE_FILE_TYPES_LABEL = "PDF, JPG, JPEG, PNG, and MP4";
 const INPUT_PLACEHOLDER_COLOR = "#6b7280";
+const CASE_REPORT_DRAFT_KEY = "savira_mobile_case_report_draft";
 const FormInputFocusContext = createContext(() => {});
 
 function getFileExtension(file) {
@@ -176,6 +177,15 @@ function toTwentyFourHourTime(value) {
   if (period === "PM" && hour < 12) hour += 12;
   if (period === "AM" && hour === 12) hour = 0;
   return `${String(hour).padStart(2, "0")}:${minute}`;
+}
+
+function hasDraftValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value && typeof value === "object") {
+    return Object.values(value).some(hasDraftValue);
+  }
+  if (typeof value === "boolean") return value;
+  return String(value || "").trim().length > 0;
 }
 
 
@@ -2257,15 +2267,78 @@ function getFollowUpGroupsForReason(reason) {
 }
 
 function getStatusName(report) {
-  return report.case_status?.status_name || report.statusName || report.status || STATUS_LABELS[report.case_status_id] || 'Submitted';
+  return (
+    report.statusName ||
+    report.status ||
+    report.case_status?.status_name ||
+    report.case_status?.case_status_name ||
+    report.case_status_name ||
+    STATUS_LABELS[Number(report.case_status_id)] ||
+    'Submitted'
+  );
+}
+
+function getNestedOfficerName(assignments = []) {
+  const active = assignments.find((assignment) => assignment?.is_active) || assignments[0];
+  const user = active?.case_officers?.users || active?.case_officer?.users;
+  const name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
+  return name || null;
+}
+
+function getAssignedPersonnel(report) {
+  return (
+    report.assigned_officer ||
+    report.assignedOfficer ||
+    report.assigned_personnel ||
+    report.assignedPersonnel ||
+    getNestedOfficerName(report.case_assignments) ||
+    null
+  );
+}
+
+function getSubmittedAt(report) {
+  return report.created_at || report.dateSubmitted || report.rawDateSubmitted || null;
+}
+
+function formatSubmittedDate(report) {
+  const submittedAt = getSubmittedAt(report);
+  if (!submittedAt) return '—';
+  const date = new Date(submittedAt);
+  if (Number.isNaN(date.getTime())) return String(submittedAt);
+  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function getReportId(report, fallback = 1) {
   const raw = report.case_report_id || report.id;
   if (!raw) return `#${fallback}`;
-  const createdAt = report.created_at || report.incident_date;
+  const createdAt = getSubmittedAt(report);
   const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
   return `${year}-${String(raw).padStart(3, '0')}`;
+}
+
+function sortReportsBySubmissionOrder(rows) {
+  return [...rows].sort((a, b) => {
+    const dateA = getSubmittedAt(a) ? new Date(getSubmittedAt(a)).getTime() : Number.POSITIVE_INFINITY;
+    const dateB = getSubmittedAt(b) ? new Date(getSubmittedAt(b)).getTime() : Number.POSITIVE_INFINITY;
+    if (dateA !== dateB) return dateA - dateB;
+    return Number(a.case_report_id || a.id || 0) - Number(b.case_report_id || b.id || 0);
+  });
+}
+
+async function fetchReportDetails(token, report) {
+  const id = report.case_report_id || report.id;
+  if (!id) return report;
+
+  try {
+    const res = await fetch(`${API_URL}/api/case_reports/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return report;
+    const body = await res.json().catch(() => ({}));
+    return { ...report, ...(body.data || body) };
+  } catch (_) {
+    return report;
+  }
 }
 
 function getWithdrawalCopy(status) {
@@ -2392,6 +2465,8 @@ export default function ReportScreen() {
     policeStation: "",
   });
   const [evidence, setEvidence] = useState({ files: [] });
+  const [draftNotice, setDraftNotice] = useState("");
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const totalSteps = STEPS.length;
   const scrollFocusedInputIntoView = useCallback((input, extraLift = 0) => {
@@ -2432,6 +2507,69 @@ export default function ReportScreen() {
     formScrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [step]);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(CASE_REPORT_DRAFT_KEY);
+        if (!active || !raw) return;
+        const draft = JSON.parse(raw);
+        if (draft?.complainant) setComplainant((current) => ({ ...current, ...draft.complainant }));
+        if (draft?.incident) {
+          const draftIncident = { ...draft.incident };
+          if (draftIncident.date && !draftIncident.incidentYear) {
+            const parts = String(draftIncident.date).split("-");
+            if (parts[0]) draftIncident.incidentYear = parts[0];
+            if (parts[1]) draftIncident.incidentMonth = String(Number(parts[1]));
+            if (parts[2]) draftIncident.incidentDay = String(Number(parts[2]));
+          }
+          setIncident((current) => ({
+            ...current,
+            ...draftIncident,
+            date: buildIncidentDate(draftIncident) || draftIncident.date || "",
+            outcome: normalizeOutcome(draftIncident.outcome),
+          }));
+        }
+        if (draft?.evidence) setEvidence((current) => ({ ...current, ...draft.evidence }));
+        if (draft?.consents) setConsents((current) => ({ ...current, ...draft.consents }));
+        setDraftNotice("Your unfinished report draft has been restored.");
+      } catch (err) {
+        console.error("[loadReportDraft]", err);
+      } finally {
+        if (active) setDraftChecked(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draftChecked || submitted) return;
+    const draftForm = {
+      complainant,
+      incident,
+      evidence,
+      consents,
+    };
+    const draft = {
+      ...draftForm,
+      updatedAt: new Date().toISOString(),
+    };
+    const saveDraft = async () => {
+      try {
+        if (hasDraftValue(draftForm)) {
+          await AsyncStorage.setItem(CASE_REPORT_DRAFT_KEY, JSON.stringify(draft));
+        } else {
+          await AsyncStorage.removeItem(CASE_REPORT_DRAFT_KEY);
+        }
+      } catch (err) {
+        console.error("[saveReportDraft]", err);
+      }
+    };
+    saveDraft();
+  }, [complainant, incident, evidence, consents, draftChecked, submitted]);
+
   const fetchReports = async () => {
     try {
       const token = await AsyncStorage.getItem("user_token");
@@ -2446,7 +2584,10 @@ export default function ReportScreen() {
       });
       if (!res.ok) throw new Error("Failed");
       const { data } = await res.json();
-      setReports(data || []);
+      const detailedReports = await Promise.all(
+        (data || []).map((report) => fetchReportDetails(token, report))
+      );
+      setReports(sortReportsBySubmissionOrder(detailedReports));
     } catch (err) {
       console.error("[fetchReports]", err);
     } finally {
@@ -2707,6 +2848,8 @@ export default function ReportScreen() {
       }
 
       setSubmitted(true);
+      setDraftNotice("");
+      await AsyncStorage.removeItem(CASE_REPORT_DRAFT_KEY);
       fetchReports();
     } catch (err) {
       setSubmitError(formatErrorMessage(err, "Failed to submit report."));
@@ -2717,6 +2860,7 @@ export default function ReportScreen() {
 
   const handleReset = () => {
     setSubmitted(false);
+    setDraftNotice("");
     setStep(0);
     setConsents({
       dataPrivacy: false,
@@ -2766,17 +2910,31 @@ export default function ReportScreen() {
       policeStation: "",
     });
     setEvidence({ files: [], anonymous: false });
+    AsyncStorage.removeItem(CASE_REPORT_DRAFT_KEY).catch((err) => {
+      console.error("[clearReportDraft]", err);
+    });
   };
 
   // ── Derived filtered reports for history tab ─────────────────────────────
   const filteredReports = reports.filter((r) => {
     const statusName = getStatusName(r);
     const matchesStatus = filterStatus === 'All' || statusName === filterStatus;
+    const assigned = getAssignedPersonnel(r) || '';
+    const caseType = r.case_type || r.caseType || '';
+    const category = r.primary_category || r.primaryCategory || '';
+    const city = r.incident_city || r.city || '';
+    const description = r.incident_description || r.description || '';
+    const displayId = getReportId(r);
     const q = searchQuery.toLowerCase();
     const matchesSearch = !q ||
-      (r.incident_description || '').toLowerCase().includes(q) ||
-      (r.incident_city || '').toLowerCase().includes(q) ||
-      (r.case_report_id ? String(r.case_report_id).toLowerCase().includes(q) : false);
+      displayId.toLowerCase().includes(q) ||
+      String(r.case_report_id || r.id || '').toLowerCase().includes(q) ||
+      statusName.toLowerCase().includes(q) ||
+      assigned.toLowerCase().includes(q) ||
+      caseType.toLowerCase().includes(q) ||
+      category.toLowerCase().includes(q) ||
+      city.toLowerCase().includes(q) ||
+      description.toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
   const historyTotalPages = Math.max(1, Math.ceil(filteredReports.length / HISTORY_PAGE_SIZE));
@@ -2883,6 +3041,13 @@ export default function ReportScreen() {
                   </Text>
                   <Text style={s.formCardTitle}>Report Submission Form</Text>
                 </View>
+
+                {draftNotice ? (
+                  <View style={s.draftAlert}>
+                    <Ionicons name="save-outline" size={16} color={TEAL} />
+                    <Text style={s.draftAlertText}>{draftNotice}</Text>
+                  </View>
+                ) : null}
 
                 <WizardStepper current={step} />
 
@@ -3005,6 +3170,9 @@ export default function ReportScreen() {
                 const statusName = getStatusName(r);
                 const statusColor = STATUS_COLORS[statusName] || STATUS_COLORS['Submitted'];
                 const displayId = getReportId(r, historyStart + i);
+                const assignedPersonnel = getAssignedPersonnel(r) || 'Unassigned';
+                const city = r.incident_city || r.city || '—';
+                const description = r.incident_description || r.description || '—';
                 const statusDisplay = STATUS_DISPLAY[statusName] || STATUS_DISPLAY.Submitted;
                 const middle = statusDisplay.middle || r.previous_status_name || 'In Progress';
                 const steps = ['Submitted', middle, TERMINAL_STATUSES.includes(statusName) ? statusName : 'Resolved'];
@@ -3019,9 +3187,7 @@ export default function ReportScreen() {
                       <View style={s.historyIdentity}>
                         <Text style={s.historyEyebrow}>Report ID</Text>
                         <Text style={s.historyCardId}>{displayId}</Text>
-                        <Text style={s.historyCardDate}>
-                          {r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
-                        </Text>
+                        <Text style={s.historyCardDate}>Date submitted: {formatSubmittedDate(r)}</Text>
                       </View>
                       <View style={[s.historyStatusBadge, { backgroundColor: statusColor.bg }]}>
                         <Text style={[s.historyStatusText, { color: statusColor.text }]}>{statusName}</Text>
@@ -3031,17 +3197,17 @@ export default function ReportScreen() {
                     <View style={s.historyCardBody}>
                       <View style={s.historyDetailRow}>
                         <Ionicons name="location-outline" size={14} color="#9ca3af" />
-                        <Text style={s.historyDetailText}>{r.incident_city || '—'}</Text>
+                        <Text style={s.historyDetailText}>{city}</Text>
                       </View>
                       <View style={s.historyDetailRow}>
                         <Ionicons name="document-text-outline" size={14} color="#9ca3af" />
                         <Text style={s.historyDetailText} numberOfLines={2}>
-                          {r.incident_description || '—'}
+                          {description}
                         </Text>
                       </View>
                       <View style={s.historyDetailRow}>
                         <Ionicons name="person-outline" size={14} color="#9ca3af" />
-                        <Text style={s.historyDetailText}>{r.assigned_personnel || r.assigned_officer || 'Unassigned'}</Text>
+                        <Text style={s.historyDetailText}>{assignedPersonnel}</Text>
                       </View>
                       {r.follow_up_summary && (
                         <View style={s.followBadge}>
@@ -3081,7 +3247,7 @@ export default function ReportScreen() {
                       )}
                       <Pressable
                         style={[s.historyActionBtn, s.viewActionBtn]}
-                        onPress={() => router.push({ pathname: '/(complainant)/report-detail', params: { caseId: r.case_report_id || r.id, displayId } })}
+                        onPress={() => router.push({ pathname: '/(complainant)/report-detail', params: { caseId: r.case_report_id || r.id, displayId, from: 'history' } })}
                       >
                         <Ionicons name="eye-outline" size={15} color="#fff" />
                         <Text style={s.viewActionText}>View</Text>
@@ -4030,6 +4196,19 @@ const s = StyleSheet.create({
     borderColor: "#fecaca",
   },
   errorAlertText: { color: ERROR, fontSize: 13, flex: 1 },
+  draftAlert: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "#ecfeff",
+    borderColor: "#99f6e4",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  draftAlertText: { color: "#115e59", fontSize: 13, flex: 1, lineHeight: 18 },
 
   // Success
   successContainer: {

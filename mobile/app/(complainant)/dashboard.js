@@ -352,7 +352,7 @@ export default function ComplainantDashboard() {
   const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
 
-  const [user, setUser] = useState({ firstName: 'User', lastName: 'Name', email: '', profile_img: '' });
+  const [user, setUser] = useState(null);
   const [reports, setReports] = useState([]);
   const [dashEvents, setDashEvents] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -369,10 +369,11 @@ export default function ComplainantDashboard() {
       if (userStr) {
         const parsedUser = JSON.parse(userStr);
         setUser({
-          firstName: parsedUser.first_name || 'User',
-          lastName: parsedUser.last_name || 'Name',
+          ...parsedUser,
+          firstName: parsedUser.firstName || parsedUser.first_name || '',
+          lastName: parsedUser.lastName || parsedUser.last_name || '',
           email: parsedUser.email || '',
-          profile_img: parsedUser.profile_img || '',
+          profile_img: parsedUser.profile_img || parsedUser.profilePicture || '',
         });
       }
 
@@ -493,8 +494,8 @@ export default function ComplainantDashboard() {
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
 
         <HeroBanner
-          firstName={user.firstName}
-          lastName={user.lastName}
+          firstName={user?.firstName || user?.first_name || 'User'}
+          lastName={user?.lastName || user?.last_name || ''}
           totalNotifications={unreadCount}
         />
 
@@ -539,7 +540,7 @@ export default function ComplainantDashboard() {
                   currentStep={currentStep >= 0 && currentStep <= 2 ? currentStep : 0}
                   onView={() => router.push({
                     pathname: '/(complainant)/report-detail',
-                    params: { caseId: rawReportId, displayId },
+                    params: { caseId: rawReportId, displayId, from: 'dashboard' },
                   })}
                 />
               );

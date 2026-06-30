@@ -454,12 +454,15 @@ function getFollowUpEntries(request) {
 
 export default function ReportDetailScreen() {
   const router = useRouter();
-  const { caseId, displayId } = useLocalSearchParams();
+  const { caseId, displayId, from, tab } = useLocalSearchParams();
+  const fromParam = Array.isArray(from) ? from[0] : from;
+  const tabParam = Array.isArray(tab) ? tab[0] : tab;
   const [navOpen, setNavOpen] = useState(false);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('details');
+  const initialTab = tabParam === 'follow-ups' ? 'followups' : tabParam || 'details';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [followUpReason, setFollowUpReason] = useState('Correction needed');
@@ -475,6 +478,9 @@ export default function ReportDetailScreen() {
   const [followUpRequests, setFollowUpRequests] = useState([]);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [followUpsError, setFollowUpsError] = useState('');
+  const [caseUpdates, setCaseUpdates] = useState([]);
+  const [caseUpdatesLoading, setCaseUpdatesLoading] = useState(false);
+  const [caseUpdatesError, setCaseUpdatesError] = useState('');
   const [replyDrafts, setReplyDrafts] = useState({});
   const [replySendingId, setReplySendingId] = useState(null);
   const [replyError, setReplyError] = useState('');
@@ -541,6 +547,28 @@ export default function ReportDetailScreen() {
 
   useEffect(() => {
     if (caseId) loadFollowUps();
+  }, [caseId]);
+
+  async function loadCaseUpdates() {
+    setCaseUpdatesLoading(true);
+    setCaseUpdatesError('');
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      const res = await fetch(`${API_URL}/api/case_reports/${caseId}/public-updates`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to load case updates.');
+      setCaseUpdates(body.data || []);
+    } catch (err) {
+      setCaseUpdatesError(err.message || 'Failed to load case updates.');
+    } finally {
+      setCaseUpdatesLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (caseId) loadCaseUpdates();
   }, [caseId]);
 
   async function loadInterviews() {
@@ -618,10 +646,15 @@ export default function ReportDetailScreen() {
   const showInterviewTab = isInterviewWilling(report) && interviewsChecked && interviews.length > 0;
   const visibleTabs = [
     { id: 'details', label: 'Case Details' },
+    { id: 'updates', label: 'Case Updates' },
     ...(showInterviewTab ? [{ id: 'interview', label: 'Interview' }] : []),
     { id: 'followups', label: 'Follow-ups' },
   ];
   const displayedActiveTab = activeTab === 'interview' && !showInterviewTab ? 'details' : activeTab;
+  const backTarget = fromParam === 'dashboard'
+    ? '/(complainant)/dashboard'
+    : { pathname: '/(complainant)/reports', params: { tab: 'history' } };
+  const backLabel = fromParam === 'dashboard' ? 'Back to Dashboard' : 'Back to Report History';
   const currentInterview = interviews[0] || null;
   const slotsByDate = useMemo(() => slots.reduce((map, slot) => {
     const key = toDateKey(slot.date);
@@ -894,9 +927,9 @@ export default function ReportDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-          <Pressable style={s.backButton} onPress={() => router.push('/(complainant)/reports?tab=history')}>
+          <Pressable style={s.backButton} onPress={() => router.push(backTarget)}>
             <Ionicons name="arrow-back" size={17} color={TEAL} />
-            <Text style={s.backText}>Back to Report History</Text>
+            <Text style={s.backText}>{backLabel}</Text>
           </Pressable>
 
           <View style={s.hero}>
@@ -943,7 +976,12 @@ export default function ReportDetailScreen() {
             </View>
           </View>
 
-          <View style={s.tabs}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.tabs}
+            contentContainerStyle={s.tabsContent}
+          >
             {visibleTabs.map((tab) => (
               <Pressable
                 key={tab.id}
@@ -956,7 +994,7 @@ export default function ReportDetailScreen() {
                 <Text style={[s.tabText, displayedActiveTab === tab.id && s.tabTextActive]}>{tab.label}</Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
 
           {displayedActiveTab === 'details' ? (
             <>
@@ -1074,6 +1112,47 @@ export default function ReportDetailScreen() {
                 )}
               </Section>
             </>
+          ) : displayedActiveTab === 'updates' ? (
+            <Section title="Case Updates">
+              <Text style={s.sectionIntro}>
+                Progress notes and public updates from the SASHA case team will appear here.
+              </Text>
+              {caseUpdatesLoading ? (
+                <View style={s.followState}>
+                  <ActivityIndicator color={TEAL} />
+                  <Text style={s.emptyText}>Loading case updates...</Text>
+                </View>
+              ) : caseUpdatesError ? (
+                <Text style={s.followError}>{caseUpdatesError}</Text>
+              ) : caseUpdates.length > 0 ? (
+                <View style={s.timeline}>
+                  {caseUpdates.map((entry, index) => {
+                    const statusCopy = entry.type === 'status' ? STATUS_COPY[entry.title] : null;
+                    const title = statusCopy?.title || entry.title || 'Case Update';
+                    const description = statusCopy?.body || statusCopy?.description || entry.description;
+
+                    return (
+                      <View key={entry.id || index} style={s.timelineItem}>
+                        <View style={s.timelineDot} />
+                        <View style={s.timelineBody}>
+                          <Text style={s.timelineStatus}>{title}</Text>
+                          <Text style={s.timelineMeta}>{dateOf(entry.date, false)}</Text>
+                          {description ? <Text style={s.timelineNote}>{description}</Text> : null}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={s.followEmpty}>
+                  <Ionicons name="megaphone-outline" size={28} color="#9ca3af" />
+                  <Text style={s.followEmptyTitle}>No updates yet.</Text>
+                  <Text style={s.followEmptyText}>
+                    You'll see progress on your case here as your case officer or legal team adds updates.
+                  </Text>
+                </View>
+              )}
+            </Section>
           ) : displayedActiveTab === 'interview' ? (
             <Section title="Interview">
               {interviewsLoading ? (
@@ -1797,7 +1876,6 @@ const s = StyleSheet.create({
   actionPrimaryText: { color: '#fff' },
   actionDisabledText: { color: '#9ca3af' },
   tabs: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
@@ -1809,7 +1887,18 @@ const s = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 8,
   },
-  tab: { flex: 1, alignItems: 'center', borderRadius: 9, paddingVertical: 10 },
+  tabsContent: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 4,
+  },
+  tab: {
+    minWidth: 104,
+    alignItems: 'center',
+    borderRadius: 9,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
   tabActive: { backgroundColor: '#f0fafb' },
   tabText: { color: '#6b7280', fontSize: 12, fontWeight: '900' },
   tabTextActive: { color: TEAL },

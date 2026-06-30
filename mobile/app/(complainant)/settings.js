@@ -102,7 +102,10 @@ const ISSUE_TYPES = [
 
 function getCompletionFields(profile) {
   return [
+    { key: 'first_name', label: 'First Name', optional: false },
+    { key: 'last_name', label: 'Last Name', optional: false },
     { key: 'user_name', label: 'Username', optional: false },
+    { key: 'email', label: 'Email', optional: false },
     { key: 'contact_number', label: 'Contact Number', optional: false },
     { key: 'city', label: 'City', optional: false },
     { key: 'province', label: 'Province', optional: false },
@@ -115,10 +118,8 @@ function getCompletionFields(profile) {
 function calcCompletion(profile) {
   const required = getCompletionFields(profile).filter((field) => !field.optional);
   const filled = required.filter((field) => field.filled).length;
-  const base = 4;
-  const total = base + required.length;
-  const done = base + filled;
-  return Math.round((done / total) * 100);
+  if (required.length === 0) return 0;
+  return Math.round((filled / required.length) * 100);
 }
 
 function confirmPhotoChoice() {
