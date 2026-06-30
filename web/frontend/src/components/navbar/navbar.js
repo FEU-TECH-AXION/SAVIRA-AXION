@@ -14,7 +14,7 @@ import {
 import Sidebar from "@/components/sidebar/sidebar";
 import { PUBLIC_LINKS, ROLE_LABELS } from "@/components/navigation/navigationLinks";
 import styles from "./navbar.module.css";
-import { useNotificationStore, markAllRead } from '@/lib/notificationStore';
+import { formatNotificationTime, useNotificationStore } from '@/lib/notificationStore';
 
 // ── Component ──────────────────────────────────────────────
 
@@ -25,8 +25,7 @@ export default function Navbar() {
   const publicNavRef = useRef(null);
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
-  const { notifications } = useNotificationStore();
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const { notifications, unreadCount, markAllRead } = useNotificationStore({ enabled: Boolean(user) && !loading });
   const [notifOpen, setNotifOpen] = useState(false);
 
   const isActive = (href) =>
@@ -142,6 +141,11 @@ export default function Navbar() {
                           >
                             <p className={styles.notifTitle}>{n.title}</p>
                             <p className={styles.notifBody}>{n.body}</p>
+                            {n.created_at && (
+                              <p className={styles.notifTime}>
+                                {formatNotificationTime(n.created_at)}
+                              </p>
+                            )}
                           </div>
                         ))
                       )}

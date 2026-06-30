@@ -465,6 +465,13 @@
 /* ══════════════════════════════
    RESPONSIVE
 ══════════════════════════════ */
+.notifTime {
+  margin: 0.25rem 0 0;
+  font-size: 0.7rem;
+  color: #8a8f98;
+  font-weight: 600;
+}
+
 @media (max-width: 600px) {
   .navInner {
     padding: 0 0.75rem;

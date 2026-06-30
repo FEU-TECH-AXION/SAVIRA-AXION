@@ -1,6 +1,7 @@
 const { randomUUID } = require('crypto');
 const supabase = require('../config/supabase');
 const { sendSupportReplyEmail } = require('../config/mailer');
+const { fireAndForget, notifyRoleUsers } = require('../services/notificationService');
 
 const ATTACHMENT_BUCKET = 'case-evidence';
 
@@ -83,6 +84,19 @@ const createContactMessage = async (req, res) => {
       .select('*')
       .single();
     if (error) throw error;
+    fireAndForget(
+      notifyRoleUsers(['Admin'], {
+        title: 'New contact message',
+        body: `${payload.first_name || payload.email || 'Someone'} sent a contact form submission.`,
+        data: {
+          type: 'support_message',
+          support_message_id: data.message_id,
+          link: '/support-messages',
+          priority: 'high',
+        },
+      }),
+      'Failed to notify admins about contact message'
+    );
     res.status(201).json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -117,6 +131,19 @@ const createBugReport = async (req, res) => {
       .single();
     if (error) throw error;
     const [messageWithUrl] = await addAttachmentUrls([data]);
+    fireAndForget(
+      notifyRoleUsers(['Admin'], {
+        title: 'New bug report',
+        body: `${payload.first_name || payload.email || 'A user'} submitted a bug report.`,
+        data: {
+          type: 'bug_report',
+          support_message_id: data.message_id,
+          link: '/support-messages',
+          priority: 'high',
+        },
+      }),
+      'Failed to notify admins about bug report'
+    );
     res.status(201).json({ data: messageWithUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });

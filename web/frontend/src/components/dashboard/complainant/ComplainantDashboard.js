@@ -11,6 +11,7 @@ import VolunteerApplicationStatusCard, {
 } from "@/components/volunteer/VolunteerApplicationStatusCard";
 import DashboardHeatmapCard from "./DashboardHeatmapCard";
 import DashboardEventsCard from "./DashboardEventsCard";
+import { formatNotificationTime, useNotificationStore } from "@/lib/notificationStore";
 
 // ── Action Card (Submit Report / Apply as Volunteer) ─────────────────────────
 function ActionCard({ icon, title, description, onView }) {
@@ -55,7 +56,12 @@ function NotificationsCard({ notifications = [], onView }) {
         ) : (
           notifications.map((n) => (
             <div key={n.id} className={styles.notifItem}>
-              <span className={styles.notifText}>{n.text}</span>
+              <span className={styles.notifText}>{n.text || n.message || n.body || n.title}</span>
+              {n.created_at && (
+                <span className={styles.notifTime}>
+                  {formatNotificationTime(n.created_at)}
+                </span>
+              )}
             </div>
           ))
         )}
@@ -106,6 +112,11 @@ export default function ComplainantDashboard({
 }) {
   const router = useRouter();
   const { user: authUser, loading: authLoading } = useAuth();
+  const {
+    notifications: storedNotifications,
+    importantNotifications,
+    unreadCount,
+  } = useNotificationStore({ enabled: Boolean(authUser) && !authLoading });
 
   const user = authUser
     ? {
@@ -121,16 +132,11 @@ export default function ComplainantDashboard({
   // Normalise whatever shape the parent passes into what the card expects
   const normalisedReports = userReports.map(normalizeReport).filter(Boolean);
 
-  // ── Fallback demo data (only used when props are absent) ───────────────────
   const resolvedNotifications = notifications.length
     ? notifications
-    : [
-        { id: 1, text: "Update on your submitted rep…" },
-        { id: 2, text: "Update on your submitted app…" },
-        { id: 3, text: "You have an ongoing project i…" },
-      ];
+    : importantNotifications.slice(0, 5);
 
-  const resolvedTotalNotif = totalNotifications || resolvedNotifications.length;
+  const resolvedTotalNotif = totalNotifications || unreadCount || storedNotifications.length;
 
   const resolvedApplication = applicationData
     ? normalizeVolunteerApplication(applicationData)
@@ -240,7 +246,7 @@ export default function ComplainantDashboard({
             <div className="col-12 col-lg-4">
               <NotificationsCard
                 notifications={resolvedNotifications}
-                onView={() => {/* navigate to /notifications */}}
+                onView={() => router.push("/dashboard")}
               />
             </div>
           </div>

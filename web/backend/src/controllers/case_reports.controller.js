@@ -6,6 +6,12 @@ const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatm
 const { randomUUID } = require('crypto');
 const DuplicateCases = require('../services/duplicateCases.service');
 const supabase = require('../config/supabase');
+const {
+  fireAndForget,
+  notifyCaseOwner,
+  notifyRoleUsers,
+  notifyUser,
+} = require('../services/notificationService');
 
 const IMMEDIATE_WITHDRAWAL_STATUSES = new Set([2, 3, 4, 6]);
 const APPROVAL_WITHDRAWAL_STATUSES = new Set([7, 8]);
@@ -181,6 +187,34 @@ async function submitReport(req, res) {
       case_report_id:       newReport.case_report_id,
       incident_description: newReport.incident_description,
     });
+
+    fireAndForget(
+      notifyUser(userId, {
+        title: 'Report submitted',
+        body: 'Your report has been submitted and is now for verification.',
+        data: {
+          type: 'case_report',
+          case_report_id: newReport.case_report_id,
+          link: `/cases/view?id=${newReport.case_report_id}`,
+          priority: 'normal',
+        },
+      }),
+      'Failed to notify report submitter'
+    );
+
+    fireAndForget(
+      notifyRoleUsers(['Admin', 'Staff', 'Case Officer'], {
+        title: 'New report submitted',
+        body: `A new report #${newReport.case_report_id} is ready for review.`,
+        data: {
+          type: 'case_report',
+          case_report_id: newReport.case_report_id,
+          link: `/cases/view?id=${newReport.case_report_id}`,
+          priority: 'high',
+        },
+      }),
+      'Failed to notify administrative users about new report'
+    );
 
     return res.status(201).json({
       data: newReport,
@@ -517,6 +551,38 @@ const withdrawCase = async (req, res) => {
 
     const result = Array.isArray(data) ? data[0] : data;
     const pending = result?.action_type === 'REQUIRE_APPROVAL';
+    fireAndForget(
+      notifyRoleUsers(['Admin'], {
+        title: pending ? 'Withdrawal approval needed' : 'Case withdrawn',
+        body: pending
+          ? `A withdrawal request for report #${id} needs admin review.`
+          : `Report #${id} was withdrawn by the complainant.`,
+        data: {
+          type: 'case_withdrawal',
+          case_report_id: id,
+          link: `/cases/view?id=${id}`,
+          priority: pending ? 'high' : 'normal',
+        },
+      }),
+      'Failed to notify admins about withdrawal'
+    );
+
+    if (!pending) {
+      fireAndForget(
+        notifyCaseOwner(id, {
+          title: 'Report withdrawn',
+          body: 'Your report has been withdrawn.',
+          data: {
+            type: 'case_report',
+            case_report_id: id,
+            link: `/cases/view?id=${id}`,
+            priority: 'normal',
+          },
+        }),
+        'Failed to notify case owner about withdrawal'
+      );
+    }
+
     return res.status(pending ? 202 : 200).json({
       message: pending
         ? 'Withdrawal request submitted for approval.'

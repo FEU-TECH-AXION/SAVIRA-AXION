@@ -432,6 +432,14 @@
   display: block;
 }
 
+.notifTime {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--sasha-muted);
+  font-weight: 600;
+}
+
 .notifEmpty {
   font-size: 0.82rem;
   color: var(--sasha-muted);

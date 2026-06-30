@@ -4,21 +4,17 @@ import { useCallback, useState, useEffect } from 'react';
 import { getToken, onMessage } from 'firebase/messaging';
 import { getFirebaseMessaging } from '@/lib/firebase';
 import { addNotification } from '@/lib/notificationStore';
+import { API_URL } from '@/lib/config';
+import { authFetch } from '@/lib/AuthContext';
 
 export default function NotificationsInit() {
-  const [showBanner, setShowBanner] = useState(false);
+  const [showBanner, setShowBanner] = useState(() => (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    Notification.permission === 'default'
+  ));
 
-  useEffect(() => {
-    // Check current permission state
-    if (Notification.permission === 'default') {
-      setShowBanner(true); // not yet asked — show the banner
-    } else if (Notification.permission === 'granted') {
-      registerToken(); // already allowed — register silently
-    }
-    // if 'denied', do nothing
-  }, []);
-
-  async function registerToken() {
+  const registerToken = useCallback(async () => {
     console.log('[FCM] starting registerToken'); // add
     const messaging = await getFirebaseMessaging();
     console.log('[FCM] messaging:', messaging); // add
@@ -31,10 +27,9 @@ export default function NotificationsInit() {
       console.log('[FCM] token:', token); // add
 
       if (token) {
-        const res = await fetch('http://localhost:5000/api/notifications/register-token', {
+        const res = await authFetch(`${API_URL}/api/notifications/register-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ token, platform: 'web' }),
         });
         console.log('[FCM] register response:', res.status); // add
@@ -47,7 +42,12 @@ export default function NotificationsInit() {
     } catch (err) {
       console.error('[FCM] registerToken error:', err); // add
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    registerToken();
+  }, [registerToken]);
 
   async function handleAllow() {
     if (!('Notification' in window)) return;

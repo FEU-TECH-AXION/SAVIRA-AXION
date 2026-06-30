@@ -6,6 +6,12 @@ const ScreeningQuestionsModel   = require('../models/screening_questions.model')
 const OrganizationsModel         = require('../models/organizations.model')
 const supabase                     = require('../config/supabase')
 const { runVolunteerEssayAnalysis } = require('../services/volunteerNlp.service')
+const {
+    fireAndForget,
+    notifyRoleUsers,
+    notifyUser,
+    notifyVolunteerApplicationOwner,
+} = require('../services/notificationService')
 
 
 // Maps your form keys to question_key values in the database
@@ -31,6 +37,12 @@ const MEMBERSHIP_COMMITTEE_ID = 2
 const REAPPLICATION_WAIT_DAYS = 15
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000
 const APPLICATION_STATUSES = new Set(['pending', 'reviewing', 'approved', 'rejected'])
+
+function statusLabel(status) {
+    return String(status || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+}
 
 const getAuthenticatedUserId = (req) =>
     req.user?.id || req.user?.user_id || req.user?.sub || null
@@ -265,6 +277,22 @@ const assignAssessors = async (req, res) => {
             .from('volunteer_applications')
             .update({ application_status: 'reviewing', updated_at: new Date() })
             .in('volunteer_application_id', applicationIds)
+
+        for (const applicationId of applicationIds) {
+            fireAndForget(
+                notifyVolunteerApplicationOwner(applicationId, {
+                    title: 'Volunteer application under review',
+                    body: 'Your volunteer application is now being reviewed.',
+                    data: {
+                        type: 'volunteer_application',
+                        volunteer_application_id: applicationId,
+                        link: '/volunteer/apply',
+                        priority: 'normal',
+                    },
+                }),
+                'Failed to notify applicant about application review'
+            )
+        }
 
         res.status(200).json({ data })
     } catch (error) {
@@ -579,6 +607,36 @@ const createItem = async (req, res) => {
             // intentionally no await — same fire-and-forget pattern as case reports
         }
 
+        fireAndForget(
+            notifyUser(userId, {
+                title: 'Volunteer application submitted',
+                body: nonNegotiablePassed
+                    ? 'Your volunteer application has been submitted and is pending review.'
+                    : 'Your volunteer application has been submitted, but it did not pass the initial screening.',
+                data: {
+                    type: 'volunteer_application',
+                    volunteer_application_id: application.volunteer_application_id,
+                    link: '/volunteer/apply',
+                    priority: nonNegotiablePassed ? 'normal' : 'high',
+                },
+            }),
+            'Failed to notify applicant about submitted application'
+        )
+
+        fireAndForget(
+            notifyRoleUsers(['Admin', 'Staff'], {
+                title: 'New volunteer application',
+                body: `${application.name || 'A user'} submitted a volunteer application.`,
+                data: {
+                    type: 'volunteer_application',
+                    volunteer_application_id: application.volunteer_application_id,
+                    link: `/volunteer/view?id=${application.volunteer_application_id}`,
+                    priority: 'high',
+                },
+            }),
+            'Failed to notify administrative users about new application'
+        )
+
         res.status(201).json({
             message:            'Application submitted successfully.',
             application,
@@ -670,6 +728,22 @@ const updateItem = async (req, res) => {
                 changed_by: changedBy,
             })
         if (historyError) throw historyError
+
+        fireAndForget(
+            notifyVolunteerApplicationOwner(id, {
+                title: 'Volunteer application updated',
+                body: normalizedNotes
+                    ? `Your volunteer application is now ${statusLabel(normalizedStatus)}. ${normalizedNotes}`
+                    : `Your volunteer application is now ${statusLabel(normalizedStatus)}.`,
+                data: {
+                    type: 'volunteer_application',
+                    volunteer_application_id: id,
+                    link: '/volunteer/apply',
+                    priority: ['approved', 'rejected'].includes(normalizedStatus) ? 'high' : 'normal',
+                },
+            }),
+            'Failed to notify applicant about application status'
+        )
 
         res.status(200).json(updated)
 
@@ -765,6 +839,19 @@ const withdrawApplication = async (req, res) => {
             .single();
             
         if (error) throw error;
+        fireAndForget(
+            notifyVolunteerApplicationOwner(id, {
+                title: 'Volunteer application withdrawn',
+                body: 'Your volunteer application has been withdrawn.',
+                data: {
+                    type: 'volunteer_application',
+                    volunteer_application_id: id,
+                    link: '/volunteer/apply',
+                    priority: 'normal',
+                },
+            }),
+            'Failed to notify applicant about withdrawn application'
+        )
         res.json({ message: 'Application withdrawn successfully', data });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -794,6 +881,19 @@ const undoWithdrawApplication = async (req, res) => {
             .single();
             
         if (error) throw error;
+        fireAndForget(
+            notifyVolunteerApplicationOwner(id, {
+                title: 'Volunteer application restored',
+                body: `Your volunteer application is back to ${statusLabel(newStatus)}.`,
+                data: {
+                    type: 'volunteer_application',
+                    volunteer_application_id: id,
+                    link: '/volunteer/apply',
+                    priority: 'normal',
+                },
+            }),
+            'Failed to notify applicant about restored application'
+        )
         res.json({ message: 'Withdrawal undone successfully', data });
     } catch (error) {
         res.status(500).json({ error: error.message });

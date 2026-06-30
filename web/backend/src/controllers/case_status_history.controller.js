@@ -1,6 +1,16 @@
 const CaseStatusHistory = require('../models/case_status_history.model')
 const CaseAssessments   = require('../models/case_assessments.model')
 const supabase          = require('../config/supabase')
+const {
+  fireAndForget,
+  notifyCaseOwner,
+  notifyRoleUsers,
+} = require('../services/notificationService')
+
+function getStatusNameById(statusId) {
+  return Object.entries(CaseStatusHistory.STATUS_ID_MAP)
+    .find(([, id]) => Number(id) === Number(statusId))?.[0] || 'updated';
+}
 
 const getHistory = async (req, res) => {
   try {
@@ -127,7 +137,37 @@ const submitStatusChange = async (req, res) => {
       changed_by_role,
     })
 
-    
+    if (requiresApproval) {
+      fireAndForget(
+        notifyRoleUsers(['Admin'], {
+          title: 'Case status approval needed',
+          body: `Report #${case_report_id} has a pending status change to ${proposed_status}.`,
+          data: {
+            type: 'case_status',
+            case_report_id,
+            status_history_id: historyRow.history_id,
+            link: `/cases/view?id=${case_report_id}`,
+            priority: 'high',
+          },
+        }),
+        'Failed to notify admins about pending status change'
+      )
+    } else {
+      fireAndForget(
+        notifyCaseOwner(case_report_id, {
+          title: 'Report status updated',
+          body: `Your report is now ${proposed_status}.`,
+          data: {
+            type: 'case_status',
+            case_report_id,
+            status_history_id: historyRow.history_id,
+            link: `/cases/view?id=${case_report_id}`,
+            priority: 'high',
+          },
+        }),
+        'Failed to notify case owner about status update'
+      )
+    }
 
     res.status(201).json({
       message: requiresApproval
@@ -168,6 +208,22 @@ const approveStatusChange = async (req, res) => {
         })
       : await CaseStatusHistory.approve(Number(historyId), approver.user_id)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'approved')
+    if (historyRow.case_report_id) {
+      fireAndForget(
+        notifyCaseOwner(historyRow.case_report_id, {
+          title: 'Report status approved',
+          body: `Your report is now ${getStatusNameById(historyRow.case_status_id)}.`,
+          data: {
+            type: 'case_status',
+            case_report_id: historyRow.case_report_id,
+            status_history_id: historyRow.history_id || historyId,
+            link: `/cases/view?id=${historyRow.case_report_id}`,
+            priority: 'high',
+          },
+        }),
+        'Failed to notify case owner about approved status'
+      )
+    }
     res.json({ message: 'Status change approved and case updated.', historyRow })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -200,6 +256,22 @@ const rejectStatusChange = async (req, res) => {
         })
       : await CaseStatusHistory.reject(Number(historyId), approver.user_id, rejection_reason)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'rejected')
+    if (historyRow.case_report_id) {
+      fireAndForget(
+        notifyCaseOwner(historyRow.case_report_id, {
+          title: 'Report status update rejected',
+          body: 'A proposed status update for your report was not approved.',
+          data: {
+            type: 'case_status',
+            case_report_id: historyRow.case_report_id,
+            status_history_id: historyRow.history_id || historyId,
+            link: `/cases/view?id=${historyRow.case_report_id}`,
+            priority: 'normal',
+          },
+        }),
+        'Failed to notify case owner about rejected status'
+      )
+    }
     res.json({ message: 'Status change rejected.', historyRow })
   } catch (err) {
     res.status(500).json({ error: err.message })
