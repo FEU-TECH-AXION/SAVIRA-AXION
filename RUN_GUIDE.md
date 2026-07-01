@@ -105,11 +105,10 @@ uvicorn main:app --reload --port 8000
 
 ---
 
-### Heatmap Feature
+### APK Build command
 ```bash
-cd web/frontend
-npm install
-npm run dev
+cd mobile
+eas build -p android --profile preview
 
 ---
 
