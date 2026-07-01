@@ -4,6 +4,10 @@
 
 SAVIRA is an automated, centralized case management system designed to facilitate secure case registration, structured gathering of evidence and testimonies, real-time case monitoring, and tracking of case status — maintaining confidentiality while adhering to SASHA's "always believe the victim" philosophy.
 
+## Full System Documentation
+
+For the detailed cloud architecture, framework breakdown, backend API modules, frontend/mobile structure, NLP workflow, data model, and deployment notes, see [`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md).
+
 ## Modules
 
 - **Case Management** - Secure case registration, evidence gathering, and real-time status tracking
