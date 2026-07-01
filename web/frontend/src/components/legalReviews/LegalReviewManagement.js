@@ -1173,6 +1173,7 @@ export default function LegalReviewManagement() {
   const canUseParalegalWorkflows = isAdmin || isParalegal;
   const canUseLawyerWorkflow = isAdmin || isLawyer;
   const canUseAllLegalWorkflows = isAdmin || isParalegal;
+  const canUseCalendarWorkflow = isAdmin || isParalegal || isLawyer;
 
   // Fetch verified-true cases from Case Management API
   useEffect(() => {
@@ -1677,8 +1678,8 @@ export default function LegalReviewManagement() {
             <div className="col-12 col-sm-6 col-lg-4" style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
               {canUseAllLegalWorkflows && <ActionCard icon={<img src="/LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Record routine progress immediately; filing and terminal outcomes require admin approval." onView={() => setModal("selectStatus")} />}
             </div>
-            <div className="col-12 col-sm-6 col-lg-4" style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
-              {canUseAllLegalWorkflows && <ActionCard icon={<img src="/case-calendar.png" alt="" className={styles.actionIconImg} />} title="Case Calendar" description="See upcoming and overdue hearings, investigation follow-ups, and referral deadlines." onView={() => { setCalendarCases(cases); setModal("calendar"); }} />}
+            <div className="col-12 col-sm-6 col-lg-4" style={!canUseCalendarWorkflow ? { display: "none" } : undefined}>
+              {canUseCalendarWorkflow && <ActionCard icon={<img src="/case-calendar.png" alt="" className={styles.actionIconImg} />} title="Case Calendar" description="See upcoming and overdue hearings, investigation follow-ups, and referral deadlines." onView={() => { setCalendarCases(cases); setModal("calendar"); }} />}
             </div>
             {canUseAllLegalWorkflows && (
               <div className="col-12 col-sm-6 col-lg-4">
@@ -1749,7 +1750,7 @@ export default function LegalReviewManagement() {
               canLawyerActions={canUseLawyerWorkflow}
               canEndorseActions={canUseAllLegalWorkflows}
               canMonitorActions={canUseAllLegalWorkflows}
-              canCalendarActions={canUseAllLegalWorkflows}
+              canCalendarActions={canUseCalendarWorkflow}
               canStatusActions={canUseAllLegalWorkflows}
               sortField={sortField}
               sortDir={sortDir}

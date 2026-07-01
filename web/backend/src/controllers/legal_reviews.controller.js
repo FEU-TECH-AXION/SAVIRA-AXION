@@ -71,6 +71,38 @@ function toClientPayload(review, logs = []) {
   }
 }
 
+function toCalendarPayload(review) {
+  if (!review) return null
+  return {
+    endorsementDetails: review.endorsement_details || null,
+    paralegalRecord: review.paralegal_record
+      ? {
+          date: review.paralegal_record.date || null,
+          readyAt: review.paralegal_record.readyAt || null,
+          readyForLawyerReview: review.paralegal_record.readyForLawyerReview || false,
+        }
+      : null,
+    lawyerRecord: review.lawyer_record
+      ? {
+          date: review.lawyer_record.date || null,
+          savedAt: review.lawyer_record.savedAt || null,
+          consultationType: review.lawyer_record.consultationType || null,
+          consultations: (review.lawyer_record.consultations || []).map((consultation) => ({
+            date: consultation.date || consultation.consultationDate || null,
+            savedAt: consultation.savedAt || null,
+            consultationType: consultation.consultationType || null,
+          })),
+        }
+      : null,
+    monitoringLog: (review.monitoring_log || []).map((entry) => ({
+      date: entry.date || null,
+    })),
+    documentRepository: (review.document_repository || []).map((entry) => ({
+      addedAt: entry.addedAt || null,
+    })),
+  }
+}
+
 async function getByCase(req, res) {
   try {
     const { caseReportId } = req.params
@@ -79,6 +111,17 @@ async function getByCase(req, res) {
     return res.json({ data: toClientPayload(review, logs) })
   } catch (err) {
     console.error('[legalReviews.getByCase]', err)
+    return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
+  }
+}
+
+async function getCalendarByCase(req, res) {
+  try {
+    const { caseReportId } = req.params
+    const review = await LegalReviews.getLatestByCase(caseReportId)
+    return res.json({ data: toCalendarPayload(review) })
+  } catch (err) {
+    console.error('[legalReviews.getCalendarByCase]', err)
     return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
   }
 }
@@ -188,4 +231,4 @@ async function updateByCase(req, res) {
   }
 }
 
-module.exports = { getByCase, updateByCase }
+module.exports = { getByCase, getCalendarByCase, updateByCase }

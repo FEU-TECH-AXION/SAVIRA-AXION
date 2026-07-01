@@ -28,6 +28,7 @@ import {
   MonitoringModal,
   PARALEGAL_EVIDENCE_LABELS,
 } from "./LegalReviewModals";
+import { getLegalCaseDeadlines } from "./legalReviewCalendar";
 import { useAuth } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -513,15 +514,7 @@ function LegalReviewDetailsSection({ caseData }) {
   const hasMonitoring = (caseData.monitoringLog || []).length > 0;
   const hasDocuments = (caseData.documentRepository || []).length > 0;
   const hasStatusDetails = (caseData.statusHistory || []).some((entry) => entry.formData || entry.form_data);
-  const deadlines = [
-    { label: "Referral follow-up", value: caseData.endorsementDetails?.["Follow-up Date"] },
-    ...(caseData.statusHistory || []).map((entry) => ({
-      label: "Next hearing",
-      value: entry.formData?.nextHearingDate || entry.form_data?.nextHearingDate,
-    })),
-  ]
-    .filter((item) => item.value && !Number.isNaN(new Date(item.value).getTime()))
-    .sort((a, b) => new Date(a.value) - new Date(b.value));
+  const deadlines = getLegalCaseDeadlines(caseData);
   const paralegalEvidence = hasParalegal ? normalizeParalegalEvidence(caseData.paralegalRecord) : [];
   const paralegalObtainedCount = paralegalEvidence.filter((item) => item.status === "Obtained").length;
   const paralegalSummary = hasParalegal
@@ -562,13 +555,12 @@ function LegalReviewDetailsSection({ caseData }) {
             <p className={styles.emptyState}>No structured hearing or follow-up dates have been recorded yet.</p>
           ) : <div className={styles.detailGrid}>
             {deadlines.map((deadline, index) => {
-              const date = new Date(deadline.value);
-              const dayDelta = Math.ceil((date - new Date(new Date().toDateString())) / 86400000);
+              const dayDelta = Math.ceil((deadline.date - new Date(new Date().toDateString())) / 86400000);
               return (
                 <div key={`${deadline.label}-${deadline.value}-${index}`} className={styles.detailItem}>
                   <p className={styles.detailKey}>{deadline.label}</p>
                   <p className={styles.detailVal}>
-                    {date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : `in ${dayDelta} day(s)`})
+                    {deadline.date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})
                   </p>
                 </div>
               );
@@ -691,6 +683,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   const canUseParalegalWorkflows = isAdmin || isParalegal;
   const canUseLawyerWorkflow = isAdmin || isLawyer;
   const canUseAllLegalWorkflows = isAdmin || isParalegal;
+  const canUseCalendarWorkflow = isAdmin || isParalegal || isLawyer;
 
   // Determine available status transitions
   function getAvailableTransitions() {
@@ -852,7 +845,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             </Tooltip>
           )}
 
-          {canUseAllLegalWorkflows && (
+          {canUseCalendarWorkflow && (
             <Tooltip text="Jump to this case's hearings, deadlines, and legal events.">
               <button onClick={() => document.getElementById("legal-case-calendar")?.scrollIntoView({ behavior: "smooth", block: "start" })} style={btnStyle("#037F81")}>Case Calendar</button>
             </Tooltip>
@@ -1085,7 +1078,13 @@ export default function ViewCase() {
           const legalReviewPayload = await legalReviewRes.json().catch(() => ({}));
           setCaseData(mergeLegalReviewData(mappedCase, legalReviewPayload.data));
         } else {
-          setCaseData(mappedCase);
+          const calendarRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseId}/calendar`, { credentials: "include" });
+          if (calendarRes.ok) {
+            const calendarPayload = await calendarRes.json().catch(() => ({}));
+            setCaseData({ ...mappedCase, ...(calendarPayload.data || {}) });
+          } else {
+            setCaseData(mappedCase);
+          }
         }
 
         const assessmentRes = await fetch(`${API_URL}/api/case_assessments/case/${caseId}`, { credentials: "include" });

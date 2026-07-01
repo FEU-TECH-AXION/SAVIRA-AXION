@@ -25,6 +25,13 @@ const EVENT_STYLE = {
   hearing: { background: "#fce7f3", color: "#9d174d", borderColor: "#f9a8d4", label: "Hearing" },
   investigation: { background: "#cffafe", color: "#155e75", borderColor: "#67e8f9", label: "Investigation follow-up" },
   referral: { background: "#ede9fe", color: "#5b21b6", borderColor: "#c4b5fd", label: "Referral follow-up" },
+  filing: { background: "#ffedd5", color: "#9a3412", borderColor: "#fdba74", label: "Filing" },
+  consultation: { background: "#dbeafe", color: "#1e40af", borderColor: "#93c5fd", label: "Consultation" },
+  monitoring: { background: "#dcfce7", color: "#166534", borderColor: "#86efac", label: "Monitoring" },
+  paralegal: { background: "#e0f2fe", color: "#0369a1", borderColor: "#7dd3fc", label: "Paralegal" },
+  document: { background: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1", label: "Document" },
+  status: { background: "#fef3c7", color: "#92400e", borderColor: "#fde68a", label: "Status update" },
+  legal: { background: "#f5f3ff", color: "#5b21b6", borderColor: "#ddd6fe", label: "Legal date" },
 };
 
 export default function LegalCaseCalendar() {
@@ -59,6 +66,10 @@ export default function LegalCaseCalendar() {
             caseId: `${new Date(report.created_at).getFullYear()}-${String(report.case_report_id).padStart(3, "0")}`,
             status: STATUS_STEP[report.case_status_id],
             endorsementDetails: null,
+            paralegalRecord: null,
+            lawyerRecord: null,
+            monitoringLog: [],
+            documentRepository: [],
             statusHistory: [],
           }));
 
@@ -72,6 +83,10 @@ export default function LegalCaseCalendar() {
           return {
             ...caseData,
             endorsementDetails: review?.endorsement_details || null,
+            paralegalRecord: review?.paralegal_record || null,
+            lawyerRecord: review?.lawyer_record || null,
+            monitoringLog: review?.monitoring_log || [],
+            documentRepository: review?.document_repository || [],
             statusHistory: history || [],
           };
         }));
