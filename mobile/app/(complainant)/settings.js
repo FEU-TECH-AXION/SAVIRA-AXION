@@ -12,8 +12,7 @@ import {
   ActivityIndicator,
   Switch,
   Platform,
-  KeyboardAvoidingView,
-  useColorScheme
+  KeyboardAvoidingView
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
@@ -138,7 +137,6 @@ function confirmPhotoChoice() {
 export default function SettingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const systemColorScheme = useColorScheme();
   const [navOpen, setNavOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(params.tab || 'Profile');
   const [loading, setLoading] = useState(true);
@@ -431,12 +429,9 @@ export default function SettingsScreen() {
   // ── Display State ───────────────────────────────────
   const [displayPrefs, setDisplayPrefs] = useState(DEFAULT_DISPLAY_PREFS);
 
-  const effectiveTheme = displayPrefs.theme === 'system' ? systemColorScheme || 'light' : displayPrefs.theme;
   const displayColors = displayPrefs.highContrast
     ? { bg: '#ffffff', card: '#ffffff', text: '#000000', muted: '#111827', border: '#111827', primary: '#005f61' }
-    : effectiveTheme === 'dark'
-      ? { bg: '#0f172a', card: '#111827', text: '#f8fafc', muted: '#cbd5e1', border: '#334155', primary: '#2dd4bf' }
-      : { bg: COLORS.bg, card: COLORS.card, text: COLORS.text, muted: COLORS.muted, border: COLORS.border, primary: COLORS.primary };
+    : { bg: COLORS.bg, card: COLORS.card, text: COLORS.text, muted: COLORS.muted, border: COLORS.border, primary: COLORS.primary };
   const fontScale = displayPrefs.fontSize === 'lg' ? 1.12 : displayPrefs.fontSize === 'sm' ? 0.94 : 1;
   const displayStyles = {
     page: { backgroundColor: displayColors.bg },
@@ -888,25 +883,6 @@ export default function SettingsScreen() {
         {/* ======================= DISPLAY ======================= */}
         {activeTab === 'Display' && (
           <View>
-            <View style={[styles.section, displayStyles.section]}>
-               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Theme</Text>
-               <View style={styles.themeRow}>
-                 {[{id:'light', label:'Light', icon:'sun'}, {id:'dark', label:'Dark', icon:'moon'}, {id:'system', label:'System', icon:'monitor'}].map(t => (
-                   <Pressable
-                     key={t.id}
-                     accessibilityRole="button"
-                     accessibilityLabel={displayPrefs.screenReaderHints ? `Use ${t.label.toLowerCase()} theme for display preferences` : t.label}
-                     accessibilityState={{ selected: displayPrefs.theme === t.id }}
-                     style={[styles.themeCard, displayPrefs.theme === t.id && styles.themeCardActive]}
-                     onPress={() => setDisplayPrefs({...displayPrefs, theme: t.id})}
-                   >
-                     <Feather name={t.icon} size={24} color={displayPrefs.theme === t.id ? displayColors.primary : displayColors.muted} />
-                     <Text style={[styles.themeText, displayStyles.muted, displayPrefs.theme === t.id && styles.themeTextActive, { fontSize: 13 * fontScale }]}>{t.label}</Text>
-                   </Pressable>
-                 ))}
-               </View>
-            </View>
-
             <View style={[styles.section, displayStyles.section]}>
                <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Text & Readability</Text>
                <Text style={[styles.fieldLabel, displayStyles.text, { fontSize: 13 * fontScale }]}>Font size</Text>

@@ -1,15 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { FiSun, FiMoon, FiMonitor, FiCheck } from "react-icons/fi";
+import { FiCheck } from "react-icons/fi";
 import { applyDisplayPrefs, readDisplayPrefs, saveDisplayPrefs } from "@/lib/displayPreferences";
 import styles from "./DisplayAccessibilityTab.module.css";
-
-const THEME_OPTIONS = [
-  { id: "light", label: "Light", icon: FiSun },
-  { id: "dark", label: "Dark", icon: FiMoon },
-  { id: "system", label: "System", icon: FiMonitor },
-];
 
 const FONT_SIZES = [
   { id: "sm", label: "Small" },
@@ -46,25 +40,6 @@ export default function DisplayAccessibilityTab() {
       {saved && (
         <div className={styles.flashSuccess}><FiCheck size={16} /> Display preferences saved!</div>
       )}
-
-      <div className={styles.card}>
-        <div className={styles.cardTitle}>Theme</div>
-        <p className={styles.cardDesc}>Choose how Savira looks on this device.</p>
-        <div className={styles.themeGrid}>
-          {THEME_OPTIONS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={prefs.theme === id}
-              className={`${styles.themeCard} ${prefs.theme === id ? styles.themeCardActive : ""}`}
-              onClick={() => updatePrefs({ theme: id })}
-            >
-              <Icon size={20} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className={styles.card}>
         <div className={styles.cardTitle}>Text &amp; Readability</div>

@@ -16,6 +16,8 @@ export function normalizeDisplayPrefs(value) {
   return {
     ...DEFAULT_DISPLAY_PREFS,
     ...(value && typeof value === "object" ? value : {}),
+    theme: "light",
+    themeDefaultMigrated: true,
   };
 }
 
@@ -25,7 +27,7 @@ export function readDisplayPrefs() {
   try {
     const raw = window.localStorage.getItem(DISPLAY_PREFS_KEY);
     const prefs = normalizeDisplayPrefs(raw ? JSON.parse(raw) : null);
-    if (prefs.theme === "system" && prefs.themeDefaultMigrated !== true) {
+    if (prefs.theme !== "light" || prefs.themeDefaultMigrated !== true) {
       const migrated = { ...prefs, theme: "light", themeDefaultMigrated: true };
       window.localStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify(migrated));
       return migrated;
@@ -54,10 +56,8 @@ export function applyDisplayPrefs(prefs) {
 
   const normalized = normalizeDisplayPrefs(prefs);
   const root = document.documentElement;
-  const systemDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  const resolvedTheme = normalized.theme === "system" ? (systemDark ? "dark" : "light") : normalized.theme;
 
-  root.dataset.theme = resolvedTheme;
+  root.dataset.theme = "light";
   root.dataset.fontSize = normalized.fontSize;
   root.dataset.reducedMotion = normalized.reducedMotion ? "true" : "false";
   root.dataset.highContrast = normalized.highContrast ? "true" : "false";

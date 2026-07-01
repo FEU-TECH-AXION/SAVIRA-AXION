@@ -16,6 +16,8 @@ export function normalizeDisplayPrefs(value) {
   return {
     ...DEFAULT_DISPLAY_PREFS,
     ...(value && typeof value === 'object' ? value : {}),
+    theme: 'light',
+    themeDefaultMigrated: true,
   };
 }
 
@@ -24,7 +26,7 @@ export async function readDisplayPrefs() {
     const raw = await AsyncStorage.getItem(DISPLAY_PREFS_KEY);
     const prefs = normalizeDisplayPrefs(raw ? JSON.parse(raw) : null);
 
-    if (prefs.theme === 'system' && prefs.themeDefaultMigrated !== true) {
+    if (prefs.theme !== 'light' || prefs.themeDefaultMigrated !== true) {
       const migrated = { ...prefs, theme: 'light', themeDefaultMigrated: true };
       await AsyncStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify(migrated));
       return migrated;
