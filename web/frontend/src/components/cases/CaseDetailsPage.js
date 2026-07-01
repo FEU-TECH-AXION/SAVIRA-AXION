@@ -6,6 +6,7 @@ import { IoIosInformationCircle, IoIosWarning } from "react-icons/io";
 import { FaCheckCircle } from "react-icons/fa";
 import EvidenceGallery from "./EvidenceGallery";
 import styles from "./ViewCase.module.css";
+import { getLegalCaseDeadlines } from "@/components/legalReviews/legalReviewCalendar";
 
 const STATUS_COLORS = {
   "Submitted":             { bg: "#e0f2fe", color: "#0369a1" },
@@ -141,6 +142,34 @@ function StatusHistorySection({ caseData }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CaseCalendarSection({ caseData }) {
+  const deadlines = getLegalCaseDeadlines(caseData);
+
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionHeadingText}>Case Calendar</h2>
+      {deadlines.length === 0 ? (
+        <p className={styles.emptyState}>No scheduled legal dates have been recorded yet.</p>
+      ) : (
+        <div className={styles.detailGrid}>
+          {deadlines.map((deadline) => {
+            const today = new Date(new Date().toDateString());
+            const dayDelta = Math.ceil((deadline.date - today) / 86400000);
+            return (
+              <div key={deadline.id} className={styles.detailItem}>
+                <p className={styles.detailKey}>{deadline.label}</p>
+                <p className={styles.detailVal}>
+                  {deadline.date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
@@ -328,6 +357,8 @@ export default function CaseDetailsPage({ caseData, isStaff }) {
           </div>
         )}
       </section>
+
+      <CaseCalendarSection caseData={caseData} />
 
       {!isStaff ? (
         <section className={styles.section}>

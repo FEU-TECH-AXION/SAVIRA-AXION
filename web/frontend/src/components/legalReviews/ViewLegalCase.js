@@ -28,6 +28,7 @@ import {
   MonitoringModal,
   PARALEGAL_EVIDENCE_LABELS,
 } from "./LegalReviewModals";
+import { getLegalCaseDeadlines } from "./legalReviewCalendar";
 import { useAuth } from "@/lib/AuthContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -87,6 +88,18 @@ const VIOLENCE_TYPES = [
 ];
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
+
+function normalizePersonnelType(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isLawyerType(value) {
+  return ["lawyer", "legal officer"].includes(normalizePersonnelType(value));
+}
+
+function isParalegalType(value) {
+  return normalizePersonnelType(value) === "paralegal";
+}
 
 const STATUS_COLORS = {
   "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
@@ -501,15 +514,7 @@ function LegalReviewDetailsSection({ caseData }) {
   const hasMonitoring = (caseData.monitoringLog || []).length > 0;
   const hasDocuments = (caseData.documentRepository || []).length > 0;
   const hasStatusDetails = (caseData.statusHistory || []).some((entry) => entry.formData || entry.form_data);
-  const deadlines = [
-    { label: "Referral follow-up", value: caseData.endorsementDetails?.["Follow-up Date"] },
-    ...(caseData.statusHistory || []).map((entry) => ({
-      label: "Next hearing",
-      value: entry.formData?.nextHearingDate || entry.form_data?.nextHearingDate,
-    })),
-  ]
-    .filter((item) => item.value && !Number.isNaN(new Date(item.value).getTime()))
-    .sort((a, b) => new Date(a.value) - new Date(b.value));
+  const deadlines = getLegalCaseDeadlines(caseData);
   const paralegalEvidence = hasParalegal ? normalizeParalegalEvidence(caseData.paralegalRecord) : [];
   const paralegalObtainedCount = paralegalEvidence.filter((item) => item.status === "Obtained").length;
   const paralegalSummary = hasParalegal
@@ -550,13 +555,12 @@ function LegalReviewDetailsSection({ caseData }) {
             <p className={styles.emptyState}>No structured hearing or follow-up dates have been recorded yet.</p>
           ) : <div className={styles.detailGrid}>
             {deadlines.map((deadline, index) => {
-              const date = new Date(deadline.value);
-              const dayDelta = Math.ceil((date - new Date(new Date().toDateString())) / 86400000);
+              const dayDelta = Math.ceil((deadline.date - new Date(new Date().toDateString())) / 86400000);
               return (
                 <div key={`${deadline.label}-${deadline.value}-${index}`} className={styles.detailItem}>
                   <p className={styles.detailKey}>{deadline.label}</p>
                   <p className={styles.detailVal}>
-                    {date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : `in ${dayDelta} day(s)`})
+                    {deadline.date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})
                   </p>
                 </div>
               );
@@ -674,13 +678,17 @@ function LegalReviewDetailsSection({ caseData }) {
   );
 }
 
-function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, actorName, userId, userRole, showToast }) {
+function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLegal, isParalegal, isLawyer, actorName, userId, userRole, showToast }) {
   const [modal, setModal] = useState(null);
+  const canUseParalegalWorkflows = isAdmin || isParalegal;
+  const canUseLawyerWorkflow = isAdmin || isLawyer;
+  const canUseAllLegalWorkflows = isAdmin || isParalegal;
+  const canUseCalendarWorkflow = isAdmin || isParalegal || isLawyer;
 
   // Determine available status transitions
   function getAvailableTransitions() {
     if (isAdmin) return LEGAL_CASE_STATUSES.filter((s) => s !== caseData.status);
-    return getSharedAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal })
+    return getSharedAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLegal: isParalegal })
       .filter((status) => LEGAL_CASE_STATUSES.includes(status));
   }
 
@@ -813,27 +821,37 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
       <section className={styles.section}>
         <h2 className={styles.sectionHeadingText}>Actions</h2>
         <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
-          <Tooltip text="Assign or update paralegal support for this case.">
-            <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>Paralegal Support</button>
-          </Tooltip>
+          {canUseParalegalWorkflows && (
+            <Tooltip text="Assign or update paralegal support for this case.">
+              <button onClick={() => setModal("paralegalSupport")} style={btnStyle("#037F81")}>Paralegal Support</button>
+            </Tooltip>
+          )}
 
-          <Tooltip text="Record a lawyer consultation and legal assessment.">
-            <button onClick={() => setModal("lawyerConsult")} style={btnStyle("#037F81")}>Consult</button>
-          </Tooltip>
+          {canUseLawyerWorkflow && (
+            <Tooltip text="Record a lawyer consultation and legal assessment.">
+              <button onClick={() => setModal("lawyerConsult")} style={btnStyle("#037F81")}>Consult</button>
+            </Tooltip>
+          )}
 
-          <Tooltip text="Endorse the case to another legal service or organization.">
-            <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>Endorse</button>
-          </Tooltip>
+          {canUseAllLegalWorkflows && (
+            <Tooltip text="Endorse the case to another legal service or organization.">
+              <button onClick={() => setModal("endorseFull")} style={btnStyle("#037F81")}>Endorse</button>
+            </Tooltip>
+          )}
 
-          <Tooltip text="Record a monitoring update for the legal case.">
-            <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>Monitor</button>
-          </Tooltip>
+          {canUseAllLegalWorkflows && (
+            <Tooltip text="Record a monitoring update for the legal case.">
+              <button onClick={() => setModal("monitorFull")} style={btnStyle("#037F81")}>Monitor</button>
+            </Tooltip>
+          )}
 
-          <Tooltip text="Jump to this case's hearings, deadlines, and legal events.">
-            <button onClick={() => document.getElementById("legal-case-calendar")?.scrollIntoView({ behavior: "smooth", block: "start" })} style={btnStyle("#037F81")}>Case Calendar</button>
-          </Tooltip>
+          {canUseCalendarWorkflow && (
+            <Tooltip text="Jump to this case's hearings, deadlines, and legal events.">
+              <button onClick={() => document.getElementById("legal-case-calendar")?.scrollIntoView({ behavior: "smooth", block: "start" })} style={btnStyle("#037F81")}>Case Calendar</button>
+            </Tooltip>
+          )}
 
-          {canOpenStatusModal && !caseData.pendingApproval && (
+          {canUseAllLegalWorkflows && canOpenStatusModal && !caseData.pendingApproval && (
             <Tooltip text="Move the case to an available legal-review status.">
               <button onClick={() => setModal("statusShared")} style={btnStyle("#037F81")}>Update Status</button>
             </Tooltip>
@@ -872,7 +890,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
         onSubmit={submitForApproval}
         actorName={actorName}
         isAdmin={isAdmin}
-        isLegal={isLegal}
+        isLegal={isParalegal}
         viewCaseMode
         allowedStatuses={LEGAL_CASE_STATUSES}
         includeCurrentStatus
@@ -944,13 +962,17 @@ export default function ViewCase() {
     firstName: authUser?.first_name || "",
     lastName: authUser?.last_name || "",
     id: authUser?.user_id || authUser?.id || null,
+    legalPersonnelType: authUser?.legal_personnel_type || "",
   };
   const userLoaded = !authLoading;
   const normalizedRole = user.role?.toLowerCase();
   const isAdmin      = normalizedRole === "admin";
   const isCaseOfficer = normalizedRole === "case officer" || normalizedRole === "case_officer";
   const isLegal      = normalizedRole === "legal personnel" || normalizedRole === "legal_personnel";
+  const isParalegal  = isLegal && isParalegalType(user.legalPersonnelType);
+  const isLawyer     = isLegal && isLawyerType(user.legalPersonnelType);
   const isStaff      = isAdmin || isCaseOfficer || isLegal;
+  const canViewNlp   = isStaff && !isLawyer;
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
 
@@ -1056,7 +1078,13 @@ export default function ViewCase() {
           const legalReviewPayload = await legalReviewRes.json().catch(() => ({}));
           setCaseData(mergeLegalReviewData(mappedCase, legalReviewPayload.data));
         } else {
-          setCaseData(mappedCase);
+          const calendarRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseId}/calendar`, { credentials: "include" });
+          if (calendarRes.ok) {
+            const calendarPayload = await calendarRes.json().catch(() => ({}));
+            setCaseData({ ...mappedCase, ...(calendarPayload.data || {}) });
+          } else {
+            setCaseData(mappedCase);
+          }
         }
 
         const assessmentRes = await fetch(`${API_URL}/api/case_assessments/case/${caseId}`, { credentials: "include" });
@@ -1163,7 +1191,7 @@ export default function ViewCase() {
     { id: "details", label: "Case Details", tooltip: "View the submitted report and case information.", staffOnly: false },
     ...(isStaff ? [
       { id: "management", label: "Legal Review", tooltip: "Manage assignments, endorsements, monitoring, and legal status.", staffOnly: true },
-      { id: "nlp", label: "AI / NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true },
+      ...(canViewNlp ? [{ id: "nlp", label: "AI / NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true }] : []),
     ] : []),
   ];
 
@@ -1239,6 +1267,8 @@ export default function ViewCase() {
               isAdmin={isAdmin}
               isCaseOfficer={isCaseOfficer}
               isLegal={isLegal}
+              isParalegal={isParalegal}
+              isLawyer={isLawyer}
               actorName={actorName}
               userId={user.id}
               userRole={user.role}
@@ -1246,7 +1276,7 @@ export default function ViewCase() {
             />
           )}
 
-          {activeTab === "nlp" && isStaff && userLoaded && (
+          {activeTab === "nlp" && canViewNlp && userLoaded && (
             <SharedNLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
           )}
 

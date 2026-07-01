@@ -56,6 +56,21 @@ const submitStatusChange = async (req, res) => {
     }
 
     // Step 1 — Insert history row
+    const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    if (requesterRole === 'legal personnel') {
+      const { data: legalPersonnel, error: legalPersonnelError } = await supabase
+        .from('legal_personnels')
+        .select('legal_personnel_type')
+        .eq('user_id', req.user?.id || req.user?.user_id)
+        .maybeSingle()
+      if (legalPersonnelError) throw legalPersonnelError
+
+      const personnelType = String(legalPersonnel?.legal_personnel_type || '').toLowerCase()
+      if (personnelType !== 'paralegal') {
+        return res.status(403).json({ error: 'Only paralegals can update legal-review case statuses.' })
+      }
+    }
+
     const requiresApproval = CaseStatusHistory.APPROVAL_REQUIRED_STATUSES.has(proposed_status)
     if (requiresApproval) {
       const existingPending = await CaseStatusHistory.getPending(case_report_id)

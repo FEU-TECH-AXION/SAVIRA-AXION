@@ -1,4 +1,5 @@
 const LegalReviews = require('../models/legal_reviews.model')
+const supabase = require('../config/supabase')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
 const PUBLIC_MESSAGE_MAX_LENGTH = 280
@@ -25,6 +26,17 @@ function getActorUserId(req) {
     req.query?.performed_by_user_id ||
     null
   )
+}
+
+async function getLegalPersonnelType(userId) {
+  if (!userId) return null
+  const { data, error } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_type')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return String(data?.legal_personnel_type || '').toLowerCase()
 }
 
 function missingColumnsMessage(err) {
@@ -59,6 +71,38 @@ function toClientPayload(review, logs = []) {
   }
 }
 
+function toCalendarPayload(review) {
+  if (!review) return null
+  return {
+    endorsementDetails: review.endorsement_details || null,
+    paralegalRecord: review.paralegal_record
+      ? {
+          date: review.paralegal_record.date || null,
+          readyAt: review.paralegal_record.readyAt || null,
+          readyForLawyerReview: review.paralegal_record.readyForLawyerReview || false,
+        }
+      : null,
+    lawyerRecord: review.lawyer_record
+      ? {
+          date: review.lawyer_record.date || null,
+          savedAt: review.lawyer_record.savedAt || null,
+          consultationType: review.lawyer_record.consultationType || null,
+          consultations: (review.lawyer_record.consultations || []).map((consultation) => ({
+            date: consultation.date || consultation.consultationDate || null,
+            savedAt: consultation.savedAt || null,
+            consultationType: consultation.consultationType || null,
+          })),
+        }
+      : null,
+    monitoringLog: (review.monitoring_log || []).map((entry) => ({
+      date: entry.date || null,
+    })),
+    documentRepository: (review.document_repository || []).map((entry) => ({
+      addedAt: entry.addedAt || null,
+    })),
+  }
+}
+
 async function getByCase(req, res) {
   try {
     const { caseReportId } = req.params
@@ -67,6 +111,17 @@ async function getByCase(req, res) {
     return res.json({ data: toClientPayload(review, logs) })
   } catch (err) {
     console.error('[legalReviews.getByCase]', err)
+    return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
+  }
+}
+
+async function getCalendarByCase(req, res) {
+  try {
+    const { caseReportId } = req.params
+    const review = await LegalReviews.getLatestByCase(caseReportId)
+    return res.json({ data: toCalendarPayload(review) })
+  } catch (err) {
+    console.error('[legalReviews.getCalendarByCase]', err)
     return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
   }
 }
@@ -92,6 +147,30 @@ async function updateByCase(req, res) {
     const performedByUserId = getActorUserId(req)
     if (!performedByUserId) {
       return res.status(400).json({ error: 'performed_by_user_id is required for legal review logs.' })
+    }
+
+    const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    if (requesterRole === 'legal personnel') {
+      const personnelType = await getLegalPersonnelType(req.user?.id || req.user?.user_id)
+      const nonLawyerFields = [
+        paralegal_record,
+        endorsed_to,
+        endorsement_details,
+        monitoring_entry,
+        document_repository,
+        review_status,
+      ]
+      if (personnelType === 'lawyer' || personnelType === 'legal officer') {
+        if (nonLawyerFields.some((value) => value !== undefined)) {
+          return res.status(403).json({ error: 'Lawyers can only save lawyer consultation records.' })
+        }
+      } else if (personnelType === 'paralegal') {
+        if (lawyer_record !== undefined) {
+          return res.status(403).json({ error: 'Paralegals cannot save lawyer consultation records.' })
+        }
+      } else {
+        return res.status(403).json({ error: 'Legal personnel type is required for this action.' })
+      }
     }
 
     let review = await LegalReviews.getLatestByCase(caseReportId)
@@ -152,4 +231,4 @@ async function updateByCase(req, res) {
   }
 }
 
-module.exports = { getByCase, updateByCase }
+module.exports = { getByCase, getCalendarByCase, updateByCase }

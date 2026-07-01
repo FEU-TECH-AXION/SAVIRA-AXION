@@ -186,6 +186,13 @@ export default function LegalTable({
   onAssignLegal,
   onRemoveAssignedStaff,
   isAdmin,
+  canAssignLegal = true,
+  canParalegalActions = true,
+  canLawyerActions = true,
+  canEndorseActions = true,
+  canMonitorActions = true,
+  canCalendarActions = true,
+  canStatusActions = true,
   sortField,
   sortDir,
   onSort,
@@ -271,13 +278,13 @@ export default function LegalTable({
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>{selectionCount} selected</span>
           <div className={styles.bulkActions}>
-            <Tooltip text="Assign lawyers or paralegals"><button className={`${styles.bulkBtn} ${styles.bulkBtnAssign}`} onClick={() => onAssignLegal?.(selectedCases)}>Assign</button></Tooltip>
-            <Tooltip text="Update the paralegal evidence checklist"><button className={styles.bulkBtn} onClick={() => onParalegal?.(selectedCases)}>Paralegal</button></Tooltip>
-            <Tooltip text="Record a lawyer consultation"><button className={styles.bulkBtn} onClick={() => onConsult?.(selectedCases)}>Consult</button></Tooltip>
-            <Tooltip text="Record or update an endorsement"><button className={styles.bulkBtn} onClick={() => onEndorse?.(selectedCases)}>Endorse</button></Tooltip>
-            <Tooltip text="Add a referral monitoring update"><button className={styles.bulkBtn} onClick={() => onMonitor?.(selectedCases)}>Monitor</button></Tooltip>
-            <Tooltip text="View hearings and follow-up deadlines"><button className={styles.bulkBtn} onClick={() => onCalendar?.(selectedCases)}>Calendar</button></Tooltip>
-            <Tooltip text="Update case status"><button className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`} onClick={() => onStatus?.(selectedCases)}>Status</button></Tooltip>
+            {canAssignLegal && <Tooltip text="Assign lawyers or paralegals"><button className={`${styles.bulkBtn} ${styles.bulkBtnAssign}`} onClick={() => onAssignLegal?.(selectedCases)}>Assign</button></Tooltip>}
+            {canParalegalActions && <Tooltip text="Update the paralegal evidence checklist"><button className={styles.bulkBtn} onClick={() => onParalegal?.(selectedCases)}>Paralegal</button></Tooltip>}
+            {canLawyerActions && <Tooltip text="Record a lawyer consultation"><button className={styles.bulkBtn} onClick={() => onConsult?.(selectedCases)}>Consult</button></Tooltip>}
+            {canEndorseActions && <Tooltip text="Record or update an endorsement"><button className={styles.bulkBtn} onClick={() => onEndorse?.(selectedCases)}>Endorse</button></Tooltip>}
+            {canMonitorActions && <Tooltip text="Add a referral monitoring update"><button className={styles.bulkBtn} onClick={() => onMonitor?.(selectedCases)}>Monitor</button></Tooltip>}
+            {canCalendarActions && <Tooltip text="View hearings and follow-up deadlines"><button className={styles.bulkBtn} onClick={() => onCalendar?.(selectedCases)}>Calendar</button></Tooltip>}
+            {canStatusActions && <Tooltip text="Update case status"><button className={`${styles.bulkBtn} ${styles.bulkBtnStatus}`} onClick={() => onStatus?.(selectedCases)}>Status</button></Tooltip>}
             {isAdmin && (
               <Tooltip text="Remove assigned lawyers and paralegals">
                 <button className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={() => onRemoveAssignedStaff?.(selectedCases)}>Remove Assigned Staff</button>
