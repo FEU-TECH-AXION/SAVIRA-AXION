@@ -1,5 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
+import Script from 'next/script';
 import Footer from '@/components/footer/footer';
 import { AuthProvider } from "@/lib/AuthContext";
 import NotificationsInit from '@/components/notification/notificationsInit';
@@ -18,9 +19,7 @@ const themeInitScript = `(function(){try{var k='savira_display_prefs';var p=JSON
 export default function RootLayout({ children }) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <head suppressHydrationWarning>
-        <script id="theme-init-script" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
+      <Script id="theme-init-script" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       <body>
         <AuthProvider>
           <DisplayPreferencesClient />

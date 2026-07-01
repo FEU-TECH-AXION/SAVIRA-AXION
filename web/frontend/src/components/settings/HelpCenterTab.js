@@ -15,15 +15,15 @@ const FAQS = [
   },
   {
     q: "How do I enable two-factor authentication?",
-    a: "Open Settings & Privacy → Two-Factor Authentication and toggle it on. You'll need a verified email or contact number to receive codes.",
+    a: "Open Settings & Privacy -> Two-Factor Authentication and toggle it on. You'll need a verified email or contact number to receive codes.",
   },
   {
     q: "Who can see my profile information?",
-    a: "By default, your profile is visible to staff and case officers handling your case. You can adjust this under Settings & Privacy → Data & Privacy.",
+    a: "By default, your profile is visible to staff and case officers handling your case. You can adjust this under Settings & Privacy -> Data & Privacy.",
   },
   {
     q: "How do I delete or deactivate my account?",
-    a: "Account deactivation is available under Settings & Privacy → Data & Privacy. Deactivation is temporary; contact support for permanent deletion requests.",
+    a: "Account deactivation is available under Settings & Privacy -> Data & Privacy. Deactivation is temporary; contact support for permanent deletion requests.",
   },
 ];
 
@@ -66,9 +66,8 @@ export default function HelpCenterTab({ user }) {
       }
       setContactForm({ subject: "", message: "" });
       setSent(true);
-      setTimeout(() => setSent(false), 4000);
     } catch {
-      // Surfaced inline via the disabled/sent state; avoid noisy alerts here.
+      // Keep the form steady if sending fails.
     } finally {
       setSending(false);
     }
@@ -82,14 +81,14 @@ export default function HelpCenterTab({ user }) {
         <input
           type="text"
           className={styles.searchInput}
-          placeholder="Search help topics…"
+          placeholder="Search help topics..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         <div className={styles.faqList}>
           {filteredFaqs.length === 0 && (
-            <p className={styles.emptyNote}>No results for "{search}". Try a different search, or contact support below.</p>
+            <p className={styles.emptyNote}>No results for &quot;{search}&quot;. Try a different search, or contact support below.</p>
           )}
           {filteredFaqs.map((faq, i) => {
             const isOpen = openIndex === i;
@@ -113,12 +112,8 @@ export default function HelpCenterTab({ user }) {
       <div className={styles.card}>
         <div className={styles.cardTitle}>Contact Support</div>
         <p className={styles.cardDesc}>
-          Didn't find what you needed? Send our support team a message and we'll get back to you by email.
+          Didn&apos;t find what you needed? Send our support team a message and we&apos;ll get back to you by email.
         </p>
-
-        {sent && (
-          <div className={styles.flashSuccess}><FiCheck size={16} /> Message sent — we'll be in touch soon.</div>
-        )}
 
         <form className={styles.contactForm} onSubmit={handleContactSubmit}>
           <div className={styles.field}>
@@ -137,7 +132,7 @@ export default function HelpCenterTab({ user }) {
               name="message"
               value={contactForm.message}
               onChange={handleContactChange}
-              placeholder="Tell us more…"
+              placeholder="Tell us more..."
               rows={5}
               required
             />
@@ -148,11 +143,24 @@ export default function HelpCenterTab({ user }) {
             </a>
             <button type="submit" className={styles.btnPrimary} disabled={sending}>
               <FiMessageSquare size={14} style={{ marginRight: "0.4rem", verticalAlign: "-2px" }} />
-              {sending ? "Sending…" : "Send Message"}
+              {sending ? "Sending..." : "Send Message"}
             </button>
           </div>
         </form>
       </div>
+
+      {sent && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <div className={styles.sentModal} role="dialog" aria-modal="true" aria-labelledby="support-sent-title">
+            <span className={styles.modalIcon}><FiCheck size={28} /></span>
+            <h3 id="support-sent-title">Message Sent</h3>
+            <p>Your message was sent successfully. We&apos;ll get back to you by email.</p>
+            <button type="button" className={styles.modalButton} onClick={() => setSent(false)}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

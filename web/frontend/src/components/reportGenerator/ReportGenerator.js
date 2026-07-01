@@ -863,47 +863,60 @@ function BarChart({ data, color, colorVar = "--accent-primary", height = 200 }) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DonutChart({ data, colors }) {
-  const entries = Object.entries(data || {});
+  const entries = Object.entries(data || {}).filter(([, value]) => Number(value) > 0);
   if (!entries.length) return <p className={styles.noData}>No data available.</p>;
 
   const total = entries.reduce((s, [, v]) => s + v, 0);
+  if (!total) return <p className={styles.noData}>No data available.</p>;
+
   const palette = colors || DONUT_COLORS_STATUS;
 
-  const R = 38, r = 22, cx = 50, cy = 50;
+  const R = 34, cx = 50, cy = 50;
+  const strokeWidth = 16;
+  const circumference = 2 * Math.PI * R;
   let cumulative = 0;
 
   const segments = entries.map(([label, value], i) => {
-    const pct        = value / total;
-    const startAngle = cumulative * 2 * Math.PI - Math.PI / 2;
-    cumulative      += pct;
-    const endAngle   = cumulative * 2 * Math.PI - Math.PI / 2;
+    const pct = value / total;
+    const length = pct * circumference;
+    const offset = cumulative * circumference;
+    cumulative += pct;
 
-    const x1o = cx + R * Math.cos(startAngle);
-    const y1o = cy + R * Math.sin(startAngle);
-    const x2o = cx + R * Math.cos(endAngle);
-    const y2o = cy + R * Math.sin(endAngle);
-    const x1i = cx + r * Math.cos(endAngle);
-    const y1i = cy + r * Math.sin(endAngle);
-    const x2i = cx + r * Math.cos(startAngle);
-    const y2i = cy + r * Math.sin(startAngle);
-
-    const largeArc = pct > 0.5 ? 1 : 0;
-    const d = [
-      `M ${x1o} ${y1o}`,
-      `A ${R} ${R} 0 ${largeArc} 1 ${x2o} ${y2o}`,
-      `L ${x1i} ${y1i}`,
-      `A ${r} ${r} 0 ${largeArc} 0 ${x2i} ${y2i}`,
-      "Z",
-    ].join(" ");
-
-    return { d, color: palette[i % palette.length], label, value, pct: Math.round(pct * 100) };
+    return {
+      color: palette[i % palette.length],
+      label,
+      value,
+      pct: Math.round(pct * 100),
+      dashArray: `${length} ${circumference - length}`,
+      dashOffset: -offset,
+    };
   });
 
   return (
     <div className={styles.donutWrap}>
       <svg viewBox="0 0 100 100" className={styles.donutSvg}>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={R}
+          fill="none"
+          stroke="#eef2f6"
+          strokeWidth={strokeWidth}
+        />
         {segments.map((s, i) => (
-          <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth="0.8" />
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={R}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={s.dashArray}
+            strokeDashoffset={s.dashOffset}
+            strokeLinecap="butt"
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
         ))}
         <text x={cx} y={cy - 3} textAnchor="middle" fontSize="10" fontWeight="800" fill="#292929">{total}</text>
         <text x={cx} y={cy + 8} textAnchor="middle" fontSize="6"  fill="#9ca3af">total</text>

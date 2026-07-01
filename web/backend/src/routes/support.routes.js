@@ -8,6 +8,7 @@ const {
   listMessages,
   replyToMessage,
   markResolved,
+  archiveMessage,
 } = require('../controllers/support.controller');
 
 const upload = multer({
@@ -20,5 +21,6 @@ router.post('/report', verifyToken, upload.single('attachment'), createBugReport
 router.get('/messages', verifyToken, listMessages);
 router.post('/messages/:id/reply', verifyToken, replyToMessage);
 router.patch('/messages/:id/resolve', verifyToken, markResolved);
+router.patch('/messages/:id/archive', verifyToken, archiveMessage);
 
 module.exports = router;
