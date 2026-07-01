@@ -1,4 +1,5 @@
 const LegalReviews = require('../models/legal_reviews.model')
+const supabase = require('../config/supabase')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
 const PUBLIC_MESSAGE_MAX_LENGTH = 280
@@ -25,6 +26,17 @@ function getActorUserId(req) {
     req.query?.performed_by_user_id ||
     null
   )
+}
+
+async function getLegalPersonnelType(userId) {
+  if (!userId) return null
+  const { data, error } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_type')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return String(data?.legal_personnel_type || '').toLowerCase()
 }
 
 function missingColumnsMessage(err) {
@@ -92,6 +104,30 @@ async function updateByCase(req, res) {
     const performedByUserId = getActorUserId(req)
     if (!performedByUserId) {
       return res.status(400).json({ error: 'performed_by_user_id is required for legal review logs.' })
+    }
+
+    const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    if (requesterRole === 'legal personnel') {
+      const personnelType = await getLegalPersonnelType(req.user?.id || req.user?.user_id)
+      const nonLawyerFields = [
+        paralegal_record,
+        endorsed_to,
+        endorsement_details,
+        monitoring_entry,
+        document_repository,
+        review_status,
+      ]
+      if (personnelType === 'lawyer' || personnelType === 'legal officer') {
+        if (nonLawyerFields.some((value) => value !== undefined)) {
+          return res.status(403).json({ error: 'Lawyers can only save lawyer consultation records.' })
+        }
+      } else if (personnelType === 'paralegal') {
+        if (lawyer_record !== undefined) {
+          return res.status(403).json({ error: 'Paralegals cannot save lawyer consultation records.' })
+        }
+      } else {
+        return res.status(403).json({ error: 'Legal personnel type is required for this action.' })
+      }
     }
 
     let review = await LegalReviews.getLatestByCase(caseReportId)

@@ -96,6 +96,15 @@ async function attachRoleDetails(flatUser) {
       .maybeSingle();
     flatUser.committee_id = staffRecord?.committee_id ?? null;
   }
+  if (flatUser.role_name?.toLowerCase() === 'legal personnel') {
+    const { data: legalRecord } = await supabase
+      .from('legal_personnels')
+      .select('legal_personnel_id, legal_personnel_type')
+      .eq('user_id', flatUser.user_id)
+      .maybeSingle();
+    flatUser.legal_personnel_id = legalRecord?.legal_personnel_id ?? null;
+    flatUser.legal_personnel_type = legalRecord?.legal_personnel_type ?? null;
+  }
   return flatUser;
 }
 

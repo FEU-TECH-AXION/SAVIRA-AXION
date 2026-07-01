@@ -67,6 +67,18 @@ function assignedNames(caseData, role) {
   return assignedPeople(caseData, role).map((person) => person.name).filter(Boolean).join(", ") || "Unassigned";
 }
 
+function normalizePersonnelType(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isLawyerType(value) {
+  return ["lawyer", "legal officer"].includes(normalizePersonnelType(value));
+}
+
+function isParalegalType(value) {
+  return normalizePersonnelType(value) === "paralegal";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS COLORS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1138,6 +1150,8 @@ export default function LegalReviewManagement() {
     role: authUser?.role_name || authUser?.role || "",
     firstName: authUser?.first_name || "",
     lastName: authUser?.last_name || "",
+    id: authUser?.user_id || authUser?.id || null,
+    legalPersonnelType: authUser?.legal_personnel_type || "",
   };
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Legal Personnel";
@@ -1149,6 +1163,16 @@ export default function LegalReviewManagement() {
   const [casesLoading, setCasesLoading] = useState(true);
   // Legal personnels fetched from backend (for assign dropdown + filter)
   const [legalPersonnels, setLegalPersonnels] = useState([]);
+  const currentLegalPersonnel = useMemo(
+    () => legalPersonnels.find((person) => String(person.user_id) === String(user.id)),
+    [legalPersonnels, user.id]
+  );
+  const legalPersonnelType = user.legalPersonnelType || currentLegalPersonnel?.legal_personnel_type || "";
+  const isParalegal = isLegal && isParalegalType(legalPersonnelType);
+  const isLawyer = isLegal && isLawyerType(legalPersonnelType);
+  const canUseParalegalWorkflows = isAdmin || isParalegal;
+  const canUseLawyerWorkflow = isAdmin || isLawyer;
+  const canUseAllLegalWorkflows = isAdmin || isParalegal;
 
   // Fetch verified-true cases from Case Management API
   useEffect(() => {
@@ -1641,22 +1665,22 @@ export default function LegalReviewManagement() {
             <div className={styles.headingLine} />
           </div>
           <div className="row g-3 mb-4">
-            <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<img src="/LegalIconParalegal.png" alt="" className={styles.actionIconImg} />} title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />
+            <div className="col-12 col-sm-6 col-lg-4" style={!canUseParalegalWorkflows ? { display: "none" } : undefined}>
+              {canUseParalegalWorkflows && <ActionCard icon={<img src="/LegalIconParalegal.png" alt="" className={styles.actionIconImg} />} title="Paralegal Support" description="Organize case facts, timelines, evidence, sworn statements, and referral documents for a case." onView={() => setModal("selectParalegal")} />}
             </div>
-            <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<img src="/LegalIconLawyer.png" alt="" className={styles.actionIconImg} />} title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />
+            <div className="col-12 col-sm-6 col-lg-4" style={!canUseLawyerWorkflow ? { display: "none" } : undefined}>
+              {canUseLawyerWorkflow && <ActionCard icon={<img src="/LegalIconLawyer.png" alt="" className={styles.actionIconImg} />} title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />}
             </div>
-            <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<img src="/LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />
+            <div className="col-12 col-sm-6 col-lg-4" style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
+              {canUseAllLegalWorkflows && <ActionCard icon={<img src="/LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />}
             </div>
-            <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<img src="/LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Record routine progress immediately; filing and terminal outcomes require admin approval." onView={() => setModal("selectStatus")} />
+            <div className="col-12 col-sm-6 col-lg-4" style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
+              {canUseAllLegalWorkflows && <ActionCard icon={<img src="/LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Record routine progress immediately; filing and terminal outcomes require admin approval." onView={() => setModal("selectStatus")} />}
             </div>
-            <div className="col-12 col-sm-6 col-lg-4">
-              <ActionCard icon={<img src="/case-calendar.png" alt="" className={styles.actionIconImg} />} title="Case Calendar" description="See upcoming and overdue hearings, investigation follow-ups, and referral deadlines." onView={() => { setCalendarCases(cases); setModal("calendar"); }} />
+            <div className="col-12 col-sm-6 col-lg-4" style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
+              {canUseAllLegalWorkflows && <ActionCard icon={<img src="/case-calendar.png" alt="" className={styles.actionIconImg} />} title="Case Calendar" description="See upcoming and overdue hearings, investigation follow-ups, and referral deadlines." onView={() => { setCalendarCases(cases); setModal("calendar"); }} />}
             </div>
-            {(isAdmin || isLegal) && (
+            {canUseAllLegalWorkflows && (
               <div className="col-12 col-sm-6 col-lg-4">
                 <ActionCard icon={<img src="/LegalIconAssign.png" alt="" className={styles.actionIconImg} />} title="Assign Legal Personnel" description="Assign one or more lawyers and paralegals to a case." onView={() => setModal("selectAssign")} />
               </div>
@@ -1720,6 +1744,13 @@ export default function LegalReviewManagement() {
               onAssignLegal={(selected) => openSingleCaseAction(selected, "assignLegal", "Legal Assignment")}
               onRemoveAssignedStaff={requestRemoveAssignedStaff}
               isAdmin={isAdmin}
+              canAssignLegal={canUseAllLegalWorkflows}
+              canParalegalActions={canUseParalegalWorkflows}
+              canLawyerActions={canUseLawyerWorkflow}
+              canEndorseActions={canUseAllLegalWorkflows}
+              canMonitorActions={canUseAllLegalWorkflows}
+              canCalendarActions={canUseAllLegalWorkflows}
+              canStatusActions={canUseAllLegalWorkflows}
               sortField={sortField}
               sortDir={sortDir}
               onSort={(field) => {
@@ -1744,7 +1775,7 @@ export default function LegalReviewManagement() {
         onSubmit={submitForApproval}
         actorName={actorName}
         isAdmin={isAdmin}
-        isLegal={isLegal}
+        isLegal={isParalegal}
         allowedStatuses={LEGAL_CASE_STATUSES}
       />
       <ApprovalModal        open={modal === "approval"}     onClose={closeModal} caseData={selectedCase} onApprove={approveChange} onReject={rejectChange} />
@@ -1788,7 +1819,7 @@ export default function LegalReviewManagement() {
       <SelectCaseModal open={modal === "selectLawyer"}    onClose={closeModal} cases={cases} title="Select Case for Lawyer Consultation" actionLabel="Consult" onAction={(c) => open(c, "lawyer")} />
       <SelectCaseModal open={modal === "selectEndorse"}   onClose={closeModal} cases={cases} title="Select Case to Endorse / Track Referral" actionLabel="Endorse" onAction={(c) => open(c, "endorse")} />
       <SelectCaseModal open={modal === "selectMonitor"}   onClose={closeModal} cases={cases.filter((c) => c.endorsedTo)} title="Select Case for Monitoring Update" actionLabel="Monitor" onAction={(c) => open(c, "monitor")} />
-      <SelectCaseModal open={modal === "selectStatus"}    onClose={closeModal} cases={cases.filter((c) => !c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin))} title="Select Case to Update Status" actionLabel="Update" onAction={(c) => open(c, "statusChange")} />
+      <SelectCaseModal open={modal === "selectStatus"}    onClose={closeModal} cases={canUseAllLegalWorkflows ? cases.filter((c) => !c.pendingApproval && (STATUS_TRANSITIONS[c.status]?.length > 0 || isAdmin)) : []} title="Select Case to Update Status" actionLabel="Update" onAction={(c) => open(c, "statusChange")} />
       <SelectCaseModal open={modal === "selectAssign"} onClose={closeModal} cases={cases} title="Select Case to Assign Legal Personnel" actionLabel="Assign" onAction={(c) => open(c, "assignLegal")} />
 
       {/* Admin: pending approvals */}

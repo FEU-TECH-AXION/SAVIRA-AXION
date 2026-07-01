@@ -1,6 +1,25 @@
 const LegalCaseAssignmentsModel = require('../models/legal_case_assignments.model')
 const supabase = require('../config/supabase')
 
+async function requireParalegalForLegalPersonnel(req, res) {
+    const role = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    if (role !== 'legal personnel') return true
+
+    const { data, error } = await supabase
+        .from('legal_personnels')
+        .select('legal_personnel_type')
+        .eq('user_id', req.user?.id || req.user?.user_id)
+        .maybeSingle()
+    if (error) throw error
+
+    if (String(data?.legal_personnel_type || '').toLowerCase() !== 'paralegal') {
+        res.status(403).json({ error: 'Only paralegals can assign legal personnel.' })
+        return false
+    }
+
+    return true
+}
+
 const getItems = async (req, res) => {
     try {
         const data = await LegalCaseAssignmentsModel.getAll()
@@ -32,6 +51,8 @@ const assignCase = async (req, res) => {
   }
 
   try {
+    if (!(await requireParalegalForLegalPersonnel(req, res))) return
+
     // 1. Resolve assignment_role from legal_personnel_type
     const { data: personnelData, error: personnelError } = await supabase
       .from('legal_personnels')
@@ -120,6 +141,8 @@ const bulkAssignCase = async (req, res) => {
     }
 
     try {
+        if (!(await requireParalegalForLegalPersonnel(req, res))) return
+
         const results = { assigned: [], failed: [] }
 
         // Check each person and build valid rows

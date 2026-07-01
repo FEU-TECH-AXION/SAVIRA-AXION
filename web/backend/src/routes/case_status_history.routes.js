@@ -14,7 +14,7 @@ const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.m
 router.get('/:caseReportId', verifyToken, requireCaseReportAccess, getHistory)
 
 // Officer submits a status change — creates history + assessment rows
-router.post('/', verifyToken, authorize('Admin', 'Case Officer'), submitStatusChange)
+router.post('/', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), submitStatusChange)
 
 // Admin approves a pending status change
 router.patch('/:historyId/approve', verifyToken, authorize('Admin'), approveStatusChange)
