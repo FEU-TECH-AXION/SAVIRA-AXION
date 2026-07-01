@@ -32,6 +32,42 @@ function OverviewCard({ category, label, count, showView = false }) {
 
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
+function assignedLegalPeople(caseItem) {
+  const assignedLegal = caseItem?.assigned_legal || caseItem?.assignedLegal || [];
+  return Array.isArray(assignedLegal) ? assignedLegal : [];
+}
+
+function legalPersonName(person) {
+  return (
+    person?.name ||
+    person?.full_name ||
+    `${person?.first_name || ""} ${person?.last_name || ""}`.trim()
+  );
+}
+
+function isAssignedToLegalPersonnel(caseItem, actorName) {
+  if (!actorName) return false;
+
+  const directAssignments = [
+    caseItem?.assigned_legal_officer,
+    caseItem?.assignedLegalOfficer,
+    caseItem?.assigned_lawyer,
+    caseItem?.assignedLawyer,
+    caseItem?.assigned_paralegal,
+    caseItem?.assignedParalegal,
+  ];
+
+  return (
+    directAssignments.some((name) => samePerson(name, actorName)) ||
+    assignedLegalPeople(caseItem).some((person) => samePerson(legalPersonName(person), actorName))
+  );
+}
+
+function isPendingLegalReview(caseItem) {
+  const statusId = Number(caseItem?.case_status_id);
+  return statusId === 4 || statusId === 6;
+}
+
 export default function LegalPersonnelDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
   const [cases, setCases] = useState([]);
@@ -57,7 +93,7 @@ export default function LegalPersonnelDashboard() {
           const json = await res.json();
           const list = Array.isArray(json) ? json : json?.data || [];
           setCases(list);
-          const assigned = list.filter(c => samePerson(c.assigned_legal_officer, actorName) || samePerson(c.assigned_paralegal, actorName));
+          const assigned = list.filter((c) => isAssignedToLegalPersonnel(c, actorName));
           setLegalDeadlines(await fetchLegalDeadlinesForCases(API_URL, assigned));
         }
       } catch (err) {
@@ -65,15 +101,15 @@ export default function LegalPersonnelDashboard() {
       }
     }
     fetchCases();
-  }, [actorName, authLoading, authUser?.user_id]);
+  }, [actorName, authLoading, authUser]);
 
   const assignedCases = useMemo(() => {
-    return cases.filter(c => samePerson(c.assigned_legal_officer, actorName) || samePerson(c.assigned_paralegal, actorName));
+    return cases.filter((c) => isAssignedToLegalPersonnel(c, actorName));
   }, [cases, actorName]);
 
   const stats = useMemo(() => {
     // Verified - True (4) or Under Case Evaluation (6) are pending review
-    const pendingReview = assignedCases.filter(c => c.case_status_id === 4 || c.case_status_id === 6).length;
+    const pendingReview = assignedCases.filter(isPendingLegalReview).length;
     const totalAssigned = assignedCases.length;
 
     return [
@@ -83,7 +119,7 @@ export default function LegalPersonnelDashboard() {
   }, [assignedCases]);
 
   const overviewCards = useMemo(() => {
-    const pendingReview = assignedCases.filter(c => c.case_status_id === 4 || c.case_status_id === 6).length;
+    const pendingReview = assignedCases.filter(isPendingLegalReview).length;
     const totalAssigned = assignedCases.length;
 
     return [
