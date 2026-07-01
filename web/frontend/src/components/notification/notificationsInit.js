@@ -8,11 +8,7 @@ import { API_URL } from '@/lib/config';
 import { authFetch } from '@/lib/AuthContext';
 
 export default function NotificationsInit() {
-  const [showBanner, setShowBanner] = useState(() => (
-    typeof window !== 'undefined' &&
-    'Notification' in window &&
-    Notification.permission === 'default'
-  ));
+  const [showBanner, setShowBanner] = useState(false);
 
   const registerToken = useCallback(async () => {
     console.log('[FCM] starting registerToken'); // add
@@ -45,8 +41,14 @@ export default function NotificationsInit() {
   }, []);
 
   useEffect(() => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    registerToken();
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      const bannerTimer = window.setTimeout(() => setShowBanner(true), 0);
+      return () => window.clearTimeout(bannerTimer);
+    }
+    if (Notification.permission === 'granted') {
+      registerToken();
+    }
   }, [registerToken]);
 
   async function handleAllow() {

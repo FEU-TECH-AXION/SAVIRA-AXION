@@ -309,12 +309,6 @@ export default function ContactScreen() {
 
         </ImageBackground>
 
-        {/* Map Placeholder */}
-        <View style={s.mapPlaceholder}>
-          <Ionicons name="map-outline" size={36} color={TEAL} />
-          <Text style={s.mapPlaceholderText}>Map View</Text>
-        </View>
-
       </ScrollView>
     </View>
   );
@@ -444,17 +438,4 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  // Map Placeholder
-  mapPlaceholder: {
-    margin: 16,
-    height: 160,
-    backgroundColor: '#e0f0f0',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
-    gap: 8,
-  },
-  mapPlaceholderText: { color: TEAL, fontWeight: '700', fontSize: 14 },
 });

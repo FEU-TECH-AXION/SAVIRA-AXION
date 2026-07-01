@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiCheck, FiMail, FiRefreshCcw, FiMessageSquare, FiAlertCircle, FiInbox } from "react-icons/fi";
+import { FiArchive, FiCheck, FiMail, FiRefreshCcw, FiMessageSquare, FiAlertCircle, FiInbox } from "react-icons/fi";
 import { authFetch, useAuth } from "@/lib/AuthContext";
 import styles from "./supportMessages.module.css";
 
@@ -133,6 +133,32 @@ export default function SupportMessagesPage() {
     }
   };
 
+  const archiveMessage = async () => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await authFetch(`/api/support/messages/${selected.message_id}/archive`, {
+        method: "PATCH",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not archive message.");
+      setMessages((items) => {
+        if (status === "archived") {
+          return items.map((item) => item.message_id === data.data.message_id ? data.data : item);
+        }
+
+        const nextItems = items.filter((item) => item.message_id !== data.data.message_id);
+        setSelectedId(nextItems[0]?.message_id || null);
+        return nextItems;
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading || !user) return null;
 
   return (
@@ -177,6 +203,7 @@ export default function SupportMessagesPage() {
                   <option value="open">Open</option>
                   <option value="replied">Replied</option>
                   <option value="resolved">Resolved</option>
+                  <option value="archived">Archived</option>
                 </select>
               </label>
             </div>
@@ -226,9 +253,14 @@ export default function SupportMessagesPage() {
                   <p>{senderName(selected)}</p>
                   <p>{selected.email}{selected.phone ? ` | ${selected.phone}` : ""}</p>
                 </div>
-                <button type="button" className={styles.resolveButton} onClick={markResolved} disabled={busy || selected.status === "resolved"}>
-                  <FiCheck /> Mark Resolved
-                </button>
+                <div className={styles.detailActions}>
+                  <button type="button" className={styles.resolveButton} onClick={markResolved} disabled={busy || selected.status === "resolved"}>
+                    <FiCheck /> Mark Resolved
+                  </button>
+                  <button type="button" className={styles.archiveButton} onClick={archiveMessage} disabled={busy || selected.status === "archived"}>
+                    <FiArchive /> Archive
+                  </button>
+                </div>
               </div>
 
               <div className={styles.messageBody}>{selected.message}</div>

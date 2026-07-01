@@ -160,7 +160,11 @@ const listMessages = async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (req.query.source && req.query.source !== 'all') query = query.eq('source', req.query.source);
-    if (req.query.status && req.query.status !== 'all') query = query.eq('status', req.query.status);
+    if (req.query.status && req.query.status !== 'all') {
+      query = query.eq('status', req.query.status);
+    } else {
+      query = query.neq('status', 'archived');
+    }
 
     const { data, error } = await query;
     if (error) throw error;
@@ -238,10 +242,32 @@ const markResolved = async (req, res) => {
   }
 };
 
+const archiveMessage = async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+
+    const { data, error } = await supabase
+      .from('support_messages')
+      .update({
+        status: 'archived',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('message_id', req.params.id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    const [messageWithUrl] = await addAttachmentUrls([data]);
+    res.json({ data: messageWithUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   createContactMessage,
   createBugReport,
   listMessages,
   replyToMessage,
   markResolved,
+  archiveMessage,
 };

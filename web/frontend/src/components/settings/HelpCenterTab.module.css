@@ -185,6 +185,75 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(17, 24, 39, 0.54);
+}
+
+.sentModal {
+  width: min(100%, 420px);
+  border-radius: 8px;
+  background: var(--settings-card-bg, #fff);
+  color: var(--settings-text, #222);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  padding: 2rem;
+  text-align: center;
+}
+
+.modalIcon {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--settings-accent-solid, #037F81);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.sentModal h3 {
+  color: var(--settings-accent, #037F81);
+  font-size: 1.35rem;
+  line-height: 1.25;
+  margin: 0 0 0.55rem;
+}
+
+.sentModal p {
+  color: var(--settings-muted, #666);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0 0 1.4rem;
+}
+
+.modalButton {
+  min-width: 112px;
+  border: none;
+  border-radius: 8px;
+  background: var(--settings-accent-solid, #037F81);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.75rem 1.25rem;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.modalButton:hover {
+  background: var(--settings-accent-strong, #025f61);
+}
+
+.modalButton:active {
+  transform: scale(0.98);
+}
+
 @media (max-width: 640px) {
   .card { padding: 1.25rem 1rem; }
   .formActions { flex-direction: column; align-items: stretch; }

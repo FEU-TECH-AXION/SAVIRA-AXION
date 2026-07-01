@@ -226,7 +226,8 @@
 
 .status-open,
 .status-replied,
-.status-resolved {
+.status-resolved,
+.status-archived {
   display: inline-flex;
   width: fit-content;
   padding: 3px 10px;
@@ -249,6 +250,11 @@
 .status-resolved {
   background: #d1fae5;
   color: #065f46;
+}
+
+.status-archived {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .detail {
@@ -277,6 +283,15 @@
   margin: 0.2rem 0;
   color: var(--sasha-muted);
   font-size: 0.86rem;
+}
+
+.detailActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .messageBody {
@@ -345,6 +360,7 @@
 
 .btnSecondary,
 .resolveButton,
+.archiveButton,
 .sendButton {
   display: inline-flex;
   align-items: center;
@@ -378,6 +394,18 @@
   color: var(--sasha-white);
 }
 
+.archiveButton {
+  flex-shrink: 0;
+  border: 1px solid var(--sasha-border);
+  background: var(--sasha-white);
+  color: var(--sasha-text);
+}
+
+.archiveButton:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
 .sendButton {
   justify-self: start;
   border: 0;
@@ -386,12 +414,14 @@
 }
 
 .resolveButton:hover,
+.archiveButton:hover,
 .sendButton:hover,
 .btnSecondary:hover {
   transform: translateY(-1px);
 }
 
 .resolveButton:disabled,
+.archiveButton:disabled,
 .sendButton:disabled,
 .btnSecondary:disabled {
   opacity: 0.55;
@@ -431,6 +461,10 @@
     align-items: stretch;
     flex-direction: column;
   }
+
+  .detailActions {
+    justify-content: stretch;
+  }
 }
 
 @media (max-width: 575.98px) {
@@ -457,6 +491,7 @@
   .filterGroup label,
   .btnSecondary,
   .resolveButton,
+  .archiveButton,
   .sendButton {
     width: 100%;
   }
