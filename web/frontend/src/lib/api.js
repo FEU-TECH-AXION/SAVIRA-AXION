@@ -61,6 +61,50 @@ export async function fetchCommittees() {
   return response.json();
 }
 
+export async function fetchRoles() {
+  const response = await fetch(`${API_URL}/api/roles`, {
+    credentials: 'include',
+    headers: authHeaders(),
+    cache: 'no-store',
+  });
+  const data = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(data.error || 'Failed to fetch roles');
+  return data;
+}
+
+export async function deactivateUser(userId) {
+  const response = await fetch(`${API_URL}/api/users/${userId}/deactivate`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Failed to deactivate user');
+  return data;
+}
+
+export async function reactivateUser(userId) {
+  const response = await fetch(`${API_URL}/api/users/${userId}/reactivate`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Failed to reactivate user');
+  return data;
+}
+
+export async function deleteUser(userId) {
+  const response = await fetch(`${API_URL}/api/users/${userId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Failed to delete user');
+  return data;
+}
+
 export async function fetchProjects() {
   const res = await fetch(`${API_URL}/api/projects`, {
     credentials: 'include',

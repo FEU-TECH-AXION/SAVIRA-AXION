@@ -4,9 +4,15 @@ import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/navbar/navbar";
 import styles from "./UserManagement.module.css";
 import { FiSearch, FiX, FiAlertTriangle } from "react-icons/fi";
-import { fetchUsers, fetchCommittees } from "@/lib/api";
+import {
+  fetchUsers,
+  fetchCommittees,
+  fetchRoles,
+  deactivateUser,
+  reactivateUser,
+  deleteUser,
+} from "@/lib/api";
 import { authFetch } from "@/lib/AuthContext";
-import { supabase } from "@/lib/supabase";
 import UsersTable from "./UsersTable";
 import UserFilterMenu from "./UserFilterMenu";
 import { IoIosWarning } from "react-icons/io";
@@ -616,16 +622,13 @@ function EditUserModal({ open, onClose, user, onSave, committees }) {
 
   useEffect(() => {
     async function loadRoles() {
-      const { data, error } = await supabase
-        .from("roles")
-        .select("role_id, role_name");
-
-      if (!error && data && data.length > 0) {
+      const data = await fetchRoles();
+      if (data && data.length > 0) {
         setRoleOptions(data);
       }
     }
 
-    loadRoles();
+    loadRoles().catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -1134,57 +1137,51 @@ export default function AdminDashboard() {
 
   // ── Soft delete: deactivate ───────────────────────────────────
   async function handleDeactivate(user_id) {
-    const { error } = await supabase
-      .from("users")
-      .update({ is_active: false, deactivated_at: new Date().toISOString() })
-      .eq("user_id", user_id);
-
-    if (error) { showToast(`Error: ${error.message}`, "danger"); return; }
-
     const name = users.find((u) => u.user_id === user_id)?.name;
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === user_id
-          ? { ...u, is_active: false, status: "Inactive", deactivated_at: new Date().toISOString() }
-          : u
-      )
-    );
-    showToast(`"${name}" has been deactivated.`);
+    try {
+      const updatedUser = await deactivateUser(user_id);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === user_id
+            ? normalizeUser({ ...u, ...updatedUser, status: "Inactive" })
+            : u
+        )
+      );
+      showToast(`"${name}" has been deactivated.`);
+    } catch (error) {
+      showToast(`Error: ${error.message}`, "danger");
+    }
   }
 
   // ── Reactivate ────────────────────────────────────────────────
   async function handleReactivate(user_id) {
-    const { error } = await supabase
-      .from("users")
-      .update({ is_active: true, deactivated_at: null })
-      .eq("user_id", user_id);
-
-    if (error) { showToast(`Error: ${error.message}`, "danger"); return; }
-
     const name = users.find((u) => u.user_id === user_id)?.name;
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === user_id
-          ? { ...u, is_active: true, status: "Active", deactivated_at: null }
-          : u
-      )
-    );
-    showToast(`"${name}" has been reactivated.`);
+    try {
+      const updatedUser = await reactivateUser(user_id);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === user_id
+            ? normalizeUser({ ...u, ...updatedUser, status: "Active" })
+            : u
+        )
+      );
+      showToast(`"${name}" has been reactivated.`);
+    } catch (error) {
+      showToast(`Error: ${error.message}`, "danger");
+    }
   }
 
   // ── Hard delete ───────────────────────────────────────────────
   async function handleHardDelete(user_id) {
     const name = users.find((u) => u.user_id === user_id)?.name;
 
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("user_id", user_id);
-
-    if (error) { showToast(`Error: ${error.message}`, "danger"); return; }
-
-    setUsers((prev) => prev.filter((u) => u.user_id !== user_id));
-    showToast(`"${name}" permanently deleted.`, "danger");
+    try {
+      await deleteUser(user_id);
+      setUsers((prev) => prev.filter((u) => u.user_id !== user_id));
+      showToast(`"${name}" permanently deleted.`, "danger");
+    } catch (error) {
+      showToast(`Error: ${error.message}`, "danger");
+    }
   }
 
   // ── Filter + search ───────────────────────────────────────────
