@@ -15,18 +15,33 @@ export const metadata = {
 
 const themeInitScript = `(function(){try{var k='savira_display_prefs';var p=JSON.parse(localStorage.getItem(k)||'{}');if(p.theme!=='light'||p.themeDefaultMigrated!==true){p.theme='light';p.themeDefaultMigrated=true;localStorage.setItem(k,JSON.stringify(p));}var r=document.documentElement;r.dataset.theme='light';if(p.fontSize)r.dataset.fontSize=p.fontSize;if(p.reducedMotion)r.dataset.reducedMotion='true';if(p.highContrast)r.dataset.highContrast='true';if(p.screenReaderHints===false)r.dataset.screenReaderHints='false';if(p.language)r.lang=p.language;}catch(e){}})();`;
 
-
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <Script id="theme-init-script" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
+      <head>
+        <Script
+          id="theme-init-script"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+      </head>
+
       <body>
         <AuthProvider>
           <DisplayPreferencesClient />
           <NotificationsInit />
+
           <ClientShell>
             <NavbarClient />
-            <main className="appMain">{children}</main>
+
+            <main className="appMain">
+              {children}
+            </main>
+
             <Footer />
           </ClientShell>
         </AuthProvider>
