@@ -5,7 +5,18 @@ const multer = require('multer')
 const { randomUUID } = require('crypto')
 const router = express.Router()
 const supabase = require('../config/supabase')
-const { getItems, createItem, updateItem, uploadAvatar, changePassword, loginUser, syncRole } = require('../controllers/users.controller')
+const {
+  getItems,
+  createItem,
+  updateItem,
+  uploadAvatar,
+  changePassword,
+  loginUser,
+  syncRole,
+  deactivateItem,
+  reactivateItem,
+  deleteItem,
+} = require('../controllers/users.controller')
 const sendEmail = require('../config/mailer');
 const { sendResetPasswordEmail } = require('../config/mailer')
 const { verifyToken } = require('../middleware/auth.middleware')
@@ -207,10 +218,13 @@ router.post('/reset-password', async (req, res) => {
 router.get('/', verifyToken, authorize('Admin'), getItems)
 router.post('/', verifyToken, authorize('Admin'), createItem)
 router.post('/login', loginUser)
+router.patch('/:id/deactivate', verifyToken, authorize('Admin'), deactivateItem)
+router.patch('/:id/reactivate', verifyToken, authorize('Admin'), reactivateItem)
 router.put('/:id', verifyToken, updateItem)
 router.patch('/:id', verifyToken, updateItem)
 router.patch('/:id/password', verifyToken, changePassword)
 router.post('/:id/avatar', verifyToken, avatarUpload.single('profile_img'), uploadAvatar)
 router.post('/:userId/sync-role', verifyToken, authorize('Admin'), syncRole)
+router.delete('/:id', verifyToken, authorize('Admin'), deleteItem)
 
 module.exports = router

@@ -228,6 +228,44 @@ const getItems = async (req, res) => {
     }
 }
 
+const getCaseManagementItems = async (req, res) => {
+    try {
+        const userId = actorId(req)
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+
+        if (!isAdmin(req) && !isCaseOfficer(req)) {
+            return res.status(403).json({ error: 'Forbidden' })
+        }
+
+        const slotFilters = { slot_type: 'case_report' }
+        const interviewFilters = { type: 'case_report' }
+
+        if (!isAdmin(req)) {
+            slotFilters.created_by = userId
+            interviewFilters.interviewer_user_id = userId
+        }
+
+        const [slots, interviews] = await Promise.all([
+            InterviewSlotsModel.getAll(slotFilters),
+            InterviewModel.getAll(interviewFilters),
+        ])
+
+        const visibleInterviews = []
+        for (const interview of interviews || []) {
+            if (await canAccessInterview(req, interview)) visibleInterviews.push(interview)
+        }
+
+        res.json({
+            data: {
+                slots,
+                interviews: visibleInterviews,
+            },
+        })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+}
+
 const getItem = async (req, res) => {
     try {
         const data = await InterviewModel.getById(req.params.id)
@@ -573,6 +611,7 @@ const expireStale = async (req, res) => {
 
 module.exports = {
     getItems,
+    getCaseManagementItems,
     getItem,
     createItem,
     selectSlot,

@@ -57,8 +57,6 @@ const STATUS_STEP = {
   13: "Withdrawn",
 };
 
-// Only cases with this status from Case Management are passed to Legal Review
-const VERIFIED_TRUE_STATUS = "Verified - True";
 function assignedPeople(caseData, role) {
   return (caseData?.assignedLegal || []).filter((person) => person.assignment_role === role);
 }
@@ -203,12 +201,12 @@ function ViewCaseModal({ open, onClose, caseData }) {
           ["Case ID",              caseData.id],
           ["Reporter ID",          caseData.reporterId],
           ["Region",               caseData.region],
-          ["Status",               <StatusBadge status={caseData.status} />],
+          ["Status",               <StatusBadge key="status" status={caseData.status} />],
           ["Lawyer(s)",            assignedNames(caseData, "lawyer")],
           ["Paralegal(s)",         assignedNames(caseData, "paralegal")],
           ["Date Reported",        caseData.dateReported],
           ["Endorsed To",          caseData.endorsedTo || "—"],
-          ...(caseData.pendingApproval ? [["Pending Change", <PendingBadge />]] : []),
+          ...(caseData.pendingApproval ? [["Pending Change", <PendingBadge key="pending-change" />]] : []),
         ].map(([k, v]) => (
           <div key={k} className={styles.viewRow}>
             <span className={styles.viewKey}>{k}</span>
@@ -347,18 +345,21 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
     .join("\n");
 
   useEffect(() => {
-    if (!open || !caseData) return;
+    if (!open || !caseData) return undefined;
     const record = caseData.lawyerRecord || {};
-    setForm({
-      consultationType: "Follow-up",
-      consultationDate: new Date().toISOString().split("T")[0],
-      engagementStatus: record.engagementStatus || "Advisory input only",
-      applicableLaws: record.applicableLaws || [],
-      actionType: record.actionType || [],
-      evidenceGaps: record.evidenceGaps || automaticGaps,
-      recommendation: record.recommendation || "",
-      additionalNotes: record.additionalNotes || "",
-    });
+    const timer = setTimeout(() => {
+      setForm({
+        consultationType: "Follow-up",
+        consultationDate: new Date().toISOString().split("T")[0],
+        engagementStatus: record.engagementStatus || "Advisory input only",
+        applicableLaws: record.applicableLaws || [],
+        actionType: record.actionType || [],
+        evidenceGaps: record.evidenceGaps || automaticGaps,
+        recommendation: record.recommendation || "",
+        additionalNotes: record.additionalNotes || "",
+      });
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, caseData, automaticGaps]);
 
   if (!caseData) return null;
@@ -503,7 +504,14 @@ const STATUS_COLORS2 = STATUS_COLORS;
 function StatusChangeModal({ open, onClose, caseData, onSubmit, actorName, isAdmin }) {
   const [selected, setSelected] = useState(null);
   const [notes, setNotes] = useState("");
-  useEffect(() => { if (open) { setSelected(null); setNotes(""); } }, [open]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const timer = setTimeout(() => {
+      setSelected(null);
+      setNotes("");
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [open]);
   if (!caseData) return null;
 
   const available = isAdmin
@@ -600,8 +608,8 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
       <div className={styles.approvalReviewBlock}>
         {[
           ["Case ID", caseData.id],
-          ["Current Status", <StatusBadge status={caseData.status} />],
-          ["Proposed Status", <StatusBadge status={pa.proposedStatus} />],
+          ["Current Status", <StatusBadge key="current-status" status={caseData.status} />],
+          ["Proposed Status", <StatusBadge key="proposed-status" status={pa.proposedStatus} />],
           ["Submitted by", pa.submittedBy],
           ["Date", pa.date],
           ["Notes", pa.notes],
@@ -648,13 +656,15 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
   const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return undefined;
+    const timer = setTimeout(() => {
       setSearch("");
       setAssigned([]);
       setError("");
       setDuplicateDialog(null);
       setRemovalTarget(null);
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open]);
 
   if (!caseData) return null;
@@ -996,7 +1006,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                 color:        "#9ca3af",
                 zIndex:       100,
               }}>
-                No personnel found matching "{search}".
+                No personnel found matching &quot;{search}&quot;.
               </div>
             )}
             {legalPersonnels.length > 0 && noAvailableLegalPersonnel && (
@@ -1143,6 +1153,42 @@ function mergeStatusHistory(caseData, history = []) {
   };
 }
 
+function mapLegalReportToCase(report) {
+  const year = new Date(report.created_at).getFullYear();
+  const status = STATUS_STEP[report.case_status_id] || "Verified - True";
+  const defaultHistory = [{
+    status,
+    date: new Date(report.created_at).toLocaleDateString("en-PH"),
+    by: report.assigned_officer || "System",
+    notes: "Case passed to Legal Review.",
+  }];
+
+  return {
+    id: report.case_report_id,
+    caseId: `${year}-` + String(report.case_report_id).padStart(3, "0"),
+    reporterId: String(report.complainant_id),
+    region: report.incident_province || report.incident_city || "—",
+    city: report.incident_city || "—",
+    status,
+    assignedOfficer: report.assigned_officer || null,
+    assignedLegal: (report.assigned_legal || []).map((person) => ({
+      ...person,
+      assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
+    })),
+    dateReported: report.created_at,
+    caseType: report.case_type || null,
+    primaryCategory: report.primary_category || null,
+    additionalCategories: report.additional_categories || [],
+    pendingApproval: null,
+    endorsedTo: null,
+    endorsementDetails: null,
+    paralegalRecord: null,
+    lawyerRecord: null,
+    monitoringLog: [],
+    statusHistory: report.status_history?.length ? report.status_history : defaultHistory,
+  };
+}
+
 export default function LegalReviewManagement() {
   const router = useRouter();
   const { user: authUser } = useAuth();
@@ -1175,96 +1221,36 @@ export default function LegalReviewManagement() {
   const canUseAllLegalWorkflows = isAdmin || isParalegal;
   const canUseCalendarWorkflow = isAdmin || isParalegal || isLawyer;
 
-  // Fetch verified-true cases from Case Management API
+
+  // Fetch legal management payload
   useEffect(() => {
-    const fetchCases = async () => {
+    const fetchLegalManagement = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await authFetch(`${API_URL}/api/case_reports/all`);
-        if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
-        const { data } = await res.json();
+        const res = await authFetch(`${API_URL}/api/legal_reviews/management`);
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error || `Failed to fetch legal management data: ${res.status}`);
 
-        // Only cases that are Verified - True are passed to Legal Review
-        const mapped = data
-          .filter((r) => STATUS_STEP[r.case_status_id] === VERIFIED_TRUE_STATUS ||
-            // also include cases already in legal review pipeline
-            ["Under Case Evaluation","Case Filed","Investigation Ongoing","Hearing Ongoing","Dismissed","Perpetrator Convicted","Resolved"]
-              .includes(STATUS_STEP[r.case_status_id])
-          )
-          .map((r) => {
-            const year = new Date(r.created_at).getFullYear();
-            return {
-              id:                    r.case_report_id,
-              caseId:                `${year}-` + String(r.case_report_id).padStart(3, "0"),
-              reporterId:            String(r.complainant_id),
-              region:                r.incident_province || r.incident_city || "—",
-              city:                  r.incident_city || "—",
-              status:                STATUS_STEP[r.case_status_id] || "Verified - True",
-              assignedOfficer:       r.assigned_officer || null,
-              assignedLegal:         (r.assigned_legal || []).map((person) => ({
-                ...person,
-                assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
-              })),
-              dateReported:          r.created_at,
-              caseType:              r.case_type || null,
-              primaryCategory:       r.primary_category || null,
-              additionalCategories:  r.additional_categories || [],
-              pendingApproval:       null,
-              endorsedTo:            null,
-              endorsementDetails:    null,
-              paralegalRecord:       null,
-              lawyerRecord:          null,
-              monitoringLog:         [],
-              statusHistory: [{
-                status: STATUS_STEP[r.case_status_id] || "Verified - True",
-                date:   new Date(r.created_at).toLocaleDateString("en-PH"),
-                by:     r.assigned_officer || "System",
-                notes:  "Case passed to Legal Review.",
-              }],
-            };
-          });
-        const synced = await Promise.all(mapped.map(async (caseItem) => {
-          try {
-            const [reviewRes, historyRes] = await Promise.all([
-              fetch(`${API_URL}/api/legal_reviews/case/${caseItem.id}`, { credentials: "include" }),
-              fetch(`${API_URL}/api/case_status_history/${caseItem.id}?staffView=true`, { credentials: "include" }),
-            ]);
-            const reviewPayload = reviewRes.ok ? await reviewRes.json().catch(() => ({})) : {};
-            const historyPayload = historyRes.ok ? await historyRes.json().catch(() => ({})) : {};
-            return mergeStatusHistory(
-              mergeLegalReviewData(caseItem, reviewPayload.data),
-              historyPayload.data || caseItem.statusHistory,
-            );
-          } catch {
-            return caseItem;
-          }
-        }));
+        const pageData = payload.data || {};
+        const reviews = pageData.reviews || {};
+        const synced = (pageData.cases || []).map((report) => {
+          const caseItem = mapLegalReportToCase(report);
+          return mergeStatusHistory(
+            mergeLegalReviewData(caseItem, reviews[caseItem.id]),
+            caseItem.statusHistory,
+          );
+        });
+
         setCases(synced);
+        setLegalPersonnels(pageData.legal_personnels || []);
       } catch (err) {
         console.error("[LegalReview] fetch error:", err);
       } finally {
         setCasesLoading(false);
       }
     };
-    fetchCases();
+    fetchLegalManagement();
   }, []);
-
-  // Fetch legal personnels for filters and assign dropdown
-  useEffect(() => {
-    const fetchPersonnels = async () => {
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await authFetch(`${API_URL}/api/legal_personnels`);
-        if (res.ok) {
-          const data = await res.json();
-          setLegalPersonnels(Array.isArray(data) ? data : data.data || []);
-        }
-      } catch (err) {
-        console.error("[LegalReview] failed to fetch legal personnels:", err);
-      }
-    };
-    fetchPersonnels();
-  }, []); 
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState({
     status: "",
@@ -1616,7 +1602,10 @@ export default function LegalReviewManagement() {
     }),
     [cases, search, activeFilters]
   );
-  useEffect(() => setPage(1), [search, activeFilters]);
+  useEffect(() => {
+    const timer = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(timer);
+  }, [search, activeFilters]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const sorted = useMemo(() => {
     if (!sortField) return filtered;

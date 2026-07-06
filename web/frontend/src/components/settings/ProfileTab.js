@@ -63,12 +63,14 @@ function validateProfile(data) {
   if (!data.last_name?.trim()) errors.last_name = "Last name is required.";
   if (!data.user_name?.trim()) errors.user_name = "Username is required.";
   if (!data.email?.trim()) errors.email = "Email is required.";
-  if (data.gender_identity && !GENDER_IDENTITIES.includes(data.gender_identity)) {
-    errors.gender_identity = "Select a valid gender identity.";
-  }
-  if (data.birthday) {
+  if (!data.birthday) {
+    errors.birthday = "Birthday is required.";
+  } else {
     const birthdayError = validateBirthday(data.birthday);
     if (birthdayError) errors.birthday = birthdayError;
+  }
+  if (data.gender_identity && !GENDER_IDENTITIES.includes(data.gender_identity)) {
+    errors.gender_identity = "Select a valid gender identity.";
   }
   if (!data.contact_number) {
     errors.contact_number = "Contact number is required.";
@@ -94,6 +96,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [underageDialogOpen, setUnderageDialogOpen] = useState(false);
+  const [validationDialog, setValidationDialog] = useState(null);
 
   const flash = (type, msg) => {
     if (type === "success") { setSuccess(msg); setError(""); }
@@ -131,6 +134,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
     const errors = validateProfile(form);
     if (Object.keys(errors).length) {
       setFormErrors(errors);
+      setValidationDialog(errors);
       return;
     }
     setFormErrors({});
@@ -157,7 +161,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
 
   return (
     <>
-    <form className={styles.formCard} onSubmit={handleSave}>
+    <form className={styles.formCard} onSubmit={handleSave} noValidate>
       {success && (
         <div className={styles.flashSuccess}><FiCheck size={16} /> {success}</div>
       )}
@@ -202,7 +206,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
       </div>
 
       <div className={styles.grid2}>
-        <Field label="Birthday" badge="Optional" hint="Helps us confirm age-appropriate access where required." error={formErrors.birthday}>
+        <Field label="Birthday" required hint="Helps us confirm age-appropriate access where required." error={formErrors.birthday}>
           <input name="birthday" type="date" value={form.birthday}
             onChange={handleChange}
             min={formatDateInput(new Date(new Date().setFullYear(new Date().getFullYear() - 125)))}
@@ -280,6 +284,17 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
         setForm((current) => ({ ...current, birthday: "" }));
       }}
       onCancel={() => setUnderageDialogOpen(false)}
+    />
+    <ConfirmDialog
+      open={Boolean(validationDialog)}
+      title="Complete required profile details"
+      description="Please review the highlighted fields before saving your profile."
+      detail={validationDialog ? Object.values(validationDialog).join(" ") : ""}
+      confirmLabel="Review fields"
+      tone="danger"
+      hideCancel
+      onConfirm={() => setValidationDialog(null)}
+      onCancel={() => setValidationDialog(null)}
     />
     </>
   );

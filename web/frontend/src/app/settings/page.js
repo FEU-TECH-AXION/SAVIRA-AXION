@@ -34,7 +34,7 @@ function getCompletionFields(user) {
     { key: "city",            label: "City",            optional: false },
     { key: "province",        label: "Province",        optional: false },
     { key: "profile_img",     label: "Profile Photo",   optional: true  },
-    { key: "birthday",        label: "Birthday",        optional: true  },
+    { key: "birthday",        label: "Birthday",        optional: false },
     { key: "gender_identity", label: "Gender Identity",  optional: true  },
   ].map((f) => ({ ...f, filled: !!String(user?.[f.key] || "").trim() }));
 }
@@ -80,20 +80,23 @@ function SettingsPageContent() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.push("/login"); return; }
-    setForm({
-      first_name:      user.first_name      || "",
-      middle_name:     user.middle_name     || "",
-      last_name:       user.last_name       || "",
-      extension_name:  user.extension_name  || "",
-      user_name:       user.user_name       || "",
-      email:           user.email           || "",
-      contact_number:  user.contact_number  || "",
-      city:            user.city            || "",
-      province:        user.province        || "National Capital Region (NCR)",
-      profile_img:     user.profile_img     || "",
-      birthday:        user.birthday        || "",
-      gender_identity: user.gender_identity || "",
-    });
+    const timer = window.setTimeout(() => {
+      setForm({
+        first_name:      user.first_name      || "",
+        middle_name:     user.middle_name     || "",
+        last_name:       user.last_name       || "",
+        extension_name:  user.extension_name  || "",
+        user_name:       user.user_name       || "",
+        email:           user.email           || "",
+        contact_number:  user.contact_number  || "",
+        city:            user.city            || "",
+        province:        user.province        || "National Capital Region (NCR)",
+        profile_img:     user.profile_img     || "",
+        birthday:        user.birthday        || "",
+        gender_identity: user.gender_identity || "",
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loading, user, router]);
 
   // ── Derived ───────────────────────────────────────────────

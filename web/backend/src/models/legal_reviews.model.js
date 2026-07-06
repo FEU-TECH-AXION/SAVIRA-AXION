@@ -21,6 +21,24 @@ async function getLatestByCase(caseReportId) {
   return data
 }
 
+async function getLatestByCaseIds(caseReportIds = []) {
+  const ids = [...new Set((caseReportIds || []).filter(Boolean))]
+  if (ids.length === 0) return {}
+
+  const { data, error } = await supabase
+    .from('legal_reviews')
+    .select('*')
+    .in('case_report_id', ids)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+
+  const latestByCase = {}
+  for (const review of data || []) {
+    if (!latestByCase[review.case_report_id]) latestByCase[review.case_report_id] = review
+  }
+  return latestByCase
+}
+
 async function getLogsByReview(legalReviewId) {
   if (!legalReviewId) return []
   const { data, error } = await supabase
@@ -30,6 +48,24 @@ async function getLogsByReview(legalReviewId) {
     .order('performed_at', { ascending: false })
   if (error) throw error
   return data || []
+}
+
+async function getLogsByReviewIds(legalReviewIds = []) {
+  const ids = [...new Set((legalReviewIds || []).filter(Boolean))]
+  if (ids.length === 0) return {}
+
+  const { data, error } = await supabase
+    .from('legal_review_logs')
+    .select('*')
+    .in('legal_review_id', ids)
+    .order('performed_at', { ascending: false })
+  if (error) throw error
+
+  return (data || []).reduce((map, log) => {
+    if (!map[log.legal_review_id]) map[log.legal_review_id] = []
+    map[log.legal_review_id].push(log)
+    return map
+  }, {})
 }
 
 async function getPublicLogsByCase(caseReportId) {
@@ -133,7 +169,9 @@ async function logAction({ legalReviewId, caseReportId, actionType, remarks, per
 
 module.exports = {
   getLatestByCase,
+  getLatestByCaseIds,
   getLogsByReview,
+  getLogsByReviewIds,
   getPublicLogsByCase,
   resolveLegalPersonnelId,
   createForCase,

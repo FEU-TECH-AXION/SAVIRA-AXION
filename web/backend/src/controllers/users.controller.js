@@ -359,6 +359,55 @@ const syncRole = async (req, res) => {
   }
 }
 
+const deactivateItem = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { data, error } = await supabase
+      .from('users')
+      .update({ is_active: false, deactivated_at: new Date().toISOString() })
+      .eq('user_id', id)
+      .select('*, roles(role_name)')
+      .single()
+
+    if (error) throw error
+    res.status(200).json(toSafeUser(data))
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+const reactivateItem = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { data, error } = await supabase
+      .from('users')
+      .update({ is_active: true, deactivated_at: null })
+      .eq('user_id', id)
+      .select('*, roles(role_name)')
+      .single()
+
+    if (error) throw error
+    res.status(200).json(toSafeUser(data))
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+const deleteItem = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('user_id', id)
+
+    if (error) throw error
+    res.status(200).json({ deleted: true, user_id: id })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
 async function getStaffByUserId(userId) {
   const { data, error } = await supabase
     .from('staff')
@@ -500,4 +549,15 @@ async function syncUserSubTable(userId, roleId, options = {}) {
   }
 }
 
-module.exports = { getItems, createItem, updateItem, uploadAvatar, changePassword, loginUser, syncRole }
+module.exports = {
+  getItems,
+  createItem,
+  updateItem,
+  uploadAvatar,
+  changePassword,
+  loginUser,
+  syncRole,
+  deactivateItem,
+  reactivateItem,
+  deleteItem,
+}
