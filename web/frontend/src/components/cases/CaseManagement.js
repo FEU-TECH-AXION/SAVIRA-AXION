@@ -137,6 +137,17 @@ const LEGAL_STATUSES_OWN = [
 
 const STATUS_FILTERS = ["All", ...ALL_STATUSES];
 
+const ACTIVE_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+];
+
 const ENDORSEMENT_BODIES = [
   "DSWD",
   "PNP Women and Children Protection Desk",
@@ -343,14 +354,16 @@ function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, offi
   const casesData = Array.isArray(casesDataProp) ? casesDataProp : (casesDataProp ? [casesDataProp] : []);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return undefined;
+    const timer = window.setTimeout(() => {
       setSearch("");
       setAssigned([]);
       setError("");
       setSaving(false);
       setDuplicateDialog(null);
       setRemovalTarget(null);
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [open]);
 
   if (casesData.length === 0) return null;
@@ -1011,7 +1024,19 @@ useEffect(() => {
 
       const mapped = data.map((r) => {
         const year = new Date(r.created_at).getFullYear();
-        return {
+        const initialHistory = [
+          {
+            status: STATUS_STEP[r.case_status_id] || "For Verification",
+            date: new Date(r.created_at).toLocaleDateString("en-PH"),
+            by: r.assigned_officer || "System",
+            notes: "Report received and logged.",
+          },
+        ];
+        const history = Array.isArray(r.status_history) && r.status_history.length > 0
+          ? r.status_history
+          : initialHistory;
+
+        return mergeStatusHistory({
           id:              r.case_report_id,
           caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
           reporterId:      String(r.complainant_id),
@@ -1036,32 +1061,11 @@ useEffect(() => {
           endorsementDetails: null,
           pendingApproval: null,
           possibleDuplicates: r.possible_duplicates || [],
-          statusHistory: [
-            {
-              status: STATUS_STEP[r.case_status_id] || "For Verification",
-              date:   new Date(r.created_at).toLocaleDateString('en-PH'),
-              by:     r.assigned_officer || "System",
-              notes:  "Report received and logged.",
-            }
-          ],
-        };
+          statusHistory: history,
+        });
       });
 
-      const synced = await Promise.all(mapped.map(async (caseItem) => {
-        try {
-          const historyRes = await fetch(`${API_URL}/api/case_status_history/${caseItem.id}?staffView=true`, {
-            credentials: "include",
-          });
-          if (!historyRes.ok) return caseItem;
-
-          const historyPayload = await historyRes.json().catch(() => ({}));
-          return mergeStatusHistory(caseItem, historyPayload.data || []);
-        } catch {
-          return caseItem;
-        }
-      }));
-
-      setCases(synced);
+      setCases(mapped);
     } catch (err) {
       console.error('[CaseManagement] fetch error:', err);
     } finally {
@@ -1119,17 +1123,6 @@ useEffect(() => {
   function closeModal() { setModal(null); }
 
   // ── Stats ──
-  const ACTIVE_STATUSES = [
-  "Submitted",
-  "For Verification",
-  "Undergoing Review",
-  "Verified - True",
-  "Under Case Evaluation",
-  "Case Filed",
-  "Investigation Ongoing",
-  "Hearing Ongoing",
-];
-
 const stats = useMemo(() => {
   const pending = cases.filter((c) => c.pendingApproval).length;
 
@@ -1193,7 +1186,10 @@ const stats = useMemo(() => {
     }),
     [cases, search, advancedFilters]
   );
-  useEffect(() => setPage(1), [search, advancedFilters]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timer);
+  }, [search, advancedFilters]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const sorted = useMemo(() => {
   if (!sortField) return filtered;

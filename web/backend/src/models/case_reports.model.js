@@ -2,6 +2,22 @@ const supabase = require('../config/supabase')
 const { mergeApprovedFieldChanges } = require('./case_field_changes')
 const { normalizeScoreForFields } = require('../services/duplicateCases.service')
 
+const STATUS_NAME_BY_ID = {
+  1: 'Submitted',
+  2: 'For Verification',
+  3: 'Undergoing Review',
+  4: 'Verified - True',
+  5: 'Verified - False',
+  6: 'Under Case Evaluation',
+  7: 'Case Filed',
+  8: 'Investigation Ongoing',
+  9: 'Hearing Ongoing',
+  10: 'Dismissed',
+  11: 'Perpetrator Convicted',
+  12: 'Resolved',
+  13: 'Withdrawn',
+}
+
 const ALLOWED_FIELDS = [
   'case_type',
   'case_category',
@@ -364,6 +380,96 @@ async function getFollowUpSummary(caseIds) {
   return summary
 }
 
+async function getStatusHistoryMap(caseIds, { staffView = true } = {}) {
+  if (!caseIds?.length) return {}
+
+  let query = supabase
+    .from('case_status_history')
+    .select(`
+      history_id,
+      display_id,
+      case_report_id,
+      case_status_id,
+      changed_by_id,
+      changed_by_role,
+      notes,
+      form_data,
+      approval_status,
+      approved_at,
+      rejection_reason,
+      created_at,
+      case_status ( case_status_name )
+    `)
+    .in('case_report_id', caseIds)
+    .order('created_at', { ascending: true })
+
+  if (!staffView) query = query.eq('approval_status', 'approved')
+
+  const { data, error } = await query
+  if (error) {
+    console.warn('[getStatusHistoryMap] Status history unavailable:', error.message)
+    return {}
+  }
+
+  const userIds = [...new Set((data || []).map((row) => row.changed_by_id).filter(Boolean))]
+  const actorById = await getHistoryActorMap(userIds)
+
+  return (data || []).reduce((map, row) => {
+    if (!map[row.case_report_id]) map[row.case_report_id] = []
+    map[row.case_report_id].push({
+      historyId: row.history_id,
+      displayId: row.display_id,
+      status: row.case_status?.case_status_name || STATUS_NAME_BY_ID[row.case_status_id] || null,
+      date: new Date(row.approved_at || row.created_at).toLocaleDateString('en-PH'),
+      by: formatHistoryActor(actorById[row.changed_by_id], row.changed_by_role),
+      notes: row.notes,
+      formData: row.form_data,
+      approvalStatus: row.approval_status,
+      rejectionReason: row.rejection_reason,
+    })
+    return map
+  }, {})
+}
+
+async function getHistoryActorMap(userIds) {
+  if (!userIds?.length) return {}
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, first_name, middle_name, last_name, extension_name, roles(role_name)')
+    .in('user_id', userIds)
+
+  if (error) {
+    console.warn('[getHistoryActorMap] Actor metadata unavailable:', error.message)
+    return {}
+  }
+
+  return (data || []).reduce((map, user) => {
+    map[user.user_id] = user
+    return map
+  }, {})
+}
+
+function formatHistoryActor(user, fallbackRole) {
+  const role = user?.roles?.role_name || fallbackRole || ''
+  const name = user
+    ? [user.first_name, user.middle_name, user.last_name, user.extension_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+    : ''
+
+  if (name && role) return `${name} - ${role}`
+  return name || role || 'System'
+}
+
+function withStatusHistory(report, statusHistoryMap) {
+  return {
+    ...report,
+    status_history: statusHistoryMap[report.case_report_id] || [],
+  }
+}
+
 async function getAllReports() {
   // Step 1: Fetch case reports with their assignments
   const { data: reports, error: reportsError } = await supabase
@@ -497,6 +603,7 @@ async function getAllReports() {
 
   // Step 3: Merge officer name and legal names into each report
   const duplicateMatches = await getDuplicateMatches(reportIds)
+  const statusHistoryMap = await getStatusHistoryMap(reportIds, { staffView: true })
   return normalizedReports.map(report => {
     let assignedOfficer = null
     let assignedOfficerId = null
@@ -528,7 +635,7 @@ async function getAllReports() {
       }
     }
 
-    return {
+    return withStatusHistory({
       ...report,
       assigned_officer:       assignedOfficer,
       assigned_officer_id:    assignedOfficerId,
@@ -543,7 +650,7 @@ async function getAllReports() {
       ...(assessmentMap[report.case_report_id] || {}),
       case_assignments:       undefined,
       legal_case_assignments: undefined,
-    }
+    }, statusHistoryMap)
   })
 }
 
@@ -711,8 +818,9 @@ async function getReportsByAssignedOfficer(userId) {
   }
 
   const duplicateMatches = await getDuplicateMatches(reportIds)
+  const statusHistoryMap = await getStatusHistoryMap(reportIds, { staffView: true })
 
-  return normalizedReports.map(report => ({
+  return normalizedReports.map(report => withStatusHistory({
     ...report,
     assigned_officer: null,       // they know it's their own cases
     assigned_officer_id: caseOfficerId,
@@ -729,7 +837,7 @@ async function getReportsByAssignedOfficer(userId) {
     ...(assessmentMap[report.case_report_id] || {}),
     case_assignments: undefined,
     legal_case_assignments: undefined,
-  }))
+  }, statusHistoryMap))
 }
 
 async function getReportsForLegal() {
@@ -786,10 +894,11 @@ async function getReportsForLegal() {
   }
 
   const duplicateMatches = await getDuplicateMatches(reportIds)
+  const statusHistoryMap = await getStatusHistoryMap(reportIds, { staffView: true })
 
   return normalizedReports.map(report => {
     const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
-    return {
+    return withStatusHistory({
       ...report,
       assigned_officer: null,
       assigned_legal: activeLegal.map(a => ({
@@ -800,7 +909,7 @@ async function getReportsForLegal() {
       possible_duplicates: duplicateMatches[report.case_report_id] || [],
       case_assignments: undefined,
       legal_case_assignments: undefined,
-    }
+    }, statusHistoryMap)
   })
 }
 

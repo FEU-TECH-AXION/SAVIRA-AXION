@@ -12,18 +12,81 @@ function getStatusNameById(statusId) {
     .find(([, id]) => Number(id) === Number(statusId))?.[0] || 'updated';
 }
 
+const TRANSITION_RULES = {
+  'Submitted': {
+    'case officer': ['For Verification'],
+    admin: ['For Verification'],
+  },
+  'For Verification': {
+    'case officer': ['Undergoing Review'],
+    admin: ['Undergoing Review'],
+  },
+  'Undergoing Review': {
+    'case officer': ['Verified - True', 'Verified - False'],
+    admin: ['Verified - True', 'Verified - False'],
+  },
+  'Verified - True': {
+    'case officer': ['Under Case Evaluation'],
+    'legal personnel': ['Under Case Evaluation'],
+    admin: ['Under Case Evaluation'],
+  },
+  'Verified - False': {
+    'case officer': [],
+    admin: [],
+  },
+  'Under Case Evaluation': {
+    'legal personnel': ['Case Filed', 'Dismissed'],
+    admin: ['Case Filed', 'Dismissed'],
+  },
+  'Case Filed': {
+    'legal personnel': ['Investigation Ongoing'],
+    admin: ['Investigation Ongoing'],
+  },
+  'Investigation Ongoing': {
+    'legal personnel': ['Hearing Ongoing', 'Dismissed'],
+    admin: ['Hearing Ongoing', 'Dismissed'],
+  },
+  'Hearing Ongoing': {
+    'legal personnel': ['Dismissed', 'Perpetrator Convicted'],
+    admin: ['Dismissed', 'Perpetrator Convicted'],
+  },
+  'Dismissed': {
+    admin: [],
+  },
+  'Perpetrator Convicted': {
+    'legal personnel': ['Resolved'],
+    admin: ['Resolved'],
+  },
+  'Resolved': {
+    admin: [],
+  },
+  'Withdrawn': {
+    admin: [],
+  },
+}
+
+function getAllowedTransitions(currentStatus, role) {
+  if (role === 'admin') {
+    return Object.keys(CaseStatusHistory.STATUS_ID_MAP).filter((status) => status !== currentStatus)
+  }
+  return TRANSITION_RULES[currentStatus]?.[role] || []
+}
+
 const getHistory = async (req, res) => {
   try {
     const { caseReportId } = req.params
     const staffView = req.query.staffView === 'true'
     const data = await CaseStatusHistory.getByCaseReport(caseReportId, { staffView })
+    const actorById = await getHistoryActorMap(
+      [...new Set(data.map((row) => row.changed_by_id).filter(Boolean))]
+    )
 
     const shaped = data.map((h) => ({
       historyId:       h.history_id,
       displayId:       h.display_id,
       status:          h.case_status?.case_status_name,
       date:            new Date(h.approved_at || h.created_at).toLocaleDateString('en-PH'),
-      by:              h.changed_by_role,
+      by:              formatHistoryActor(actorById[h.changed_by_id], h.changed_by_role),
       notes:           h.notes,
       formData:        h.form_data,
       approvalStatus:  h.approval_status,
@@ -36,13 +99,43 @@ const getHistory = async (req, res) => {
   }
 }
 
+async function getHistoryActorMap(userIds) {
+  if (!userIds?.length) return {}
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, first_name, middle_name, last_name, extension_name, roles(role_name)')
+    .in('user_id', userIds)
+
+  if (error) {
+    console.warn('[caseStatusHistory.getHistoryActorMap] Actor metadata unavailable:', error.message)
+    return {}
+  }
+
+  return (data || []).reduce((map, user) => {
+    map[user.user_id] = user
+    return map
+  }, {})
+}
+
+function formatHistoryActor(user, fallbackRole) {
+  const role = user?.roles?.role_name || fallbackRole || ''
+  const name = user
+    ? [user.first_name, user.middle_name, user.last_name, user.extension_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+    : ''
+
+  if (name && role) return `${name} - ${role}`
+  return name || role || 'System'
+}
+
 const submitStatusChange = async (req, res) => {
   try {
     const {
       case_report_id,
       proposed_status,
-      changed_by_id,
-      changed_by_role,
       notes,
       form_data,
       assessment_type,
@@ -55,13 +148,36 @@ const submitStatusChange = async (req, res) => {
       return res.status(400).json({ error: `Unknown status: ${proposed_status}` })
     }
 
-    // Step 1 — Insert history row
+    const actorId = req.user?.id || req.user?.user_id
+    const changed_by_id = actorId
     const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    const changedByRole = req.user?.role || req.user?.role_name || 'Case Officer'
+    if (!actorId) {
+      return res.status(401).json({ error: 'Authentication required.' })
+    }
+
+    const { data: currentCase, error: currentCaseError } = await supabase
+      .from('case_reports')
+      .select('case_report_id, case_status_id')
+      .eq('case_report_id', case_report_id)
+      .maybeSingle()
+    if (currentCaseError) throw currentCaseError
+    if (!currentCase) return res.status(404).json({ error: 'Case report not found.' })
+
+    const currentStatus = getStatusNameById(currentCase.case_status_id)
+    const allowedTransitions = getAllowedTransitions(currentStatus, requesterRole)
+    if (!allowedTransitions.includes(proposed_status)) {
+      return res.status(403).json({
+        error: `Your role cannot move this case from "${currentStatus}" to "${proposed_status}".`,
+      })
+    }
+
+    // Step 1 — Insert history row
     if (requesterRole === 'legal personnel') {
       const { data: legalPersonnel, error: legalPersonnelError } = await supabase
         .from('legal_personnels')
         .select('legal_personnel_type')
-        .eq('user_id', req.user?.id || req.user?.user_id)
+        .eq('user_id', actorId)
         .maybeSingle()
       if (legalPersonnelError) throw legalPersonnelError
 
@@ -82,8 +198,8 @@ const submitStatusChange = async (req, res) => {
     const historyRow = await CaseStatusHistory.create({
       caseReportId:   case_report_id,
       caseStatusId,
-      changedById:    changed_by_id,
-      changedByRole:  changed_by_role,
+      changedById:    actorId,
+      changedByRole:  changedByRole,
       notes,
       formData:       form_data,
       approvalStatus: requiresApproval ? 'pending' : 'approved',
@@ -103,13 +219,13 @@ const submitStatusChange = async (req, res) => {
     // Step 3 — Resolve INT ids from UUID before inserting assessment
     let caseOfficerId    = null
     let legalPersonnelId = null
-    const role = (changed_by_role || '').toLowerCase()
+    const role = requesterRole
 
     if (role.includes('case officer') || role.includes('case_officer') || role === 'admin') {
       const { data: officer } = await supabase
         .from('case_officers')
         .select('case_officer_id')
-        .eq('user_id', changed_by_id)
+        .eq('user_id', actorId)
         .maybeSingle()
       caseOfficerId = officer?.case_officer_id || null
     }
@@ -118,7 +234,7 @@ const submitStatusChange = async (req, res) => {
       const { data: lp } = await supabase
         .from('legal_personnels')
         .select('legal_personnel_id')
-        .eq('user_id', changed_by_id)
+        .eq('user_id', actorId)
         .maybeSingle()
       legalPersonnelId = lp?.legal_personnel_id || null
     }
@@ -133,8 +249,8 @@ const submitStatusChange = async (req, res) => {
         assessment_status:  requiresApproval ? 'pending' : 'approved',
         findings:           findings || notes,
         recommendation:     recommendation || null,
-        changed_by_id,
-        changed_by_role,
+        changed_by_id:      actorId,
+        changed_by_role:    changedByRole,
       }, null, 2))
 
     // Step 4 — Insert assessment with correct INT ids
@@ -149,7 +265,7 @@ const submitStatusChange = async (req, res) => {
       findings:           findings || notes,
       recommendation:     recommendation || null,
       changed_by_id,    // varchar — UUID is fine here
-      changed_by_role,
+      changed_by_role:    changedByRole,
     })
 
     if (requiresApproval) {
