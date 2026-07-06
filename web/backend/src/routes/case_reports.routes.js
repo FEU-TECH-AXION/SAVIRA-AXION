@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
+const { getItems, createItem, submitReport, getUserReports, getCaseStats, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
@@ -34,6 +34,7 @@ function handleEvidenceUpload(req, res, next) {
 // !! IMPORTANT: specific routes must come BEFORE /:id or Express will swallow them
 router.get('/heatmap/meta', getHeatmapMeta);   // no auth — static lookup data
 router.get('/heatmap/data', getHeatmapData);
+router.get('/stats',      verifyToken, requireCaseAccess, getCaseStats);
 router.get('/all',        verifyToken, requireCaseAccess, getAllCases);
 router.get('/my-reports', verifyToken, getUserReports);
 router.post('/submit', verifyToken, handleEvidenceUpload, submitReport);

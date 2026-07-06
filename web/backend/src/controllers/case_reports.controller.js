@@ -242,6 +242,85 @@ async function getUserReports(req, res) {
   }
 }
 
+async function getCaseStats(req, res) {
+  try {
+    const { role, id: userId } = req.user;
+    let reports = [];
+
+    if (role === 'Admin') {
+      const { data, error } = await supabase
+        .from('case_reports')
+        .select('case_report_id, case_status_id')
+        .eq('is_current', true);
+      if (error) throw error;
+      reports = data || [];
+    } else if (role === 'Case Officer') {
+      const { data: officer, error: officerError } = await supabase
+        .from('case_officers')
+        .select('case_officer_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (officerError) throw officerError;
+
+      if (officer?.case_officer_id) {
+        const { data: assignments, error: assignmentError } = await supabase
+          .from('case_assignments')
+          .select('case_report_id')
+          .eq('case_officer_id', officer.case_officer_id)
+          .eq('is_active', true);
+        if (assignmentError) throw assignmentError;
+
+        const reportIds = [...new Set((assignments || []).map((item) => item.case_report_id))];
+        if (reportIds.length > 0) {
+          const { data, error } = await supabase
+            .from('case_reports')
+            .select('case_report_id, case_status_id')
+            .in('case_report_id', reportIds)
+            .eq('is_current', true);
+          if (error) throw error;
+          reports = data || [];
+        }
+      }
+    } else if (role === 'Legal Personnel') {
+      const legalVisibleStatusIds = [4, 6, 7, 8, 9, 10, 11, 12];
+      const { data, error } = await supabase
+        .from('case_reports')
+        .select('case_report_id, case_status_id')
+        .eq('is_current', true)
+        .in('case_status_id', legalVisibleStatusIds);
+      if (error) throw error;
+      reports = data || [];
+    } else {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+
+    const reportIds = reports.map((report) => report.case_report_id);
+    let pendingApprovals = 0;
+    if (reportIds.length > 0) {
+      const { count, error } = await supabase
+        .from('case_status_history')
+        .select('history_id', { count: 'exact', head: true })
+        .in('case_report_id', reportIds)
+        .eq('approval_status', 'pending');
+      if (error) throw error;
+      pendingApprovals = count || 0;
+    }
+
+    const activeStatusIds = new Set([1, 2, 3, 4, 6, 7, 8, 9]);
+    return res.json({
+      data: {
+        awaiting_verification: reports.filter((report) => Number(report.case_status_id) === 2).length,
+        active_cases: reports.filter((report) => activeStatusIds.has(Number(report.case_status_id))).length,
+        total_cases: reports.length,
+        pending_approvals: pendingApprovals,
+      },
+    });
+  } catch (err) {
+    console.error('[getCaseStats] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch case stats.', details: err.message });
+  }
+}
+
 async function getAllCases(req, res) {
    try {
     const { role, id: userId } = req.user; // use 'role', not 'role_id'
@@ -677,4 +756,4 @@ async function uploadEvidenceFiles(caseReportId, files, uploadedById) {
   return { uploaded, failedFiles };
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate, uploadEvidenceFiles }
+module.exports = { getItems, createItem, submitReport, getUserReports, getCaseStats, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate, uploadEvidenceFiles }

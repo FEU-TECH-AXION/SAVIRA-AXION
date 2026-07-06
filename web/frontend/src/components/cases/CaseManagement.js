@@ -1002,12 +1002,28 @@ export default function CaseManagement() {
   
   const [cases, setCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
+  const [caseStats, setCaseStats] = useState(null);
 
   // Dynamic officers list (try backend, fallback to deriving from cases)
   const [officers, setOfficers] = useState([]);
 
 useEffect(() => {
   if (authLoading) return; // wait for cookie to load
+
+  const fetchCaseStats = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_URL}/api/case_reports/stats`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const payload = await res.json().catch(() => ({}));
+      setCaseStats(payload.data || null);
+    } catch (err) {
+      console.error("[CaseManagement] stats fetch error:", err);
+    }
+  };
 
   const fetchCases = async () => {
     try {
@@ -1073,6 +1089,7 @@ useEffect(() => {
     }
   };
 
+  fetchCaseStats();
   fetchCases();
 }, [authLoading, authUser?.user_id, authUser?.id, authUser?.role_name, authUser?.role]);
 
@@ -1125,31 +1142,32 @@ useEffect(() => {
   // ── Stats ──
 const stats = useMemo(() => {
   const pending = cases.filter((c) => c.pendingApproval).length;
+  const fastStats = caseStats || null;
 
   return [
     {
-      num: cases.filter((c) => c.status === "For Verification").length,
+      num: fastStats?.awaiting_verification ?? cases.filter((c) => c.status === "For Verification").length,
       label: "Awaiting Verification",
     },
     {
-      num: cases.filter((c) => ACTIVE_STATUSES.includes(c.status)).length,
+      num: fastStats?.active_cases ?? cases.filter((c) => ACTIVE_STATUSES.includes(c.status)).length,
       label: "Active Cases",
     },
     {
-      num: cases.length,
+      num: fastStats?.total_cases ?? cases.length,
       label: "Total Cases",
     },
     ...(isAdmin
       ? [
           {
-            num: pending,
+            num: fastStats?.pending_approvals ?? pending,
             label: "Pending Approvals",
-            highlight: pending > 0,
+            highlight: (fastStats?.pending_approvals ?? pending) > 0,
           },
         ]
       : []),
   ];
-}, [cases, isAdmin]);
+}, [caseStats, cases, isAdmin]);
 
   // ── Filtering ──
   const filtered = useMemo(() =>
