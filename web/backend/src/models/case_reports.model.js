@@ -602,8 +602,10 @@ async function getAllReports() {
   }
 
   // Step 3: Merge officer name and legal names into each report
-  const duplicateMatches = await getDuplicateMatches(reportIds)
-  const statusHistoryMap = await getStatusHistoryMap(reportIds, { staffView: true })
+  const [duplicateMatches, statusHistoryMap] = await Promise.all([
+    getDuplicateMatches(reportIds),
+    getStatusHistoryMap(reportIds, { staffView: true }),
+  ])
   return normalizedReports.map(report => {
     let assignedOfficer = null
     let assignedOfficerId = null
@@ -817,8 +819,10 @@ async function getReportsByAssignedOfficer(userId) {
     assessmentMap[row.case_report_id] = merged
   }
 
-  const duplicateMatches = await getDuplicateMatches(reportIds)
-  const statusHistoryMap = await getStatusHistoryMap(reportIds, { staffView: true })
+  const [duplicateMatches, statusHistoryMap] = await Promise.all([
+    getDuplicateMatches(reportIds),
+    getStatusHistoryMap(reportIds, { staffView: true }),
+  ])
 
   return normalizedReports.map(report => withStatusHistory({
     ...report,
@@ -893,8 +897,10 @@ async function getReportsForLegal() {
     }
   }
 
-  const duplicateMatches = await getDuplicateMatches(reportIds)
-  const statusHistoryMap = await getStatusHistoryMap(reportIds, { staffView: true })
+  const [duplicateMatches, statusHistoryMap] = await Promise.all([
+    getDuplicateMatches(reportIds),
+    getStatusHistoryMap(reportIds, { staffView: true }),
+  ])
 
   return normalizedReports.map(report => {
     const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
