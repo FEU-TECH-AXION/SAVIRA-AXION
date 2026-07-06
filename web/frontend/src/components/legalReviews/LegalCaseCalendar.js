@@ -18,7 +18,6 @@ const STATUS_STEP = {
   12: "Resolved",
 };
 
-const LEGAL_STATUSES = new Set(Object.values(STATUS_STEP));
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const EVENT_STYLE = {
@@ -55,41 +54,27 @@ export default function LegalCaseCalendar() {
     async function load() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const response = await fetch(`${API_URL}/api/case_reports/all`, { credentials: "include" });
+        const response = await fetch(`${API_URL}/api/legal_reviews/management`, { credentials: "include" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || "Failed to load legal cases.");
-        const baseCases = (payload.data || [])
-          .filter((report) => LEGAL_STATUSES.has(STATUS_STEP[report.case_status_id]))
+        const pageData = payload.data || {};
+        const reviews = pageData.reviews || {};
+        const enriched = (pageData.cases || [])
           .filter((report) => requestedIds.size === 0 || requestedIds.has(String(report.case_report_id)))
-          .map((report) => ({
-            id: report.case_report_id,
-            caseId: `${new Date(report.created_at).getFullYear()}-${String(report.case_report_id).padStart(3, "0")}`,
-            status: STATUS_STEP[report.case_status_id],
-            endorsementDetails: null,
-            paralegalRecord: null,
-            lawyerRecord: null,
-            monitoringLog: [],
-            documentRepository: [],
-            statusHistory: [],
-          }));
-
-        const enriched = await Promise.all(baseCases.map(async (caseData) => {
-          const [reviewResponse, historyResponse] = await Promise.all([
-            fetch(`${API_URL}/api/legal_reviews/case/${caseData.id}`, { credentials: "include" }),
-            fetch(`${API_URL}/api/case_status_history/${caseData.id}?staffView=true`, { credentials: "include" }),
-          ]);
-          const review = reviewResponse.ok ? (await reviewResponse.json()).data : null;
-          const history = historyResponse.ok ? (await historyResponse.json()).data : [];
-          return {
-            ...caseData,
-            endorsementDetails: review?.endorsement_details || null,
-            paralegalRecord: review?.paralegal_record || null,
-            lawyerRecord: review?.lawyer_record || null,
-            monitoringLog: review?.monitoring_log || [],
-            documentRepository: review?.document_repository || [],
-            statusHistory: history || [],
-          };
-        }));
+          .map((report) => {
+            const review = reviews[report.case_report_id] || null;
+            return {
+              id: report.case_report_id,
+              caseId: `${new Date(report.created_at).getFullYear()}-${String(report.case_report_id).padStart(3, "0")}`,
+              status: STATUS_STEP[report.case_status_id],
+              endorsementDetails: review?.endorsement_details || null,
+              paralegalRecord: review?.paralegal_record || null,
+              lawyerRecord: review?.lawyer_record || null,
+              monitoringLog: review?.monitoring_log || [],
+              documentRepository: review?.document_repository || [],
+              statusHistory: report.status_history || [],
+            };
+          });
         setDeadlines(enriched.flatMap(getLegalCaseDeadlines));
       } catch (error) {
         console.error("[LegalCaseCalendar]", error);

@@ -1,4 +1,9 @@
 const LegalReviews = require('../models/legal_reviews.model')
+const LegalPersonnels = require('../models/legal_personnels.model')
+const {
+  getAllReports,
+  getReportsForLegal,
+} = require('../models/case_reports.model')
 const supabase = require('../config/supabase')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
@@ -100,6 +105,59 @@ function toCalendarPayload(review) {
     documentRepository: (review.document_repository || []).map((entry) => ({
       addedAt: entry.addedAt || null,
     })),
+  }
+}
+
+const LEGAL_STATUS_IDS = new Set([4, 6, 7, 8, 9, 10, 11, 12])
+
+function getRequesterRole(req) {
+  return String(req.user?.role || req.user?.role_name || '').toLowerCase()
+}
+
+async function getLegalReviewReports(req) {
+  const role = getRequesterRole(req)
+  if (role === 'admin') return getAllReports()
+  if (role === 'legal personnel') return getReportsForLegal()
+  return []
+}
+
+async function getManagement(req, res) {
+  try {
+    const role = getRequesterRole(req)
+    if (!['admin', 'legal personnel'].includes(role)) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
+    const [reports, legalPersonnels] = await Promise.all([
+      getLegalReviewReports(req),
+      LegalPersonnels.getAll(),
+    ])
+
+    const legalReports = (reports || []).filter((report) =>
+      LEGAL_STATUS_IDS.has(Number(report.case_status_id))
+    )
+    const caseIds = legalReports.map((report) => report.case_report_id)
+    const reviewsByCase = await LegalReviews.getLatestByCaseIds(caseIds)
+    const logsByReview = await LegalReviews.getLogsByReviewIds(
+      Object.values(reviewsByCase).map((review) => review?.legal_review_id)
+    )
+
+    const reviews = {}
+    for (const caseId of caseIds) {
+      const review = reviewsByCase[caseId]
+      reviews[caseId] = toClientPayload(review, logsByReview[review?.legal_review_id] || [])
+    }
+
+    return res.json({
+      data: {
+        cases: legalReports,
+        legal_personnels: legalPersonnels,
+        reviews,
+      },
+    })
+  } catch (err) {
+    console.error('[legalReviews.getManagement]', err)
+    return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
   }
 }
 
@@ -231,4 +289,4 @@ async function updateByCase(req, res) {
   }
 }
 
-module.exports = { getByCase, getCalendarByCase, updateByCase }
+module.exports = { getManagement, getByCase, getCalendarByCase, updateByCase }
