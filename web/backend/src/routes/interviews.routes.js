@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const {
     getItems,
+    getCaseManagementItems,
     getItem,
     createItem,
     selectSlot,
@@ -21,6 +22,7 @@ const requireCommittee = require('../middleware/requireCommittee.middleware')
 const requireMembershipCommittee = requireCommittee(2)
 
 router.get('/',              verifyToken, getItems)
+router.get('/case-management', verifyToken, getCaseManagementItems)
 router.post('/expire',       verifyToken, requireMembershipCommittee, expireStale)
 router.get('/:id',           verifyToken, getItem)
 router.post('/',             verifyToken, createItem)

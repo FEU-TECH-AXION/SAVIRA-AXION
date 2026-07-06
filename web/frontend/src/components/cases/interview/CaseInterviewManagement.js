@@ -69,7 +69,11 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
   });
 
   useEffect(() => {
-    if (open) setFormData((prev) => ({ ...prev, date: initialDate || "" }));
+    if (!open) return undefined;
+    const timer = setTimeout(() => {
+      setFormData((prev) => ({ ...prev, date: initialDate || "" }));
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, initialDate]);
 
   const handleChange = (field, value) => {
@@ -151,9 +155,11 @@ function EditSlotModal({ open, onClose, slot, onSave }) {
   const [formData, setFormData] = useState({ date: "", time: "09:00", duration: "60" });
 
   useEffect(() => {
-    if (open && slot) {
+    if (!open || !slot) return undefined;
+    const timer = setTimeout(() => {
       setFormData({ date: slot.date, time: slot.time, duration: String(slot.duration) });
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, slot]);
 
   const handleChange = (field, value) => setFormData((prev) => ({ ...prev, [field]: value }));
@@ -403,16 +409,17 @@ export default function CaseInterviewManagement() {
       setLoadingData(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
-        const userId = user.user_id || user.id;
 
-        const slotsRes = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=case_report${isAdmin ? "" : `&created_by=${userId}`}`,
-          { credentials: "include" }
-        );
-        const slotsJson = await slotsRes.json();
+        const response = await fetch(`${API_URL}/api/interviews/case-management`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Failed to fetch interview management data");
+
+        const pageData = payload.data || {};
         setSlots(
-          (slotsJson.data || []).map((s) => ({
+          (pageData.slots || []).map((s) => ({
             ...s,
             id: s.slot_id,
             date: s.slot_date,
@@ -423,13 +430,8 @@ export default function CaseInterviewManagement() {
           }))
         );
 
-        const interviewsRes = await fetch(
-          `${API_URL}/api/interviews?type=case_report${isAdmin ? "" : `&interviewer_user_id=${userId}`}`,
-          { credentials: "include" }
-        );
-        const interviewsJson = await interviewsRes.json();
         setInterviews(
-          (interviewsJson.data || []).map((iv) => ({
+          (pageData.interviews || []).map((iv) => ({
             ...iv,
             id: iv.interview_id,
             caseId: `${new Date(iv.created_at).getFullYear()}-${String(iv.case_report_id).padStart(3, "0")}`,
