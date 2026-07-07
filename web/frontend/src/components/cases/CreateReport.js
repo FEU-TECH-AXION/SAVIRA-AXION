@@ -1868,7 +1868,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
               <option>Male</option>
               <option>Female</option>
               <option>Non-binary</option>
-              <option>Unknown / Prefer not to say</option>
+              <option>Unknown</option>
             </Select>
           </Field>
         </div>
@@ -1885,7 +1885,6 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
               <option>Female</option>
               <option>Non-binary</option>
               <option>Unable to tell</option>
-              <option>Prefer not to say</option>
             </Select>
           </Field>
           <Field label="Appearance or identifying details" hint="Optional. Any detail you remember may help, but it is okay to leave this blank.">

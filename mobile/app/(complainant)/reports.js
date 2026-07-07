@@ -1508,7 +1508,6 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
                 "Female",
                 "Non-binary",
                 "Unable to tell",
-                "Prefer not to say",
               ]}
               onSelect={set("perpetratorUnknownGender")}
             />
