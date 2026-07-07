@@ -989,16 +989,65 @@ export default function ViewCase() {
   }
 
   useEffect(() => {
-    if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
+    if (!caseId) {
+      const timer = setTimeout(() => {
+        setError("No case ID provided");
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
     const fetchCase = async () => {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "Case not found");
+        const casePromise = fetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" })
+          .then(async (response) => {
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(body.error || "Case not found");
+            return body.data;
+          });
+        const legalReviewPromise = fetch(`${API_URL}/api/legal_reviews/case/${caseId}`, { credentials: "include" })
+          .then(async (response) => ({
+            ok: response.ok,
+            data: response.ok ? (await response.json().catch(() => ({}))).data : null,
+          }))
+          .catch(() => ({ ok: false, data: null }));
+        const followUpsPromise = fetch(
+          `${API_URL}/api/case_reports/${caseId}/follow-ups`,
+          { credentials: "include", cache: "no-store" }
+        )
+          .then(async (response) => ({
+            ok: response.ok,
+            data: response.ok ? (await response.json().catch(() => ({}))).data || [] : [],
+          }))
+          .catch(() => ({ ok: false, data: [] }));
+
+        const [data, legalReviewResult, followUpsResult] = await Promise.all([
+          casePromise,
+          legalReviewPromise,
+          followUpsPromise,
+        ]);
+        if (!data) {
+          throw new Error("Case not found");
         }
-        const { data } = await res.json();
+        const assessments = data.assessment_history || [];
+        const latestType = assessments.find((record) =>
+          Array.isArray(record.case_type) ? record.case_type.length > 0 : Boolean(record.case_type)
+        );
+        const latestCategory = assessments.find((record) =>
+          record.primary_category || (record.additional_categories || []).length > 0
+        );
+        const latestReferral = assessments.find((record) =>
+          record.referral_required !== null &&
+          record.referral_required !== undefined
+        );
+        const defaultStatusHistory = {
+          status: STATUS_STEP[data.case_status_id] || "For Verification",
+          date:   new Date(data.created_at).toLocaleDateString("en-PH"),
+          by:     data.assigned_officer || "System",
+          notes:  "Report received and logged.",
+        };
+        const statusHistory = data.status_history || [];
+        const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
         const caseYear = new Date(data.created_at).getFullYear();
         const mappedCase = {
           id:                   data.case_report_id,
@@ -1046,37 +1095,43 @@ export default function ViewCase() {
           genderIdentity:          data.gender_identity,
           email:                   data.email,
           contactNumber:           data.contact_number,
-          caseType:                data.case_type || null,
-          primaryCategory:         data.primary_category || null,
-          caseCategory:            data.primary_category || data.case_category || null,
-          additionalCategories:    data.additional_categories || [],
-          alsoInvolves:            data.additional_categories || [],
-          referralRequired:        data.referral_required ?? false,
-          referralBody:            data.referral_body || null,
+          assessmentHistory:        assessments,
+          caseType:                latestType?.case_type || data.case_type || null,
+          primaryCategory:         latestCategory?.primary_category || data.primary_category || null,
+          caseCategory:            latestCategory?.primary_category || data.primary_category || data.case_category || null,
+          additionalCategories:    latestCategory?.additional_categories || data.additional_categories || [],
+          alsoInvolves:            latestCategory?.additional_categories || data.additional_categories || [],
+          referralRequired:        latestReferral?.referral_required ?? data.referral_required ?? false,
+          referralBody:            latestReferral?.referral_body ?? (data.referral_body || null),
           assignedParalegal:       data.assigned_paralegal || null,
           assignedLegal:           (data.assigned_legal || []).map((person) => ({
             ...person,
             assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
           })),
-          endorsementStatus:       data.endorsement_status || null,
+          endorsedTo:              latestReferral?.endorsement?.endorsed_to || null,
+          endorsementStatus:       latestReferral
+            ? latestReferral.endorsement?.endorsed_to
+              ? `Endorsed to ${latestReferral.endorsement.endorsed_to}`
+              : null
+            : data.endorsement_status || null,
           internalNotes:           data.internal_notes || null,
           followUpSummary:         data.follow_up_summary || null,
-          followUps:               [],
-          pendingApproval:         null,
-          statusHistory: [
-            {
-              status: STATUS_STEP[data.case_status_id] || "For Verification",
-              date:   new Date(data.created_at).toLocaleDateString("en-PH"),
-              by:     data.assigned_officer || "System",
-              notes:  "Report received and logged.",
-            },
-          ],
+          followUps:               followUpsResult.data || [],
+          pendingApproval:         pending ? {
+            historyId: pending.historyId,
+            proposedStatus: pending.status,
+            submittedBy: pending.by,
+            date: pending.date,
+            notes: pending.notes,
+            formData: pending.formData,
+          } : null,
+          statusHistory:           statusHistory.length > 0
+            ? [defaultStatusHistory, ...statusHistory]
+            : [defaultStatusHistory],
         };
 
-        const legalReviewRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseId}`, { credentials: "include" });
-        if (legalReviewRes.ok) {
-          const legalReviewPayload = await legalReviewRes.json().catch(() => ({}));
-          setCaseData(mergeLegalReviewData(mappedCase, legalReviewPayload.data));
+        if (legalReviewResult.ok) {
+          setCaseData(mergeLegalReviewData(mappedCase, legalReviewResult.data));
         } else {
           const calendarRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseId}/calendar`, { credentials: "include" });
           if (calendarRes.ok) {
@@ -1085,76 +1140,6 @@ export default function ViewCase() {
           } else {
             setCaseData(mappedCase);
           }
-        }
-
-        const assessmentRes = await fetch(`${API_URL}/api/case_assessments/case/${caseId}`, { credentials: "include" });
-        if (assessmentRes.ok) {
-          const assessmentPayload = await assessmentRes.json().catch(() => ({}));
-          const assessments = assessmentPayload.data || [];
-          const latestType = assessments.find((record) =>
-            Array.isArray(record.case_type) ? record.case_type.length > 0 : Boolean(record.case_type)
-          );
-          const latestCategory = assessments.find((record) =>
-            record.primary_category || (record.additional_categories || []).length > 0
-          );
-          const latestReferral = assessments.find((record) =>
-            record.referral_required !== null &&
-            record.referral_required !== undefined
-          );
-
-          setCaseData((previous) => ({
-            ...previous,
-            assessmentHistory: assessments,
-            caseType: latestType?.case_type || previous.caseType,
-            primaryCategory: latestCategory?.primary_category || previous.primaryCategory || previous.caseCategory,
-            caseCategory: latestCategory?.primary_category || previous.caseCategory || previous.primaryCategory,
-            additionalCategories: latestCategory?.additional_categories || previous.additionalCategories || previous.alsoInvolves || [],
-            alsoInvolves: latestCategory?.additional_categories || previous.alsoInvolves || previous.additionalCategories || [],
-            referralRequired: latestReferral?.referral_required ?? previous.referralRequired,
-            referralBody: latestReferral?.referral_body ?? previous.referralBody,
-            endorsedTo: latestReferral?.endorsement?.endorsed_to || previous.endorsedTo,
-            endorsementStatus: latestReferral
-              ? latestReferral.endorsement?.endorsed_to
-                ? `Endorsed to ${latestReferral.endorsement.endorsed_to}`
-                : null
-              : previous.endorsementStatus,
-          }));
-        }
-
-        const historyRes = await fetch(`${API_URL}/api/case_status_history/${caseId}?staffView=true`, { credentials: "include" });
-        if (historyRes.ok) {
-          const historyJson = await historyRes.json().catch(() => ({}));
-          const statusHistory = historyJson.data || [];
-          if (statusHistory.length > 0) {
-            const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
-            setCaseData((prev) => ({
-              ...prev,
-              pendingApproval: pending ? {
-                historyId: pending.historyId,
-                proposedStatus: pending.status,
-                submittedBy: pending.by,
-                date: pending.date,
-                notes: pending.notes,
-                formData: pending.formData,
-              } : null,
-              statusHistory: [
-                ...(prev.statusHistory || []).filter((h) => h.notes === "Report received and logged."),
-                ...statusHistory,
-              ],
-            }));
-          }
-        }
-
-        const followUpsRes = await fetch(
-          `${API_URL}/api/case_reports/${caseId}/follow-ups`,
-          { credentials: "include", cache: "no-store" }
-        );
-        if (followUpsRes.ok) {
-          const followUpsPayload = await followUpsRes.json().catch(() => ({}));
-          setCaseData((previous) => ({
-            ...previous,
-            followUps: followUpsPayload.data || [],
-          }));
         }
       } catch (err) {
         setError(err.message);
