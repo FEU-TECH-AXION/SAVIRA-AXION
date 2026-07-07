@@ -44,6 +44,38 @@ export default StyleSheet.create({
     color: '#037F81',
     marginBottom: 4,
   },
+  languageRow: {
+    alignItems: 'flex-end',
+    marginBottom: 14,
+  },
+  languageLabel: {
+    color: '#4b5563',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  languageOptions: {
+    flexDirection: 'row',
+    backgroundColor: '#eef2f7',
+    borderRadius: 10,
+    padding: 3,
+  },
+  languageOption: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  languageOptionActive: {
+    backgroundColor: '#037F81',
+  },
+  languageOptionText: {
+    color: '#64748b',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  languageOptionTextActive: {
+    color: '#fff',
+  },
 
   signupRow: {
     flexDirection: 'row',

@@ -15,6 +15,12 @@ const PW_RULES = [
   { id: "special", label: "One special character (!@#$…)",  test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
+const getTokenFromParams = (value) => {
+  const paramsText = String(value || '').replace(/^#/, '').replace(/^[^?]*\?/, '');
+  const params = new URLSearchParams(paramsText);
+  return params.get('token') || params.get('access_token') || '';
+};
+
 function getStrength(pw) {
   const passed = PW_RULES.filter((r) => r.test(pw)).length;
   if (passed <= 1) return { level: 1, label: "Weak",       color: "#e53e3e" };
@@ -35,7 +41,6 @@ function ResetPasswordContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
 
   const validate = (field, value) => {
     switch (field) {
@@ -75,7 +80,9 @@ function ResetPasswordContent() {
     setError("");
     setMessage("");
 
-    if (!token) {
+    const resetToken = searchParams.get('token') || getTokenFromParams(window.location.hash);
+
+    if (!resetToken) {
       setError("Invalid or missing reset link.");
       return;
     }
@@ -86,7 +93,7 @@ function ResetPasswordContent() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password: form.password }),
+        body: JSON.stringify({ token: resetToken, password: form.password }),
       });
       const data = await res.json();
 

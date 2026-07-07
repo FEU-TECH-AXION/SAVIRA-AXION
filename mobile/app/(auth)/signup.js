@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import styles from './signup.style';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
 import { API_URL } from '../../lib/config';
+import { LANGUAGE_OPTIONS, readLanguage, saveLanguage, translate } from '../../lib/i18n';
 
 const PLACEHOLDER_COLOR = '#6b7280';
 
@@ -30,17 +31,17 @@ const PW_RULES = [
   { id: 'special', label: 'One special character (!@#$…)', test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
-function getStrength(pw) {
+function getStrength(pw, t = (key) => key) {
   const passed = PW_RULES.filter((r) => r.test(pw)).length;
-  if (passed <= 1) return { level: 1, label: 'Weak',        color: '#e53e3e' };
-  if (passed === 2) return { level: 2, label: 'Fair',        color: '#ed8936' };
-  if (passed === 3) return { level: 3, label: 'Good',        color: '#3182ce' };
-  if (passed === 4) return { level: 4, label: 'Strong',      color: '#38a169' };
-  return              { level: 5, label: 'Very Strong',  color: '#276749' };
+  if (passed <= 1) return { level: 1, label: t('weak'),        color: '#e53e3e' };
+  if (passed === 2) return { level: 2, label: t('fair'),        color: '#ed8936' };
+  if (passed === 3) return { level: 3, label: t('good'),        color: '#3182ce' };
+  if (passed === 4) return { level: 4, label: t('strong'),      color: '#38a169' };
+  return              { level: 5, label: t('veryStrong'),  color: '#276749' };
 }
 
 // ── Policy Modal ──────────────────────────────────────────────────────────────
-function PolicyModal({ visible, policy, onClose }) {
+function PolicyModal({ visible, policy, onClose, t }) {
   const content = POLICIES[policy];
   if (!content) return null;
 
@@ -59,7 +60,7 @@ function PolicyModal({ visible, policy, onClose }) {
           {/* Header */}
           <View style={styles.modalHeader}>
             <View>
-              <Text style={styles.modalSuperTitle}>Savira Policies</Text>
+              <Text style={styles.modalSuperTitle}>{t('policies')}</Text>
               <Text style={styles.modalTitle}>{content.title}</Text>
             </View>
             <Pressable onPress={onClose} style={styles.modalCloseBtn}>
@@ -78,7 +79,7 @@ function PolicyModal({ visible, policy, onClose }) {
 
           {/* Footer */}
           <Pressable style={styles.modalCloseFooterBtn} onPress={onClose}>
-            <Text style={styles.modalCloseFooterText}>Close</Text>
+            <Text style={styles.modalCloseFooterText}>{t('close')}</Text>
           </Pressable>
         </View>
       </View>
@@ -88,6 +89,7 @@ function PolicyModal({ visible, policy, onClose }) {
 
 // ── Main Signup Screen ────────────────────────────────────────────────────────
 export default function Signup() {
+  const [language, setLanguage] = useState('en');
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -104,8 +106,24 @@ export default function Signup() {
   const [touched, setTouched] = useState({});
 
   const router = useRouter();
+  const t = (key) => translate(language, key);
+  const passwordRules = [
+    { id: 'len', label: t('pwLen'), test: (p) => p.length >= 8 },
+    { id: 'upper', label: t('pwUpper'), test: (p) => /[A-Z]/.test(p) },
+    { id: 'lower', label: t('pwLower'), test: (p) => /[a-z]/.test(p) },
+    { id: 'digit', label: t('pwDigit'), test: (p) => /[0-9]/.test(p) },
+    { id: 'special', label: t('pwSpecial'), test: (p) => /[^A-Za-z0-9]/.test(p) },
+  ];
 
-  const strength = form.password ? getStrength(form.password) : null;
+  useEffect(() => {
+    readLanguage().then(setLanguage);
+  }, []);
+
+  const handleLanguageChange = async (nextLanguage) => {
+    setLanguage(await saveLanguage(nextLanguage));
+  };
+
+  const strength = form.password ? getStrength(form.password, t) : null;
   const allRulesPassed = PW_RULES.every((r) => r.test(form.password));
   const showPwRules = form.password.length > 0 && (pwFocused || !allRulesPassed);
 
@@ -123,15 +141,15 @@ export default function Signup() {
   const getError = (field) => {
     if (!touched[field]) return '';
     switch (field) {
-      case 'firstName':    return !form.firstName.trim() ? 'First name is required.' : '';
-      case 'lastName':     return !form.lastName.trim()  ? 'Last name is required.'  : '';
+      case 'firstName':    return !form.firstName.trim() ? t('firstNameRequired') : '';
+      case 'lastName':     return !form.lastName.trim()  ? t('lastNameRequired')  : '';
       case 'email':
-        if (!form.email.trim()) return 'Email is required.';
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : 'Enter a valid email.';
+        if (!form.email.trim()) return t('emailRequired');
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : t('validEmail');
       case 'password':
-        return allRulesPassed ? '' : 'Password does not meet requirements.';
+        return allRulesPassed ? '' : t('passwordRequirementsError');
       case 'confirmPassword':
-        return form.confirmPassword !== form.password ? 'Passwords do not match.' : '';
+        return form.confirmPassword !== form.password ? t('passwordsDoNotMatch') : '';
       default: return '';
     }
   };
@@ -149,19 +167,19 @@ export default function Signup() {
     setTouched({ firstName: true, lastName: true, email: true, password: true, confirmPassword: true });
 
     if (!form.firstName || !form.lastName || !form.email || !form.password || !form.confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
     if (!allRulesPassed) {
-      Alert.alert('Error', 'Password does not meet all requirements.');
+      Alert.alert(t('error'), t('passwordRequirementsFull'));
       return;
     }
     if (form.confirmPassword !== form.password) {
-      Alert.alert('Error', 'Passwords do not match.');
+      Alert.alert(t('error'), t('passwordsDoNotMatch'));
       return;
     }
     if (!agreed) {
-      Alert.alert('Error', 'Please agree to the Terms & Conditions and Privacy Policy.');
+      Alert.alert(t('error'), t('agreeRequired'));
       return;
     }
 
@@ -185,13 +203,13 @@ export default function Signup() {
         data = JSON.parse(text);
       } catch {
         console.error('Non-JSON response:', text);
-        Alert.alert('Error', 'Server returned an unexpected response. Please check the API URL.');
+        Alert.alert(t('error'), t('serverUnexpected'));
         return;
       }
 
       if (!res.ok) {
-        const msg = data.errors?.[0]?.msg || data.error || 'Registration failed.';
-        Alert.alert('Error', msg);
+        const msg = data.errors?.[0]?.msg || data.error || t('registrationFailed');
+        Alert.alert(t('error'), msg);
         return;
       }
 
@@ -203,11 +221,11 @@ export default function Signup() {
         return;
       }
 
-      Alert.alert('Success', 'Account created! Please log in.');
+      Alert.alert(t('success'), t('accountCreated'));
       router.replace('/(auth)/login');
 
     } catch (err) {
-      Alert.alert('Error', `Unable to connect to the server at ${API_URL}.`);
+      Alert.alert(t('error'), `${t('unableConnect')} ${API_URL}.`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -243,20 +261,36 @@ export default function Signup() {
 
         {/* CARD */}
         <View style={styles.card}>
-          <Text style={styles.title}>Create an account</Text>
+          <View style={styles.languageRow}>
+            <Text style={styles.languageLabel}>{t('language')}</Text>
+            <View style={styles.languageOptions}>
+              {LANGUAGE_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.id}
+                  style={[styles.languageOption, language === option.id && styles.languageOptionActive]}
+                  onPress={() => handleLanguageChange(option.id)}
+                >
+                  <Text style={[styles.languageOptionText, language === option.id && styles.languageOptionTextActive]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          <Text style={styles.title}>{t('createAccountTitle')}</Text>
 
           <View style={styles.signupRow}>
-            <Text style={styles.signupText}>Already have an account? </Text>
+            <Text style={styles.signupText}>{t('alreadyHaveAccount')} </Text>
             <Pressable onPress={() => router.push('/(auth)/login')}>
-              <Text style={styles.signupLink}>Log In</Text>
+              <Text style={styles.signupLink}>{t('logIn')}</Text>
             </Pressable>
           </View>
 
           {/* FIRST NAME */}
-          <Text style={styles.label}>First Name <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>{t('firstName')} <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[styles.input, getError('firstName') ? styles.inputError : null]}
-            placeholder="First Name"
+            placeholder={t('firstName')}
             placeholderTextColor={PLACEHOLDER_COLOR}
             value={form.firstName}
             onChangeText={(v) => handleChange('firstName', v)}
@@ -265,10 +299,10 @@ export default function Signup() {
           {!!getError('firstName') && <Text style={styles.fieldError}>{getError('firstName')}</Text>}
 
           {/* LAST NAME */}
-          <Text style={styles.label}>Last Name <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>{t('lastName')} <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[styles.input, getError('lastName') ? styles.inputError : null]}
-            placeholder="Last Name"
+            placeholder={t('lastName')}
             placeholderTextColor={PLACEHOLDER_COLOR}
             value={form.lastName}
             onChangeText={(v) => handleChange('lastName', v)}
@@ -277,7 +311,7 @@ export default function Signup() {
           {!!getError('lastName') && <Text style={styles.fieldError}>{getError('lastName')}</Text>}
 
           {/* EMAIL */}
-          <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>{t('email')} <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[styles.input, getError('email') ? styles.inputError : null]}
             placeholder="you@example.com"
@@ -291,11 +325,11 @@ export default function Signup() {
           {!!getError('email') && <Text style={styles.fieldError}>{getError('email')}</Text>}
 
           {/* PASSWORD */}
-          <Text style={styles.label}>Password <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>{t('password')} <Text style={styles.required}>*</Text></Text>
           <View style={[styles.passwordWrap, getError('password') ? styles.inputError : null]}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="Create a password"
+              placeholder={t('createPassword')}
               placeholderTextColor={PLACEHOLDER_COLOR}
               secureTextEntry={!show.password}
               value={form.password}
@@ -330,8 +364,8 @@ export default function Signup() {
           {/* Real-time password rules */}
           {showPwRules && (
             <View style={styles.pwRulesBox}>
-              <Text style={styles.pwRulesTitle}>Password requirements</Text>
-              {PW_RULES.map((rule) => {
+              <Text style={styles.pwRulesTitle}>{t('passwordRequirements')}</Text>
+              {passwordRules.map((rule) => {
                 const ok = rule.test(form.password);
                 return (
                   <View key={rule.id} style={styles.pwRuleRow}>
@@ -352,11 +386,11 @@ export default function Signup() {
           {!!getError('password') && <Text style={styles.fieldError}>{getError('password')}</Text>}
 
           {/* CONFIRM PASSWORD */}
-          <Text style={styles.label}>Confirm Password <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.label}>{t('confirmPassword')} <Text style={styles.required}>*</Text></Text>
           <View style={[styles.passwordWrap, getError('confirmPassword') ? styles.inputError : null]}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="Repeat your password"
+              placeholder={t('repeatPassword')}
               placeholderTextColor={PLACEHOLDER_COLOR}
               secureTextEntry={!show.confirm}
               value={form.confirmPassword}
@@ -380,13 +414,13 @@ export default function Signup() {
             </Pressable>
 
             <View style={styles.checkLabelWrap}>
-              <Text style={styles.checkLabel}>I agree to the </Text>
+              <Text style={styles.checkLabel}>{t('agreeTo')}</Text>
               <TouchableOpacity onPress={() => setOpenPolicy('terms')}>
-                <Text style={styles.policyLink}>Terms & Conditions</Text>
+                <Text style={styles.policyLink}>{t('terms')}</Text>
               </TouchableOpacity>
-              <Text style={styles.checkLabel}> and </Text>
+              <Text style={styles.checkLabel}>{t('and')}</Text>
               <TouchableOpacity onPress={() => setOpenPolicy('privacy')}>
-                <Text style={styles.policyLink}>Privacy Policy</Text>
+                <Text style={styles.policyLink}>{t('privacy')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -398,7 +432,7 @@ export default function Signup() {
             disabled={loading}
           >
             <Text style={styles.btnText}>
-              {loading ? 'Creating account…' : 'Create Account'}
+              {loading ? t('creatingAccount') : t('createAccount')}
             </Text>
           </Pressable>
 
@@ -410,11 +444,13 @@ export default function Signup() {
       <PolicyModal
         visible={openPolicy === 'terms'}
         policy="terms"
+        t={t}
         onClose={() => setOpenPolicy(null)}
       />
       <PolicyModal
         visible={openPolicy === 'privacy'}
         policy="privacy"
+        t={t}
         onClose={() => setOpenPolicy(null)}
       />
     </>

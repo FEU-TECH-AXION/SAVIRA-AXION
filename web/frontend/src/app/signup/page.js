@@ -4,6 +4,7 @@ import { useState } from "react";
 import styles from "./signup.module.css";
 import { FiEye, FiEyeOff, FiCheck, FiX } from "react-icons/fi";
 import PolicyModal from "@/components/policies/PolicyModal";
+import { LANGUAGE_OPTIONS, getCurrentLanguage, setCurrentLanguage, translate } from "@/lib/i18n";
 
 // ── Password strength check ───────────────────────────────────
 const PW_RULES = [
@@ -34,6 +35,7 @@ function getStrength(pw) {
 }
 
 export default function SignUp() {
+  const [language, setLanguage] = useState(() => getCurrentLanguage());
   const [show, setShow]     = useState({ password: false, confirm: false });
   const [agreed, setAgreed] = useState(false);
   const [form, setForm]     = useState({
@@ -48,26 +50,38 @@ export default function SignUp() {
   const [loading, setLoading]     = useState(false);
   const [pwFocused, setPwFocused] = useState(false); // controls checklist popover
   const [openPolicy, setOpenPolicy] = useState(null);
+  const t = (key) => translate(language, key);
+  const passwordRules = [
+    { id: "len", label: t("pwLen"), test: (p) => p.length >= 8 },
+    { id: "upper", label: t("pwUpper"), test: (p) => /[A-Z]/.test(p) },
+    { id: "lower", label: t("pwLower"), test: (p) => /[a-z]/.test(p) },
+    { id: "digit", label: t("pwDigit"), test: (p) => /[0-9]/.test(p) },
+    { id: "special", label: t("pwSpecial"), test: (p) => /[^A-Za-z0-9]/.test(p) },
+  ];
+
+  const handleLanguageChange = (e) => {
+    setLanguage(setCurrentLanguage(e.target.value));
+  };
 
   // ── Client-side field validation ─────────────────────────────
   const validate = (field, value) => {
     switch (field) {
       case "firstName":
-        return validateName(value, "First name");
+        return !value.trim() ? t("firstNameRequired") : validateName(value, t("firstName"));
       case "lastName":
-        return validateName(value, "Last name");
+        return !value.trim() ? t("lastNameRequired") : validateName(value, t("lastName"));
       case "email":
         return !value.trim()
-          ? "Email is required."
+          ? t("emailRequired")
           : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-          ? "Enter a valid email address."
+          ? t("validEmail")
           : "";
       case "password":
         return PW_RULES.every((r) => r.test(value))
           ? ""
-          : "Password does not meet all requirements.";
+          : t("passwordRequirementsError");
       case "confirmPassword":
-        return value !== form.password ? "Passwords do not match." : "";
+        return value !== form.password ? t("passwordsDoNotMatch") : "";
       default:
         return "";
     }
@@ -123,7 +137,7 @@ export default function SignUp() {
         if (data.errors) {
           setErrors(data.errors);
         } else {
-          setErrors([{ path: "general", msg: data.error || data.message || "Sign up failed." }]);
+          setErrors([{ path: "general", msg: data.error || data.message || t("signupFailed") }]);
         }
         return;
       }
@@ -136,13 +150,16 @@ export default function SignUp() {
       localStorage.setItem("token", data.token);
       window.location.href = "/dashboard";
     } catch (err) {
-      setErrors([{ path: "general", msg: err.message || "Something went wrong. Please try again." }]);
+      setErrors([{ path: "general", msg: err.message || t("somethingWrong") }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const strength = form.password ? getStrength(form.password) : null;
+  const strength = form.password ? {
+    ...getStrength(form.password),
+    label: [null, t("weak"), t("fair"), t("good"), t("strong"), t("veryStrong")][getStrength(form.password).level],
+  } : null;
   const allRulesPassed = PW_RULES.every((r) => r.test(form.password));
 
   return (
@@ -157,9 +174,17 @@ export default function SignUp() {
       {/* ── Right form ──────────────────────────── */}
       <div className={styles.right}>
         <div className={styles.formBox}>
-          <h1 className={styles.title}>Create an account</h1>
+          <div className={styles.languagePicker}>
+            <label htmlFor="signup-language">{t("language")}</label>
+            <select id="signup-language" value={language} onChange={handleLanguageChange}>
+              {LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          <h1 className={styles.title}>{t("createAccountTitle")}</h1>
           <p className={styles.loginLink}>
-            Already have an account? <a href="/login">Log In</a>
+            {t("alreadyHaveAccount")} <a href="/login">{t("logIn")}</a>
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
@@ -173,7 +198,7 @@ export default function SignUp() {
             {/* Name row */}
             <div className={styles.nameRow}>
               <FormField
-                label="First Name"
+                label={t("firstName")}
                 required
                 error={clientErrors.firstName || getServerError("firstName")}
               >
@@ -181,7 +206,7 @@ export default function SignUp() {
                   className={`${styles.input} ${clientErrors.firstName ? styles.inputError : ""}`}
                   type="text"
                   name="firstName"
-                  placeholder="First Name"
+                  placeholder={t("firstName")}
                   value={form.firstName}
                   onChange={handleChange}
                   onBlur={handleBlur}
@@ -190,7 +215,7 @@ export default function SignUp() {
               </FormField>
 
               <FormField
-                label="Last Name"
+                label={t("lastName")}
                 required
                 error={clientErrors.lastName || getServerError("lastName")}
               >
@@ -198,7 +223,7 @@ export default function SignUp() {
                   className={`${styles.input} ${clientErrors.lastName ? styles.inputError : ""}`}
                   type="text"
                   name="lastName"
-                  placeholder="Last Name"
+                  placeholder={t("lastName")}
                   value={form.lastName}
                   onChange={handleChange}
                   onBlur={handleBlur}
@@ -209,7 +234,7 @@ export default function SignUp() {
 
             {/* Email */}
             <FormField
-              label="Email"
+              label={t("email")}
               required
               error={clientErrors.email || getServerError("email")}
               errorLink={getServerErrorLink("email")}
@@ -227,7 +252,7 @@ export default function SignUp() {
             </FormField>
 
             {/* Password */}
-            <FormField label="Password" required error={""}>
+            <FormField label={t("password")} required error={""}>
               {/* FIX: use passwordWrap (matches CSS), not pwWrap */}
               <div className={styles.passwordWrap}>
                 <input
@@ -236,7 +261,7 @@ export default function SignUp() {
                   }`}
                   type={show.password ? "text" : "password"}
                   name="password"
-                  placeholder="Create a password"
+                  placeholder={t("createPassword")}
                   value={form.password}
                   onChange={handleChange}
                   onBlur={handleBlur}
@@ -276,9 +301,9 @@ export default function SignUp() {
               {/* Rules popover — only shown while focused or not all rules passed yet */}
               {form.password && (pwFocused || !allRulesPassed) && (
                 <div className={styles.pwRulesPopover}>
-                  <p className={styles.pwRulesTitle}>Password requirements</p>
+                  <p className={styles.pwRulesTitle}>{t("passwordRequirements")}</p>
                   <ul className={styles.pwRules}>
-                    {PW_RULES.map((rule) => {
+                    {passwordRules.map((rule) => {
                       const ok = rule.test(form.password);
                       return (
                         <li key={rule.id} className={ok ? styles.ruleOk : styles.ruleFail}>
@@ -296,7 +321,7 @@ export default function SignUp() {
 
             {/* Confirm Password */}
             <FormField
-              label="Confirm Password"
+              label={t("confirmPassword")}
               required
               error={clientErrors.confirmPassword}
             >
@@ -308,7 +333,7 @@ export default function SignUp() {
                   }`}
                   type={show.confirm ? "text" : "password"}
                   name="confirmPassword"
-                  placeholder="Repeat your password"
+                  placeholder={t("repeatPassword")}
                   value={form.confirmPassword}
                   onChange={handleChange}
                   onBlur={handleBlur}
@@ -349,13 +374,13 @@ export default function SignUp() {
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
                 <span className={styles.checkboxText}>
-                  I agree to the{" "}
+                  {t("agreeTo")}{" "}
                   <button type="button" className={styles.policyButton} onClick={() => setOpenPolicy("terms")}>
-                    Terms &amp; Conditions
+                    {t("terms")}
                   </button>{" "}
-                  and{" "}
+                  {t("and")}{" "}
                   <button type="button" className={styles.policyButton} onClick={() => setOpenPolicy("privacy")}>
-                    Privacy Policy
+                    {t("privacy")}
                   </button>
                 </span>
               </label>
@@ -369,7 +394,7 @@ export default function SignUp() {
               className={styles.btn}
               disabled={loading || !isFormValid}
             >
-              {loading ? "Creating account…" : "Create Account"}
+              {loading ? t("creatingAccount") : t("createAccount")}
             </button>
 
           </form>

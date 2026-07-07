@@ -22,6 +22,16 @@ function normalizeNotification(row) {
   };
 }
 
+function isMissingNotificationsTable(error) {
+  const message = String(error?.message || '');
+  return (
+    error?.code === '42P01' ||
+    error?.code === 'PGRST205' ||
+    message.includes("Could not find the table 'public.notifications'") ||
+    message.includes('relation "public.notifications" does not exist')
+  );
+}
+
 router.get('/', verifyToken, async (req, res) => {
   const userId = req.user.id || req.user.user_id;
   const limit = Math.min(Number(req.query.limit) || 50, 100);
@@ -33,6 +43,9 @@ router.get('/', verifyToken, async (req, res) => {
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  if (isMissingNotificationsTable(error)) {
+    return res.json({ notifications: [] });
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ notifications: (data || []).map(normalizeNotification) });
 });
@@ -46,6 +59,9 @@ router.patch('/read-all', verifyToken, async (req, res) => {
     .eq('user_id', userId)
     .eq('is_read', false);
 
+  if (isMissingNotificationsTable(error)) {
+    return res.json({ success: true });
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });

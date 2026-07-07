@@ -3,23 +3,21 @@
 import { useState } from "react";
 import { FiCheck } from "react-icons/fi";
 import { applyDisplayPrefs, readDisplayPrefs, saveDisplayPrefs } from "@/lib/displayPreferences";
+import { LANGUAGE_OPTIONS, normalizeLanguage, translate } from "@/lib/i18n";
 import styles from "./DisplayAccessibilityTab.module.css";
 
 const FONT_SIZES = [
-  { id: "sm", label: "Small" },
-  { id: "md", label: "Default" },
-  { id: "lg", label: "Large" },
-  { id: "xl", label: "Extra Large" },
-];
-
-const LANGUAGES = [
-  { id: "en", label: "English" },
-  { id: "fil", label: "Filipino" },
+  { id: "sm", labelKey: "small" },
+  { id: "md", labelKey: "default" },
+  { id: "lg", labelKey: "large" },
+  { id: "xl", labelKey: "extraLarge" },
 ];
 
 export default function DisplayAccessibilityTab() {
   const [prefs, setPrefs] = useState(() => readDisplayPrefs());
   const [saved, setSaved] = useState(false);
+  const language = normalizeLanguage(prefs.language);
+  const t = (key) => translate(language, key);
 
   const updatePrefs = (updates) => {
     setPrefs((current) => {
@@ -38,16 +36,16 @@ export default function DisplayAccessibilityTab() {
   return (
     <div className={styles.wrap}>
       {saved && (
-        <div className={styles.flashSuccess}><FiCheck size={16} /> Display preferences saved!</div>
+        <div className={styles.flashSuccess}><FiCheck size={16} /> {t("preferencesSaved")}</div>
       )}
 
       <div className={styles.card}>
-        <div className={styles.cardTitle}>Text &amp; Readability</div>
+        <div className={styles.cardTitle}>{t("textReadability")}</div>
 
         <div className={styles.field}>
-          <label className={styles.fieldLabel}>Font size</label>
+          <label className={styles.fieldLabel}>{t("fontSize")}</label>
           <div className={styles.segmentGroup}>
-            {FONT_SIZES.map(({ id, label }) => (
+            {FONT_SIZES.map(({ id, labelKey }) => (
               <button
                 key={id}
                 type="button"
@@ -55,20 +53,20 @@ export default function DisplayAccessibilityTab() {
                 className={`${styles.segmentBtn} ${prefs.fontSize === id ? styles.segmentBtnActive : ""}`}
                 onClick={() => updatePrefs({ fontSize: id })}
               >
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
         </div>
 
         <div className={styles.field}>
-          <label className={styles.fieldLabel}>Language</label>
+          <label className={styles.fieldLabel}>{t("language")}</label>
           <select
             className={styles.select}
-            value={prefs.language}
+            value={language}
             onChange={(e) => updatePrefs({ language: e.target.value })}
           >
-            {LANGUAGES.map(({ id, label }) => (
+            {LANGUAGE_OPTIONS.map(({ id, label }) => (
               <option key={id} value={id}>{label}</option>
             ))}
           </select>
@@ -76,12 +74,12 @@ export default function DisplayAccessibilityTab() {
       </div>
 
       <div className={styles.card}>
-        <div className={styles.cardTitle}>Accessibility</div>
+        <div className={styles.cardTitle}>{t("accessibility")}</div>
 
         <label className={styles.toggleRow}>
           <div>
-            <p className={styles.toggleRowLabel}>Reduce motion</p>
-            <p className={styles.toggleRowDesc}>Minimizes animations and transitions throughout the app.</p>
+            <p className={styles.toggleRowLabel}>{t("reduceMotion")}</p>
+            <p className={styles.toggleRowDesc}>{t("reduceMotionDesc")}</p>
           </div>
           <button
             type="button"
@@ -95,8 +93,8 @@ export default function DisplayAccessibilityTab() {
 
         <label className={styles.toggleRow}>
           <div>
-            <p className={styles.toggleRowLabel}>High contrast</p>
-            <p className={styles.toggleRowDesc}>Increases contrast between text and backgrounds for better readability.</p>
+            <p className={styles.toggleRowLabel}>{t("highContrast")}</p>
+            <p className={styles.toggleRowDesc}>{t("highContrastDesc")}</p>
           </div>
           <button
             type="button"
@@ -110,8 +108,8 @@ export default function DisplayAccessibilityTab() {
 
         <label className={styles.toggleRow}>
           <div>
-            <p className={styles.toggleRowLabel}>Extended screen reader labels</p>
-            <p className={styles.toggleRowDesc}>Adds more descriptive labels for screen reader and assistive technology users.</p>
+            <p className={styles.toggleRowLabel}>{t("extendedLabels")}</p>
+            <p className={styles.toggleRowDesc}>{t("extendedLabelsDesc")}</p>
           </div>
           <button
             type="button"
@@ -126,7 +124,7 @@ export default function DisplayAccessibilityTab() {
 
       <div className={styles.formActions}>
         <button type="button" className={styles.btnPrimary} onClick={handleSave}>
-          Save Preferences
+          {t("savePreferences")}
         </button>
       </div>
     </div>

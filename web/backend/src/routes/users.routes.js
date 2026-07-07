@@ -36,6 +36,15 @@ const avatarUpload = multer({
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
 
+const isMissingColumnError = (error, column) => {
+  const message = String(error?.message || '')
+  return (
+    error?.code === 'PGRST204' &&
+    message.includes(`'${column}'`) &&
+    message.includes('schema cache')
+  )
+}
+
 const legacyDotlessGmailEmail = (email) => {
   const normalizedEmail = normalizeEmail(email)
   const [localPart, domain] = normalizedEmail.split('@')
@@ -184,10 +193,18 @@ router.post('/reset-password', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const { error: updateError } = await supabase
+    let { error: updateError } = await supabase
       .from('users')
       .update({ password: hashedPassword, must_change_password: false })
       .eq('user_id', decoded.user_id)
+
+    if (isMissingColumnError(updateError, 'must_change_password')) {
+      const retry = await supabase
+        .from('users')
+        .update({ password: hashedPassword })
+        .eq('user_id', decoded.user_id)
+      updateError = retry.error
+    }
 
     if (updateError) throw updateError
 

@@ -5,8 +5,10 @@ import styles from "./login.module.css";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@/lib/AuthContext";
+import { LANGUAGE_OPTIONS, getCurrentLanguage, setCurrentLanguage, translate } from "@/lib/i18n";
 
 export default function Login() {
+  const [language, setLanguage] = useState(() => getCurrentLanguage());
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [form, setForm] = useState({
@@ -17,6 +19,11 @@ export default function Login() {
 
   const { login } = useAuth();
   const router = useRouter();
+  const t = (key) => translate(language, key);
+
+  const handleLanguageChange = (e) => {
+    setLanguage(setCurrentLanguage(e.target.value));
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -29,9 +36,8 @@ export default function Login() {
     setErrors([]);
 
     const fieldErrors = [];
-    if (!form.email.trim()) fieldErrors.push({ path: 'email', msg: 'Email is required' });
-    if (!form.password) fieldErrors.push({ path: 'password', msg: 'Password is required' });
-    if (!form.password) fieldErrors.push({ path: 'password', msg: 'Password is required' });
+    if (!form.email.trim()) fieldErrors.push({ path: 'email', msg: t('emailRequired') });
+    if (!form.password) fieldErrors.push({ path: 'password', msg: t('passwordRequired') });
     if (fieldErrors.length) {
       setErrors(fieldErrors);
       return;
@@ -47,7 +53,7 @@ export default function Login() {
       if (Array.isArray(err)) {
         setErrors(err);
       } else {
-        setErrors([{ path: 'general', msg: 'Login failed. Please try again.' }]);
+        setErrors([{ path: 'general', msg: t('loginFailed') }]);
       }
     }
   };
@@ -64,10 +70,18 @@ export default function Login() {
       {/* ── Right: login form ── */}
       <div className={styles.right}>
         <div className={styles.formBox}>
-          <h1 className={styles.title}>Welcome Back!</h1>
+          <div className={styles.languagePicker}>
+            <label htmlFor="login-language">{t("language")}</label>
+            <select id="login-language" value={language} onChange={handleLanguageChange}>
+              {LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          <h1 className={styles.title}>{t("welcomeBack")}</h1>
           <p className={styles.loginLink}>
-            Don&apos;t have an account yet?&nbsp;
-            <a href="/signup">Sign Up</a>
+            {t("noAccount")}&nbsp;
+            <a href="/signup">{t("signUp")}</a>
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
@@ -81,12 +95,12 @@ export default function Login() {
 
             {/* Email */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>E-mail</label>
+              <label className={styles.label}>{t("email")}</label>
               <input
                 className={styles.input}
                 type="email"
                 name="email"
-                placeholder="E-mail"
+                placeholder={t("email")}
                 value={form.email}
                 onChange={handleChange}
               />
@@ -100,13 +114,13 @@ export default function Login() {
 
             {/* Password */}
             <div className={styles.fieldGroupLg}>
-              <label className={styles.label}>Password</label>
+              <label className={styles.label}>{t("password")}</label>
               <div className={styles.passwordWrap}>
                 <input
                   className={styles.input}
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  placeholder="Password"
+                  placeholder={t("password")}
                   value={form.password}
                   onChange={handleChange}
                 />
@@ -137,17 +151,17 @@ export default function Login() {
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
                 <span className={styles.checkboxText}>
-                  Recognize this device for 30 days
+                  {t("recognizeDevice")}
                 </span>
               </label>
               <a href="/forgotPassword" className={styles.forgotPassword}>
-                Forgot Password?
+                {t("forgotPassword")}
               </a>
             </div>
 
             {/* Submit */}
             <button type="submit" className={styles.btn}>
-              Log In
+              {t("logIn")}
             </button>
 
           </form>
