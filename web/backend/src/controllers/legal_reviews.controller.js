@@ -77,6 +77,23 @@ function toClientPayload(review, logs = []) {
   }
 }
 
+function toManagementPayload(review) {
+  if (!review) return null
+  return {
+    legal_review_id: review.legal_review_id,
+    case_report_id: review.case_report_id,
+    legal_personnel_id: review.legal_personnel_id,
+    review_type: review.review_type,
+    review_status: review.review_status,
+    paralegal_record: review.paralegal_record || null,
+    lawyer_record: review.lawyer_record || null,
+    endorsed_to: review.endorsed_to || null,
+    endorsement_details: review.endorsement_details || null,
+    monitoring_log: review.monitoring_log || [],
+    document_repository: review.document_repository || [],
+  }
+}
+
 function toCalendarPayload(review) {
   if (!review) return null
   return {
@@ -165,6 +182,20 @@ async function getLegalReviewReports(req, options = null) {
   return []
 }
 
+async function getTimedManagementStats() {
+  const startedAt = process.hrtime.bigint()
+  try {
+    return await LegalReviews.getManagementStats({
+      legalStatusIds: LEGAL_STATUS_ID_VALUES,
+      activeStatusIds: LEGAL_ACTIVE_STATUS_ID_VALUES,
+      underEvaluationStatusId: 6,
+    })
+  } finally {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6
+    console.info(`[legalReviews.getManagement] getManagementStats ${durationMs.toFixed(1)}ms`)
+  }
+}
+
 async function getManagement(req, res) {
   try {
     const role = getRequesterRole(req)
@@ -177,11 +208,7 @@ async function getManagement(req, res) {
     const [reportResult, legalPersonnels, stats] = await Promise.all([
       getLegalReviewReports(req, options),
       LegalPersonnels.getAll(),
-      LegalReviews.getManagementStats({
-        legalStatusIds: LEGAL_STATUS_ID_VALUES,
-        activeStatusIds: LEGAL_ACTIVE_STATUS_ID_VALUES,
-        underEvaluationStatusId: 6,
-      }),
+      getTimedManagementStats(),
     ])
 
     const reports = usePagination ? reportResult.data : reportResult
@@ -193,14 +220,11 @@ async function getManagement(req, res) {
       LegalReviews.getLatestByCaseIds(caseIds),
       LegalReviews.getPendingStatusHistoryByCaseIds(caseIds),
     ])
-    const logsByReview = await LegalReviews.getLogsByReviewIds(
-      Object.values(reviewsByCase).map((review) => review?.legal_review_id)
-    )
 
     const reviews = {}
     for (const caseId of caseIds) {
       const review = reviewsByCase[caseId]
-      reviews[caseId] = toClientPayload(review, logsByReview[review?.legal_review_id] || [])
+      reviews[caseId] = toManagementPayload(review)
     }
 
     return res.json({

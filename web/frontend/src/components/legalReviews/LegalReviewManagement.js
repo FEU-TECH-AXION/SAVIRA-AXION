@@ -1126,7 +1126,6 @@ function mergeLegalReviewData(caseData, review) {
   return {
     ...caseData,
     legalReviewId: review.legal_review_id,
-    legalReviewLogs: review.logs || [],
     paralegalRecord: review.paralegal_record || null,
     lawyerRecord: review.lawyer_record || null,
     endorsedTo: review.endorsed_to || caseData.endorsedTo || null,
