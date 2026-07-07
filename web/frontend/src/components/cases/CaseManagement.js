@@ -19,66 +19,6 @@ import { useAuth } from "@/lib/AuthContext";
 // UTILITY FUNCTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getDateRangeFromFilter(filterValue) {
-  if (!filterValue) return null;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let startDate, endDate;
-  
-  switch (filterValue) {
-    case "today":
-      startDate = new Date(today);
-      endDate = new Date(today);
-      endDate.setDate(endDate.getDate() + 1);
-      break;
-    case "thisWeek":
-      startDate = new Date(today);
-      startDate.setDate(startDate.getDate() - today.getDay());
-      endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 7);
-      break;
-    case "thisMonth":
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-      break;
-    case "thisYear":
-      startDate = new Date(today.getFullYear(), 0, 1);
-      endDate = new Date(today.getFullYear() + 1, 0, 1);
-      break;
-    case "last30Days":
-      endDate = new Date(today);
-      endDate.setDate(endDate.getDate() + 1);
-      startDate = new Date(today);
-      startDate.setDate(startDate.getDate() - 30);
-      break;
-    default:
-      if (filterValue.startsWith("custom|")) {
-        const parts = filterValue.split("|");
-        if (parts.length === 3) {
-          startDate = new Date(parts[1] + "T00:00:00");
-          endDate = new Date(parts[2] + "T23:59:59");
-        }
-      }
-  }
-  
-  return startDate && endDate ? { startDate, endDate } : null;
-}
-
-function isDateInRange(dateString, startDate, endDate) {
-  if (!dateString) return false;
-  const date = new Date(dateString);
-  return date >= startDate && date <= endDate;
-}
-
-function normalizeCityName(value) {
-  return String(value || "")
-    .replace(/Ã±/g, "ñ")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -1006,9 +946,23 @@ export default function CaseManagement() {
 
   // Dynamic officers list (try backend, fallback to deriving from cases)
   const [officers, setOfficers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    status: "",
+    assignedOfficer: "",
+    caseType: "",
+    dateSubmitted: "",
+    primaryCategory: "",
+    incident_city: "",
+  });
+  const [sortField, setSortField] = useState("dateSubmitted");
+  const [sortDir, setSortDir]     = useState("desc");
 
 useEffect(() => {
-  if (authLoading) return; // wait for cookie to load
+  if (authLoading) return;
 
   const fetchCaseStats = async () => {
     try {
@@ -1025,18 +979,39 @@ useEffect(() => {
     }
   };
 
+  fetchCaseStats();
+}, [authLoading, authUser?.user_id, authUser?.id, authUser?.role_name, authUser?.role]);
+
+useEffect(() => {
+  if (authLoading) return; // wait for cookie to load
+
   const fetchCases = async () => {
     try {
+      setCasesLoading(true);
       const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${API_URL}/api/case_reports/all`, {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+        sortBy: sortField,
+        sortDir,
+      });
+      if (search.trim()) params.set("search", search.trim());
+      Object.entries(advancedFilters).forEach(([key, value]) => {
+        if (value && value !== "All") params.set(key, value);
+      });
+
+      const res = await fetch(`${API_URL}/api/case_reports/all?${params.toString()}`, {
         credentials: 'include',
+        cache: 'no-store',
       });
       if (!res.ok) {
         const errorText = await res.text();
         console.error('[CaseManagement] API error:', res.status, errorText);
         throw new Error(`Failed to fetch cases: ${res.status} ${errorText}`);
       }
-      const { data } = await res.json();
+      const payload = await res.json();
+      const data = payload.data || [];
+      setTotalRecords(payload.total || 0);
 
       const mapped = data.map((r) => {
         const year = new Date(r.created_at).getFullYear();
@@ -1089,9 +1064,19 @@ useEffect(() => {
     }
   };
 
-  fetchCaseStats();
   fetchCases();
-}, [authLoading, authUser?.user_id, authUser?.id, authUser?.role_name, authUser?.role]);
+}, [
+  authLoading,
+  authUser?.user_id,
+  authUser?.id,
+  authUser?.role_name,
+  authUser?.role,
+  page,
+  search,
+  advancedFilters,
+  sortField,
+  sortDir,
+]);
 
 // Fetch case officers from database
 useEffect(() => {
@@ -1112,20 +1097,6 @@ useEffect(() => {
 
   loadOfficers();
 }, []);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [toast, setToast] = useState(null);
-  const [advancedFilters, setAdvancedFilters] = useState({
-    status: "",
-    assignedOfficer: "",
-    caseType: "",
-    dateSubmitted: "",
-    primaryCategory: "",
-    incident_city: "",
-  });
-  const [sortField, setSortField] = useState("dateSubmitted");
-  const [sortDir, setSortDir]     = useState("desc");
-
   // Modal state
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -1169,56 +1140,14 @@ const stats = useMemo(() => {
   ];
 }, [caseStats, cases, isAdmin]);
 
-  // ── Filtering ──
-  const filtered = useMemo(() =>
-    cases.filter((c) => {
-      const incidentCity = c.incident_city || c.city || "";
-      const ms = !search || c.caseId.includes(search) || c.reporterId.includes(search) || c.region.toLowerCase().includes(search.toLowerCase()) || incidentCity.toLowerCase().includes(search.toLowerCase());
-      
-      // Apply advanced filters
-      let mf = true;
-      if (advancedFilters.status && advancedFilters.status !== "" && advancedFilters.status !== "All") {
-        mf = mf && c.status === advancedFilters.status;
-      }
-      if (advancedFilters.assignedOfficer && advancedFilters.assignedOfficer !== "" && advancedFilters.assignedOfficer !== "All") {
-        mf = mf && (c.assignedOfficer || "").toLowerCase().includes(advancedFilters.assignedOfficer.toLowerCase());
-      }
-      if (advancedFilters.caseType && advancedFilters.caseType !== "" && advancedFilters.caseType !== "All") {
-        mf = mf && (c.caseType || "") === advancedFilters.caseType;
-      }
-      if (advancedFilters.dateSubmitted && advancedFilters.dateSubmitted !== "") {
-        const range = getDateRangeFromFilter(advancedFilters.dateSubmitted);
-        if (range) {
-          mf = mf && isDateInRange(c.dateSubmitted, range.startDate, range.endDate);
-        }
-      }
-      if (advancedFilters.primaryCategory && advancedFilters.primaryCategory !== "" && advancedFilters.primaryCategory !== "All") {
-        mf = mf && (c.primaryCategory || "") === advancedFilters.primaryCategory;
-      }
-      const cityFilter = advancedFilters.incident_city || advancedFilters.city;
-      if (cityFilter && cityFilter !== "" && cityFilter !== "All") {
-        mf = mf && normalizeCityName(incidentCity) === normalizeCityName(cityFilter);
-      }
-      
-      return ms && mf;
-    }),
-    [cases, search, advancedFilters]
-  );
+
+  // Server-side filtering and pagination
   useEffect(() => {
     const timer = window.setTimeout(() => setPage(1), 0);
     return () => window.clearTimeout(timer);
   }, [search, advancedFilters]);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const sorted = useMemo(() => {
-  if (!sortField) return filtered;
-  return [...filtered].sort((a, b) => {
-    const av = a[sortField] ?? "";
-    const bv = b[sortField] ?? "";
-    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
-    return sortDir === "asc" ? cmp : -cmp;
-  });
-}, [filtered, sortField, sortDir]);
-const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+  const paginated = cases;
 
   // ── Status change — submit for approval ──
   async function submitForApproval(caseData, proposedStatus, changeDetails) {
@@ -1573,7 +1502,7 @@ const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                   paginated={paginated}
                   page={page}
                   totalPages={totalPages}
-                  totalRecords={filtered.length}
+                  totalRecords={totalRecords}
                   pageSize={PAGE_SIZE}
                   onPageChange={setPage}
                   onRowClick={(c) => router.push(`/cases/view?caseId=${c.id}`)}

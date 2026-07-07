@@ -18,6 +18,49 @@ const STATUS_NAME_BY_ID = {
   13: 'Withdrawn',
 }
 
+const STATUS_ID_BY_NAME = Object.fromEntries(
+  Object.entries(STATUS_NAME_BY_ID).map(([id, name]) => [name.toLowerCase(), Number(id)])
+)
+
+const CASE_LIST_SELECT = `
+  case_report_id,
+  complainant_id,
+  incident_description,
+  incident_city,
+  incident_province,
+  incident_date,
+  case_status_id,
+  created_at,
+  is_current,
+  case_assignments (
+    assignment_id,
+    case_officer_id,
+    is_active
+  ),
+  legal_case_assignments (
+    legal_case_assignment_id,
+    legal_personnel_id,
+    assignment_role,
+    is_active
+  )
+`
+
+const DEFAULT_CASE_PAGE = 1
+const DEFAULT_CASE_LIMIT = 10
+const MAX_CASE_LIMIT = 100
+
+const CASE_SORT_COLUMNS = {
+  caseId: 'case_report_id',
+  id: 'case_report_id',
+  reporterId: 'complainant_id',
+  status: 'case_status_id',
+  dateSubmitted: 'created_at',
+  created_at: 'created_at',
+  region: 'incident_province',
+  incident_city: 'incident_city',
+  city: 'incident_city',
+}
+
 const ALLOWED_FIELDS = [
   'case_type',
   'case_category',
@@ -470,7 +513,357 @@ function withStatusHistory(report, statusHistoryMap) {
   }
 }
 
-async function getAllReports() {
+function normalizeCaseListOptions(options = {}) {
+  const page = Math.max(Number.parseInt(options.page, 10) || DEFAULT_CASE_PAGE, 1)
+  const requestedLimit = Number.parseInt(options.limit, 10) || DEFAULT_CASE_LIMIT
+  const limit = Math.min(Math.max(requestedLimit, 1), MAX_CASE_LIMIT)
+  const sortBy = CASE_SORT_COLUMNS[options.sortBy] ? options.sortBy : 'dateSubmitted'
+  const sortDir = String(options.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'
+
+  return {
+    ...options,
+    page,
+    limit,
+    offset: (page - 1) * limit,
+    sortBy,
+    sortDir,
+    sortColumn: CASE_SORT_COLUMNS[sortBy],
+  }
+}
+
+function normalizeText(value) {
+  return String(value || '').trim()
+}
+
+function getStatusId(value) {
+  const text = normalizeText(value)
+  if (!text || text === 'All') return null
+  const numeric = Number.parseInt(text, 10)
+  if (Number.isFinite(numeric) && STATUS_NAME_BY_ID[numeric]) return numeric
+  return STATUS_ID_BY_NAME[text.toLowerCase()] || null
+}
+
+function getDateRangeFilter(value) {
+  const text = normalizeText(value)
+  if (!text) return null
+
+  const today = new Date()
+  const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const endOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+  const current = startOfDay(today)
+
+  if (text === 'today' || text === 'Today') return { start: current, end: endOfDay(today) }
+  if (text === 'thisWeek' || text === 'This Week') {
+    const start = new Date(current)
+    start.setDate(current.getDate() - current.getDay())
+    const end = endOfDay(new Date(start))
+    end.setDate(start.getDate() + 6)
+    return { start, end }
+  }
+  if (text === 'thisMonth' || text === 'This Month') {
+    return {
+      start: new Date(today.getFullYear(), today.getMonth(), 1),
+      end: new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999),
+    }
+  }
+  if (text === 'thisYear' || text === 'This Year') {
+    return {
+      start: new Date(today.getFullYear(), 0, 1),
+      end: new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999),
+    }
+  }
+  if (text === 'last30Days') {
+    const start = new Date(current)
+    start.setDate(current.getDate() - 30)
+    return { start, end: endOfDay(today) }
+  }
+
+  return null
+}
+
+function intersectCaseIds(currentIds, nextIds) {
+  const next = [...new Set((nextIds || []).filter(Boolean))]
+  if (currentIds === null) return next
+  const allowed = new Set(next.map(String))
+  return currentIds.filter((id) => allowed.has(String(id)))
+}
+
+async function getAssessmentFilteredCaseIds(filters = {}) {
+  const caseType = normalizeText(filters.caseType)
+  const primaryCategory = normalizeText(filters.primaryCategory)
+  if ((!caseType || caseType === 'All') && (!primaryCategory || primaryCategory === 'All')) return null
+
+  let query = supabase
+    .from('case_assessments')
+    .select('case_report_id')
+
+  if (caseType && caseType !== 'All') query = query.contains('case_type', [caseType])
+  if (primaryCategory && primaryCategory !== 'All') query = query.eq('primary_category', primaryCategory)
+
+  const { data, error } = await query
+  if (error) throw error
+  return [...new Set((data || []).map((row) => row.case_report_id))]
+}
+
+async function getAssignedOfficerFilteredCaseIds(assignedOfficer) {
+  const text = normalizeText(assignedOfficer)
+  if (!text || text === 'All') return null
+
+  const { data: officers, error: officerError } = await supabase
+    .from('case_officers')
+    .select('case_officer_id, users!inner(first_name, last_name)')
+  if (officerError) throw officerError
+
+  const officerIds = (officers || [])
+    .filter((officer) => {
+      const name = `${officer.users?.first_name || ''} ${officer.users?.last_name || ''}`.trim()
+      return name.toLowerCase().includes(text.toLowerCase())
+    })
+    .map((officer) => officer.case_officer_id)
+
+  if (officerIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('case_assignments')
+    .select('case_report_id')
+    .in('case_officer_id', officerIds)
+    .eq('is_active', true)
+  if (error) throw error
+  return [...new Set((data || []).map((row) => row.case_report_id))]
+}
+
+async function getPreFilteredCaseIds(filters = {}) {
+  const [assessmentIds, assignedOfficerIds] = await Promise.all([
+    getAssessmentFilteredCaseIds(filters),
+    getAssignedOfficerFilteredCaseIds(filters.assignedOfficer),
+  ])
+
+  let caseIds = null
+  if (assessmentIds !== null) caseIds = intersectCaseIds(caseIds, assessmentIds)
+  if (assignedOfficerIds !== null) caseIds = intersectCaseIds(caseIds, assignedOfficerIds)
+  return caseIds
+}
+
+function applyCaseReportFilters(query, options = {}) {
+  let nextQuery = query.eq('is_current', true)
+
+  const statusId = getStatusId(options.status)
+  if (statusId) nextQuery = nextQuery.eq('case_status_id', statusId)
+
+  const city = normalizeText(options.incident_city || options.city)
+  if (city && city !== 'All') nextQuery = nextQuery.ilike('incident_city', city)
+
+  const dateRange = getDateRangeFilter(options.dateSubmitted)
+  if (dateRange) {
+    nextQuery = nextQuery
+      .gte('created_at', dateRange.start.toISOString())
+      .lte('created_at', dateRange.end.toISOString())
+  }
+
+  const search = normalizeText(options.search)
+  if (search) {
+    const clauses = [
+      `incident_province.ilike.%${search}%`,
+      `incident_city.ilike.%${search}%`,
+    ]
+    const numericMatch = search.match(/\d+/g)
+    const lastNumber = numericMatch?.length ? Number.parseInt(numericMatch[numericMatch.length - 1], 10) : NaN
+    if (Number.isFinite(lastNumber)) {
+      clauses.push(`case_report_id.eq.${lastNumber}`)
+      clauses.push(`complainant_id.eq.${lastNumber}`)
+    }
+    nextQuery = nextQuery.or(clauses.join(','))
+  }
+
+  return nextQuery
+}
+
+async function getAssessmentMap(reportIds) {
+  if (!reportIds?.length) return {}
+
+  const { data: assessments, error } = await supabase
+    .from('case_assessments')
+    .select(`
+      case_report_id,
+      case_type,
+      primary_category,
+      additional_categories,
+      referral_required,
+      referral_body,
+      endorsement,
+      created_at
+    `)
+    .in('case_report_id', reportIds)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+
+  const assessmentMap = {}
+  for (const row of assessments || []) {
+    const merged = assessmentMap[row.case_report_id] || {
+      case_type: null,
+      primary_category: null,
+      additional_categories: null,
+      referral_required: false,
+      referral_body: null,
+      endorsement: null,
+    }
+    if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
+    if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
+    if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
+    if (!merged.referral_required && row.referral_required) merged.referral_required = row.referral_required
+    if (!merged.referral_body && row.referral_body) merged.referral_body = row.referral_body
+    if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
+    assessmentMap[row.case_report_id] = merged
+  }
+  return assessmentMap
+}
+
+async function getOfficerMap() {
+  const { data, error } = await supabase
+    .from('case_officers')
+    .select('case_officer_id, users!inner(user_id, first_name, last_name, email)')
+  if (error) throw error
+
+  return (data || []).reduce((map, officer) => {
+    if (officer.users) {
+      map[officer.case_officer_id] = `${officer.users.first_name || ''} ${officer.users.last_name || ''}`.trim()
+    }
+    return map
+  }, {})
+}
+
+async function getLegalMap() {
+  const { data, error } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id, users!inner(first_name, last_name)')
+  if (error) throw error
+
+  return (data || []).reduce((map, personnel) => {
+    if (personnel.users) {
+      map[personnel.legal_personnel_id] = `${personnel.users.first_name || ''} ${personnel.users.last_name || ''}`.trim()
+    }
+    return map
+  }, {})
+}
+
+function emptyCasePage(options) {
+  return {
+    data: [],
+    total: 0,
+    page: options.page,
+    limit: options.limit,
+  }
+}
+
+async function getPaginatedCaseReports({
+  options,
+  scopeQuery,
+  enrichReport,
+  includeOfficerMap = true,
+  includeLegalMap = true,
+  includeAssessments = true,
+}) {
+  const normalizedOptions = normalizeCaseListOptions(options)
+  const preFilteredCaseIds = await getPreFilteredCaseIds(normalizedOptions)
+  let constrainedCaseIds = preFilteredCaseIds
+  if (Array.isArray(normalizedOptions.caseIds)) {
+    constrainedCaseIds = intersectCaseIds(constrainedCaseIds, normalizedOptions.caseIds)
+  }
+
+  if (Array.isArray(constrainedCaseIds) && constrainedCaseIds.length === 0) {
+    return emptyCasePage(normalizedOptions)
+  }
+
+  let query = supabase
+    .from('case_reports')
+    .select(CASE_LIST_SELECT, { count: 'exact' })
+
+  query = applyCaseReportFilters(query, normalizedOptions)
+  if (constrainedCaseIds?.length) query = query.in('case_report_id', constrainedCaseIds)
+  if (scopeQuery) query = scopeQuery(query)
+
+  const { data: reports, error, count } = await query
+    .order(normalizedOptions.sortColumn, { ascending: normalizedOptions.sortDir === 'asc' })
+    .range(normalizedOptions.offset, normalizedOptions.offset + normalizedOptions.limit - 1)
+
+  if (error) throw error
+
+  const normalizedReports = await normalizeSubmittedReportStatuses(reports || [])
+  const reportIds = normalizedReports.map((report) => report.case_report_id)
+
+  const [
+    officerMap,
+    legalMap,
+    assessmentMap,
+    duplicateMatches,
+    statusHistoryMap,
+  ] = await Promise.all([
+    includeOfficerMap ? getOfficerMap() : Promise.resolve({}),
+    includeLegalMap ? getLegalMap() : Promise.resolve({}),
+    includeAssessments ? getAssessmentMap(reportIds) : Promise.resolve({}),
+    getDuplicateMatches(reportIds),
+    getStatusHistoryMap(reportIds, { staffView: true }),
+  ])
+
+  return {
+    data: normalizedReports.map((report) =>
+      withStatusHistory(enrichReport({
+        report,
+        officerMap,
+        legalMap,
+        assessmentMap,
+        duplicateMatches,
+      }), statusHistoryMap)
+    ),
+    total: count || 0,
+    page: normalizedOptions.page,
+    limit: normalizedOptions.limit,
+  }
+}
+
+async function getAllReports(options = {}) {
+  if (arguments.length > 0) {
+    return getPaginatedCaseReports({
+      options,
+      enrichReport: ({ report, officerMap, legalMap, assessmentMap, duplicateMatches }) => {
+        let assignedOfficer = null
+        let assignedOfficerId = null
+        if (report.case_assignments?.length > 0) {
+          const active = report.case_assignments.find(a => a.is_active)
+          if (active) {
+            assignedOfficerId = active.case_officer_id
+            assignedOfficer = officerMap[assignedOfficerId] || null
+          }
+        }
+
+        let assignedLegalOfficer = null
+        let assignedParalegal = null
+        const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
+        const officerAss = activeLegal.find(a => ['lawyer', 'legal_officer'].includes(a.assignment_role))
+        if (officerAss) assignedLegalOfficer = legalMap[officerAss.legal_personnel_id] || null
+        const paralegalAss = activeLegal.find(a => a.assignment_role === 'paralegal')
+        if (paralegalAss) assignedParalegal = legalMap[paralegalAss.legal_personnel_id] || null
+
+        return {
+          ...report,
+          assigned_officer: assignedOfficer,
+          assigned_officer_id: assignedOfficerId,
+          assigned_legal_officer: assignedLegalOfficer,
+          assigned_paralegal: assignedParalegal,
+          assigned_legal: activeLegal.map(assignment => ({
+            legal_personnel_id: assignment.legal_personnel_id,
+            assignment_role: assignment.assignment_role === 'legal_officer' ? 'lawyer' : assignment.assignment_role,
+            name: legalMap[assignment.legal_personnel_id] || null,
+          })),
+          possible_duplicates: duplicateMatches[report.case_report_id] || [],
+          ...(assessmentMap[report.case_report_id] || {}),
+          case_assignments: undefined,
+          legal_case_assignments: undefined,
+        }
+      },
+    })
+  }
+
   // Step 1: Fetch case reports with their assignments
   const { data: reports, error: reportsError } = await supabase
     .from('case_reports')
@@ -734,7 +1127,7 @@ async function getHeatmapReports() {
   })
 }
 
-async function getReportsByAssignedOfficer(userId) {
+async function getReportsByAssignedOfficer(userId, options = {}) {
   // Step 1: Find the case_officer_id for this user
   const { data: officer, error: officerError } = await supabase
     .from('case_officers')
@@ -742,9 +1135,45 @@ async function getReportsByAssignedOfficer(userId) {
     .eq('user_id', userId)  // adjust if your FK column name differs
     .maybeSingle()
   if (officerError) throw officerError
-  if (!officer) return [] // user has no officer profile, return empty
+  if (!officer) {
+    return arguments.length > 1 ? emptyCasePage(normalizeCaseListOptions(options)) : []
+  } // user has no officer profile, return empty
 
   const caseOfficerId = officer.case_officer_id
+
+  if (arguments.length > 1) {
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('case_assignments')
+      .select('case_report_id')
+      .eq('case_officer_id', caseOfficerId)
+      .eq('is_active', true)
+    if (assignmentError) throw assignmentError
+
+    const caseIds = [...new Set((assignments || []).map((assignment) => assignment.case_report_id))]
+
+    return getPaginatedCaseReports({
+      options: { ...options, caseIds },
+      includeOfficerMap: false,
+      enrichReport: ({ report, legalMap, assessmentMap, duplicateMatches }) => ({
+        ...report,
+        assigned_officer: null,
+        assigned_officer_id: caseOfficerId,
+        assigned_legal_officer: null,
+        assigned_paralegal: null,
+        assigned_legal: (report.legal_case_assignments || [])
+          .filter(a => a.is_active)
+          .map(a => ({
+            legal_personnel_id: a.legal_personnel_id,
+            assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+            name: legalMap[a.legal_personnel_id] || null,
+          })),
+        possible_duplicates: duplicateMatches[report.case_report_id] || [],
+        ...(assessmentMap[report.case_report_id] || {}),
+        case_assignments: undefined,
+        legal_case_assignments: undefined,
+      }),
+    })
+  }
 
   // Step 2: Get only cases assigned to this officer
   const { data: reports, error: reportsError } = await supabase
@@ -844,11 +1273,35 @@ async function getReportsByAssignedOfficer(userId) {
   }, statusHistoryMap))
 }
 
-async function getReportsForLegal() {
+async function getReportsForLegal(options = {}) {
   const LEGAL_VISIBLE_STATUS_IDS = [4, 6, 7, 8, 9, 10, 11, 12];
   // 4=Verified-True, 6=Under Case Evaluation, 7=Case Filed,
   // 8=Investigation Ongoing, 9=Hearing Ongoing, 10=Dismissed,
   // 11=Perpetrator Convicted, 12=Resolved
+
+  if (arguments.length > 0) {
+    return getPaginatedCaseReports({
+      options,
+      scopeQuery: (query) => query.in('case_status_id', LEGAL_VISIBLE_STATUS_IDS),
+      includeOfficerMap: false,
+      enrichReport: ({ report, legalMap, assessmentMap, duplicateMatches }) => {
+        const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
+        return {
+          ...report,
+          assigned_officer: null,
+          assigned_legal: activeLegal.map(a => ({
+            legal_personnel_id: a.legal_personnel_id,
+            assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+            name: legalMap[a.legal_personnel_id] || null,
+          })),
+          possible_duplicates: duplicateMatches[report.case_report_id] || [],
+          ...(assessmentMap[report.case_report_id] || {}),
+          case_assignments: undefined,
+          legal_case_assignments: undefined,
+        }
+      },
+    })
+  }
 
   const { data: reports, error: reportsError } = await supabase
     .from('case_reports')

@@ -324,24 +324,37 @@ async function getCaseStats(req, res) {
 async function getAllCases(req, res) {
    try {
     const { role, id: userId } = req.user; // use 'role', not 'role_id'
+    const options = {
+      page: req.query.page,
+      limit: req.query.limit,
+      sortBy: req.query.sortBy,
+      sortDir: req.query.sortDir,
+      search: req.query.search,
+      status: req.query.status,
+      assignedOfficer: req.query.assignedOfficer,
+      caseType: req.query.caseType,
+      primaryCategory: req.query.primaryCategory,
+      incident_city: req.query.incident_city || req.query.city,
+      dateSubmitted: req.query.dateSubmitted,
+    };
 
     let reports;
 
     if (role === 'Admin') {
       // SECURITY: Scoped to Admin - prevents over-fetching rows
-      reports = await getAllReports();
+      reports = await getAllReports(options);
     } else if (role === 'Case Officer') {
       // SECURITY: Scoped to Case Officer - prevents over-fetching rows
-      reports = await getReportsByAssignedOfficer(userId);
+      reports = await getReportsByAssignedOfficer(userId, options);
     } else if (role === 'Legal Personnel') {
       // SECURITY: Scoped to Legal Personnel - prevents over-fetching rows
-      reports = await getReportsForLegal();
+      reports = await getReportsForLegal(options);
     } else {
       console.warn('[getAllCases] Access denied for role:', role);
       return res.status(403).json({ error: 'Access denied.' });
     }
 
-    return res.json({ data: reports });
+    return res.json(reports);
   } catch (err) {
     console.error('[getAllCases] Error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch cases.', details: err.message });
