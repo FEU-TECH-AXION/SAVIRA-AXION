@@ -44,6 +44,26 @@
   max-width: 480px;
 }
 
+.languagePicker {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: #4b5563;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.languagePicker select {
+  min-width: 120px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #1f2937;
+  background: #fff;
+}
+
 /* ── Typography ── */
 .title {
     font-family: poppins, sans-serif;

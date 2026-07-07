@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,20 +14,31 @@ import styles from './login.style';
 import { API_URL } from '../../lib/config';
 import { clearSession, saveSession } from '../../lib/session';
 import AppLoadingOverlay from '../../components/AppLoadingOverlay';
+import { LANGUAGE_OPTIONS, readLanguage, saveLanguage, translate } from '../../lib/i18n';
 
 const PLACEHOLDER_COLOR = '#6b7280';
 
 export default function Login() {
+  const [language, setLanguage] = useState('en');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const t = (key) => translate(language, key);
+
+  useEffect(() => {
+    readLanguage().then(setLanguage);
+  }, []);
+
+  const handleLanguageChange = async (nextLanguage) => {
+    setLanguage(await saveLanguage(nextLanguage));
+  };
 
   const handleSubmit = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
@@ -44,12 +55,12 @@ export default function Login() {
       try {
         data = JSON.parse(text);
       } catch {
-        Alert.alert('Error', 'The server returned an unexpected response. Please check the API URL.');
+        Alert.alert(t('error'), t('unexpectedServer'));
         return;
       }
 
       if (!res.ok) {
-        Alert.alert('Error', data.error || 'Login failed.');
+        Alert.alert(t('error'), data.error || t('loginFailed'));
         return;
       }
 
@@ -69,10 +80,10 @@ export default function Login() {
         router.replace(data.user?.must_change_password ? '/(auth)/change-password' : '/(complainant)/dashboard');
       } else {
         await clearSession();
-        Alert.alert('Unauthorized', 'This app is for complainants only.');
+        Alert.alert(t('unauthorized'), t('complainantsOnly'));
       }
     } catch (err) {
-      Alert.alert('Error', `Unable to connect to the server at ${API_URL}.`);
+      Alert.alert(t('error'), `${t('unableConnect')} ${API_URL}.`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -96,19 +107,35 @@ export default function Login() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.title}>Welcome Back!</Text>
+        <View style={styles.languageRow}>
+          <Text style={styles.languageLabel}>{t('language')}</Text>
+          <View style={styles.languageOptions}>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <Pressable
+                key={option.id}
+                style={[styles.languageOption, language === option.id && styles.languageOptionActive]}
+                onPress={() => handleLanguageChange(option.id)}
+              >
+                <Text style={[styles.languageOptionText, language === option.id && styles.languageOptionTextActive]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <Text style={styles.title}>{t('welcomeBack')}</Text>
 
         <View style={styles.signupRow}>
-          <Text style={styles.signupText}>Don't have an account yet? </Text>
+          <Text style={styles.signupText}>{t('noAccount')} </Text>
           <Pressable onPress={() => router.push('/(auth)/signup')}>
-            <Text style={styles.signupLink}>Sign Up</Text>
+            <Text style={styles.signupLink}>{t('signUp')}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.label}>E-mail</Text>
+        <Text style={styles.label}>{t('email')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="E-mail"
+          placeholder={t('email')}
           placeholderTextColor={PLACEHOLDER_COLOR}
           value={email}
           onChangeText={setEmail}
@@ -116,11 +143,11 @@ export default function Login() {
           keyboardType="email-address"
         />
 
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>{t('password')}</Text>
         <View style={styles.passwordWrap}>
           <TextInput
             style={styles.passwordInput}
-            placeholder="Password"
+            placeholder={t('password')}
             placeholderTextColor={PLACEHOLDER_COLOR}
             secureTextEntry={!showPassword}
             value={password}
@@ -145,12 +172,12 @@ export default function Login() {
             {rememberDevice && <Ionicons name="checkmark" size={14} color="#fff" />}
           </Pressable>
           <Text style={styles.checkLabel}>
-            Recognize this device for 30 days
+            {t('recognizeDevice')}
           </Text>
         </View>
 
         <Pressable onPress={() => router.push('/(auth)/forgot-password')} style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 12 }}>
-          <Text style={{ color: '#037F81', fontWeight: '800', fontSize: 13 }}>Forgot Password?</Text>
+          <Text style={{ color: '#037F81', fontWeight: '800', fontSize: 13 }}>{t('forgotPassword')}</Text>
         </Pressable>
 
         <Pressable
@@ -158,13 +185,13 @@ export default function Login() {
           onPress={handleSubmit}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Log In</Text>
+          <Text style={styles.btnText}>{t('logIn')}</Text>
         </Pressable>
       </View>
       <AppLoadingOverlay
         visible={loading}
-        title="Logging you in"
-        message="We're checking your account and opening your SAVIRA space."
+        title={t('loggingTitle')}
+        message={t('loggingMessage')}
       />
     </ScrollView>
   );

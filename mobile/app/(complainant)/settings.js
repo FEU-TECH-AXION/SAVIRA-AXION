@@ -31,6 +31,7 @@ import {
   readDisplayPrefs,
   saveDisplayPrefs,
 } from '../../lib/displayPreferences';
+import { LANGUAGE_OPTIONS, normalizeLanguage, translate } from '../../lib/i18n';
 
 const INPUT_PLACEHOLDER_COLOR = '#64748b';
 TextInput.defaultProps = TextInput.defaultProps || {};
@@ -428,6 +429,8 @@ export default function SettingsScreen() {
 
   // ── Display State ───────────────────────────────────
   const [displayPrefs, setDisplayPrefs] = useState(DEFAULT_DISPLAY_PREFS);
+  const displayLanguage = normalizeLanguage(displayPrefs.language);
+  const tDisplay = (key) => translate(displayLanguage, key);
 
   const displayColors = displayPrefs.highContrast
     ? { bg: '#ffffff', card: '#ffffff', text: '#000000', muted: '#111827', border: '#111827', primary: '#005f61' }
@@ -451,9 +454,9 @@ export default function SettingsScreen() {
   const handleDisplaySave = async () => {
     try {
       setDisplayPrefs(await saveDisplayPrefs(displayPrefs));
-      Alert.alert("Success", "Display preferences saved!");
+      Alert.alert(tDisplay("success"), tDisplay("preferencesSaved"));
     } catch {
-      Alert.alert("Error", "Display preferences could not be saved on this device.");
+      Alert.alert(tDisplay("error"), tDisplay("preferencesSaveError"));
     }
   };
 
@@ -884,10 +887,10 @@ export default function SettingsScreen() {
         {activeTab === 'Display' && (
           <View>
             <View style={[styles.section, displayStyles.section]}>
-               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Text & Readability</Text>
-               <Text style={[styles.fieldLabel, displayStyles.text, { fontSize: 13 * fontScale }]}>Font size</Text>
+               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>{tDisplay('textReadability')}</Text>
+               <Text style={[styles.fieldLabel, displayStyles.text, { fontSize: 13 * fontScale }]}>{tDisplay('fontSize')}</Text>
                <View style={styles.segmentGroup}>
-                 {[{id:'sm', l:'Small'}, {id:'md', l:'Default'}, {id:'lg', l:'Large'}].map(f => (
+                 {[{id:'sm', l:tDisplay('small')}, {id:'md', l:tDisplay('default')}, {id:'lg', l:tDisplay('large')}].map(f => (
                    <Pressable
                      key={f.id}
                      accessibilityRole="button"
@@ -900,14 +903,29 @@ export default function SettingsScreen() {
                    </Pressable>
                  ))}
                </View>
+               <Text style={[styles.fieldLabel, displayStyles.text, { fontSize: 13 * fontScale, marginTop: 16 }]}>{tDisplay('language')}</Text>
+               <View style={styles.segmentGroup}>
+                 {LANGUAGE_OPTIONS.map((option) => (
+                   <Pressable
+                     key={option.id}
+                     accessibilityRole="button"
+                     accessibilityLabel={option.label}
+                     accessibilityState={{ selected: displayLanguage === option.id }}
+                     style={[styles.segItem, displayLanguage === option.id && styles.segItemActive]}
+                     onPress={() => setDisplayPrefs({...displayPrefs, language: option.id})}
+                   >
+                     <Text style={[styles.segItemText, displayLanguage === option.id && styles.segItemTextActive, { fontSize: 13 * fontScale }]}>{option.label}</Text>
+                   </Pressable>
+                 ))}
+               </View>
             </View>
 
             <View style={[styles.section, displayStyles.section]}>
-               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>Accessibility</Text>
+               <Text style={[styles.sectionTitle, displayStyles.text, { fontSize: 18 * fontScale }]}>{tDisplay('accessibility')}</Text>
                {[
-                 { key: 'reducedMotion', title: 'Reduce motion', desc: 'Minimizes animations.' },
-                 { key: 'highContrast', title: 'High contrast', desc: 'Increases contrast between text and backgrounds.' },
-                 { key: 'screenReaderHints', title: 'Extended labels', desc: 'Adds more descriptive labels for screen readers.' },
+                 { key: 'reducedMotion', title: tDisplay('reduceMotion'), desc: tDisplay('reduceMotionDesc') },
+                 { key: 'highContrast', title: tDisplay('highContrast'), desc: tDisplay('highContrastDesc') },
+                 { key: 'screenReaderHints', title: tDisplay('extendedLabels'), desc: tDisplay('extendedLabelsDesc') },
                ].map(({key, title, desc}) => (
                  <View key={key} style={styles.prefRow}>
                    <View style={{ flex: 1, paddingRight: 10 }}>
@@ -923,7 +941,7 @@ export default function SettingsScreen() {
                  </View>
                ))}
                <Pressable style={[styles.btnPrimary, {marginTop: 15}]} onPress={handleDisplaySave}>
-                  <Text style={styles.btnPrimaryText}>Save Preferences</Text>
+                  <Text style={styles.btnPrimaryText}>{tDisplay('savePreferences')}</Text>
                </Pressable>
             </View>
           </View>
