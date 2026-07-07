@@ -1,14 +1,38 @@
 const supabase = require('../config/supabase')
 
+const DEFAULT_PAGE = 1
+const DEFAULT_LIMIT = 10
+const MAX_LIMIT = 100
+
+const normalizePagination = (filters = {}) => {
+    const hasPagination = filters.page !== undefined || filters.limit !== undefined
+    const page = Math.max(Number.parseInt(filters.page, 10) || DEFAULT_PAGE, 1)
+    const requestedLimit = Number.parseInt(filters.limit, 10) || DEFAULT_LIMIT
+    const limit = Math.min(Math.max(requestedLimit, 1), MAX_LIMIT)
+    return {
+        hasPagination,
+        page,
+        limit,
+        from: (page - 1) * limit,
+        to: (page - 1) * limit + limit - 1,
+    }
+}
+
 const getAll = async (filters = {}) => {
-    let query = supabase
+    const pagination = normalizePagination(filters)
+    const selectColumns = `
+        *,
+        slot:interview_slots(slot_id, slot_date, slot_time, duration_minutes),
+        interviewee:users!interviews_interviewee_user_id_fkey(user_id, first_name, last_name, email),
+        interviewer:users!interviews_interviewer_user_id_fkey(user_id, first_name, last_name, email)
+    `
+    let query = pagination.hasPagination
+        ? supabase
+            .from('interviews')
+            .select(selectColumns, { count: 'exact' })
+        : supabase
         .from('interviews')
-        .select(`
-            *,
-            slot:interview_slots(slot_id, slot_date, slot_time, duration_minutes),
-            interviewee:users!interviews_interviewee_user_id_fkey(user_id, first_name, last_name, email),
-            interviewer:users!interviews_interviewer_user_id_fkey(user_id, first_name, last_name, email)
-        `)
+            .select(selectColumns)
 
     if (filters.type)               query = query.eq('type', filters.type)
     if (filters.status)             query = query.eq('status', filters.status)
@@ -16,8 +40,19 @@ const getAll = async (filters = {}) => {
     if (filters.case_report_id)     query = query.eq('case_report_id', filters.case_report_id)
     if (filters.volunteer_application_id) query = query.eq('volunteer_application_id', filters.volunteer_application_id)
 
-    const { data, error } = await query.order('created_at', { ascending: false })
+    query = query.order('created_at', { ascending: false })
+    if (pagination.hasPagination) query = query.range(pagination.from, pagination.to)
+
+    const { data, error, count } = await query
     if (error) throw error
+    if (pagination.hasPagination) {
+        return {
+            data,
+            total: count || 0,
+            page: pagination.page,
+            limit: pagination.limit,
+        }
+    }
     return data
 }
 

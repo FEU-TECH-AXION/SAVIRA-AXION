@@ -54,7 +54,11 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
   });
 
   useEffect(() => {
-    if (open) setFormData((prev) => ({ ...prev, date: initialDate || "" }));
+    if (!open) return undefined;
+    const timer = setTimeout(() => {
+      setFormData((prev) => ({ ...prev, date: initialDate || "" }));
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, initialDate]);
 
   const handleChange = (field, value) => {
@@ -136,9 +140,11 @@ function EditSlotModal({ open, onClose, slot, onSave }) {
   const [formData, setFormData] = useState({ date: "", time: "09:00", duration: "60" });
 
   useEffect(() => {
-    if (open && slot) {
+    if (!open || !slot) return undefined;
+    const timer = setTimeout(() => {
       setFormData({ date: slot.date, time: slot.time, duration: String(slot.duration) });
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, slot]);
 
   const handleChange = (field, value) => setFormData((prev) => ({ ...prev, [field]: value }));
@@ -391,10 +397,16 @@ export default function VolunteerApplicationInterviewManagement() {
         const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
         const userId = user.user_id || user.id;
 
-        const slotsRes = await fetch(
-          `${API_URL}/api/interview_slots?slot_type=volunteer${isAdmin ? "" : `&created_by=${userId}`}`,
-          { credentials: "include" }
-        );
+        const [slotsRes, interviewsRes] = await Promise.all([
+          fetch(
+            `${API_URL}/api/interview_slots?slot_type=volunteer${isAdmin ? "" : `&created_by=${userId}`}`,
+            { credentials: "include" }
+          ),
+          fetch(
+            `${API_URL}/api/interviews?type=volunteer${isAdmin ? "" : `&interviewer_user_id=${userId}`}`,
+            { credentials: "include" }
+          ),
+        ]);
         const slotsJson = await slotsRes.json();
         setSlots(
           (slotsJson.data || []).map((s) => ({
@@ -408,10 +420,6 @@ export default function VolunteerApplicationInterviewManagement() {
           }))
         );
 
-        const interviewsRes = await fetch(
-          `${API_URL}/api/interviews?type=volunteer${isAdmin ? "" : `&interviewer_user_id=${userId}`}`,
-          { credentials: "include" }
-        );
         const interviewsJson = await interviewsRes.json();
         setInterviews(
           (interviewsJson.data || []).map((iv) => ({

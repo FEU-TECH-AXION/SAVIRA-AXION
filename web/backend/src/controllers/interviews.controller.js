@@ -98,6 +98,146 @@ const canAccessInterview = async (req, interview) => {
     return false
 }
 
+const uniqueIds = (values) => [...new Set(values.filter(Boolean))]
+
+const getPaginatedSlice = (items = [], query = {}) => {
+    const hasPagination = query.page !== undefined || query.limit !== undefined
+    const page = Math.max(Number.parseInt(query.page, 10) || 1, 1)
+    const requestedLimit = Number.parseInt(query.limit, 10) || 10
+    const limit = Math.min(Math.max(requestedLimit, 1), 100)
+    if (!hasPagination) return { data: items }
+    const from = (page - 1) * limit
+    return {
+        data: items.slice(from, from + limit),
+        total: items.length,
+        page,
+        limit,
+    }
+}
+
+const getOwnedCaseReportIds = async (caseReportIds, userId) => {
+    const ids = uniqueIds(caseReportIds)
+    if (!ids.length || !userId) return new Set()
+
+    const { data: reports, error: reportError } = await supabase
+        .from('case_reports')
+        .select('case_report_id, complainant_id')
+        .in('case_report_id', ids)
+    if (reportError) throw reportError
+
+    const complainantIds = uniqueIds((reports || []).map((report) => report.complainant_id))
+    if (!complainantIds.length) return new Set()
+
+    const { data: complainants, error: complainantError } = await supabase
+        .from('complainants')
+        .select('complainant_id, user_id')
+        .in('complainant_id', complainantIds)
+    if (complainantError) throw complainantError
+
+    const ownedComplainantIds = new Set(
+        (complainants || [])
+            .filter((complainant) => String(complainant.user_id) === String(userId))
+            .map((complainant) => complainant.complainant_id)
+    )
+
+    return new Set(
+        (reports || [])
+            .filter((report) => ownedComplainantIds.has(report.complainant_id))
+            .map((report) => report.case_report_id)
+    )
+}
+
+const getAssignedCaseReportIds = async (caseReportIds, userId) => {
+    const ids = uniqueIds(caseReportIds)
+    if (!ids.length || !userId) return new Set()
+
+    const { data: officer, error: officerError } = await supabase
+        .from('case_officers')
+        .select('case_officer_id')
+        .eq('user_id', userId)
+        .maybeSingle()
+    if (officerError || !officer) return new Set()
+
+    const { data: assignments, error: assignmentError } = await supabase
+        .from('case_assignments')
+        .select('case_report_id')
+        .in('case_report_id', ids)
+        .eq('case_officer_id', officer.case_officer_id)
+        .eq('is_active', true)
+    if (assignmentError) throw assignmentError
+
+    return new Set((assignments || []).map((assignment) => assignment.case_report_id))
+}
+
+const getOwnedVolunteerApplicationIds = async (applicationIds, userId) => {
+    const ids = uniqueIds(applicationIds)
+    if (!ids.length || !userId) return new Set()
+
+    const { data: applications, error: applicationError } = await supabase
+        .from('volunteer_applications')
+        .select('volunteer_application_id, volunteer_applicant_id')
+        .in('volunteer_application_id', ids)
+    if (applicationError) throw applicationError
+
+    const applicantIds = uniqueIds((applications || []).map((application) => application.volunteer_applicant_id))
+    if (!applicantIds.length) return new Set()
+
+    const { data: applicants, error: applicantError } = await supabase
+        .from('volunteer_applicants')
+        .select('volunteer_applicant_id, user_id')
+        .in('volunteer_applicant_id', applicantIds)
+    if (applicantError) throw applicantError
+
+    const ownedApplicantIds = new Set(
+        (applicants || [])
+            .filter((applicant) => String(applicant.user_id) === String(userId))
+            .map((applicant) => applicant.volunteer_applicant_id)
+    )
+
+    return new Set(
+        (applications || [])
+            .filter((application) => ownedApplicantIds.has(application.volunteer_applicant_id))
+            .map((application) => application.volunteer_application_id)
+    )
+}
+
+const filterAccessibleInterviews = async (req, interviews = []) => {
+    const userId = actorId(req)
+    if (!userId || !Array.isArray(interviews)) return []
+    if (isAdmin(req)) return interviews
+
+    const remaining = interviews.filter((interview) =>
+        String(interview.interviewee_user_id) !== String(userId) &&
+        String(interview.interviewer_user_id) !== String(userId)
+    )
+    const caseReportIds = remaining
+        .filter((interview) => normalizeInterviewType(interview.type) === 'case_report')
+        .map((interview) => interview.case_report_id)
+    const volunteerApplicationIds = remaining
+        .filter((interview) => isVolunteerType(interview.type))
+        .map((interview) => interview.volunteer_application_id)
+
+    const [ownedCaseIds, assignedCaseIds, ownedApplicationIds] = await Promise.all([
+        getOwnedCaseReportIds(caseReportIds, userId),
+        isCaseOfficer(req) ? getAssignedCaseReportIds(caseReportIds, userId) : Promise.resolve(new Set()),
+        getOwnedVolunteerApplicationIds(volunteerApplicationIds, userId),
+    ])
+
+    return interviews.filter((interview) => {
+        if (String(interview.interviewee_user_id) === String(userId)) return true
+        if (String(interview.interviewer_user_id) === String(userId)) return true
+
+        const type = normalizeInterviewType(interview.type)
+        if (type === 'case_report') {
+            return ownedCaseIds.has(interview.case_report_id) || assignedCaseIds.has(interview.case_report_id)
+        }
+        if (isVolunteerType(type)) {
+            return ownedApplicationIds.has(interview.volunteer_application_id)
+        }
+        return false
+    })
+}
+
 const canAccessInterviewFilters = async (req, filters) => {
     const userId = actorId(req)
     if (!userId) return false
@@ -217,12 +357,19 @@ const getItems = async (req, res) => {
         if (!await canAccessInterviewFilters(req, filters)) {
             return res.status(403).json({ error: 'Forbidden' })
         }
-        const data = await InterviewModel.getAll(filters)
-        const visible = []
-        for (const interview of data || []) {
-            if (await canAccessInterview(req, interview)) visible.push(interview)
+        if (isAdmin(req)) {
+            const result = await InterviewModel.getAll(filters)
+            if (Array.isArray(result)) return res.json({ data: result })
+            return res.json(result)
         }
-        res.json({ data: visible })
+
+        const baseFilters = { ...filters }
+        delete baseFilters.page
+        delete baseFilters.limit
+        const data = await InterviewModel.getAll(baseFilters)
+        const visible = await filterAccessibleInterviews(req, data || [])
+        const paginated = getPaginatedSlice(visible, req.query)
+        res.json(paginated)
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -250,10 +397,7 @@ const getCaseManagementItems = async (req, res) => {
             InterviewModel.getAll(interviewFilters),
         ])
 
-        const visibleInterviews = []
-        for (const interview of interviews || []) {
-            if (await canAccessInterview(req, interview)) visibleInterviews.push(interview)
-        }
+        const visibleInterviews = await filterAccessibleInterviews(req, interviews || [])
 
         res.json({
             data: {
