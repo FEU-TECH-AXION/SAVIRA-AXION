@@ -118,96 +118,81 @@ async function normalizeSubmittedReportStatuses(reports = []) {
   )
 }
 
-async function getCaseById(caseReportId) {
-  // Step 1: Get the case report
-  const { data: report, error } = await supabase
-    .from('case_reports')
-    .select('*')
-    .eq('case_report_id', caseReportId)
-    .eq('is_current', true)
-    .maybeSingle()
-  if (error) throw error
-  if (!report) return null
-  let normalizedReport = await normalizeSubmittedReportStatus(report)
-
+async function getApprovedFieldChangesForCase(caseReportId) {
   const { data: resolvedFollowUps, error: resolvedFollowUpsError } = await supabase
     .from('follow_up_requests')
     .select('id, resolved_at')
     .eq('case_id', caseReportId)
     .eq('status', 'resolved')
     .order('resolved_at', { ascending: true })
+
   if (resolvedFollowUpsError) {
     console.warn('[getCaseById] Approved follow-up metadata unavailable:', resolvedFollowUpsError.message)
-  } else if (resolvedFollowUps?.length) {
-    const requestOrder = new Map(
-      resolvedFollowUps.map((request, index) => [request.id, index])
-    )
-    const { data: approvedChanges, error: approvedChangesError } = await supabase
-      .from('field_changes')
-      .select('follow_up_request_id, field_key, previous_value, new_value, changed_at')
-      .in('follow_up_request_id', resolvedFollowUps.map((request) => request.id))
-      .order('changed_at', { ascending: true })
-    if (approvedChangesError) {
-      console.warn('[getCaseById] Approved field changes unavailable:', approvedChangesError.message)
-    } else {
-      const orderedChanges = [...(approvedChanges || [])].sort((a, b) => {
-        const requestDifference =
-          requestOrder.get(a.follow_up_request_id) - requestOrder.get(b.follow_up_request_id)
-        if (requestDifference !== 0) return requestDifference
-        return new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
-      })
-      normalizedReport = mergeApprovedFieldChanges(normalizedReport, orderedChanges)
-    }
+    return []
+  }
+  if (!resolvedFollowUps?.length) return []
+
+  const requestOrder = new Map(
+    resolvedFollowUps.map((request, index) => [request.id, index])
+  )
+  const { data: approvedChanges, error: approvedChangesError } = await supabase
+    .from('field_changes')
+    .select('follow_up_request_id, field_key, previous_value, new_value, changed_at')
+    .in('follow_up_request_id', resolvedFollowUps.map((request) => request.id))
+    .order('changed_at', { ascending: true })
+
+  if (approvedChangesError) {
+    console.warn('[getCaseById] Approved field changes unavailable:', approvedChangesError.message)
+    return []
   }
 
-  // Step 2: Get the complainant's user_id
-  const { data: complainant, error: complainantError } = await supabase
-    .from('complainants')
-    .select('user_id')
-    .eq('complainant_id', normalizedReport.complainant_id)
-    .maybeSingle()
-  if (complainantError) throw complainantError
+  return [...(approvedChanges || [])].sort((a, b) => {
+    const requestDifference =
+      requestOrder.get(a.follow_up_request_id) - requestOrder.get(b.follow_up_request_id)
+    if (requestDifference !== 0) return requestDifference
+    return new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
+  })
+}
 
-  // Step 3: Get all assessments and merge latest non-null values per field
-  const { data: assessments, error: assessmentError } = await supabase
+async function getCaseAssessmentDetails(caseReportId) {
+  const { data: assessments, error } = await supabase
     .from('case_assessments')
     .select(`
-      case_type,
-      primary_category,
-      additional_categories,
-      referral_required,
-      referral_body,
-      endorsement
+      *,
+      case_status_history (
+        display_id,
+        approval_status,
+        approved_at,
+        case_status ( case_status_name )
+      )
     `)
     .eq('case_report_id', caseReportId)
     .order('created_at', { ascending: false })
-  if (assessmentError) throw assessmentError
+  if (error) throw error
 
   const merged = {
-    case_type:             null,
-    primary_category:      null,
+    case_type: null,
+    primary_category: null,
     additional_categories: null,
-    referral_required:     false,
-    referral_body:         null,
-    endorsement:           null,
-  }
-  for (const row of assessments || []) {
-    if (!merged.case_type && row.case_type?.length > 0)
-      merged.case_type = row.case_type
-    if (!merged.primary_category && row.primary_category)
-      merged.primary_category = row.primary_category
-    if (!merged.additional_categories && row.additional_categories?.length > 0)
-      merged.additional_categories = row.additional_categories
-    if (!merged.referral_required && row.referral_required)
-      merged.referral_required = row.referral_required
-    if (!merged.referral_body && row.referral_body)
-      merged.referral_body = row.referral_body
-    if (!merged.endorsement && row.endorsement)
-      merged.endorsement = row.endorsement
+    referral_required: false,
+    referral_body: null,
+    endorsement: null,
   }
 
-  // Step 4: Get active case officer assignment
-  const { data: assignments, error: assignmentError } = await supabase
+  for (const row of assessments || []) {
+    if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
+    if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
+    if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
+    if (!merged.referral_required && row.referral_required) merged.referral_required = row.referral_required
+    if (!merged.referral_body && row.referral_body) merged.referral_body = row.referral_body
+    if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
+  }
+
+  return { merged, assessmentHistory: assessments || [] }
+}
+
+async function getCaseAssignmentsForDetail(caseReportId) {
+  const { data: assignments, error } = await supabase
     .from('case_assignments')
     .select(`
       case_officer_id,
@@ -220,61 +205,147 @@ async function getCaseById(caseReportId) {
     `)
     .eq('case_report_id', caseReportId)
     .eq('is_active', true)
-  if (assignmentError) throw assignmentError
+  if (error) throw error
 
   const officerNames = (assignments || [])
     .map((assignment) => assignment.case_officers?.users)
     .filter(Boolean)
     .map((user) => `${user.first_name || ''} ${user.last_name || ''}`.trim())
     .filter(Boolean)
-  const officerName = officerNames.length > 0 ? officerNames.join(', ') : null
 
-  const { data: evidenceRows, error: evidenceError } = await supabase
+  return officerNames.length > 0 ? officerNames.join(', ') : null
+}
+
+async function getCaseEvidencesWithUrls(caseReportId) {
+  const { data: evidenceRows, error } = await supabase
     .from('evidences')
     .select('*')
     .eq('case_report_id', caseReportId)
-  if (evidenceError) {
-    console.warn('[getCaseById] Evidence metadata unavailable:', evidenceError.message)
+
+  if (error) {
+    console.warn('[getCaseById] Evidence metadata unavailable:', error.message)
+    return []
   }
 
   let evidences = evidenceRows || []
   const evidencePaths = evidences.map((item) => item.file_path).filter(Boolean)
-  if (evidencePaths.length > 0) {
-    const { data: signedRows, error: signedError } = await supabase.storage
-      .from('case-evidence')
-      .createSignedUrls(evidencePaths, 60 * 60)
-    if (signedError) {
-      console.warn('[getCaseById] Evidence URLs unavailable:', signedError.message)
-    } else {
-      const urlByPath = new Map((signedRows || []).map((item) => [item.path, item.signedUrl]))
-      evidences = evidences.map((item) => ({
-        ...item,
-        url: urlByPath.get(item.file_path) || null,
-      }))
-    }
+  if (evidencePaths.length === 0) return evidences
+
+  const { data: signedRows, error: signedError } = await supabase.storage
+    .from('case-evidence')
+    .createSignedUrls(evidencePaths, 60 * 60)
+
+  if (signedError) {
+    console.warn('[getCaseById] Evidence URLs unavailable:', signedError.message)
+    return evidences
   }
 
-  const followUpSummary = await getFollowUpSummary([caseReportId])
-  const duplicateMatches = await getDuplicateMatches([caseReportId])
-  const { data: withdrawalRequest, error: withdrawalError } = await supabase
+  const urlByPath = new Map((signedRows || []).map((item) => [item.path, item.signedUrl]))
+  return evidences.map((item) => ({
+    ...item,
+    url: urlByPath.get(item.file_path) || null,
+  }))
+}
+
+async function getLatestWithdrawalRequest(caseReportId) {
+  const { data, error } = await supabase
     .from('case_withdrawal_requests')
     .select('id, status, requested_at, reviewed_at')
     .eq('case_report_id', caseReportId)
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (withdrawalError && !['42P01', '42501'].includes(withdrawalError.code)) {
-    console.warn('[getCaseById] Withdrawal metadata unavailable:', withdrawalError.message)
+
+  if (error && !['42P01', '42501'].includes(error.code)) {
+    console.warn('[getCaseById] Withdrawal metadata unavailable:', error.message)
+  }
+
+  return data || null
+}
+
+async function getCaseById(caseReportId) {
+  const { data: report, error } = await supabase
+    .from('case_reports')
+    .select('*')
+    .eq('case_report_id', caseReportId)
+    .eq('is_current', true)
+    .maybeSingle()
+  if (error) throw error
+  if (!report) return null
+  let normalizedReport = await normalizeSubmittedReportStatus(report)
+
+  const [
+    approvedChanges,
+    complainantResult,
+    assessmentDetails,
+    officerName,
+    evidences,
+    followUpSummary,
+    duplicateMatches,
+    statusHistoryMap,
+    withdrawalRequest,
+  ] = await Promise.all([
+    getApprovedFieldChangesForCase(caseReportId),
+    supabase
+      .from('complainants')
+      .select('user_id')
+      .eq('complainant_id', normalizedReport.complainant_id)
+      .maybeSingle(),
+    getCaseAssessmentDetails(caseReportId),
+    getCaseAssignmentsForDetail(caseReportId),
+    getCaseEvidencesWithUrls(caseReportId),
+    getFollowUpSummary([caseReportId]),
+    getDuplicateMatches([caseReportId]),
+    getStatusHistoryMap([caseReportId], { staffView: true }),
+    getLatestWithdrawalRequest(caseReportId),
+  ])
+
+  if (complainantResult.error) throw complainantResult.error
+  if (approvedChanges.length > 0) {
+    normalizedReport = mergeApprovedFieldChanges(normalizedReport, approvedChanges)
   }
 
   return {
     ...normalizedReport,
-    complainant_user_id: complainant?.user_id || null,
+    complainant_user_id: complainantResult.data?.user_id || null,
     assigned_officer:    officerName,
     evidences,
     follow_up_summary:    followUpSummary[caseReportId] || null,
     withdrawal_request:   withdrawalRequest || null,
     possible_duplicates:  duplicateMatches[caseReportId] || [],
+    status_history:       statusHistoryMap[caseReportId] || [],
+    assessment_history:   assessmentDetails.assessmentHistory,
+    ...assessmentDetails.merged,
+  }
+}
+
+async function getCaseSummaryById(caseReportId) {
+  const { data: report, error } = await supabase
+    .from('case_reports')
+    .select(`
+      case_report_id,
+      complainant_id,
+      name,
+      email,
+      contact_number,
+      incident_date,
+      incident_city,
+      incident_province,
+      incident_location,
+      incident_description,
+      case_status_id,
+      created_at,
+      is_current
+    `)
+    .eq('case_report_id', caseReportId)
+    .eq('is_current', true)
+    .maybeSingle()
+  if (error) throw error
+  if (!report) return null
+
+  const { merged } = await getCaseAssessmentDetails(caseReportId)
+  return {
+    ...report,
     ...merged,
   }
 }
@@ -1456,4 +1527,4 @@ async function getReportsByAssignedLegal(userId) {
   })
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal }
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, getCaseSummaryById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal }

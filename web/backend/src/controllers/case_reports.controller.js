@@ -1,6 +1,6 @@
 const CaseReports = require('../models/case_reports.model')
 const { findOrCreateOrganization } = require("../models/organizations.model");
-const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal } = require("../models/case_reports.model");
+const { getComplainantId, createReport, getReportsByUserId, getAllReports,  getCaseById: fetchCaseById, getCaseSummaryById: fetchCaseSummaryById, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal } = require("../models/case_reports.model");
 const { runNLPAnalysis } = require('../services/nlp.service');
 const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatmapData, getFilteredReports } = require('../services/heatmap.service');
 const { randomUUID } = require('crypto');
@@ -239,6 +239,21 @@ async function getUserReports(req, res) {
   } catch (err) {
     console.error('[getUserReports]', err.message);
     return res.status(500).json({ error: 'Failed to fetch reports.' });
+  }
+}
+
+async function getCaseSummaryById(req, res) {
+  try {
+    const { id } = req.params;
+    const report = await fetchCaseSummaryById(id);
+    if (!report) return res.status(404).json({ error: 'Case not found' });
+    return res.json({ data: report });
+  } catch (err) {
+    console.error('[getCaseSummaryById]', err);
+    return res.status(500).json({
+      error: 'Failed to fetch case summary.',
+      details: err?.message || String(err),
+    });
   }
 }
 
@@ -769,4 +784,4 @@ async function uploadEvidenceFiles(caseReportId, files, uploadedById) {
   return { uploaded, failedFiles };
 }
 
-module.exports = { getItems, createItem, submitReport, getUserReports, getCaseStats, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate, uploadEvidenceFiles }
+module.exports = { getItems, createItem, submitReport, getUserReports, getCaseStats, getAllCases, getCaseById, getCaseSummaryById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate, uploadEvidenceFiles }

@@ -149,7 +149,10 @@ const mapCaseReportToViewData = (data) => {
     email:                   data.email,
     contactNumber:           data.contact_number,
     caseType:                data.case_type || null,
-    caseCategory:            data.case_category || null,
+    caseCategory:            data.primary_category || data.case_category || null,
+    primaryCategory:         data.primary_category || data.case_category || null,
+    alsoInvolves:            data.additional_categories || [],
+    additionalCategories:    data.additional_categories || [],
     referralRequired:        data.referral_required || false,
     referralBody:            data.referral_body || null,
     assignedParalegal:       data.assigned_paralegal || null,
@@ -161,17 +164,20 @@ const mapCaseReportToViewData = (data) => {
     internalNotes:           data.internal_notes || null,
     pendingApproval:         null,
     followUpSummary:         data.follow_up_summary || null,
-    followUps:               [],
+    assessmentHistory:       data.assessment_history || [],
+    followUps:               data.follow_ups || [],
     withdrawalRequest:       data.withdrawal_request || null,
     possibleDuplicates:      data.possible_duplicates || [],
-    statusHistory: [
-      {
-        status: STATUS_STEP[data.case_status_id] || "For Verification",
-        date:   new Date(data.created_at).toLocaleDateString("en-PH"),
-        by:     data.assigned_officer || "System",
-        notes:  "Report received and logged.",
-      },
-    ],
+    statusHistory: data.status_history?.length
+      ? data.status_history
+      : [
+          {
+            status: STATUS_STEP[data.case_status_id] || "For Verification",
+            date:   new Date(data.created_at).toLocaleDateString("en-PH"),
+            by:     data.assigned_officer || "System",
+            notes:  "Report received and logged.",
+          },
+        ],
   };
 };
 
@@ -432,7 +438,7 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
         {confidence && <ConfidenceBar confidence={confidence} />}
         {basis && (
           <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#4b5563", lineHeight: 1.5, fontStyle: "italic" }}>
-            "{basis}"
+            &quot;{basis}&quot;
           </p>
         )}
       </div>
@@ -486,7 +492,7 @@ export function NLPAnalysisTab({ caseReportId, isAdmin, onRequestClarification }
 
             {/* Confidence tier disclaimer */}
             <p style={{ margin: "0 0 12px", fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", lineHeight: 1.5 }}>
-              Confidence tiers reflect the AI's assessment based on language in the report — not statistical probabilities.
+              Confidence tiers reflect the AI&apos;s assessment based on language in the report — not statistical probabilities.
               High = clearly described · Moderate = implied · Low = vaguely suggested.
             </p>
 
@@ -664,7 +670,15 @@ function InviteToInterviewModal({ open, onClose, caseData, actorName, showToast,
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState(null);
 
-  useEffect(() => { if (open) { setExpiryDays("7"); setNotes(""); setError(null); } }, [open]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const timer = setTimeout(() => {
+      setExpiryDays("7");
+      setNotes("");
+      setError(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [open]);
 
   async function handleSend() {
     console.log("handleSend fired", { userId, caseDataId: caseData.id, reporterId: caseData.reporterId });
@@ -1671,89 +1685,52 @@ export default function ViewCase() {
   };
 
   useEffect(() => {
-    if (!caseId) { setError("No case ID provided"); setLoading(false); return; }
+    if (!caseId) {
+      const timer = setTimeout(() => {
+        setError("No case ID provided");
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
     const fetchCase = async () => {
       try {
-        const res = await authFetch(`${API_URL}/api/case_reports/${caseId}`);
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
+        const [caseRes, followUpsResult] = await Promise.all([
+          authFetch(`${API_URL}/api/case_reports/${caseId}`),
+          authFetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, { cache: "no-store" })
+            .then(async (response) => ({
+              ok: response.ok,
+              data: response.ok ? (await response.json().catch(() => ({}))).data || [] : [],
+            }))
+            .catch(() => ({ ok: false, data: [] })),
+        ]);
+
+        if (!caseRes.ok) {
+          const body = await caseRes.json().catch(() => ({}));
           throw new Error(body.error || "Case not found");
         }
-        const { data } = await res.json();
-        setCaseData(mapCaseReportToViewData(data));
-
-        const asmRes = await authFetch(`${API_URL}/api/case_assessments/case/${data.case_report_id}`);
-        if (asmRes.ok) {
-          const asmJson = await asmRes.json();
-          const assessments = asmJson.data || [];
-          if (assessments.length > 0) {
-            const latestType = assessments.find((record) => Array.isArray(record.case_type) ? record.case_type.length > 0 : Boolean(record.case_type));
-            const latestCategory = assessments.find((record) => record.primary_category || (record.additional_categories || []).length > 0);
-            const latestReferral = assessments.find((record) =>
-              record.referral_required !== null &&
-              record.referral_required !== undefined
-            );
-            setCaseData((prev) => ({
-              ...prev,
-              assessmentHistory: assessments,
-              caseType:          latestType?.case_type || prev.caseType,
-              caseCategory:      latestCategory?.primary_category || prev.caseCategory,
-              primaryCategory:   latestCategory?.primary_category || prev.primaryCategory || prev.caseCategory,
-              alsoInvolves:      latestCategory?.additional_categories || prev.alsoInvolves || [],
-              additionalCategories: latestCategory?.additional_categories || prev.additionalCategories || prev.alsoInvolves || [],
-              referralRequired:  latestReferral?.referral_required ?? prev.referralRequired,
-              referralBody:      latestReferral?.referral_body ?? prev.referralBody,
-              endorsementStatus: latestReferral
-                ? latestReferral.endorsement?.endorsed_to
-                  ? `Endorsed to ${latestReferral.endorsement.endorsed_to}`
-                  : null
-                : prev.endorsementStatus,
-            }));
-          }
-        }
-
-        const historyRes = await authFetch(`${API_URL}/api/case_status_history/${data.case_report_id}?staffView=true`);
-        if (historyRes.ok) {
-          const historyJson = await historyRes.json().catch(() => ({}));
-          const statusHistory = historyJson.data || [];
-          if (statusHistory.length > 0) {
-            const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
-            setCaseData((prev) => ({
-              ...prev,
-              pendingApproval: pending ? {
-                historyId: pending.historyId,
-                proposedStatus: pending.status,
-                submittedBy: pending.by,
-                date: pending.date,
-                notes: pending.notes,
-                formData: pending.formData,
-              } : null,
-              statusHistory: [
-                ...(prev.statusHistory || []).filter((h) => h.notes === "Report received and logged."),
-                ...statusHistory,
-              ],
-            }));
-          }
-        }
-
-        const followUpsRes = await authFetch(
-          `${API_URL}/api/case_reports/${data.case_report_id}/follow-ups`,
-          { cache: "no-store" }
-        );
-        if (followUpsRes.ok) {
-          const followUpsJson = await followUpsRes.json().catch(() => ({}));
-          setCaseData((prev) => ({
-            ...prev,
-            followUps: followUpsJson.data || [],
-          }));
-        }
+        const { data } = await caseRes.json();
+        const mappedCase = mapCaseReportToViewData(data);
+        const statusHistory = mappedCase.statusHistory || [];
+        const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
+        setCaseData({
+          ...mappedCase,
+          followUps: followUpsResult.data,
+          pendingApproval: pending ? {
+            historyId: pending.historyId,
+            proposedStatus: pending.status,
+            submittedBy: pending.by,
+            date: pending.date,
+            notes: pending.notes,
+            formData: pending.formData,
+          } : null,
+        });
 
         setCompareCaseData(null);
         setCompareError(null);
         if (compareCaseId && String(compareCaseId) !== String(data.case_report_id)) {
           try {
             setCompareLoading(true);
-            const compareRes = await authFetch(`${API_URL}/api/case_reports/${compareCaseId}`);
+            const compareRes = await authFetch(`${API_URL}/api/case_reports/${compareCaseId}/summary`);
             if (!compareRes.ok) {
               const body = await compareRes.json().catch(() => ({}));
               throw new Error(body.error || "Matched case not found");
@@ -1773,6 +1750,7 @@ export default function ViewCase() {
       }
     };
     fetchCase();
+    return undefined;
   }, [caseId, caseRefreshKey, compareCaseId]);
 
   useEffect(() => {

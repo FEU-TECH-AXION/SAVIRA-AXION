@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { getItems, createItem, submitReport, getUserReports, getCaseStats, getAllCases, getCaseById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
+const { getItems, createItem, submitReport, getUserReports, getCaseStats, getAllCases, getCaseById, getCaseSummaryById, getNLPAnalysis, getHeatmapData, getHeatmapMeta, updateItem, withdrawCase, undoWithdrawCase, dismissDuplicate } = require('../controllers/case_reports.controller')
 const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
@@ -47,6 +47,7 @@ router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
 router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, dismissDuplicate);
 router.get('/:id/public-updates', verifyToken, requireCaseReportAccess, getPublicUpdates);
 router.get('/:id/nlp', verifyToken, requireCaseReportAccess, getNLPAnalysis); 
+router.get('/:id/summary', verifyToken, requireCaseReportAccess, getCaseSummaryById);
 router.get('/:id',     verifyToken, requireCaseReportAccess, getCaseById);
 router.get('/',        verifyToken, requireCaseAccess, getItems);
 router.post('/',       verifyToken, authorize('Admin'), createItem);
