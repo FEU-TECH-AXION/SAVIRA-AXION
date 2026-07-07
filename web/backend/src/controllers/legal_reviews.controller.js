@@ -3,6 +3,7 @@ const LegalPersonnels = require('../models/legal_personnels.model')
 const {
   getAllReports,
   getReportsForLegal,
+  getLegalManagementReports,
 } = require('../models/case_reports.model')
 const supabase = require('../config/supabase')
 
@@ -108,16 +109,59 @@ function toCalendarPayload(review) {
   }
 }
 
-const LEGAL_STATUS_IDS = new Set([4, 6, 7, 8, 9, 10, 11, 12])
+const LEGAL_STATUS_ID_VALUES = [4, 6, 7, 8, 9, 10, 11, 12]
+const LEGAL_ACTIVE_STATUS_ID_VALUES = [4, 6, 7, 8, 9]
+const LEGAL_STATUS_IDS = new Set(LEGAL_STATUS_ID_VALUES)
+const LEGAL_MANAGEMENT_SORT_FIELDS = {
+  caseId: 'caseId',
+  id: 'caseId',
+  status: 'status',
+  dateReported: 'dateSubmitted',
+  dateSubmitted: 'dateSubmitted',
+  city: 'city',
+  region: 'region',
+}
 
 function getRequesterRole(req) {
   return String(req.user?.role || req.user?.role_name || '').toLowerCase()
 }
 
-async function getLegalReviewReports(req) {
+function hasPaginatedManagementQuery(req) {
+  return req.query?.page !== undefined || req.query?.limit !== undefined
+}
+
+async function buildManagementCaseOptions(req) {
+  const query = req.query || {}
+  const endorsedCaseIds = await LegalReviews.getCaseIdsByEndorsedTo(query.endorsedTo)
+  const sortBy = LEGAL_MANAGEMENT_SORT_FIELDS[query.sortBy] || 'dateSubmitted'
+
+  return {
+    page: query.page,
+    limit: query.limit,
+    sortBy,
+    sortDir: query.sortDir,
+    search: query.search,
+    status: query.status,
+    city: query.city,
+    dateSubmitted: query.dateReported,
+    caseType: query.caseType,
+    primaryCategory: query.caseCategory,
+    assignedLegalOfficer: query.assignedLegalOfficer,
+    assignedParalegal: query.assignedParalegal,
+    caseIds: endorsedCaseIds,
+  }
+}
+
+async function getLegalReviewReports(req, options = null) {
   const role = getRequesterRole(req)
-  if (role === 'admin') return getAllReports()
-  if (role === 'legal personnel') return getReportsForLegal()
+  if (role === 'admin') {
+    return options
+      ? getLegalManagementReports({ ...options, statusIds: LEGAL_STATUS_ID_VALUES })
+      : getAllReports()
+  }
+  if (role === 'legal personnel') {
+    return options ? getLegalManagementReports(options) : getReportsForLegal()
+  }
   return []
 }
 
@@ -128,16 +172,27 @@ async function getManagement(req, res) {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
-    const [reports, legalPersonnels] = await Promise.all([
-      getLegalReviewReports(req),
+    const usePagination = hasPaginatedManagementQuery(req)
+    const options = usePagination ? await buildManagementCaseOptions(req) : null
+    const [reportResult, legalPersonnels, stats] = await Promise.all([
+      getLegalReviewReports(req, options),
       LegalPersonnels.getAll(),
+      LegalReviews.getManagementStats({
+        legalStatusIds: LEGAL_STATUS_ID_VALUES,
+        activeStatusIds: LEGAL_ACTIVE_STATUS_ID_VALUES,
+        underEvaluationStatusId: 6,
+      }),
     ])
 
+    const reports = usePagination ? reportResult.data : reportResult
     const legalReports = (reports || []).filter((report) =>
       LEGAL_STATUS_IDS.has(Number(report.case_status_id))
     )
     const caseIds = legalReports.map((report) => report.case_report_id)
-    const reviewsByCase = await LegalReviews.getLatestByCaseIds(caseIds)
+    const [reviewsByCase, pendingHistoryByCase] = await Promise.all([
+      LegalReviews.getLatestByCaseIds(caseIds),
+      LegalReviews.getPendingStatusHistoryByCaseIds(caseIds),
+    ])
     const logsByReview = await LegalReviews.getLogsByReviewIds(
       Object.values(reviewsByCase).map((review) => review?.legal_review_id)
     )
@@ -150,9 +205,16 @@ async function getManagement(req, res) {
 
     return res.json({
       data: {
-        cases: legalReports,
+        cases: legalReports.map((report) => ({
+          ...report,
+          status_history: pendingHistoryByCase[report.case_report_id] || report.status_history || [],
+        })),
         legal_personnels: legalPersonnels,
         reviews,
+        total: usePagination ? reportResult.total : legalReports.length,
+        page: usePagination ? reportResult.page : 1,
+        limit: usePagination ? reportResult.limit : legalReports.length,
+        stats,
       },
     })
   } catch (err) {

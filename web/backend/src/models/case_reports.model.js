@@ -648,6 +648,15 @@ function getDateRangeFilter(value) {
     start.setDate(current.getDate() - 30)
     return { start, end: endOfDay(today) }
   }
+  if (text.startsWith('custom|')) {
+    const [, fromDate, toDate] = text.split('|')
+    if (fromDate && toDate) {
+      return {
+        start: startOfDay(new Date(`${fromDate}T00:00:00`)),
+        end: endOfDay(new Date(`${toDate}T00:00:00`)),
+      }
+    }
+  }
 
   return null
 }
@@ -703,15 +712,55 @@ async function getAssignedOfficerFilteredCaseIds(assignedOfficer) {
   return [...new Set((data || []).map((row) => row.case_report_id))]
 }
 
+async function getAssignedLegalFilteredCaseIds(assignedLegal, roles = []) {
+  const text = normalizeText(assignedLegal)
+  if (!text || text === 'All') return null
+
+  const { data: personnels, error: personnelError } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id, users!inner(first_name, last_name)')
+  if (personnelError) throw personnelError
+
+  const personnelIds = (personnels || [])
+    .filter((personnel) => {
+      const name = `${personnel.users?.first_name || ''} ${personnel.users?.last_name || ''}`.trim()
+      return name.toLowerCase().includes(text.toLowerCase())
+    })
+    .map((personnel) => personnel.legal_personnel_id)
+
+  if (personnelIds.length === 0) return []
+
+  let query = supabase
+    .from('legal_case_assignments')
+    .select('case_report_id')
+    .in('legal_personnel_id', personnelIds)
+    .eq('is_active', true)
+
+  if (roles.length > 0) query = query.in('assignment_role', roles)
+
+  const { data, error } = await query
+  if (error) throw error
+  return [...new Set((data || []).map((row) => row.case_report_id))]
+}
+
 async function getPreFilteredCaseIds(filters = {}) {
-  const [assessmentIds, assignedOfficerIds] = await Promise.all([
+  const [
+    assessmentIds,
+    assignedOfficerIds,
+    assignedLegalOfficerIds,
+    assignedParalegalIds,
+  ] = await Promise.all([
     getAssessmentFilteredCaseIds(filters),
     getAssignedOfficerFilteredCaseIds(filters.assignedOfficer),
+    getAssignedLegalFilteredCaseIds(filters.assignedLegalOfficer, ['lawyer', 'legal_officer']),
+    getAssignedLegalFilteredCaseIds(filters.assignedParalegal, ['paralegal']),
   ])
 
   let caseIds = null
   if (assessmentIds !== null) caseIds = intersectCaseIds(caseIds, assessmentIds)
   if (assignedOfficerIds !== null) caseIds = intersectCaseIds(caseIds, assignedOfficerIds)
+  if (assignedLegalOfficerIds !== null) caseIds = intersectCaseIds(caseIds, assignedLegalOfficerIds)
+  if (assignedParalegalIds !== null) caseIds = intersectCaseIds(caseIds, assignedParalegalIds)
   return caseIds
 }
 
@@ -719,7 +768,15 @@ function applyCaseReportFilters(query, options = {}) {
   let nextQuery = query.eq('is_current', true)
 
   const statusId = getStatusId(options.status)
-  if (statusId) nextQuery = nextQuery.eq('case_status_id', statusId)
+  const scopedStatusIds = Array.isArray(options.statusIds) ? options.statusIds.map(Number) : []
+  if (statusId && scopedStatusIds.length > 0) {
+    nextQuery = scopedStatusIds.includes(statusId)
+      ? nextQuery.eq('case_status_id', statusId)
+      : nextQuery.eq('case_status_id', -1)
+  } else if (statusId) nextQuery = nextQuery.eq('case_status_id', statusId)
+  else if (scopedStatusIds.length > 0) {
+    nextQuery = nextQuery.in('case_status_id', scopedStatusIds)
+  }
 
   const city = normalizeText(options.incident_city || options.city)
   if (city && city !== 'All') nextQuery = nextQuery.ilike('incident_city', city)
@@ -833,6 +890,8 @@ async function getPaginatedCaseReports({
   includeOfficerMap = true,
   includeLegalMap = true,
   includeAssessments = true,
+  includeDuplicateMatches = true,
+  includeStatusHistory = true,
 }) {
   const normalizedOptions = normalizeCaseListOptions(options)
   const preFilteredCaseIds = await getPreFilteredCaseIds(normalizedOptions)
@@ -872,8 +931,8 @@ async function getPaginatedCaseReports({
     includeOfficerMap ? getOfficerMap() : Promise.resolve({}),
     includeLegalMap ? getLegalMap() : Promise.resolve({}),
     includeAssessments ? getAssessmentMap(reportIds) : Promise.resolve({}),
-    getDuplicateMatches(reportIds),
-    getStatusHistoryMap(reportIds, { staffView: true }),
+    includeDuplicateMatches ? getDuplicateMatches(reportIds) : Promise.resolve({}),
+    includeStatusHistory ? getStatusHistoryMap(reportIds, { staffView: true }) : Promise.resolve({}),
   ])
 
   return {
@@ -1443,6 +1502,36 @@ async function getReportsForLegal(options = {}) {
   })
 }
 
+async function getLegalManagementReports(options = {}) {
+  const LEGAL_VISIBLE_STATUS_IDS = [4, 6, 7, 8, 9, 10, 11, 12]
+  const statusIds = options.statusIds || LEGAL_VISIBLE_STATUS_IDS
+
+  return getPaginatedCaseReports({
+    options: { ...options, statusIds },
+    scopeQuery: (query) => query.in('case_status_id', statusIds),
+    includeOfficerMap: false,
+    includeLegalMap: true,
+    includeAssessments: true,
+    includeDuplicateMatches: false,
+    includeStatusHistory: false,
+    enrichReport: ({ report, legalMap, assessmentMap }) => {
+      const activeLegal = (report.legal_case_assignments || []).filter(a => a.is_active)
+      return {
+        ...report,
+        assigned_officer: null,
+        assigned_legal: activeLegal.map(a => ({
+          legal_personnel_id: a.legal_personnel_id,
+          assignment_role: a.assignment_role === 'legal_officer' ? 'lawyer' : a.assignment_role,
+          name: legalMap[a.legal_personnel_id] || null,
+        })),
+        ...(assessmentMap[report.case_report_id] || {}),
+        case_assignments: undefined,
+        legal_case_assignments: undefined,
+      }
+    },
+  })
+}
+
 async function getReportsByAssignedLegal(userId) {
   // Step 1: Find the legal_personnel_id for this user
   const { data: legalPersonnel, error: legalPersonnelError } = await supabase
@@ -1527,4 +1616,4 @@ async function getReportsByAssignedLegal(userId) {
   })
 }
 
-module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, getCaseSummaryById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getReportsByAssignedLegal }
+module.exports = { getAll, create, getComplainantId, createReport, getReportsByUserId, getAllReports, getCaseById, getCaseSummaryById, update, getHeatmapReports, getReportsByAssignedOfficer, getReportsForLegal, getLegalManagementReports, getReportsByAssignedLegal }

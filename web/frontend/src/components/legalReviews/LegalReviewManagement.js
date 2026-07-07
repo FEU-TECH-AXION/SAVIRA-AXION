@@ -1222,35 +1222,6 @@ export default function LegalReviewManagement() {
   const canUseCalendarWorkflow = isAdmin || isParalegal || isLawyer;
 
 
-  // Fetch legal management payload
-  useEffect(() => {
-    const fetchLegalManagement = async () => {
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await authFetch(`${API_URL}/api/legal_reviews/management`);
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(payload.error || `Failed to fetch legal management data: ${res.status}`);
-
-        const pageData = payload.data || {};
-        const reviews = pageData.reviews || {};
-        const synced = (pageData.cases || []).map((report) => {
-          const caseItem = mapLegalReportToCase(report);
-          return mergeStatusHistory(
-            mergeLegalReviewData(caseItem, reviews[caseItem.id]),
-            caseItem.statusHistory,
-          );
-        });
-
-        setCases(synced);
-        setLegalPersonnels(pageData.legal_personnels || []);
-      } catch (err) {
-        console.error("[LegalReview] fetch error:", err);
-      } finally {
-        setCasesLoading(false);
-      }
-    };
-    fetchLegalManagement();
-  }, []);
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState({
     status: "",
@@ -1265,7 +1236,71 @@ export default function LegalReviewManagement() {
   const [sortField, setSortField] = useState("dateReported");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [legalStats, setLegalStats] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Fetch one legal-management page from the backend. Filtering/sorting happens
+  // server-side so the API does not load every legal case before rendering page 1.
+  useEffect(() => {
+    let cancelled = false;
+
+    const appendParam = (params, key, value) => {
+      if (value && value !== "All") params.set(key, value);
+    };
+
+    const fetchLegalManagement = async () => {
+      setCasesLoading(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+          sortBy: sortField || "dateReported",
+          sortDir,
+        });
+
+        appendParam(params, "search", search.trim());
+        appendParam(params, "status", activeFilters.status);
+        appendParam(params, "assignedLegalOfficer", activeFilters.assignedLegalOfficer);
+        appendParam(params, "assignedParalegal", activeFilters.assignedParalegal);
+        appendParam(params, "caseType", activeFilters.caseType);
+        appendParam(params, "caseCategory", activeFilters.caseCategory);
+        appendParam(params, "dateReported", activeFilters.dateReported);
+        appendParam(params, "endorsedTo", activeFilters.endorsedTo);
+        appendParam(params, "city", activeFilters.city);
+
+        const res = await authFetch(`${API_URL}/api/legal_reviews/management?${params.toString()}`);
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error || `Failed to fetch legal management data: ${res.status}`);
+
+        const pageData = payload.data || {};
+        const reviews = pageData.reviews || {};
+        const synced = (pageData.cases || []).map((report) => {
+          const caseItem = mapLegalReportToCase(report);
+          return mergeStatusHistory(
+            mergeLegalReviewData(caseItem, reviews[caseItem.id]),
+            caseItem.statusHistory,
+          );
+        });
+
+        if (cancelled) return;
+        setCases(synced);
+        setLegalPersonnels(pageData.legal_personnels || []);
+        setTotalRecords(Number(pageData.total) || synced.length);
+        setLegalStats(pageData.stats || null);
+      } catch (err) {
+        if (!cancelled) console.error("[LegalReview] fetch error:", err);
+      } finally {
+        if (!cancelled) setCasesLoading(false);
+      }
+    };
+
+    fetchLegalManagement();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, search, activeFilters, sortField, sortDir]);
 
   const [modal, setModal] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
@@ -1539,84 +1574,21 @@ export default function LegalReviewManagement() {
   }
 
   const stats = useMemo(() => {
-    const pending = cases.filter((c) => c.pendingApproval).length;
+    const pending = legalStats?.pendingApprovals ?? cases.filter((c) => c.pendingApproval).length;
     return [
-      { num: cases.filter((c) => c.status === "Under Case Evaluation").length, label: "Under Evaluation" },
-      { num: cases.filter((c) => [ "Verified - True", "Under Case Evaluation", "Case Filed", "Investigation Ongoing", "Hearing Ongoing",].includes(c.status)).length, label: "Active Cases" },
-      { num: cases.filter((c) => c.endorsedTo).length, label: "Endorsed Cases" },
+      { num: legalStats?.underEvaluation ?? cases.filter((c) => c.status === "Under Case Evaluation").length, label: "Under Evaluation" },
+      { num: legalStats?.activeCases ?? cases.filter((c) => [ "Verified - True", "Under Case Evaluation", "Case Filed", "Investigation Ongoing", "Hearing Ongoing",].includes(c.status)).length, label: "Active Cases" },
+      { num: legalStats?.endorsedCases ?? cases.filter((c) => c.endorsedTo).length, label: "Endorsed Cases" },
       ...(isAdmin ? [{ num: pending, label: "Pending Approvals", highlight: pending > 0 }] : []),
     ];
-  }, [cases, isAdmin]);
+  }, [cases, isAdmin, legalStats]);
 
-  const filtered = useMemo(() =>
-    cases.filter((c) => {
-      const ms = !search.trim() || String(c.id).includes(search) || c.caseId?.includes(search) || (c.region || "").toLowerCase().includes(search.toLowerCase());
-      let mf = true;
-      if (activeFilters.status && activeFilters.status !== "" && activeFilters.status !== "All") {
-        mf = mf && c.status === activeFilters.status;
-      }
-      if (activeFilters.assignedLegalOfficer && activeFilters.assignedLegalOfficer !== "" && activeFilters.assignedLegalOfficer !== "All") {
-        mf = mf && assignedNames(c, "lawyer").toLowerCase().includes(activeFilters.assignedLegalOfficer.toLowerCase());
-      }
-      if (activeFilters.assignedParalegal && activeFilters.assignedParalegal !== "" && activeFilters.assignedParalegal !== "All") {
-        mf = mf && assignedNames(c, "paralegal").toLowerCase().includes(activeFilters.assignedParalegal.toLowerCase());
-      }
-      if (activeFilters.caseType && activeFilters.caseType !== "" && activeFilters.caseType !== "All") {
-        mf = mf && normalizeLegalList(c.caseType).includes(activeFilters.caseType);
-      }
-      if (activeFilters.caseCategory && activeFilters.caseCategory !== "" && activeFilters.caseCategory !== "All") {
-        mf = mf && [...normalizeLegalList(c.primaryCategory), ...normalizeLegalList(c.additionalCategories)].includes(activeFilters.caseCategory);
-      }
-      if (activeFilters.dateReported && activeFilters.dateReported !== "") {
-        const getDateRangeFromFilter = (filterValue) => {
-          if (!filterValue) return null;
-          const today = new Date(); today.setHours(0, 0, 0, 0);
-          let startDate, endDate;
-          switch (filterValue) {
-            case "today":      startDate = new Date(today); endDate = new Date(today); endDate.setDate(endDate.getDate() + 1); break;
-            case "thisWeek":   startDate = new Date(today); startDate.setDate(startDate.getDate() - today.getDay()); endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 7); break;
-            case "thisMonth":  startDate = new Date(today.getFullYear(), today.getMonth(), 1); endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1); break;
-            case "thisYear":   startDate = new Date(today.getFullYear(), 0, 1); endDate = new Date(today.getFullYear() + 1, 0, 1); break;
-            case "last30Days": endDate = new Date(today); endDate.setDate(endDate.getDate() + 1); startDate = new Date(today); startDate.setDate(startDate.getDate() - 30); break;
-            default:
-              if (filterValue.startsWith("custom|")) {
-                const parts = filterValue.split("|");
-                if (parts.length === 3) { startDate = new Date(parts[1] + "T00:00:00"); endDate = new Date(parts[2] + "T23:59:59"); }
-              }
-          }
-          return startDate && endDate ? { startDate, endDate } : null;
-        };
-        const range = getDateRangeFromFilter(activeFilters.dateReported);
-        if (range) {
-          const d = c.dateReported ? new Date(c.dateReported) : null;
-          mf = mf && !!d && d >= range.startDate && d <= range.endDate;
-        }
-      }
-      if (activeFilters.endorsedTo && activeFilters.endorsedTo !== "" && activeFilters.endorsedTo !== "All") {
-        mf = mf && (c.endorsedTo || "") === activeFilters.endorsedTo;
-      }
-      if (activeFilters.city && activeFilters.city !== "" && activeFilters.city !== "All") {
-        mf = mf && (c.city || c.region || "").toLowerCase().includes(activeFilters.city.toLowerCase());
-      }
-      return ms && mf;
-    }),
-    [cases, search, activeFilters]
-  );
   useEffect(() => {
     const timer = setTimeout(() => setPage(1), 0);
     return () => clearTimeout(timer);
-  }, [search, activeFilters]);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const sorted = useMemo(() => {
-    if (!sortField) return filtered;
-    return [...filtered].sort((a, b) => {
-      const av = a[sortField] ?? "";
-      const bv = b[sortField] ?? "";
-      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [filtered, sortField, sortDir]);
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  }, [search, activeFilters, sortField, sortDir]);
+  const totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+  const paginated = cases;
   const pendingCases = useMemo(() => cases.filter((c) => c.pendingApproval), [cases]);
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1721,7 +1693,7 @@ export default function LegalReviewManagement() {
               paginated={paginated}
               page={page}
               totalPages={totalPages}
-              totalRecords={filtered.length}
+              totalRecords={totalRecords}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}
               onRowDoubleClick={(c) => router.push(`/legalReviews/view?caseId=${c.id}&from=legalReviews`)}
