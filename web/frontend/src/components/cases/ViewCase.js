@@ -1573,6 +1573,7 @@ export default function ViewCase() {
   const [compareError, setCompareError] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
+  const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
   const [interviewsChecked, setInterviewsChecked] = useState(false);
@@ -1694,15 +1695,15 @@ export default function ViewCase() {
     }
     const fetchCase = async () => {
       try {
-        const [caseRes, followUpsResult] = await Promise.all([
-          authFetch(`${API_URL}/api/case_reports/${caseId}`),
-          authFetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, { cache: "no-store" })
-            .then(async (response) => ({
-              ok: response.ok,
-              data: response.ok ? (await response.json().catch(() => ({}))).data || [] : [],
-            }))
-            .catch(() => ({ ok: false, data: [] })),
-        ]);
+        setFollowUpsLoading(true);
+        const followUpsPromise = authFetch(`${API_URL}/api/case_reports/${caseId}/follow-ups`, { cache: "no-store" })
+          .then(async (response) => ({
+            ok: response.ok,
+            data: response.ok ? (await response.json().catch(() => ({}))).data || [] : [],
+          }))
+          .catch(() => ({ ok: false, data: [] }));
+
+        const caseRes = await authFetch(`${API_URL}/api/case_reports/${caseId}`);
 
         if (!caseRes.ok) {
           const body = await caseRes.json().catch(() => ({}));
@@ -1714,7 +1715,6 @@ export default function ViewCase() {
         const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
         setCaseData({
           ...mappedCase,
-          followUps: followUpsResult.data,
           pendingApproval: pending ? {
             historyId: pending.historyId,
             proposedStatus: pending.status,
@@ -1724,6 +1724,15 @@ export default function ViewCase() {
             formData: pending.formData,
           } : null,
         });
+
+        followUpsPromise
+          .then((followUpsResult) => {
+            setCaseData((current) => current
+              ? { ...current, followUps: followUpsResult.data }
+              : current
+            );
+          })
+          .finally(() => setFollowUpsLoading(false));
 
         setCompareCaseData(null);
         setCompareError(null);
@@ -1954,6 +1963,7 @@ export default function ViewCase() {
               caseStatus={caseData.status}
               isStaff={isStaff}
               canManage={canManageFollowUps}
+              loading={followUpsLoading}
               currentUserId={user.id}
               reportData={caseData.reportData}
               onCaseChanged={() => setCaseRefreshKey((current) => current + 1)}
