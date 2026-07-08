@@ -321,26 +321,81 @@ function bucketCasesByDay(cases) {
     }));
 }
 
-function bucketCaseStatusesByDay(cases) {
+function getLastDayKeys(days = 30) {
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (days - 1 - index));
+    date.setHours(23, 59, 59, 999);
+    const key = date.toISOString().slice(0, 10);
+    return {
+      key,
+      end: date,
+      label: new Date(`${key}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    };
+  });
+}
+
+function groupStatusHistoryByCase(rows = []) {
+  return rows.reduce((map, row) => {
+    const caseId = row.case_report_id || row.caseReportId;
+    if (!caseId) return map;
+    if (!map[caseId]) map[caseId] = [];
+    map[caseId].push({
+      status: row.status || CASE_STATUS_BY_ID[row.case_status_id] || null,
+      created_at: row.created_at,
+    });
+    return map;
+  }, {});
+}
+
+async function fetchApprovedStatusHistoryMap(API_URL, cases = []) {
+  const caseIds = [...new Set(cases.map((c) => c.id).filter(Boolean))];
+  if (caseIds.length === 0) return {};
+
+  const params = new URLSearchParams({ caseIds: caseIds.join(",") });
+  const response = await fetch(`${API_URL}/api/case_status_history/batch/approved?${params.toString()}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Failed to load case status history");
+
+  const payload = await response.json();
+  return groupStatusHistoryByCase(toArray(payload));
+}
+
+function getStatusBucket(status) {
   const legalStatuses = new Set(["Case Filed", "Investigation Ongoing", "Hearing Ongoing"]);
   const closedStatuses = new Set(["Resolved", "Dismissed", "Withdrawn", "Perpetrator Convicted", "Verified - False"]);
-  const buckets = {};
-  for (const c of cases) {
-    const date = recordDate(c, "date_filed", "created_at");
-    if (!date) continue;
-    const key = date.toISOString().slice(0, 10);
-    if (!buckets[key]) buckets[key] = { Submitted: 0, "Undergoing Review": 0, Closed: 0 };
-    if (closedStatuses.has(c.status)) buckets[key].Closed += 1;
-    else if (legalStatuses.has(c.status)) buckets[key]["Undergoing Review"] += 1;
-    else buckets[key].Submitted += 1;
+  if (closedStatuses.has(status)) return "Closed";
+  if (legalStatuses.has(status)) return "Undergoing Review";
+  return "Submitted";
+}
+
+function getStatusAsOfDay(caseItem, historyRows = [], dayEnd) {
+  const filedDate = recordDate(caseItem, "date_filed", "created_at");
+  if (!filedDate || filedDate > dayEnd) return null;
+
+  let status = "Submitted";
+  for (const row of historyRows) {
+    const transitionDate = recordDate(row, "created_at");
+    if (!transitionDate || transitionDate > dayEnd) break;
+    if (row.status) status = row.status;
   }
-  return Object.entries(buckets)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-30)
-    .map(([date, values]) => ({
-      label: new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      ...values,
-    }));
+  return status;
+}
+
+function bucketCaseStatusesByDay(cases, statusHistoryByCaseId = {}) {
+  return getLastDayKeys(30).map(({ label, end }) => {
+    const values = { Submitted: 0, "Undergoing Review": 0, Closed: 0 };
+
+    for (const c of cases) {
+      const historyRows = statusHistoryByCaseId[c.id] || [];
+      const status = getStatusAsOfDay(c, historyRows, end);
+      if (!status) continue;
+      values[getStatusBucket(status)] += 1;
+    }
+
+    return { label, ...values };
+  });
 }
 
 function topEntries(data, limit = 6) {
@@ -562,7 +617,7 @@ function buildUserSummary(users = []) {
   };
 }
 
-function buildAnalytics(cases, volunteers, projects, users) {
+function buildAnalytics(cases, volunteers, projects, users, statusHistoryByCaseId = {}) {
   const caseSummary       = buildCaseSummary(cases);
   const volunteerSummary  = buildVolunteerSummary(volunteers);
   const projectSummary    = buildProjectSummary(projects);
@@ -586,7 +641,7 @@ function buildAnalytics(cases, volunteers, projects, users) {
       (projectSummary.activeProjects || 0) +
       (userSummary.deactivated || 0),
     trend:        bucketCasesByDay(cases),
-    stackedTrend: bucketCaseStatusesByDay(cases),
+    stackedTrend: bucketCaseStatusesByDay(cases, statusHistoryByCaseId),
     topCities:    topEntries(caseSummary.byCity, 6),
     topTypes:     topEntries(caseSummary.byType, 5),
     caseSummary,
@@ -1222,7 +1277,8 @@ export default function ReportGenerator() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [error, setError]                   = useState(null);
   const exportMenuRef                       = useRef(null);
-  const rawRef = useRef({ cases: [], volunteers: [], projects: [], users: [] });
+  const rawRef = useRef({ cases: [], volunteers: [], projects: [], users: [], statusHistoryByCaseId: {} });
+  const [filterOptionsSource, setFilterOptionsSource] = useState({ cases: [], volunteers: [], users: [] });
 
   const [caseData,      setCaseData]      = useState(null);
   const [legalData,     setLegalData]     = useState(null);
@@ -1250,7 +1306,7 @@ export default function ReportGenerator() {
     setVolunteerData(buildVolunteerSummary(volunteers));
     setProjectData(buildProjectSummary(projects));
     setUserData(buildUserSummary(users));
-    setAnalyticsData(buildAnalytics(cases, volunteers, projects, users));
+    setAnalyticsData(buildAnalytics(cases, volunteers, projects, users, raw.statusHistoryByCaseId));
     setLastGenerated(new Date());
   }, []);
 
@@ -1275,12 +1331,17 @@ export default function ReportGenerator() {
         safeJson(casesRes), safeJson(volunteersRes), safeJson(projectsRes), safeJson(usersRes),
       ]);
 
+      const normalizedCases = toArray(casesRaw).map(normalizeCaseReport);
+      const statusHistoryByCaseId = await fetchApprovedStatusHistoryMap(API_URL, normalizedCases);
+
       rawRef.current = {
-        cases:      toArray(casesRaw).map(normalizeCaseReport),
+        cases:      normalizedCases,
         volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
         projects:   toArray(projectsRaw).map(normalizeProject),
         users:      toArray(usersRaw).map(normalizeUser),
+        statusHistoryByCaseId,
       };
+      setFilterOptionsSource(rawRef.current);
 
       buildSummaries(rawRef.current, dateRange, advancedFilters);
     } catch (err) {
@@ -1303,12 +1364,12 @@ export default function ReportGenerator() {
   const filterOptions = useMemo(() => {
     const clean = (values) => [...new Set(values.filter(Boolean))].map(String).sort((a, b) => a.localeCompare(b));
     return {
-      sites:     clean([...rawRef.current.cases.map((c) => c.site || c.region), ...rawRef.current.volunteers.map((v) => v.site)]),
-      caseTypes: clean(rawRef.current.cases.map((c) => c.case_type)),
-      roles:     clean(rawRef.current.users.map((u) => u.role_name)),
-      cities:    clean(rawRef.current.cases.map((c) => c.city).filter(Boolean)),
+      sites:     clean([...filterOptionsSource.cases.map((c) => c.site || c.region), ...filterOptionsSource.volunteers.map((v) => v.site)]),
+      caseTypes: clean(filterOptionsSource.cases.map((c) => c.case_type)),
+      roles:     clean(filterOptionsSource.users.map((u) => u.role_name)),
+      cities:    clean(filterOptionsSource.cases.map((c) => c.city).filter(Boolean)),
     };
-  }, [analyticsData]);
+  }, [filterOptionsSource]);
 
   function toggleModule(key) {
     setActiveModules((prev) => {
@@ -1343,10 +1404,10 @@ export default function ReportGenerator() {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>
             <FiBarChart2 className={styles.titleIcon} />
-            Reports & Analytics
+            Report
           </h1>
           <p className={styles.pageSubtitle}>
-            Aggregated summaries across all system modules.
+            Aggregated report summaries across all system modules.
           </p>
         </div>
 
