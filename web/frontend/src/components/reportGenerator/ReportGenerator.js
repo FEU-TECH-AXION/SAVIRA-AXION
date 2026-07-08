@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { jsPDF } from "jspdf";
+import ExcelJS from "exceljs";
 import styles from "./ReportGenerator.module.css";
 import {
   FiDownload,
@@ -675,34 +676,258 @@ function buildAnalytics(cases, volunteers, projects, users, statusHistoryByCaseI
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CSV EXPORT
+// XLSX EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
-
-function exportToCSV(parts) {
-  const rows = [["Module", "Metric", "Value"]];
-  for (const { title, summary } of parts) {
-    for (const [key, val] of Object.entries(summary)) {
-      if (typeof val === "object" && !Array.isArray(val)) {
-        for (const [k, v] of Object.entries(val)) {
-          rows.push([title, `${key} — ${k}`, v]);
-        }
-      } else if (!Array.isArray(val)) {
-        rows.push([title, key, val]);
-      }
-    }
-  }
-  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
-  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `report_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function getDateRangeLabel(dateRange) {
   return DATE_RANGES.find((item) => item.value === dateRange)?.label || "Selected Range";
+}
+
+const XLSX_HEADER_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FF037F81" } };
+const XLSX_SECTION_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAF7F7" } };
+
+function formatWorkbookHeader(row) {
+  row.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  row.fill = XLSX_HEADER_FILL;
+  row.alignment = { vertical: "middle" };
+  row.eachCell((cell) => {
+    cell.border = { bottom: { style: "thin", color: { argb: "FFB7DCDC" } } };
+  });
+}
+
+function formatSectionRow(row) {
+  row.font = { bold: true, color: { argb: "FF034B4D" } };
+  row.fill = XLSX_SECTION_FILL;
+}
+
+function autoSizeWorksheet(worksheet) {
+  worksheet.columns.forEach((column) => {
+    let maxLength = 12;
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const value = cell.value == null ? "" : String(cell.value);
+      maxLength = Math.max(maxLength, value.length);
+    });
+    column.width = Math.min(Math.max(maxLength + 2, 12), 48);
+  });
+}
+
+function sortCountEntries(counts = {}) {
+  return Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+}
+
+function countTableRows(counts = {}, totalOverride = null) {
+  const entries = sortCountEntries(counts);
+  const total = totalOverride ?? entries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
+  return entries.map(([label, count]) => [
+    label,
+    Number(count || 0),
+    total ? `${Math.round((Number(count || 0) / total) * 100)}%` : "0%",
+  ]);
+}
+
+function pairTableRows(entries = [], totalOverride = null) {
+  const filtered = entries
+    .filter((entry) => Array.isArray(entry) && Number(entry[1]) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+  const total = totalOverride ?? filtered.reduce((sum, [, count]) => sum + Number(count || 0), 0);
+  return filtered.map(([label, count]) => [
+    label,
+    Number(count || 0),
+    total ? `${Math.round((Number(count || 0) / total) * 100)}%` : "0%",
+  ]);
+}
+
+function addWorksheetSection(worksheet, title, headers, rows = []) {
+  if (worksheet.rowCount > 0) worksheet.addRow([]);
+  const sectionRow = worksheet.addRow([title]);
+  formatSectionRow(sectionRow);
+  if (headers.length > 1) {
+    worksheet.mergeCells(sectionRow.number, 1, sectionRow.number, headers.length);
+  }
+
+  const headerRow = worksheet.addRow(headers);
+  formatWorkbookHeader(headerRow);
+
+  if (rows.length) {
+    rows.forEach((row) => worksheet.addRow(row));
+  } else {
+    worksheet.addRow(["No data available"]);
+  }
+}
+
+function formatWorksheet(worksheet) {
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "top", wrapText: true };
+    });
+  });
+  autoSizeWorksheet(worksheet);
+}
+
+function flattenSummaryValue(key, value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => {
+      if (Array.isArray(item)) return [[`${key} - ${item[0] || `Item ${index + 1}`}`, item[1] ?? ""]];
+      if (item && typeof item === "object") {
+        const label = item.label || item.date || `Item ${index + 1}`;
+        const rest = Object.entries(item)
+          .filter(([field]) => field !== "label" && field !== "date")
+          .map(([field, fieldValue]) => `${field}: ${fieldValue}`)
+          .join(", ");
+        return [[`${key} - ${label}`, rest]];
+      }
+      return [[`${key} - Item ${index + 1}`, item ?? ""]];
+    });
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value).map(([nestedKey, nestedValue]) => [`${key} - ${nestedKey}`, nestedValue]);
+  }
+
+  return [[key, value ?? ""]];
+}
+
+function addSummarySheet(workbook, modules) {
+  const worksheet = workbook.addWorksheet("Summary");
+  const headerRow = worksheet.addRow(["Module", "Metric", "Value"]);
+  formatWorkbookHeader(headerRow);
+
+  modules.forEach(({ title, summary }) => {
+    Object.entries(summary || {}).forEach(([key, value]) => {
+      flattenSummaryValue(key, value).forEach(([metric, metricValue]) => {
+        worksheet.addRow([title, metric, metricValue]);
+      });
+    });
+  });
+
+  formatWorksheet(worksheet);
+}
+
+function addCasesSheet(workbook, caseData, analyticsData) {
+  const worksheet = workbook.addWorksheet("Cases");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Open Reports", caseData.openCases],
+    ["Under Investigation", analyticsData?.underInvestigation ?? 0],
+    ["Completed Reports", caseData.closedCases],
+    ["Total Cases", caseData.total],
+    ["Average Resolution Days", caseData.avgResolutionDays],
+  ]);
+  addWorksheetSection(worksheet, "Reports by Status", ["Status", "Count", "Percentage"], countTableRows(caseData.byStatus, caseData.total));
+  addWorksheetSection(worksheet, "Reports by City", ["City", "Count", "Percentage"], countTableRows(caseData.byCity, caseData.total));
+  addWorksheetSection(worksheet, "Case Types", ["Case Type", "Count", "Percentage"], countTableRows(caseData.byType, caseData.total));
+  addWorksheetSection(worksheet, "Case Reports Last 30 Days", ["Date", "Filed Count"], (analyticsData?.trend || []).map((item) => [item.label, item.value]));
+  addWorksheetSection(
+    worksheet,
+    "Status Composition Over Time",
+    ["Date", "Submitted", "Undergoing Review", "Closed"],
+    (analyticsData?.stackedTrend || []).map((item) => [item.label, item.Submitted || 0, item["Undergoing Review"] || 0, item.Closed || 0])
+  );
+  formatWorksheet(worksheet);
+}
+
+function addLegalSheet(workbook, legalData) {
+  const worksheet = workbook.addWorksheet("Legal Review");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Cases in Legal", legalData.total],
+    ["Cases Filed", legalData.casesFiled],
+    ["Cases Resolved", legalData.casesResolved],
+    ["Referrals Suggested", legalData.referralSuggested],
+    ["Average Days in Legal", legalData.avgDaysInLegal],
+  ]);
+  addWorksheetSection(worksheet, "Legal Cases by City", ["City", "Count", "Percentage"], countTableRows(legalData.byCity, legalData.total));
+  addWorksheetSection(worksheet, "Legal Case Status Distribution", ["Status", "Count", "Percentage"], countTableRows(legalData.byStatus, legalData.total));
+  addWorksheetSection(worksheet, "Legal Case Types", ["Case Type", "Count", "Percentage"], countTableRows(legalData.byType, legalData.total));
+  addWorksheetSection(worksheet, "Referral Outcome", ["Outcome", "Count", "Percentage"], countTableRows(legalData.referralBreakdown));
+  formatWorksheet(worksheet);
+}
+
+function addVolunteersSheet(workbook, volunteerData) {
+  const worksheet = workbook.addWorksheet("Volunteers");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Total Applications", volunteerData.total],
+    ["Approval Rate", `${volunteerData.approvalRate}%`],
+    ["Average Score", volunteerData.avgScore],
+  ]);
+  addWorksheetSection(worksheet, "Applications by Status", ["Status", "Count", "Percentage"], countTableRows(volunteerData.byStatus, volunteerData.total));
+  addWorksheetSection(worksheet, "Top Fields of Background", ["Field", "Count", "Percentage"], pairTableRows(volunteerData.topFields));
+  formatWorksheet(worksheet);
+}
+
+function addProjectsSheet(workbook, projectData) {
+  const worksheet = workbook.addWorksheet("Projects");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Total Projects", projectData.total],
+    ["Active Projects", projectData.activeProjects],
+    ["Completed", projectData.completedOnTime],
+    ["Overdue (Ongoing)", projectData.overdueCount],
+  ]);
+  addWorksheetSection(worksheet, "Projects by Status", ["Status", "Count", "Percentage"], countTableRows(projectData.byStatus, projectData.total));
+  addWorksheetSection(worksheet, "Projects by Category", ["Category", "Count", "Percentage"], countTableRows(projectData.byCategory, projectData.total));
+  addWorksheetSection(worksheet, "Approval Breakdown", ["Approval Status", "Count", "Percentage"], countTableRows(projectData.byApproval, projectData.total));
+  addWorksheetSection(worksheet, "Visibility Breakdown", ["Visibility", "Count", "Percentage"], countTableRows(projectData.byVisibility, projectData.total));
+  addWorksheetSection(worksheet, "Timeliness", ["Category", "Count", "Percentage"], countTableRows(projectData.timeliness));
+  formatWorksheet(worksheet);
+}
+
+function addUsersSheet(workbook, userData) {
+  const worksheet = workbook.addWorksheet("Users");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Total Users", userData.total],
+    ["Active Users", userData.activeUsers],
+    ["New This Month", userData.newThisMonth],
+    ["Deactivated", userData.deactivated],
+  ]);
+  addWorksheetSection(worksheet, "Users by Role", ["Role", "Count", "Percentage"], countTableRows(userData.byRole, userData.total));
+  addWorksheetSection(worksheet, "Users by City", ["City", "Count", "Percentage"], countTableRows(userData.byCity, userData.total));
+  addWorksheetSection(worksheet, "Active vs Deactivated", ["Status", "Count", "Percentage"], countTableRows(userData.activeBreakdown, userData.total));
+  formatWorksheet(worksheet);
+}
+
+async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) {
+  const modules = [];
+  if (activeModules.cases && dataAvailability.caseData) {
+    modules.push({ title: "Case Management", summary: dataAvailability.caseData });
+  }
+  if (activeModules.legal && dataAvailability.legalData) {
+    modules.push({ title: "Legal Review", summary: dataAvailability.legalData });
+  }
+  if (activeModules.volunteers && dataAvailability.volunteerData) {
+    modules.push({ title: "Volunteer Application Management", summary: dataAvailability.volunteerData });
+  }
+  if (activeModules.projects && dataAvailability.projectData) {
+    modules.push({ title: "Project Tracker", summary: dataAvailability.projectData });
+  }
+  if (activeModules.users && dataAvailability.userData) {
+    modules.push({ title: "User Management", summary: dataAvailability.userData });
+  }
+  if (!modules.length) return;
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "SAVIRA";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+  workbook.properties.date1904 = false;
+
+  addSummarySheet(workbook, modules);
+  if (activeModules.cases && dataAvailability.caseData) addCasesSheet(workbook, dataAvailability.caseData, analyticsData);
+  if (activeModules.legal && dataAvailability.legalData) addLegalSheet(workbook, dataAvailability.legalData);
+  if (activeModules.volunteers && dataAvailability.volunteerData) addVolunteersSheet(workbook, dataAvailability.volunteerData);
+  if (activeModules.projects && dataAvailability.projectData) addProjectsSheet(workbook, dataAvailability.projectData);
+  if (activeModules.users && dataAvailability.userData) addUsersSheet(workbook, dataAvailability.userData);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function cleanPdfLabel(value, fallback = "Unspecified") {
@@ -1783,15 +2008,24 @@ export default function ReportGenerator() {
     });
   }
 
-  function handleExportCSV() {
-    const parts = [];
-    if (activeModules.cases      && caseData)      parts.push({ title: "Case Management",                  summary: caseData });
-    if (activeModules.legal      && legalData)     parts.push({ title: "Legal Review",                     summary: legalData });
-    if (activeModules.volunteers && volunteerData) parts.push({ title: "Volunteer Application Management", summary: volunteerData });
-    if (activeModules.projects   && projectData)   parts.push({ title: "Project Tracker",                 summary: projectData });
-    if (activeModules.users      && userData)      parts.push({ title: "User Management",                  summary: userData });
-    if (parts.length) exportToCSV(parts);
+  async function handleExportXLSX() {
     setExportMenuOpen(false);
+    try {
+      await exportToXLSX({
+        activeModules,
+        dataAvailability: {
+          caseData,
+          legalData,
+          volunteerData,
+          projectData,
+          userData,
+        },
+        analyticsData,
+      });
+    } catch (err) {
+      console.error("Excel export failed:", err);
+      setError("Failed to generate Excel workbook. Please try again.");
+    }
   }
 
   async function handleExportPDF() {
@@ -1885,8 +2119,8 @@ export default function ReportGenerator() {
                 <button className={styles.exportOption} onClick={handleExportPDF} disabled={exportingPdf}>
                   <FiPrinter /> {exportingPdf ? "Generating PDF..." : "Export as PDF"}
                 </button>
-                <button className={styles.exportOption} onClick={handleExportCSV}>
-                  <FiFileText /> Export as CSV/Excel
+                <button className={styles.exportOption} onClick={handleExportXLSX}>
+                  <FiFileText /> Export as Excel
                 </button>
               </div>
             )}
