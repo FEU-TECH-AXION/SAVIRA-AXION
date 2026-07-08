@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { jsPDF } from "jspdf";
 import styles from "./ReportGenerator.module.css";
 import {
   FiDownload,
@@ -89,6 +90,16 @@ const DATE_RANGES = [
   { label: "This Year",    value: "thisYear" },
   { label: "Last 30 Days", value: "last30Days" },
 ];
+
+const ENDORSEMENT_BODIES = [
+  "DSWD",
+  "PNP Women and Children Protection Desk",
+  "BSP/GSP Mechanism",
+  "School/Workplace CODI",
+  "Court (with lawyer)",
+];
+
+const LEGAL_CROSSTAB_COLUMNS = ["Ongoing", "Won", "Settled", "Dismissed", "Unresolved", "Declined"];
 
 const CASE_STATUS_BY_ID = {
   1:  "Submitted",
@@ -221,12 +232,23 @@ function normalizeCaseReport(row) {
     id: row.id || row.case_report_id,
     status,
     case_type: caseType,
+    primary_category: row.primary_category || row.primaryCategory || null,
+    additional_categories: Array.isArray(row.additional_categories)
+      ? row.additional_categories
+      : Array.isArray(row.additionalCategories)
+        ? row.additionalCategories
+        : [],
     city,
     region:
       row.region || row.location_type || row.incident_location_type || row.incident_province || row.incident_city || null,
     site:
       row.site || row.incident_city || row.incident_province || row.region || null,
     location_type: row.location_type || row.incident_location_type || null,
+    incident_location_type: row.incident_location_type || row.location_type || null,
+    incident_location: row.incident_location || row.incidentLocation || null,
+    perpetrator_relationship: row.perpetrator_relationship || row.perpetratorRelationship || null,
+    perpetrator_occupation: row.perpetrator_occupation || row.perpetratorOccupation || null,
+    endorsed_to: row.endorsed_to || row.endorsedTo || row.legal_review?.endorsed_to || row.endorsement?.endorsed_to || null,
     date_filed: row.date_filed || row.dateSubmitted || row.created_at || null,
     date_resolved: row.date_resolved || row.dateResolved || row.updated_at || null,
     created_at: row.created_at || row.date_filed || null,
@@ -679,12 +701,387 @@ function exportToCSV(parts) {
   URL.revokeObjectURL(url);
 }
 
-function exportToPDF() {
-  document.body.classList.add("printing-report");
-  window.addEventListener("afterprint", () => {
-    document.body.classList.remove("printing-report");
-  }, { once: true });
-  setTimeout(() => window.print(), 0);
+function getDateRangeLabel(dateRange) {
+  return DATE_RANGES.find((item) => item.value === dateRange)?.label || "Selected Range";
+}
+
+function cleanPdfLabel(value, fallback = "Unspecified") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function countBy(records = [], selector) {
+  const counts = {};
+  for (const record of records) {
+    const value = selector(record);
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      const label = cleanPdfLabel(item);
+      counts[label] = (counts[label] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+function objectToTableRows(counts = {}, totalOverride = null) {
+  const entries = Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const total = totalOverride ?? entries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
+  return entries.map(([label, count]) => [
+    label,
+    String(count),
+    total ? `${Math.round((Number(count) / total) * 100)}%` : "0%",
+  ]);
+}
+
+function getLegalOutcomeColumn(status) {
+  if (["Case Filed", "Investigation Ongoing", "Hearing Ongoing", "Under Case Evaluation"].includes(status)) return "Ongoing";
+  if (status === "Perpetrator Convicted") return "Won";
+  if (status === "Resolved") return "Settled";
+  if (status === "Dismissed") return "Dismissed";
+  if (["Verified - False", "Withdrawn"].includes(status)) return "Declined";
+  return "Unresolved";
+}
+
+function buildEndorsementCrosstabRows(cases = []) {
+  const rows = ENDORSEMENT_BODIES.map((body) => {
+    const counts = Object.fromEntries(LEGAL_CROSSTAB_COLUMNS.map((column) => [column, 0]));
+    for (const caseItem of cases) {
+      if (caseItem.endorsed_to !== body) continue;
+      counts[getLegalOutcomeColumn(caseItem.status)] += 1;
+    }
+    const subtotal = LEGAL_CROSSTAB_COLUMNS.reduce((sum, column) => sum + counts[column], 0);
+    return [body, ...LEGAL_CROSSTAB_COLUMNS.map((column) => String(counts[column])), String(subtotal)];
+  });
+
+  const totals = LEGAL_CROSSTAB_COLUMNS.map((column, index) =>
+    rows.reduce((sum, row) => sum + Number(row[index + 1] || 0), 0)
+  );
+  rows.push(["Total", ...totals.map(String), String(totals.reduce((sum, value) => sum + value, 0))]);
+  return rows;
+}
+
+function buildCaseTrendSummaryRows(analyticsData) {
+  const trend = analyticsData?.trend || [];
+  const statusTrend = analyticsData?.stackedTrend || [];
+  const totalFiled = trend.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  const peak = trend.reduce((best, item) => Number(item.value || 0) > Number(best?.value || 0) ? item : best, null);
+  const latestStatus = statusTrend[statusTrend.length - 1] || {};
+
+  return [
+    ["Reports filed in last 30 days", String(totalFiled)],
+    ["Average daily filings", trend.length ? (totalFiled / trend.length).toFixed(1) : "0"],
+    ["Peak filing day", peak ? `${peak.label} (${peak.value})` : "No filings"],
+    ["Latest Submitted count", String(latestStatus.Submitted || 0)],
+    ["Latest Undergoing Review count", String(latestStatus["Undergoing Review"] || 0)],
+    ["Latest Closed count", String(latestStatus.Closed || 0)],
+  ];
+}
+
+function addPdfFooter(doc, generatedAt) {
+  const pageCount = doc.getNumberOfPages();
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  const footerText = `Generated ${generatedAt.toLocaleDateString("en-PH")} - Confidential - For internal use only`;
+
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(222, 226, 230);
+    doc.line(40, height - 42, width - 40, height - 42);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(footerText, 40, height - 24);
+    doc.text(`Page ${page} of ${pageCount}`, width - 40, height - 24, { align: "right" });
+  }
+}
+
+function addPdfCoverPage(doc, { dateRange, generatedAt, modules }) {
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(3, 127, 129);
+  doc.rect(0, 0, width, 145, "F");
+
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(40, 36, 104, 54, 8, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(3, 127, 129);
+  doc.text("SAVIRA", 92, 58, { align: "center" });
+  doc.setFontSize(10);
+  doc.text("SASHA", 92, 76, { align: "center" });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(30);
+  doc.text("Report", 40, 188);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text("Aggregate system summary for internal review.", 40, 212);
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Date Range", 40, 280);
+  doc.text("Generated", 40, 325);
+  doc.text("Included Modules", 40, 370);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  doc.text(getDateRangeLabel(dateRange), 170, 280);
+  doc.text(generatedAt.toLocaleString("en-PH"), 170, 325);
+
+  let y = 370;
+  modules.forEach((reportModule) => {
+    doc.circle(174, y - 4, 2.5, "F");
+    doc.text(reportModule.title, 185, y);
+    y += 20;
+  });
+
+  doc.setFillColor(255, 247, 237);
+  doc.roundedRect(40, height - 150, width - 80, 58, 8, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(154, 52, 18);
+  doc.text("Confidential - For internal use only", 58, height - 118);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(120, 53, 15);
+  doc.text("This PDF contains aggregate report data only and must be handled according to SAVIRA/SASHA data privacy protocols.", 58, height - 98, {
+    maxWidth: width - 116,
+  });
+}
+
+function ensurePdfSpace(doc, cursor, requiredHeight) {
+  const height = doc.internal.pageSize.getHeight();
+  if (cursor.y + requiredHeight > height - 64) {
+    doc.addPage();
+    cursor.y = 44;
+  }
+}
+
+function addPdfSectionTitle(doc, title, cursor) {
+  ensurePdfSpace(doc, cursor, 34);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(3, 127, 129);
+  doc.text(title, 40, cursor.y);
+  cursor.y += 18;
+}
+
+function addPdfTable(doc, { title, headers, rows }, cursor) {
+  const width = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  const contentWidth = width - margin * 2;
+  const safeRows = rows?.length ? rows : [["No data available", "", ""]];
+  const colWidths = headers.length === 2
+    ? [contentWidth * 0.68, contentWidth * 0.32]
+    : headers.length === 3
+      ? [contentWidth * 0.58, contentWidth * 0.2, contentWidth * 0.22]
+      : [contentWidth * 0.3, ...Array(headers.length - 1).fill((contentWidth * 0.7) / (headers.length - 1))];
+  const rowHeight = 18;
+
+  addPdfSectionTitle(doc, title, cursor);
+  ensurePdfSpace(doc, cursor, rowHeight * 2);
+
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, cursor.y, contentWidth, rowHeight, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  let x = margin;
+  headers.forEach((header, index) => {
+    doc.text(header, x + 6, cursor.y + 12, { maxWidth: colWidths[index] - 12 });
+    x += colWidths[index];
+  });
+  cursor.y += rowHeight;
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  safeRows.forEach((row, rowIndex) => {
+    ensurePdfSpace(doc, cursor, rowHeight);
+    if (rowIndex % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, cursor.y, contentWidth, rowHeight, "F");
+    }
+    x = margin;
+    row.forEach((cell, index) => {
+      const align = index > 0 && headers.length > 2 ? "right" : "left";
+      const cellX = align === "right" ? x + colWidths[index] - 6 : x + 6;
+      doc.text(String(cell ?? ""), cellX, cursor.y + 12, {
+        maxWidth: colWidths[index] - 12,
+        align,
+      });
+      x += colWidths[index];
+    });
+    cursor.y += rowHeight;
+  });
+  cursor.y += 10;
+}
+
+function addMetricTiles(doc, metrics, cursor) {
+  const margin = 40;
+  const width = doc.internal.pageSize.getWidth();
+  const gap = 10;
+  const columns = 2;
+  const tileWidth = (width - margin * 2 - gap) / columns;
+  const tileHeight = 52;
+
+  ensurePdfSpace(doc, cursor, Math.ceil(metrics.length / columns) * (tileHeight + gap));
+  const startY = cursor.y;
+  metrics.forEach((metric, index) => {
+    const row = Math.floor(index / columns);
+    const y = startY + row * (tileHeight + gap);
+    const x = margin + (index % columns) * (tileWidth + gap);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(x, y, tileWidth, tileHeight, 6, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(3, 127, 129);
+    doc.text(String(metric.value ?? 0), x + 14, y + 22);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(metric.label, x + 14, y + 38, { maxWidth: tileWidth - 28 });
+  });
+  cursor.y += Math.ceil(metrics.length / columns) * (tileHeight + gap) + 10;
+}
+
+function addModulePage(doc, title, metrics, tables) {
+  doc.addPage();
+  const cursor = { y: 44 };
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(3, 127, 129);
+  doc.text(title, 40, cursor.y);
+  cursor.y += 28;
+  addMetricTiles(doc, metrics, cursor);
+  tables.forEach((table) => addPdfTable(doc, table, cursor));
+}
+
+function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsData }) {
+  const modules = [];
+  const cases = rawData?.cases || [];
+
+  if (activeModules.cases && dataAvailability.caseData) {
+    modules.push({
+      key: "cases",
+      title: "Case Management",
+      metrics: [
+        { label: "Open Reports", value: dataAvailability.caseData.openCases },
+        { label: "Under Investigation", value: analyticsData?.underInvestigation ?? 0 },
+        { label: "Completed Reports", value: dataAvailability.caseData.closedCases },
+        { label: "Total Cases", value: dataAvailability.caseData.total },
+      ],
+      tables: [
+        { title: "Last 30 Days Numeric Summary", headers: ["Metric", "Value"], rows: buildCaseTrendSummaryRows(analyticsData) },
+        { title: "Reports by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byCity, dataAvailability.caseData.total) },
+        { title: "Reports by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byStatus, dataAvailability.caseData.total) },
+        { title: "Case Types", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byType, dataAvailability.caseData.total) },
+        { title: "Perpetrator Relationship", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.perpetrator_relationship), cases.length) },
+        { title: "Perpetrator Occupation", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.perpetrator_occupation), cases.length) },
+        { title: "Incident Location Type", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.incident_location_type), cases.length) },
+        { title: "Incident Location", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.incident_location), cases.length) },
+        { title: "Harassment/Abuse Categories", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => [item.primary_category, ...(item.additional_categories || [])].filter(Boolean))) },
+        {
+          title: "Legal Endorsement Crosstab",
+          headers: ["Endorsed To", ...LEGAL_CROSSTAB_COLUMNS, "Subtotal"],
+          rows: buildEndorsementCrosstabRows(cases),
+        },
+      ],
+    });
+  }
+
+  if (activeModules.legal && dataAvailability.legalData) {
+    modules.push({
+      key: "legal",
+      title: "Legal Review",
+      metrics: [
+        { label: "Cases in Legal", value: dataAvailability.legalData.total },
+        { label: "Cases Filed", value: dataAvailability.legalData.casesFiled },
+        { label: "Cases Resolved", value: dataAvailability.legalData.casesResolved },
+        { label: "Referrals Suggested", value: dataAvailability.legalData.referralSuggested },
+      ],
+      tables: [
+        { title: "Legal Cases by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.byCity, dataAvailability.legalData.total) },
+        { title: "Legal Case Status Distribution", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.byStatus, dataAvailability.legalData.total) },
+        { title: "Legal Case Types", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.byType, dataAvailability.legalData.total) },
+        { title: "Referral Outcome", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.referralBreakdown) },
+      ],
+    });
+  }
+
+  if (activeModules.volunteers && dataAvailability.volunteerData) {
+    modules.push({
+      key: "volunteers",
+      title: "Volunteer Application Management",
+      metrics: [
+        { label: "Total Applications", value: dataAvailability.volunteerData.total },
+        { label: "Approval Rate", value: `${dataAvailability.volunteerData.approvalRate}%` },
+        { label: "Average Score", value: dataAvailability.volunteerData.avgScore },
+      ],
+      tables: [
+        { title: "Applications by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.volunteerData.byStatus, dataAvailability.volunteerData.total) },
+        { title: "Top Fields of Background", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(Object.fromEntries(dataAvailability.volunteerData.topFields || [])) },
+      ],
+    });
+  }
+
+  if (activeModules.projects && dataAvailability.projectData) {
+    modules.push({
+      key: "projects",
+      title: "Project Tracker",
+      metrics: [
+        { label: "Total Projects", value: dataAvailability.projectData.total },
+        { label: "Active Projects", value: dataAvailability.projectData.activeProjects },
+        { label: "Completed", value: dataAvailability.projectData.completedOnTime },
+        { label: "Overdue (Ongoing)", value: dataAvailability.projectData.overdueCount },
+      ],
+      tables: [
+        { title: "Projects by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byStatus, dataAvailability.projectData.total) },
+        { title: "Projects by Category", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byCategory, dataAvailability.projectData.total) },
+        { title: "Approval Breakdown", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byApproval, dataAvailability.projectData.total) },
+      ],
+    });
+  }
+
+  if (activeModules.users && dataAvailability.userData) {
+    modules.push({
+      key: "users",
+      title: "User Management",
+      metrics: [
+        { label: "Total Users", value: dataAvailability.userData.total },
+        { label: "Active Users", value: dataAvailability.userData.activeUsers },
+        { label: "New This Month", value: dataAvailability.userData.newThisMonth },
+        { label: "Deactivated", value: dataAvailability.userData.deactivated },
+      ],
+      tables: [
+        { title: "Users by Role", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.byRole, dataAvailability.userData.total) },
+        { title: "Users by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.byCity, dataAvailability.userData.total) },
+        { title: "Active vs. Deactivated", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.activeBreakdown, dataAvailability.userData.total) },
+      ],
+    });
+  }
+
+  return modules;
+}
+
+async function exportToPDF({ activeModules, dateRange, dataAvailability, rawData, analyticsData }) {
+  const generatedAt = new Date();
+  const modules = buildPdfModules({ activeModules, dataAvailability, rawData, analyticsData });
+  if (modules.length === 0) return;
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4", compress: true });
+  addPdfCoverPage(doc, { dateRange, generatedAt, modules });
+
+  modules.forEach((reportModule) => {
+    addModulePage(doc, reportModule.title, reportModule.metrics, reportModule.tables);
+  });
+
+  addPdfFooter(doc, generatedAt);
+  return {
+    blob: doc.output("blob"),
+    filename: `report_${generatedAt.toISOString().slice(0, 10)}.pdf`,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1275,6 +1672,8 @@ export default function ReportGenerator() {
   const [loading, setLoading]               = useState(true);
   const [lastGenerated, setLastGenerated]   = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportingPdf, setExportingPdf]     = useState(false);
+  const [pdfPreview, setPdfPreview]         = useState(null);
   const [error, setError]                   = useState(null);
   const exportMenuRef                       = useRef(null);
   const rawRef = useRef({ cases: [], volunteers: [], projects: [], users: [], statusHistoryByCaseId: {} });
@@ -1295,6 +1694,12 @@ export default function ReportGenerator() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [exportMenuOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreview?.url) URL.revokeObjectURL(pdfPreview.url);
+    };
+  }, [pdfPreview]);
 
   const buildSummaries = useCallback((raw, range, filters) => {
     const legalStatuses = ["Case Filed", "Investigation Ongoing", "Hearing Ongoing", "Dismissed", "Perpetrator Convicted"];
@@ -1389,6 +1794,47 @@ export default function ReportGenerator() {
     setExportMenuOpen(false);
   }
 
+  async function handleExportPDF() {
+    setExportMenuOpen(false);
+    setExportingPdf(true);
+    try {
+      const result = await exportToPDF({
+        activeModules,
+        dateRange,
+        dataAvailability: {
+          caseData,
+          legalData,
+          volunteerData,
+          projectData,
+          userData,
+        },
+        rawData: rawRef.current,
+        analyticsData,
+      });
+      if (result?.blob) {
+        setPdfPreview((current) => {
+          if (current?.url) URL.revokeObjectURL(current.url);
+          return {
+            url: URL.createObjectURL(result.blob),
+            filename: result.filename,
+          };
+        });
+      }
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      setError("Failed to generate PDF. Please try again.");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
+  function closePdfPreview() {
+    setPdfPreview((current) => {
+      if (current?.url) URL.revokeObjectURL(current.url);
+      return null;
+    });
+  }
+
   // Build insight strip for the analytics overview
   const insights = analyticsData ? [
     `Cases in period: ${analyticsData.caseSummary?.total ?? 0}`,
@@ -1436,8 +1882,8 @@ export default function ReportGenerator() {
             </button>
             {exportMenuOpen && (
               <div className={styles.exportDropdown}>
-                <button className={styles.exportOption} onClick={() => { setExportMenuOpen(false); exportToPDF(); }}>
-                  <FiPrinter /> Export as PDF
+                <button className={styles.exportOption} onClick={handleExportPDF} disabled={exportingPdf}>
+                  <FiPrinter /> {exportingPdf ? "Generating PDF..." : "Export as PDF"}
                 </button>
                 <button className={styles.exportOption} onClick={handleExportCSV}>
                   <FiFileText /> Export as CSV/Excel
@@ -1764,6 +2210,29 @@ export default function ReportGenerator() {
             </ReportSection>
           )}
 
+        </div>
+      )}
+
+      {pdfPreview && (
+        <div className={styles.pdfPreviewOverlay} role="dialog" aria-modal="true" aria-label="PDF preview">
+          <div className={styles.pdfPreviewModal}>
+            <div className={styles.pdfPreviewHeader}>
+              <div>
+                <h2 className={styles.pdfPreviewTitle}>PDF Preview</h2>
+                <p className={styles.pdfPreviewSubtitle}>Review the generated report before downloading.</p>
+              </div>
+              <button type="button" className={styles.modalClose} onClick={closePdfPreview} aria-label="Close PDF preview">
+                <FiX />
+              </button>
+            </div>
+            <iframe className={styles.pdfPreviewFrame} src={pdfPreview.url} title="Generated report PDF preview" />
+            <div className={styles.pdfPreviewFooter}>
+              <button type="button" className={styles.btnSecondary} onClick={closePdfPreview}>Close</button>
+              <a className={styles.btnPrimary} href={pdfPreview.url} download={pdfPreview.filename}>
+                <FiDownload /> Download PDF
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>
