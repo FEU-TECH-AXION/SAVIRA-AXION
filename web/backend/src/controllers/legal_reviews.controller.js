@@ -6,6 +6,10 @@ const {
   getLegalManagementReports,
 } = require('../models/case_reports.model')
 const supabase = require('../config/supabase')
+const {
+  fireAndForget,
+  notifyCaseOwner,
+} = require('../services/notificationService')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
 const PUBLIC_MESSAGE_MAX_LENGTH = 280
@@ -541,6 +545,8 @@ async function updateByCase(req, res) {
     }
 
     let review = await LegalReviews.getLatestByCase(caseReportId)
+    const wasCreated = !review
+    const previousReviewStatus = review?.review_status
     if (!review) {
       const resolvedLegalPersonnelId = await LegalReviews.resolveLegalPersonnelId({
         caseReportId,
@@ -589,6 +595,44 @@ async function updateByCase(req, res) {
       isPublic: publicFields.isPublic,
       publicMessage: publicFields.publicMessage,
     })
+
+    if (wasCreated) {
+      fireAndForget(
+        notifyCaseOwner(caseReportId, {
+          title: 'Legal review update',
+          body: 'Your case has been referred for legal review.',
+          data: {
+            type: 'legal_review',
+            case_report_id: caseReportId,
+            legal_review_id: review.legal_review_id,
+            link: '/cases/history',
+            priority: 'normal',
+          },
+        }),
+        'Failed to notify case owner about legal review referral'
+      )
+    }
+
+    if (
+      !wasCreated &&
+      review_status !== undefined &&
+      String(previousReviewStatus || '') !== String(review.review_status || '')
+    ) {
+      fireAndForget(
+        notifyCaseOwner(caseReportId, {
+          title: 'Legal review update',
+          body: 'There is an update on your legal review. Please check your account for details.',
+          data: {
+            type: 'legal_review',
+            case_report_id: caseReportId,
+            legal_review_id: review.legal_review_id,
+            link: '/cases/history',
+            priority: 'normal',
+          },
+        }),
+        'Failed to notify case owner about legal review status update'
+      )
+    }
 
     const logs = await LegalReviews.getLogsByReview(review.legal_review_id)
     return res.json({ data: toClientPayload(review, logs) })
