@@ -10,6 +10,7 @@ import {
   FiChevronDown,
   FiHelpCircle,
   FiSearch,
+  FiX,
 } from "react-icons/fi";
 import Sidebar from "@/components/sidebar/sidebar";
 import { PUBLIC_LINKS, ROLE_LABELS } from "@/components/navigation/navigationLinks";
@@ -25,7 +26,7 @@ export default function Navbar() {
   const publicNavRef = useRef(null);
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
-  const { notifications, unreadCount, markAllRead } = useNotificationStore({ enabled: Boolean(user) && !loading });
+  const { notifications, unreadCount, markAllRead, dismissNotification } = useNotificationStore({ enabled: Boolean(user) && !loading });
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef(null);
 
@@ -165,6 +166,19 @@ export default function Navbar() {
                             key={n.id}
                             className={`${styles.notifItem} ${!n.read ? styles.notifItemUnread : ''}`}
                           >
+                            <button
+                              type="button"
+                              className={styles.notifDismissBtn}
+                              aria-label="Dismiss notification"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                dismissNotification(n.id).catch((err) => {
+                                  console.error('[notifications] Failed to dismiss notification:', err.message);
+                                });
+                              }}
+                            >
+                              <FiX size={15} />
+                            </button>
                             <p className={styles.notifTitle}>{n.title}</p>
                             <p className={styles.notifBody}>{n.body}</p>
                             {n.created_at && (
