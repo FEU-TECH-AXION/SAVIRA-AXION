@@ -11,6 +11,8 @@ const ALLOWED_FIELDS = [
   'online_link',
   'start_date',
   'end_date',
+  'start_time',
+  'end_time',
   'due_date',
   'logistical_requirement',
   'financial_requirement',
@@ -27,6 +29,7 @@ const ALLOWED_FIELDS = [
 
 // Strip ISO timestamp suffix so HTML <input type="date"> gets plain YYYY-MM-DD
 const toDateStr = (val) => (val ? String(val).split('T')[0] : null)
+const toTimeStr = (val) => (val ? String(val).slice(0, 5) : '')
 
 const toFrontend = (row) => {
   if (!row) return null
@@ -42,6 +45,8 @@ const toFrontend = (row) => {
     onlineLink: row.online_link || '',
     dateStart: toDateStr(row.start_date),
     dateEnd: toDateStr(row.end_date),
+    startTime: toTimeStr(row.start_time),
+    endTime: toTimeStr(row.end_time),
     dueDate: toDateStr(row.due_date),
     logisticalRequirements: row.logistical_requirement,
     financialRequirements: row.financial_requirement,
@@ -73,6 +78,8 @@ const toDbPayload = (payload) => {
     online_link: payload.onlineLink,
     start_date: payload.dateStart,
     end_date: payload.dateEnd,
+    start_time: payload.startTime,
+    end_time: payload.endTime,
     due_date: payload.dueDate,
     logistical_requirement: payload.logisticalRequirements,
     financial_requirement: payload.financialRequirements,
