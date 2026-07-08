@@ -29,7 +29,7 @@ function OverviewCard({ category, label, count, showView = false }) {
 
 export default function CaseOfficerDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
-  const [cases, setCases] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [interviews, setInterviews] = useState([]);
 
   const user = authUser
@@ -46,13 +46,13 @@ export default function CaseOfficerDashboard() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
         const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
-        const [caseRes, interviewsRes] = await Promise.all([
-          authFetch(`${API_URL}/api/case_reports/all`, { cache: 'no-store' }),
+        const [summaryRes, interviewsRes] = await Promise.all([
+          authFetch(`${API_URL}/api/dashboard/summary-counts`, { cache: 'no-store' }),
           authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
         ]);
-        if (caseRes.ok) {
-          const json = await caseRes.json();
-          setCases(Array.isArray(json) ? json : json?.data || []);
+        if (summaryRes.ok) {
+          const json = await summaryRes.json().catch(() => ({}));
+          setSummary(json.data || {});
         }
         if (interviewsRes.ok) {
           const json = await interviewsRes.json();
@@ -67,27 +67,25 @@ export default function CaseOfficerDashboard() {
 
   const actorName = getActorName(user);
 
-  const assignedCases = useMemo(() => cases, [cases]);
-
   const stats = useMemo(() => {
-    const forVerification = assignedCases.filter(c => Number(c.case_status_id) === 2).length;
-    const totalAssigned = assignedCases.length;
+    const forVerification = summary?.cases?.forVerification || 0;
+    const totalAssigned = summary?.cases?.assignedToMe || 0;
 
     return [
       { num: forVerification, label: "For Verification",    hasNew: forVerification > 0 },
       { num: totalAssigned,    label: "Total Assigned Cases", hasNew: totalAssigned > 0 },
     ];
-  }, [assignedCases]);
+  }, [summary]);
 
   const overviewCards = useMemo(() => {
-    const forVerification = assignedCases.filter(c => Number(c.case_status_id) === 2).length;
-    const totalAssigned = assignedCases.length;
+    const forVerification = summary?.cases?.forVerification || 0;
+    const totalAssigned = summary?.cases?.assignedToMe || 0;
 
     return [
       { category: "Case",    label: "For Verification",             count: forVerification, showView: true },
       { category: "Case",    label: "Your total assigned cases are", count: totalAssigned,    showView: true },
     ];
-  }, [assignedCases]);
+  }, [summary]);
 
   const deadlines = useMemo(() => buildConfirmedInterviewDeadlines(interviews, {
     userId: authUser?.user_id,

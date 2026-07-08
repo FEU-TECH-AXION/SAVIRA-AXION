@@ -26,10 +26,6 @@ function isSamePerson(a, b) {
   return Boolean(normalizeText(a) && normalizeText(a) === normalizeText(b));
 }
 
-function isToday(value) {
-  return Boolean(value && new Date(value).toDateString() === new Date().toDateString());
-}
-
 function isUpcomingDate(value) {
   if (!value) return false;
   const date = new Date(`${String(value).split("T")[0]}T00:00:00`);
@@ -63,7 +59,7 @@ function OverviewCard({ category, label, count, showView = false }) {
 
 export default function StaffDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
-  const [volunteers, setVolunteers] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [projectTasks, setProjectTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [staffRows, setStaffRows] = useState([]);
@@ -93,20 +89,20 @@ export default function StaffDashboard() {
         const staffRecord = staffList.find((person) => person.user_id === authUser.user_id);
         const committeeId = Number(authUser.committee_id ?? staffRecord?.committee_id ?? staffRecord?.committees?.committee_id);
         if (committeeId === MEMBERSHIP_COMMITTEE_ID) {
-          const [volunteerRes, interviewsRes] = await Promise.all([
-            authFetch(`${API_URL}/api/volunteer_applications`, { cache: "no-store" }),
+          const [summaryRes, interviewsRes] = await Promise.all([
+            authFetch(`${API_URL}/api/dashboard/summary-counts`, { cache: "no-store" }),
             authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: "no-store" }),
           ]);
-          if (volunteerRes.ok) {
-            const json = await volunteerRes.json();
-            setVolunteers(Array.isArray(json) ? json : json?.data || []);
+          if (summaryRes.ok) {
+            const json = await summaryRes.json().catch(() => ({}));
+            setSummary(json.data || {});
           }
           if (interviewsRes.ok) {
             const json = await interviewsRes.json();
             setInterviews(Array.isArray(json) ? json : json?.data || []);
           }
         } else {
-          setVolunteers([]);
+          setSummary(null);
           setInterviews([]);
         }
         setProjectTasks(Array.isArray(taskRows) ? taskRows : []);
@@ -153,17 +149,14 @@ export default function StaffDashboard() {
       ];
     }
 
-    const newToday = volunteers.filter(v => isToday(v.created_at)).length;
-    const review = volunteers.filter(v => {
-      const status = (v.application_status || "").toLowerCase();
-      return status === "pending" || status === "under_review";
-    }).length;
+    const newToday = summary?.volunteers?.newToday || 0;
+    const review = summary?.volunteers?.reviewApplications || 0;
 
     return [
       { num: newToday, label: "New Applications Today", hasNew: newToday > 0 },
       { num: review, label: "Review Applications", hasNew: review > 0 },
     ];
-  }, [isMembershipStaff, scopedProjectTasks, scopedProjects, volunteers]);
+  }, [isMembershipStaff, scopedProjectTasks, scopedProjects, summary]);
 
   const overviewCards = useMemo(() => {
     if (!isMembershipStaff) {
@@ -179,17 +172,14 @@ export default function StaffDashboard() {
       ];
     }
 
-    const newToday = volunteers.filter(v => isToday(v.created_at)).length;
-    const review = volunteers.filter(v => {
-      const status = (v.application_status || "").toLowerCase();
-      return status === "pending" || status === "under_review";
-    }).length;
+    const newToday = summary?.volunteers?.newToday || 0;
+    const review = summary?.volunteers?.reviewApplications || 0;
 
     return [
       { category: "New Applicants", label: "New Applications Today", count: newToday, showView: false },
       { category: "Volunteer", label: "Review Applications", count: review, showView: true },
     ];
-  }, [isMembershipStaff, scopedProjectTasks, scopedProjects, volunteers]);
+  }, [isMembershipStaff, scopedProjectTasks, scopedProjects, summary]);
 
   const deadlines = useMemo(() => limitUpcomingDeadlines([
     ...buildProjectTaskDeadlines(projectTasks, {
