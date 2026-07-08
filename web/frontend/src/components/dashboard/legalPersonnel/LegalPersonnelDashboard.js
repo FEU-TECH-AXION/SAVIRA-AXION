@@ -7,9 +7,6 @@ import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
-import {
-  buildLegalCaseDeadlines,
-} from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Legal Personnel are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -32,7 +29,6 @@ function OverviewCard({ category, label, count, showView = false }) {
 export default function LegalPersonnelDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState(null);
-  const [legalDeadlines, setLegalDeadlines] = useState([]);
 
   const user = authUser
     ? {
@@ -47,17 +43,10 @@ export default function LegalPersonnelDashboard() {
     async function fetchCases() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const [summaryRes, deadlinesRes] = await Promise.all([
-          authFetch(`${API_URL}/api/dashboard/summary-counts`, { cache: 'no-store' }),
-          authFetch(`${API_URL}/api/legal_reviews/deadlines?limit=50`, { cache: 'no-store' }),
-        ]);
+        const summaryRes = await authFetch(`${API_URL}/api/dashboard/legal-summary`, { cache: 'no-store' });
         if (summaryRes.ok) {
           const json = await summaryRes.json().catch(() => ({}));
           setSummary(json.data || {});
-        }
-        if (deadlinesRes.ok) {
-          const json = await deadlinesRes.json().catch(() => ({}));
-          setLegalDeadlines(json.data || []);
         }
       } catch (err) {
         console.error("Failed to fetch cases for LegalPersonnelDashboard:", err);
@@ -67,8 +56,8 @@ export default function LegalPersonnelDashboard() {
   }, [authLoading, authUser]);
 
   const stats = useMemo(() => {
-    const pendingReview = summary?.cases?.pendingLegalReview || 0;
-    const totalAssigned = summary?.cases?.assignedToMe || 0;
+    const pendingReview = summary?.counts?.pendingReview || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { num: pendingReview, label: "Pending Review",            hasNew: pendingReview > 0 },
@@ -77,8 +66,8 @@ export default function LegalPersonnelDashboard() {
   }, [summary]);
 
   const overviewCards = useMemo(() => {
-    const pendingReview = summary?.cases?.pendingLegalReview || 0;
-    const totalAssigned = summary?.cases?.assignedToMe || 0;
+    const pendingReview = summary?.counts?.pendingReview || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { category: "Case",    label: "Pending Review",               count: pendingReview, showView: true },
@@ -86,7 +75,7 @@ export default function LegalPersonnelDashboard() {
     ];
   }, [summary]);
 
-  const deadlines = useMemo(() => buildLegalCaseDeadlines(legalDeadlines), [legalDeadlines]);
+  const deadlines = summary?.deadlines || [];
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
 

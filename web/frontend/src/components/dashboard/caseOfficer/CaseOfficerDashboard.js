@@ -7,7 +7,6 @@ import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
-import { buildConfirmedInterviewDeadlines, getActorName } from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Case Officer are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -30,7 +29,6 @@ function OverviewCard({ category, label, count, showView = false }) {
 export default function CaseOfficerDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState(null);
-  const [interviews, setInterviews] = useState([]);
 
   const user = authUser
     ? {
@@ -45,18 +43,10 @@ export default function CaseOfficerDashboard() {
     async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
-        const [summaryRes, interviewsRes] = await Promise.all([
-          authFetch(`${API_URL}/api/dashboard/summary-counts`, { cache: 'no-store' }),
-          authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
-        ]);
+        const summaryRes = await authFetch(`${API_URL}/api/dashboard/case-officer-summary`, { cache: 'no-store' });
         if (summaryRes.ok) {
           const json = await summaryRes.json().catch(() => ({}));
           setSummary(json.data || {});
-        }
-        if (interviewsRes.ok) {
-          const json = await interviewsRes.json();
-          setInterviews(Array.isArray(json) ? json : json?.data || []);
         }
       } catch (err) {
         console.error("Failed to fetch CaseOfficerDashboard data:", err);
@@ -65,11 +55,9 @@ export default function CaseOfficerDashboard() {
     fetchDashboardData();
   }, [authLoading, authUser?.user_id]);
 
-  const actorName = getActorName(user);
-
   const stats = useMemo(() => {
-    const forVerification = summary?.cases?.forVerification || 0;
-    const totalAssigned = summary?.cases?.assignedToMe || 0;
+    const forVerification = summary?.counts?.forVerification || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { num: forVerification, label: "For Verification",    hasNew: forVerification > 0 },
@@ -78,8 +66,8 @@ export default function CaseOfficerDashboard() {
   }, [summary]);
 
   const overviewCards = useMemo(() => {
-    const forVerification = summary?.cases?.forVerification || 0;
-    const totalAssigned = summary?.cases?.assignedToMe || 0;
+    const forVerification = summary?.counts?.forVerification || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { category: "Case",    label: "For Verification",             count: forVerification, showView: true },
@@ -87,10 +75,7 @@ export default function CaseOfficerDashboard() {
     ];
   }, [summary]);
 
-  const deadlines = useMemo(() => buildConfirmedInterviewDeadlines(interviews, {
-    userId: authUser?.user_id,
-    actorName,
-  }), [actorName, authUser?.user_id, interviews]);
+  const deadlines = summary?.deadlines || [];
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
 

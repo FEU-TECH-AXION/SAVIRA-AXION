@@ -8,13 +8,6 @@ import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
-import {
-  buildConfirmedInterviewDeadlines,
-  buildLegalCaseDeadlines,
-  buildProjectDeadlines,
-  buildProjectTaskDeadlines,
-  limitUpcomingDeadlines,
-} from "@/lib/dashboardDeadlines";
 
 // ── Overview stat card ───────────────────────────────────────────────────────
 function OverviewCard({ category, label, count, showView = false, viewHref = "#" }) {
@@ -38,31 +31,6 @@ function OverviewCard({ category, label, count, showView = false, viewHref = "#"
 
 // ── Heatmap Placeholder ──────────────────────────────────────────────────────
 // ── Page ─────────────────────────────────────────────────────────────────────
-function unwrapList(payload, preferredKey) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
-
-  if (preferredKey && Array.isArray(payload[preferredKey])) {
-    return payload[preferredKey];
-  }
-
-  const commonKeys = ["data", "items", "records", "results", "projects", "users", "cases", "volunteers"];
-  const listKey = commonKeys.find((key) => Array.isArray(payload[key]));
-  return listKey ? payload[listKey] : [];
-}
-
-async function fetchList(url, preferredKey) {
-  const response = await authFetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    const message = await response.text().catch(() => "");
-    console.error(`[AdminDashboard] Failed to fetch ${url}: ${response.status}`, message);
-    return [];
-  }
-
-  const payload = await response.json().catch(() => null);
-  return unwrapList(payload, preferredKey);
-}
-
 export default function AdminDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
   const [statsData, setStatsData] = useState(null);
@@ -82,23 +50,17 @@ export default function AdminDashboard() {
     async function fetchDashboardStats() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const [projects, summaryRes, interviews, projectTasks, legalDeadlines] = await Promise.all([
-          fetchList(`${API_URL}/api/projects`, "projects"),
-          authFetch(`${API_URL}/api/dashboard/summary-counts`, { cache: "no-store" }),
-          fetchList(`${API_URL}/api/interviews?type=case_report`, "data"),
-          fetchList(`${API_URL}/api/project-tasks`, "data"),
-          fetchList(`${API_URL}/api/legal_reviews/deadlines?limit=100`, "data"),
-        ]);
+        const summaryRes = await authFetch(`${API_URL}/api/dashboard/admin-summary`, { cache: "no-store" });
         const summaryPayload = summaryRes.ok ? await summaryRes.json().catch(() => ({})) : {};
         const summary = summaryPayload.data || {};
 
         if (isMounted) {
-          setStatsData({ projects, summary, interviews, projectTasks, legalDeadlines });
+          setStatsData(summary);
         }
       } catch (err) {
         console.error("Failed to fetch dashboard stats:", err);
         if (isMounted) {
-          setStatsData({ projects: [], summary: {}, interviews: [], projectTasks: [], legalDeadlines: [] });
+          setStatsData({});
         }
       }
     }
@@ -119,11 +81,10 @@ export default function AdminDashboard() {
         { num: 0, label: "Total Cases",    hasNew: false },
       ];
     }
-    const summary = statsData.summary || {};
     return [
-      { num: summary.projects?.total || 0, label: "Total Projects", hasNew: false },
-      { num: summary.users?.total || 0, label: "Total Users",    hasNew: false },
-      { num: summary.cases?.total || 0, label: "Total Cases",    hasNew: false },
+      { num: statsData.counts?.totalProjects || 0, label: "Total Projects", hasNew: false },
+      { num: statsData.counts?.totalUsers || 0, label: "Total Users",    hasNew: false },
+      { num: statsData.counts?.totalCases || 0, label: "Total Cases",    hasNew: false },
     ];
   }, [statsData]);
 
@@ -137,11 +98,10 @@ export default function AdminDashboard() {
       ];
     }
 
-    const summary = statsData.summary || {};
-    const unassigned = summary.cases?.unassigned || 0;
-    const underVerification = summary.cases?.forVerification || 0;
-    const newAppsToday = summary.volunteers?.newToday || 0;
-    const reviewApps = summary.volunteers?.reviewApplications || 0;
+    const unassigned = statsData.counts?.unassignedCases || 0;
+    const underVerification = statsData.counts?.underVerification || 0;
+    const newAppsToday = statsData.counts?.newApplicationsToday || 0;
+    const reviewApps = statsData.counts?.reviewApplications || 0;
 
     return [
       { category: "Case",      label: "Unassigned Cases",       count: unassigned,        showView: true,  viewHref: "/cases" },
@@ -151,15 +111,7 @@ export default function AdminDashboard() {
     ];
   }, [statsData]);
 
-  const deadlines = useMemo(() => {
-    if (!statsData) return [];
-    return limitUpcomingDeadlines([
-      ...buildConfirmedInterviewDeadlines(statsData.interviews, { limit: Infinity }),
-      ...buildProjectTaskDeadlines(statsData.projectTasks, { limit: Infinity }),
-      ...buildProjectDeadlines(statsData.projects, { limit: Infinity }),
-      ...buildLegalCaseDeadlines(statsData.legalDeadlines, { limit: Infinity }),
-    ], Infinity);
-  }, [statsData]);
+  const deadlines = statsData?.deadlines || [];
 
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
