@@ -69,7 +69,7 @@ export default function NotificationsInit() {
       zIndex: 9999, maxWidth: '320px',
     }}>
       <p style={{ margin: '0 0 12px', fontSize: '14px' }}>
-        Enable notifications to stay updated on case assignments and status changes.
+        Enable notifications to stay updated on important activity.
       </p>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={handleAllow} style={{
