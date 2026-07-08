@@ -129,6 +129,16 @@ function toCalendarPayload(review) {
 const LEGAL_STATUS_ID_VALUES = [4, 6, 7, 8, 9, 10, 11, 12]
 const LEGAL_ACTIVE_STATUS_ID_VALUES = [4, 6, 7, 8, 9]
 const LEGAL_STATUS_IDS = new Set(LEGAL_STATUS_ID_VALUES)
+const STATUS_NAME_BY_ID = {
+  4: 'Verified - True',
+  6: 'Under Case Evaluation',
+  7: 'Case Filed',
+  8: 'Investigation Ongoing',
+  9: 'Hearing Ongoing',
+  10: 'Dismissed',
+  11: 'Perpetrator Convicted',
+  12: 'Resolved',
+}
 const LEGAL_MANAGEMENT_SORT_FIELDS = {
   caseId: 'caseId',
   id: 'caseId',
@@ -141,6 +151,149 @@ const LEGAL_MANAGEMENT_SORT_FIELDS = {
 
 function getRequesterRole(req) {
   return String(req.user?.role || req.user?.role_name || '').toLowerCase()
+}
+
+function getRequesterUserId(req) {
+  return req.user?.user_id || req.user?.id || null
+}
+
+function splitDateValues(value) {
+  if (!value) return []
+  if (Array.isArray(value)) return value.flatMap(splitDateValues)
+  if (value instanceof Date) return [value]
+
+  const text = String(value)
+  const matches = [
+    ...text.matchAll(/\b\d{4}-\d{2}-\d{2}\b/g),
+    ...text.matchAll(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g),
+    ...text.matchAll(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b/gi),
+  ].map((match) => match[0])
+
+  if (matches.length > 0) return matches
+  const date = new Date(text)
+  return Number.isNaN(date.getTime()) ? [] : [text]
+}
+
+function titleFromKey(key) {
+  return String(key || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function eventTypeFromLabel(label) {
+  const text = String(label || '').toLowerCase()
+  if (text.includes('hearing')) return 'hearing'
+  if (text.includes('investigation')) return 'investigation'
+  if (text.includes('referral') || text.includes('endorsement')) return 'referral'
+  if (text.includes('filing') || text.includes('filed')) return 'filing'
+  if (text.includes('consult')) return 'consultation'
+  if (text.includes('monitor') || text.includes('follow')) return 'monitoring'
+  if (text.includes('paralegal') || text.includes('lawyer review')) return 'paralegal'
+  return 'legal'
+}
+
+function addDateEvents(events, { type, label, value, source }) {
+  splitDateValues(value).forEach((dateValue) => {
+    events.push({
+      type: type || eventTypeFromLabel(label),
+      label,
+      value: dateValue,
+      source,
+    })
+  })
+}
+
+function addObjectDateEvents(events, object, { source, prefix = '' } = {}) {
+  Object.entries(object || {}).forEach(([key, value]) => {
+    const label = `${prefix}${titleFromKey(key)}`
+    const keyText = key.toLowerCase()
+    if (keyText.includes('date') || keyText.includes('schedule') || keyText.includes('hearing')) {
+      addDateEvents(events, { label, value, source })
+    }
+  })
+}
+
+function buildLegalDeadlinesForCase({ report, review, statusHistory = [] }) {
+  const events = []
+  const caseId = `${new Date(report.created_at).getFullYear()}-${String(report.case_report_id).padStart(3, '0')}`
+
+  addObjectDateEvents(events, review?.endorsement_details, { source: 'endorsement' })
+
+  for (const entry of statusHistory) {
+    const status = entry.case_status?.case_status_name || STATUS_NAME_BY_ID[entry.case_status_id] || 'Status'
+    const entryDate = entry.approved_at || entry.created_at
+    addDateEvents(events, { type: 'status', label: `${status} update`, value: entryDate, source: 'status' })
+    addObjectDateEvents(events, entry.form_data || {}, { source: 'status' })
+  }
+
+  const paralegal = review?.paralegal_record
+  if (paralegal) {
+    addDateEvents(events, { type: 'paralegal', label: 'Paralegal support recorded', value: paralegal.date, source: 'paralegal' })
+    addDateEvents(events, { type: 'paralegal', label: 'Ready for lawyer review', value: paralegal.readyAt, source: 'paralegal' })
+  }
+
+  const lawyer = review?.lawyer_record
+  if (lawyer) {
+    addDateEvents(events, { type: 'consultation', label: 'Lawyer consultation', value: lawyer.date, source: 'lawyer' })
+    addDateEvents(events, { type: 'consultation', label: 'Lawyer consultation saved', value: lawyer.savedAt, source: 'lawyer' })
+    for (const consultation of lawyer.consultations || []) {
+      addDateEvents(events, {
+        type: 'consultation',
+        label: `${consultation.consultationType || 'Lawyer'} consultation`,
+        value: consultation.date || consultation.consultationDate,
+        source: 'lawyer',
+      })
+      addDateEvents(events, { type: 'consultation', label: 'Lawyer consultation saved', value: consultation.savedAt, source: 'lawyer' })
+    }
+  }
+
+  for (const entry of review?.monitoring_log || []) {
+    addDateEvents(events, { type: 'monitoring', label: 'Monitoring follow-up', value: entry.date, source: 'monitoring' })
+  }
+
+  for (const document of review?.document_repository || []) {
+    addDateEvents(events, {
+      type: 'document',
+      label: `Document added${document.label ? `: ${document.label}` : ''}`,
+      value: document.addedAt,
+      source: 'document',
+    })
+  }
+
+  return events
+    .filter((item) => item.value && !Number.isNaN(new Date(item.value).getTime()))
+    .map((item, index) => ({
+      ...item,
+      id: `${report.case_report_id}-${item.type}-${item.value}-${index}`,
+      caseReportId: report.case_report_id,
+      caseId,
+      status: STATUS_NAME_BY_ID[report.case_status_id] || null,
+      date: new Date(item.value).toISOString(),
+      dateKey: String(item.value).slice(0, 10),
+    }))
+}
+
+async function getLegalScopeCaseIds(req) {
+  if (getRequesterRole(req) !== 'legal personnel') return null
+
+  const { data: personnel, error: personnelError } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id')
+    .eq('user_id', getRequesterUserId(req))
+    .maybeSingle()
+  if (personnelError) throw personnelError
+  if (!personnel?.legal_personnel_id) return []
+
+  const { data, error } = await supabase
+    .from('legal_case_assignments')
+    .select('case_report_id')
+    .eq('legal_personnel_id', personnel.legal_personnel_id)
+    .eq('is_active', true)
+  if (error) throw error
+  return [...new Set((data || []).map((row) => row.case_report_id).filter(Boolean))]
 }
 
 function hasPaginatedManagementQuery(req) {
@@ -243,6 +396,76 @@ async function getManagement(req, res) {
     })
   } catch (err) {
     console.error('[legalReviews.getManagement]', err)
+    return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
+  }
+}
+
+async function getDeadlines(req, res) {
+  try {
+    const role = getRequesterRole(req)
+    if (!['admin', 'legal personnel'].includes(role)) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
+    const scopedCaseIds = await getLegalScopeCaseIds(req)
+    if (Array.isArray(scopedCaseIds) && scopedCaseIds.length === 0) {
+      return res.json({ data: [] })
+    }
+
+    let reportQuery = supabase
+      .from('case_reports')
+      .select('case_report_id, case_status_id, created_at')
+      .eq('is_current', true)
+      .in('case_status_id', LEGAL_STATUS_ID_VALUES)
+
+    if (Array.isArray(scopedCaseIds)) reportQuery = reportQuery.in('case_report_id', scopedCaseIds)
+
+    const { data: reports, error: reportsError } = await reportQuery
+      .order('created_at', { ascending: false })
+    if (reportsError) throw reportsError
+
+    const caseIds = (reports || []).map((report) => report.case_report_id)
+    if (caseIds.length === 0) return res.json({ data: [] })
+
+    const [reviewsByCase, historyResult] = await Promise.all([
+      LegalReviews.getLatestByCaseIds(caseIds),
+      supabase
+        .from('case_status_history')
+        .select(`
+          case_report_id,
+          case_status_id,
+          form_data,
+          approved_at,
+          created_at,
+          case_status ( case_status_name )
+        `)
+        .in('case_report_id', caseIds)
+        .order('created_at', { ascending: true }),
+    ])
+    if (historyResult.error) throw historyResult.error
+
+    const historyByCase = (historyResult.data || []).reduce((map, row) => {
+      if (!map[row.case_report_id]) map[row.case_report_id] = []
+      map[row.case_report_id].push(row)
+      return map
+    }, {})
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 200)
+    const deadlines = (reports || [])
+      .flatMap((report) => buildLegalDeadlinesForCase({
+        report,
+        review: reviewsByCase[report.case_report_id],
+        statusHistory: historyByCase[report.case_report_id] || [],
+      }))
+      .filter((deadline) => new Date(deadline.date).getTime() >= today.getTime())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, limit)
+
+    return res.json({ data: deadlines })
+  } catch (err) {
+    console.error('[legalReviews.getDeadlines]', err)
     return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
   }
 }
@@ -375,4 +598,4 @@ async function updateByCase(req, res) {
   }
 }
 
-module.exports = { getManagement, getByCase, getCalendarByCase, updateByCase }
+module.exports = { getManagement, getDeadlines, getByCase, getCalendarByCase, updateByCase }
