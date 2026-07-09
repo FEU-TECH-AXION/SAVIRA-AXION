@@ -26,6 +26,44 @@
 .btnDanger:hover { background: #dc2626; transform: translateY(-1px); }
 .btnDanger:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+.btnOverride {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  color: #9a3412;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 0.4rem;
+  margin-right: auto;
+  padding: 0.5rem 1rem;
+  transition: background 0.12s, border-color 0.12s, transform 0.1s;
+}
+.btnOverride:hover {
+  background: #ffedd5;
+  border-color: #fb923c;
+  transform: translateY(-1px);
+}
+
+.btnOverridePrimary {
+  align-items: center;
+  background: #ea580c;
+  border: none;
+  border-radius: 999px;
+  color: white;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 800;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  transition: background 0.15s, transform 0.1s;
+}
+.btnOverridePrimary:hover { background: #c2410c; transform: translateY(-1px); }
+.btnOverridePrimary:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+
 .btnSuccess {
   background: #16a34a; color: var(--sasha-white);
   border: none; border-radius: 999px;
@@ -218,6 +256,45 @@
   font-family: inherit;
 }
 .formInput:focus { border-color: var(--sasha-teal); }
+
+.overrideNotice {
+  align-items: flex-start;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 10px;
+  color: #9a3412;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+}
+.overrideNoticeIcon {
+  color: #ea580c;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.overrideNotice strong {
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 0.25rem;
+}
+.overrideNotice p {
+  color: #9a3412;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.inlineError {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+}
 .inputError { border-color: #ef4444 !important; }
 .errorMsg { font-size: 0.78rem; color: #dc2626; margin-top: 2px; }
 

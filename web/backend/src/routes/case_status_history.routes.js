@@ -4,6 +4,7 @@ const {
   getHistory,
   getBatchApprovedHistory,
   submitStatusChange,
+  submitStatusOverride,
   approveStatusChange,
   rejectStatusChange,
 } = require('../controllers/case_status_history.controller')
@@ -19,6 +20,8 @@ router.get('/:caseReportId', verifyToken, requireCaseReportAccess, getHistory)
 
 // Officer submits a status change — creates history + assessment rows
 router.post('/', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), submitStatusChange)
+
+router.post('/override', verifyToken, authorize('Admin'), submitStatusOverride)
 
 // Admin approves a pending status change
 router.patch('/:historyId/approve', verifyToken, authorize('Admin'), approveStatusChange)

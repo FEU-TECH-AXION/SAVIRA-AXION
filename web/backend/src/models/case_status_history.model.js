@@ -44,6 +44,8 @@ const getByCaseReport = async (caseReportId, { staffView = false } = {}) => {
       approved_by_id,
       approved_at,
       rejection_reason,
+      is_override,
+      override_reason,
       created_at,
       case_status ( case_status_name )
     `)
@@ -92,6 +94,8 @@ const create = async ({
     approvalStatus = 'approved',   // default approved — no pending queue for now
     approvedAt     = null,
     approvedById   = null,
+    isOverride     = false,
+    overrideReason = null,
 }) => {
   const { data, error } = await supabase
     .from('case_status_history')
@@ -105,6 +109,8 @@ const create = async ({
       approval_status: approvalStatus,
       approved_at:     approvedAt,
       approved_by_id:  approvedById,
+      is_override:     isOverride,
+      override_reason: overrideReason,
     }])
     .select()
   if (error) throw error

@@ -274,9 +274,17 @@ function StatusHistorySection({ caseData }) {
                 )}
               </div>
               <div style={{ paddingTop: 2 }}>
-                <StatusBadge status={h.status} />
+                <div className={styles.historyStatusLine}>
+                  <StatusBadge status={h.status} />
+                  {h.isOverride && <span className={styles.overrideBadge}>Override</span>}
+                </div>
                 <p className={styles.historyMeta}>{h.date} - {h.by}</p>
                 {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
+                {h.isOverride && h.overrideReason && (
+                  <p className={styles.overrideReason}>
+                    <strong>Override reason:</strong> {h.overrideReason}
+                  </p>
+                )}
               </div>
             </div>
           ))}
@@ -878,6 +886,51 @@ function CaseManagementTab({
     }
   }
 
+  async function submitOverride(proposedStatus, overrideReason) {
+    try {
+      const res = await authFetch(`${API_URL}/api/case_status_history/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          case_report_id: caseData.id,
+          proposed_status: proposedStatus,
+          override_reason: overrideReason,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to override status.");
+
+      const historyId = payload.historyRow?.history_id;
+      setCaseData((prev) => ({
+        ...prev,
+        status: proposedStatus,
+        pendingApproval: null,
+        statusHistory: [
+          ...(prev.statusHistory || []),
+          {
+            historyId,
+            status: proposedStatus,
+            date: new Date().toLocaleDateString("en-PH"),
+            by: actorName,
+            notes: payload.historyRow?.notes || `Admin override to ${proposedStatus}.`,
+            formData: payload.historyRow?.form_data || {
+              override_from_status: prev.status,
+              override_to_status: proposedStatus,
+            },
+            approvalStatus: "approved",
+            isOverride: true,
+            overrideReason,
+          },
+        ],
+      }));
+      showToast(payload.message || `Status override recorded to "${proposedStatus}".`);
+      setModal(null);
+    } catch (err) {
+      showToast(err.message, "error");
+      throw err;
+    }
+  }
+
   const transitions = getAvailableTransitionsLocal();
   const canOpenStatusModal = transitions.length > 0 || !!STATUS_MODAL_MAP[caseData.status];
   const [caseTypeVal, setCaseTypeVal] = useState(Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []);
@@ -1250,6 +1303,7 @@ function CaseManagementTab({
         isLegal={isLegal}
         viewCaseMode
         includeCurrentStatus
+        onOverrideSubmit={submitOverride}
         onOpenDuplicateCheck={() => {
           setModal(null);
           onOpenDuplicateCheck?.();
