@@ -99,6 +99,23 @@ const getHistory = async (req, res) => {
   }
 }
 
+const getBatchApprovedHistory = async (req, res) => {
+  try {
+    const rawIds = Array.isArray(req.query.caseIds)
+      ? req.query.caseIds
+      : String(req.query.caseIds || '').split(',')
+
+    const caseIds = rawIds
+      .map((id) => Number(String(id).trim()))
+      .filter((id) => Number.isFinite(id))
+
+    const data = await CaseStatusHistory.getApprovedByCaseReportIds(caseIds)
+    res.json({ data })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
 async function getHistoryActorMap(userIds) {
   if (!userIds?.length) return {}
 
@@ -409,4 +426,4 @@ const rejectStatusChange = async (req, res) => {
   }
 }
 
-module.exports = { getHistory, submitStatusChange, approveStatusChange, rejectStatusChange }
+module.exports = { getHistory, getBatchApprovedHistory, submitStatusChange, approveStatusChange, rejectStatusChange }

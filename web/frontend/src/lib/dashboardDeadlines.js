@@ -1,4 +1,3 @@
-import { getLegalCaseDeadlines } from "@/components/legalReviews/legalReviewCalendar";
 import { authFetch } from "@/lib/AuthContext";
 
 export function unwrapList(payload, preferredKey) {
@@ -181,28 +180,4 @@ export function buildLegalCaseDeadlines(legalDeadlines, { limit = 3 } = {}) {
     })),
     limit
   );
-}
-
-export async function fetchLegalDeadlinesForCases(API_URL, cases) {
-  const enriched = await Promise.all(
-    (cases || []).map(async (caseItem) => {
-      const id = caseItem.case_report_id || caseItem.id;
-      if (!id) return null;
-      const [reviewResponse, historyResponse] = await Promise.all([
-        authFetch(`${API_URL}/api/legal_reviews/case/${id}`, { cache: "no-store" }),
-        authFetch(`${API_URL}/api/case_status_history/${id}?staffView=true`, { cache: "no-store" }),
-      ]);
-      const reviewPayload = reviewResponse.ok ? await reviewResponse.json().catch(() => ({})) : {};
-      const historyPayload = historyResponse.ok ? await historyResponse.json().catch(() => ({})) : {};
-      return {
-        id,
-        caseId: caseItem.caseId || `${new Date(caseItem.created_at || Date.now()).getFullYear()}-${String(id).padStart(3, "0")}`,
-        status: caseItem.status,
-        endorsementDetails: reviewPayload.data?.endorsement_details || null,
-        statusHistory: historyPayload.data || [],
-      };
-    })
-  );
-
-  return enriched.filter(Boolean).flatMap(getLegalCaseDeadlines);
 }

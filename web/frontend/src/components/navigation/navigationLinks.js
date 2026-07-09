@@ -83,7 +83,7 @@ export const FOOTER_QUICK_LINKS = {
     { href: "/staffAvailability", label: "Staff Availability" },
     { href: "/volunteer", label: "Volunteers" },
     { href: "/heatmap", label: "Heatmap" },
-    { href: "/reportGenerator", label: "Report & Analysis" },
+    { href: "/reportGenerator", label: "Report" },
   ],
 };
 
@@ -228,7 +228,7 @@ export const SIDEBAR_LINKS = {
     },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
     { href: "/support-messages", label: "Support Messages", icon: "contact" },
-    { href: "/reportGenerator", label: "Reports & Analysis", icon: "assessment" },
+    { href: "/reportGenerator", label: "Report", icon: "assessment" },
     {
       label: "Settings",
       icon: "settings",

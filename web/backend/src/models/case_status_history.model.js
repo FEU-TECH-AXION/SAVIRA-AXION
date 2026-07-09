@@ -60,6 +60,26 @@ const getByCaseReport = async (caseReportId, { staffView = false } = {}) => {
   return data
 }
 
+const getApprovedByCaseReportIds = async (caseReportIds = []) => {
+  const ids = [...new Set(
+    caseReportIds
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id))
+  )]
+
+  if (ids.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('case_status_history')
+    .select('case_report_id, case_status_id, created_at, approved_at, approval_status')
+    .in('case_report_id', ids)
+    .eq('approval_status', 'approved')
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
 // Called when an officer submits a status change modal —
 // creates a pending record that waits for admin approval
 const create = async ({
@@ -196,6 +216,7 @@ const reviewWithdrawal = async ({
 
 module.exports = {
   getByCaseReport,
+  getApprovedByCaseReportIds,
   getById,
   create,
   approve,

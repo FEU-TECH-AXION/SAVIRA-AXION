@@ -2,6 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const {
   getHistory,
+  getBatchApprovedHistory,
   submitStatusChange,
   approveStatusChange,
   rejectStatusChange,
@@ -9,6 +10,9 @@ const {
 const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
+
+// Batched approved status timeline for report analytics
+router.get('/batch/approved', verifyToken, authorize('Admin'), getBatchApprovedHistory)
 
 // Get status timeline for a case (staffView=true query param for staff)
 router.get('/:caseReportId', verifyToken, requireCaseReportAccess, getHistory)

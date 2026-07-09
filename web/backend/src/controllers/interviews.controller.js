@@ -1,6 +1,12 @@
 const InterviewModel = require('../models/interviews.model')
 const InterviewSlotsModel = require('../models/interview_slots.model')
 const supabase = require('../config/supabase')
+const {
+    fireAndForget,
+    notifyCaseOwner,
+    notifyUser,
+    notifyVolunteerApplicationOwner,
+} = require('../services/notificationService')
 
 const normalizeInterviewType = (type) =>
     type === 'volunteer_application' ? 'volunteer' : type
@@ -12,6 +18,56 @@ const actorId = (req) => req.user?.id || req.user?.user_id
 const isAdmin = (req) => req.user?.role === 'Admin'
 const isCaseOfficer = (req) => req.user?.role === 'Case Officer'
 const isStaff = (req) => req.user?.role === 'Staff'
+
+const getInterviewLink = (interview) =>
+    normalizeInterviewType(interview?.type) === 'case_report'
+        ? '/caseInterviews'
+        : '/volunteerInterviews'
+
+const getInterviewOwnerLink = (interview) =>
+    normalizeInterviewType(interview?.type) === 'case_report'
+        ? '/cases/history'
+        : '/volunteer/history'
+
+const notifyInterviewOwner = (interview, notification) => {
+    if (normalizeInterviewType(interview?.type) === 'case_report' && interview?.case_report_id) {
+        return notifyCaseOwner(interview.case_report_id, notification)
+    }
+    if (isVolunteerType(interview?.type) && interview?.volunteer_application_id) {
+        return notifyVolunteerApplicationOwner(interview.volunteer_application_id, notification)
+    }
+    return Promise.resolve()
+}
+
+const notifyInterviewParticipants = (interview, { title, body, label }) => {
+    const baseData = {
+        type: 'interview',
+        interview_id: interview.interview_id,
+        case_report_id: interview.case_report_id || '',
+        volunteer_application_id: interview.volunteer_application_id || '',
+        priority: 'normal',
+    }
+
+    fireAndForget(
+        notifyInterviewOwner(interview, {
+            title,
+            body,
+            data: { ...baseData, link: getInterviewOwnerLink(interview) },
+        }),
+        `Failed to notify interviewee about ${label}`
+    )
+
+    if (interview.interviewer_user_id) {
+        fireAndForget(
+            notifyUser(interview.interviewer_user_id, {
+                title,
+                body,
+                data: { ...baseData, link: getInterviewLink(interview) },
+            }),
+            `Failed to notify interviewer about ${label}`
+        )
+    }
+}
 
 const isMembershipStaff = async (userId) => {
     const { data, error } = await supabase
@@ -508,6 +564,12 @@ const selectSlot = async (req, res) => {
             InterviewSlotsModel.markUnavailable(slot_id),
         ])
 
+        notifyInterviewParticipants(interview, {
+            title: 'Interview scheduled',
+            body: 'An interview has been scheduled. Please check your account for details.',
+            label: 'scheduled interview',
+        })
+
         res.json({ data: interview })
     } catch (err) {
         res.status(500).json({ error: err.message })
@@ -559,6 +621,12 @@ const reschedule = async (req, res) => {
         if (previousSlotId && String(previousSlotId) !== String(slot_id)) {
             await InterviewSlotsModel.markAvailable(previousSlotId)
         }
+
+        notifyInterviewParticipants(updatedInterview, {
+            title: 'Interview schedule updated',
+            body: 'An interview schedule has been updated. Please check your account for details.',
+            label: 'rescheduled interview',
+        })
 
         res.json({ data: updatedInterview })
     } catch (err) {
@@ -701,6 +769,11 @@ const cancel = async (req, res) => {
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
 
         const data = await InterviewModel.cancel(req.params.id, normalizedReason)
+        notifyInterviewParticipants(data, {
+            title: 'Interview cancelled',
+            body: 'An interview has been cancelled. Please check your account for details.',
+            label: 'cancelled interview',
+        })
         res.json({ data })
     } catch (err) {
         res.status(500).json({ error: err.message })

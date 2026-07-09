@@ -7,12 +7,6 @@ import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
-import {
-  buildLegalCaseDeadlines,
-  fetchLegalDeadlinesForCases,
-  getActorName,
-  samePerson,
-} from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Legal Personnel are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -32,46 +26,9 @@ function OverviewCard({ category, label, count, showView = false }) {
 
 // ── Cookies ─────────────────────────────────────────────────────────────────────
 
-function assignedLegalPeople(caseItem) {
-  const assignedLegal = caseItem?.assigned_legal || caseItem?.assignedLegal || [];
-  return Array.isArray(assignedLegal) ? assignedLegal : [];
-}
-
-function legalPersonName(person) {
-  return (
-    person?.name ||
-    person?.full_name ||
-    `${person?.first_name || ""} ${person?.last_name || ""}`.trim()
-  );
-}
-
-function isAssignedToLegalPersonnel(caseItem, actorName) {
-  if (!actorName) return false;
-
-  const directAssignments = [
-    caseItem?.assigned_legal_officer,
-    caseItem?.assignedLegalOfficer,
-    caseItem?.assigned_lawyer,
-    caseItem?.assignedLawyer,
-    caseItem?.assigned_paralegal,
-    caseItem?.assignedParalegal,
-  ];
-
-  return (
-    directAssignments.some((name) => samePerson(name, actorName)) ||
-    assignedLegalPeople(caseItem).some((person) => samePerson(legalPersonName(person), actorName))
-  );
-}
-
-function isPendingLegalReview(caseItem) {
-  const statusId = Number(caseItem?.case_status_id);
-  return statusId === 4 || statusId === 6;
-}
-
 export default function LegalPersonnelDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
-  const [cases, setCases] = useState([]);
-  const [legalDeadlines, setLegalDeadlines] = useState([]);
+  const [summary, setSummary] = useState(null);
 
   const user = authUser
     ? {
@@ -81,54 +38,44 @@ export default function LegalPersonnelDashboard() {
       }
     : { role: "", firstName: "", lastName: "" };
 
-  const actorName = getActorName(user);
-
   useEffect(() => {
     if (authLoading || !authUser) return;
     async function fetchCases() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await authFetch(`${API_URL}/api/case_reports/all`, { cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          const list = Array.isArray(json) ? json : json?.data || [];
-          setCases(list);
-          const assigned = list.filter((c) => isAssignedToLegalPersonnel(c, actorName));
-          setLegalDeadlines(await fetchLegalDeadlinesForCases(API_URL, assigned));
+        const summaryRes = await authFetch(`${API_URL}/api/dashboard/legal-summary`, { cache: 'no-store' });
+        if (summaryRes.ok) {
+          const json = await summaryRes.json().catch(() => ({}));
+          setSummary(json.data || {});
         }
       } catch (err) {
         console.error("Failed to fetch cases for LegalPersonnelDashboard:", err);
       }
     }
     fetchCases();
-  }, [actorName, authLoading, authUser]);
-
-  const assignedCases = useMemo(() => {
-    return cases.filter((c) => isAssignedToLegalPersonnel(c, actorName));
-  }, [cases, actorName]);
+  }, [authLoading, authUser]);
 
   const stats = useMemo(() => {
-    // Verified - True (4) or Under Case Evaluation (6) are pending review
-    const pendingReview = assignedCases.filter(isPendingLegalReview).length;
-    const totalAssigned = assignedCases.length;
+    const pendingReview = summary?.counts?.pendingReview || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { num: pendingReview, label: "Pending Review",            hasNew: pendingReview > 0 },
       { num: totalAssigned,  label: "Total Assigned Cases",       hasNew: totalAssigned > 0 },
     ];
-  }, [assignedCases]);
+  }, [summary]);
 
   const overviewCards = useMemo(() => {
-    const pendingReview = assignedCases.filter(isPendingLegalReview).length;
-    const totalAssigned = assignedCases.length;
+    const pendingReview = summary?.counts?.pendingReview || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { category: "Case",    label: "Pending Review",               count: pendingReview, showView: true },
       { category: "My Case", label: "Your total assigned cases are", count: totalAssigned,  showView: true },
     ];
-  }, [assignedCases]);
+  }, [summary]);
 
-  const deadlines = useMemo(() => buildLegalCaseDeadlines(legalDeadlines), [legalDeadlines]);
+  const deadlines = summary?.deadlines || [];
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
 

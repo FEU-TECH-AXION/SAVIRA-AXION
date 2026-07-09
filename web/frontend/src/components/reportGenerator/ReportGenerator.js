@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { jsPDF } from "jspdf";
+import ExcelJS from "exceljs";
 import styles from "./ReportGenerator.module.css";
 import {
   FiDownload,
@@ -89,6 +91,16 @@ const DATE_RANGES = [
   { label: "This Year",    value: "thisYear" },
   { label: "Last 30 Days", value: "last30Days" },
 ];
+
+const ENDORSEMENT_BODIES = [
+  "DSWD",
+  "PNP Women and Children Protection Desk",
+  "BSP/GSP Mechanism",
+  "School/Workplace CODI",
+  "Court (with lawyer)",
+];
+
+const LEGAL_CROSSTAB_COLUMNS = ["Ongoing", "Won", "Settled", "Dismissed", "Unresolved", "Declined"];
 
 const CASE_STATUS_BY_ID = {
   1:  "Submitted",
@@ -221,12 +233,23 @@ function normalizeCaseReport(row) {
     id: row.id || row.case_report_id,
     status,
     case_type: caseType,
+    primary_category: row.primary_category || row.primaryCategory || null,
+    additional_categories: Array.isArray(row.additional_categories)
+      ? row.additional_categories
+      : Array.isArray(row.additionalCategories)
+        ? row.additionalCategories
+        : [],
     city,
     region:
       row.region || row.location_type || row.incident_location_type || row.incident_province || row.incident_city || null,
     site:
       row.site || row.incident_city || row.incident_province || row.region || null,
     location_type: row.location_type || row.incident_location_type || null,
+    incident_location_type: row.incident_location_type || row.location_type || null,
+    incident_location: row.incident_location || row.incidentLocation || null,
+    perpetrator_relationship: row.perpetrator_relationship || row.perpetratorRelationship || null,
+    perpetrator_occupation: row.perpetrator_occupation || row.perpetratorOccupation || null,
+    endorsed_to: row.endorsed_to || row.endorsedTo || row.legal_review?.endorsed_to || row.endorsement?.endorsed_to || null,
     date_filed: row.date_filed || row.dateSubmitted || row.created_at || null,
     date_resolved: row.date_resolved || row.dateResolved || row.updated_at || null,
     created_at: row.created_at || row.date_filed || null,
@@ -321,26 +344,81 @@ function bucketCasesByDay(cases) {
     }));
 }
 
-function bucketCaseStatusesByDay(cases) {
+function getLastDayKeys(days = 30) {
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (days - 1 - index));
+    date.setHours(23, 59, 59, 999);
+    const key = date.toISOString().slice(0, 10);
+    return {
+      key,
+      end: date,
+      label: new Date(`${key}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    };
+  });
+}
+
+function groupStatusHistoryByCase(rows = []) {
+  return rows.reduce((map, row) => {
+    const caseId = row.case_report_id || row.caseReportId;
+    if (!caseId) return map;
+    if (!map[caseId]) map[caseId] = [];
+    map[caseId].push({
+      status: row.status || CASE_STATUS_BY_ID[row.case_status_id] || null,
+      created_at: row.created_at,
+    });
+    return map;
+  }, {});
+}
+
+async function fetchApprovedStatusHistoryMap(API_URL, cases = []) {
+  const caseIds = [...new Set(cases.map((c) => c.id).filter(Boolean))];
+  if (caseIds.length === 0) return {};
+
+  const params = new URLSearchParams({ caseIds: caseIds.join(",") });
+  const response = await fetch(`${API_URL}/api/case_status_history/batch/approved?${params.toString()}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Failed to load case status history");
+
+  const payload = await response.json();
+  return groupStatusHistoryByCase(toArray(payload));
+}
+
+function getStatusBucket(status) {
   const legalStatuses = new Set(["Case Filed", "Investigation Ongoing", "Hearing Ongoing"]);
   const closedStatuses = new Set(["Resolved", "Dismissed", "Withdrawn", "Perpetrator Convicted", "Verified - False"]);
-  const buckets = {};
-  for (const c of cases) {
-    const date = recordDate(c, "date_filed", "created_at");
-    if (!date) continue;
-    const key = date.toISOString().slice(0, 10);
-    if (!buckets[key]) buckets[key] = { Submitted: 0, "Undergoing Review": 0, Closed: 0 };
-    if (closedStatuses.has(c.status)) buckets[key].Closed += 1;
-    else if (legalStatuses.has(c.status)) buckets[key]["Undergoing Review"] += 1;
-    else buckets[key].Submitted += 1;
+  if (closedStatuses.has(status)) return "Closed";
+  if (legalStatuses.has(status)) return "Undergoing Review";
+  return "Submitted";
+}
+
+function getStatusAsOfDay(caseItem, historyRows = [], dayEnd) {
+  const filedDate = recordDate(caseItem, "date_filed", "created_at");
+  if (!filedDate || filedDate > dayEnd) return null;
+
+  let status = "Submitted";
+  for (const row of historyRows) {
+    const transitionDate = recordDate(row, "created_at");
+    if (!transitionDate || transitionDate > dayEnd) break;
+    if (row.status) status = row.status;
   }
-  return Object.entries(buckets)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-30)
-    .map(([date, values]) => ({
-      label: new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      ...values,
-    }));
+  return status;
+}
+
+function bucketCaseStatusesByDay(cases, statusHistoryByCaseId = {}) {
+  return getLastDayKeys(30).map(({ label, end }) => {
+    const values = { Submitted: 0, "Undergoing Review": 0, Closed: 0 };
+
+    for (const c of cases) {
+      const historyRows = statusHistoryByCaseId[c.id] || [];
+      const status = getStatusAsOfDay(c, historyRows, end);
+      if (!status) continue;
+      values[getStatusBucket(status)] += 1;
+    }
+
+    return { label, ...values };
+  });
 }
 
 function topEntries(data, limit = 6) {
@@ -562,7 +640,7 @@ function buildUserSummary(users = []) {
   };
 }
 
-function buildAnalytics(cases, volunteers, projects, users) {
+function buildAnalytics(cases, volunteers, projects, users, statusHistoryByCaseId = {}) {
   const caseSummary       = buildCaseSummary(cases);
   const volunteerSummary  = buildVolunteerSummary(volunteers);
   const projectSummary    = buildProjectSummary(projects);
@@ -586,7 +664,7 @@ function buildAnalytics(cases, volunteers, projects, users) {
       (projectSummary.activeProjects || 0) +
       (userSummary.deactivated || 0),
     trend:        bucketCasesByDay(cases),
-    stackedTrend: bucketCaseStatusesByDay(cases),
+    stackedTrend: bucketCaseStatusesByDay(cases, statusHistoryByCaseId),
     topCities:    topEntries(caseSummary.byCity, 6),
     topTypes:     topEntries(caseSummary.byType, 5),
     caseSummary,
@@ -598,38 +676,637 @@ function buildAnalytics(cases, volunteers, projects, users) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CSV EXPORT
+// XLSX EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 
-function exportToCSV(parts) {
-  const rows = [["Module", "Metric", "Value"]];
-  for (const { title, summary } of parts) {
-    for (const [key, val] of Object.entries(summary)) {
-      if (typeof val === "object" && !Array.isArray(val)) {
-        for (const [k, v] of Object.entries(val)) {
-          rows.push([title, `${key} — ${k}`, v]);
-        }
-      } else if (!Array.isArray(val)) {
-        rows.push([title, key, val]);
-      }
-    }
+function getDateRangeLabel(dateRange) {
+  return DATE_RANGES.find((item) => item.value === dateRange)?.label || "Selected Range";
+}
+
+const XLSX_HEADER_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FF037F81" } };
+const XLSX_SECTION_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAF7F7" } };
+
+function formatWorkbookHeader(row) {
+  row.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  row.fill = XLSX_HEADER_FILL;
+  row.alignment = { vertical: "middle" };
+  row.eachCell((cell) => {
+    cell.border = { bottom: { style: "thin", color: { argb: "FFB7DCDC" } } };
+  });
+}
+
+function formatSectionRow(row) {
+  row.font = { bold: true, color: { argb: "FF034B4D" } };
+  row.fill = XLSX_SECTION_FILL;
+}
+
+function autoSizeWorksheet(worksheet) {
+  worksheet.columns.forEach((column) => {
+    let maxLength = 12;
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const value = cell.value == null ? "" : String(cell.value);
+      maxLength = Math.max(maxLength, value.length);
+    });
+    column.width = Math.min(Math.max(maxLength + 2, 12), 48);
+  });
+}
+
+function sortCountEntries(counts = {}) {
+  return Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+}
+
+function countTableRows(counts = {}, totalOverride = null) {
+  const entries = sortCountEntries(counts);
+  const total = totalOverride ?? entries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
+  return entries.map(([label, count]) => [
+    label,
+    Number(count || 0),
+    total ? `${Math.round((Number(count || 0) / total) * 100)}%` : "0%",
+  ]);
+}
+
+function pairTableRows(entries = [], totalOverride = null) {
+  const filtered = entries
+    .filter((entry) => Array.isArray(entry) && Number(entry[1]) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+  const total = totalOverride ?? filtered.reduce((sum, [, count]) => sum + Number(count || 0), 0);
+  return filtered.map(([label, count]) => [
+    label,
+    Number(count || 0),
+    total ? `${Math.round((Number(count || 0) / total) * 100)}%` : "0%",
+  ]);
+}
+
+function addWorksheetSection(worksheet, title, headers, rows = []) {
+  if (worksheet.rowCount > 0) worksheet.addRow([]);
+  const sectionRow = worksheet.addRow([title]);
+  formatSectionRow(sectionRow);
+  if (headers.length > 1) {
+    worksheet.mergeCells(sectionRow.number, 1, sectionRow.number, headers.length);
   }
-  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
-  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `report_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  const headerRow = worksheet.addRow(headers);
+  formatWorkbookHeader(headerRow);
+
+  if (rows.length) {
+    rows.forEach((row) => worksheet.addRow(row));
+  } else {
+    worksheet.addRow(["No data available"]);
+  }
+}
+
+function formatWorksheet(worksheet) {
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "top", wrapText: true };
+    });
+  });
+  autoSizeWorksheet(worksheet);
+}
+
+function flattenSummaryValue(key, value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => {
+      if (Array.isArray(item)) return [[`${key} - ${item[0] || `Item ${index + 1}`}`, item[1] ?? ""]];
+      if (item && typeof item === "object") {
+        const label = item.label || item.date || `Item ${index + 1}`;
+        const rest = Object.entries(item)
+          .filter(([field]) => field !== "label" && field !== "date")
+          .map(([field, fieldValue]) => `${field}: ${fieldValue}`)
+          .join(", ");
+        return [[`${key} - ${label}`, rest]];
+      }
+      return [[`${key} - Item ${index + 1}`, item ?? ""]];
+    });
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value).map(([nestedKey, nestedValue]) => [`${key} - ${nestedKey}`, nestedValue]);
+  }
+
+  return [[key, value ?? ""]];
+}
+
+function addSummarySheet(workbook, modules) {
+  const worksheet = workbook.addWorksheet("Summary");
+  const headerRow = worksheet.addRow(["Module", "Metric", "Value"]);
+  formatWorkbookHeader(headerRow);
+
+  modules.forEach(({ title, summary }) => {
+    Object.entries(summary || {}).forEach(([key, value]) => {
+      flattenSummaryValue(key, value).forEach(([metric, metricValue]) => {
+        worksheet.addRow([title, metric, metricValue]);
+      });
+    });
+  });
+
+  formatWorksheet(worksheet);
+}
+
+function addCasesSheet(workbook, caseData, analyticsData) {
+  const worksheet = workbook.addWorksheet("Cases");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Open Reports", caseData.openCases],
+    ["Under Investigation", analyticsData?.underInvestigation ?? 0],
+    ["Completed Reports", caseData.closedCases],
+    ["Total Cases", caseData.total],
+    ["Average Resolution Days", caseData.avgResolutionDays],
+  ]);
+  addWorksheetSection(worksheet, "Reports by Status", ["Status", "Count", "Percentage"], countTableRows(caseData.byStatus, caseData.total));
+  addWorksheetSection(worksheet, "Reports by City", ["City", "Count", "Percentage"], countTableRows(caseData.byCity, caseData.total));
+  addWorksheetSection(worksheet, "Case Types", ["Case Type", "Count", "Percentage"], countTableRows(caseData.byType, caseData.total));
+  addWorksheetSection(worksheet, "Case Reports Last 30 Days", ["Date", "Filed Count"], (analyticsData?.trend || []).map((item) => [item.label, item.value]));
+  addWorksheetSection(
+    worksheet,
+    "Status Composition Over Time",
+    ["Date", "Submitted", "Undergoing Review", "Closed"],
+    (analyticsData?.stackedTrend || []).map((item) => [item.label, item.Submitted || 0, item["Undergoing Review"] || 0, item.Closed || 0])
+  );
+  formatWorksheet(worksheet);
+}
+
+function addLegalSheet(workbook, legalData) {
+  const worksheet = workbook.addWorksheet("Legal Review");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Cases in Legal", legalData.total],
+    ["Cases Filed", legalData.casesFiled],
+    ["Cases Resolved", legalData.casesResolved],
+    ["Referrals Suggested", legalData.referralSuggested],
+    ["Average Days in Legal", legalData.avgDaysInLegal],
+  ]);
+  addWorksheetSection(worksheet, "Legal Cases by City", ["City", "Count", "Percentage"], countTableRows(legalData.byCity, legalData.total));
+  addWorksheetSection(worksheet, "Legal Case Status Distribution", ["Status", "Count", "Percentage"], countTableRows(legalData.byStatus, legalData.total));
+  addWorksheetSection(worksheet, "Legal Case Types", ["Case Type", "Count", "Percentage"], countTableRows(legalData.byType, legalData.total));
+  addWorksheetSection(worksheet, "Referral Outcome", ["Outcome", "Count", "Percentage"], countTableRows(legalData.referralBreakdown));
+  formatWorksheet(worksheet);
+}
+
+function addVolunteersSheet(workbook, volunteerData) {
+  const worksheet = workbook.addWorksheet("Volunteers");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Total Applications", volunteerData.total],
+    ["Approval Rate", `${volunteerData.approvalRate}%`],
+    ["Average Score", volunteerData.avgScore],
+  ]);
+  addWorksheetSection(worksheet, "Applications by Status", ["Status", "Count", "Percentage"], countTableRows(volunteerData.byStatus, volunteerData.total));
+  addWorksheetSection(worksheet, "Top Fields of Background", ["Field", "Count", "Percentage"], pairTableRows(volunteerData.topFields));
+  formatWorksheet(worksheet);
+}
+
+function addProjectsSheet(workbook, projectData) {
+  const worksheet = workbook.addWorksheet("Projects");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Total Projects", projectData.total],
+    ["Active Projects", projectData.activeProjects],
+    ["Completed", projectData.completedOnTime],
+    ["Overdue (Ongoing)", projectData.overdueCount],
+  ]);
+  addWorksheetSection(worksheet, "Projects by Status", ["Status", "Count", "Percentage"], countTableRows(projectData.byStatus, projectData.total));
+  addWorksheetSection(worksheet, "Projects by Category", ["Category", "Count", "Percentage"], countTableRows(projectData.byCategory, projectData.total));
+  addWorksheetSection(worksheet, "Approval Breakdown", ["Approval Status", "Count", "Percentage"], countTableRows(projectData.byApproval, projectData.total));
+  addWorksheetSection(worksheet, "Visibility Breakdown", ["Visibility", "Count", "Percentage"], countTableRows(projectData.byVisibility, projectData.total));
+  addWorksheetSection(worksheet, "Timeliness", ["Category", "Count", "Percentage"], countTableRows(projectData.timeliness));
+  formatWorksheet(worksheet);
+}
+
+function addUsersSheet(workbook, userData) {
+  const worksheet = workbook.addWorksheet("Users");
+  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
+    ["Total Users", userData.total],
+    ["Active Users", userData.activeUsers],
+    ["New This Month", userData.newThisMonth],
+    ["Deactivated", userData.deactivated],
+  ]);
+  addWorksheetSection(worksheet, "Users by Role", ["Role", "Count", "Percentage"], countTableRows(userData.byRole, userData.total));
+  addWorksheetSection(worksheet, "Users by City", ["City", "Count", "Percentage"], countTableRows(userData.byCity, userData.total));
+  addWorksheetSection(worksheet, "Active vs Deactivated", ["Status", "Count", "Percentage"], countTableRows(userData.activeBreakdown, userData.total));
+  formatWorksheet(worksheet);
+}
+
+async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) {
+  const modules = [];
+  if (activeModules.cases && dataAvailability.caseData) {
+    modules.push({ title: "Case Management", summary: dataAvailability.caseData });
+  }
+  if (activeModules.legal && dataAvailability.legalData) {
+    modules.push({ title: "Legal Review", summary: dataAvailability.legalData });
+  }
+  if (activeModules.volunteers && dataAvailability.volunteerData) {
+    modules.push({ title: "Volunteer Application Management", summary: dataAvailability.volunteerData });
+  }
+  if (activeModules.projects && dataAvailability.projectData) {
+    modules.push({ title: "Project Tracker", summary: dataAvailability.projectData });
+  }
+  if (activeModules.users && dataAvailability.userData) {
+    modules.push({ title: "User Management", summary: dataAvailability.userData });
+  }
+  if (!modules.length) return;
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "SAVIRA";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+  workbook.properties.date1904 = false;
+
+  addSummarySheet(workbook, modules);
+  if (activeModules.cases && dataAvailability.caseData) addCasesSheet(workbook, dataAvailability.caseData, analyticsData);
+  if (activeModules.legal && dataAvailability.legalData) addLegalSheet(workbook, dataAvailability.legalData);
+  if (activeModules.volunteers && dataAvailability.volunteerData) addVolunteersSheet(workbook, dataAvailability.volunteerData);
+  if (activeModules.projects && dataAvailability.projectData) addProjectsSheet(workbook, dataAvailability.projectData);
+  if (activeModules.users && dataAvailability.userData) addUsersSheet(workbook, dataAvailability.userData);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-function exportToPDF() {
-  document.body.classList.add("printing-report");
-  window.addEventListener("afterprint", () => {
-    document.body.classList.remove("printing-report");
-  }, { once: true });
-  setTimeout(() => window.print(), 0);
+function cleanPdfLabel(value, fallback = "Unspecified") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function countBy(records = [], selector) {
+  const counts = {};
+  for (const record of records) {
+    const value = selector(record);
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      const label = cleanPdfLabel(item);
+      counts[label] = (counts[label] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+function objectToTableRows(counts = {}, totalOverride = null) {
+  const entries = Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const total = totalOverride ?? entries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
+  return entries.map(([label, count]) => [
+    label,
+    String(count),
+    total ? `${Math.round((Number(count) / total) * 100)}%` : "0%",
+  ]);
+}
+
+function getLegalOutcomeColumn(status) {
+  if (["Case Filed", "Investigation Ongoing", "Hearing Ongoing", "Under Case Evaluation"].includes(status)) return "Ongoing";
+  if (status === "Perpetrator Convicted") return "Won";
+  if (status === "Resolved") return "Settled";
+  if (status === "Dismissed") return "Dismissed";
+  if (["Verified - False", "Withdrawn"].includes(status)) return "Declined";
+  return "Unresolved";
+}
+
+function buildEndorsementCrosstabRows(cases = []) {
+  const rows = ENDORSEMENT_BODIES.map((body) => {
+    const counts = Object.fromEntries(LEGAL_CROSSTAB_COLUMNS.map((column) => [column, 0]));
+    for (const caseItem of cases) {
+      if (caseItem.endorsed_to !== body) continue;
+      counts[getLegalOutcomeColumn(caseItem.status)] += 1;
+    }
+    const subtotal = LEGAL_CROSSTAB_COLUMNS.reduce((sum, column) => sum + counts[column], 0);
+    return [body, ...LEGAL_CROSSTAB_COLUMNS.map((column) => String(counts[column])), String(subtotal)];
+  });
+
+  const totals = LEGAL_CROSSTAB_COLUMNS.map((column, index) =>
+    rows.reduce((sum, row) => sum + Number(row[index + 1] || 0), 0)
+  );
+  rows.push(["Total", ...totals.map(String), String(totals.reduce((sum, value) => sum + value, 0))]);
+  return rows;
+}
+
+function buildCaseTrendSummaryRows(analyticsData) {
+  const trend = analyticsData?.trend || [];
+  const statusTrend = analyticsData?.stackedTrend || [];
+  const totalFiled = trend.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  const peak = trend.reduce((best, item) => Number(item.value || 0) > Number(best?.value || 0) ? item : best, null);
+  const latestStatus = statusTrend[statusTrend.length - 1] || {};
+
+  return [
+    ["Reports filed in last 30 days", String(totalFiled)],
+    ["Average daily filings", trend.length ? (totalFiled / trend.length).toFixed(1) : "0"],
+    ["Peak filing day", peak ? `${peak.label} (${peak.value})` : "No filings"],
+    ["Latest Submitted count", String(latestStatus.Submitted || 0)],
+    ["Latest Undergoing Review count", String(latestStatus["Undergoing Review"] || 0)],
+    ["Latest Closed count", String(latestStatus.Closed || 0)],
+  ];
+}
+
+function addPdfFooter(doc, generatedAt) {
+  const pageCount = doc.getNumberOfPages();
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  const footerText = `Generated ${generatedAt.toLocaleDateString("en-PH")} - Confidential - For internal use only`;
+
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(222, 226, 230);
+    doc.line(40, height - 42, width - 40, height - 42);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(footerText, 40, height - 24);
+    doc.text(`Page ${page} of ${pageCount}`, width - 40, height - 24, { align: "right" });
+  }
+}
+
+function addPdfCoverPage(doc, { dateRange, generatedAt, modules }) {
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(3, 127, 129);
+  doc.rect(0, 0, width, 145, "F");
+
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(40, 36, 104, 54, 8, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(3, 127, 129);
+  doc.text("SAVIRA", 92, 58, { align: "center" });
+  doc.setFontSize(10);
+  doc.text("SASHA", 92, 76, { align: "center" });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(30);
+  doc.text("Report", 40, 188);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text("Aggregate system summary for internal review.", 40, 212);
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Date Range", 40, 280);
+  doc.text("Generated", 40, 325);
+  doc.text("Included Modules", 40, 370);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  doc.text(getDateRangeLabel(dateRange), 170, 280);
+  doc.text(generatedAt.toLocaleString("en-PH"), 170, 325);
+
+  let y = 370;
+  modules.forEach((reportModule) => {
+    doc.circle(174, y - 4, 2.5, "F");
+    doc.text(reportModule.title, 185, y);
+    y += 20;
+  });
+
+  doc.setFillColor(255, 247, 237);
+  doc.roundedRect(40, height - 150, width - 80, 58, 8, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(154, 52, 18);
+  doc.text("Confidential - For internal use only", 58, height - 118);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(120, 53, 15);
+  doc.text("This PDF contains aggregate report data only and must be handled according to SAVIRA/SASHA data privacy protocols.", 58, height - 98, {
+    maxWidth: width - 116,
+  });
+}
+
+function ensurePdfSpace(doc, cursor, requiredHeight) {
+  const height = doc.internal.pageSize.getHeight();
+  if (cursor.y + requiredHeight > height - 64) {
+    doc.addPage();
+    cursor.y = 44;
+  }
+}
+
+function addPdfSectionTitle(doc, title, cursor) {
+  ensurePdfSpace(doc, cursor, 34);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(3, 127, 129);
+  doc.text(title, 40, cursor.y);
+  cursor.y += 18;
+}
+
+function addPdfTable(doc, { title, headers, rows }, cursor) {
+  const width = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  const contentWidth = width - margin * 2;
+  const safeRows = rows?.length ? rows : [["No data available", "", ""]];
+  const colWidths = headers.length === 2
+    ? [contentWidth * 0.68, contentWidth * 0.32]
+    : headers.length === 3
+      ? [contentWidth * 0.58, contentWidth * 0.2, contentWidth * 0.22]
+      : [contentWidth * 0.3, ...Array(headers.length - 1).fill((contentWidth * 0.7) / (headers.length - 1))];
+  const rowHeight = 18;
+
+  addPdfSectionTitle(doc, title, cursor);
+  ensurePdfSpace(doc, cursor, rowHeight * 2);
+
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, cursor.y, contentWidth, rowHeight, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  let x = margin;
+  headers.forEach((header, index) => {
+    doc.text(header, x + 6, cursor.y + 12, { maxWidth: colWidths[index] - 12 });
+    x += colWidths[index];
+  });
+  cursor.y += rowHeight;
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  safeRows.forEach((row, rowIndex) => {
+    ensurePdfSpace(doc, cursor, rowHeight);
+    if (rowIndex % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, cursor.y, contentWidth, rowHeight, "F");
+    }
+    x = margin;
+    row.forEach((cell, index) => {
+      const align = index > 0 && headers.length > 2 ? "right" : "left";
+      const cellX = align === "right" ? x + colWidths[index] - 6 : x + 6;
+      doc.text(String(cell ?? ""), cellX, cursor.y + 12, {
+        maxWidth: colWidths[index] - 12,
+        align,
+      });
+      x += colWidths[index];
+    });
+    cursor.y += rowHeight;
+  });
+  cursor.y += 10;
+}
+
+function addMetricTiles(doc, metrics, cursor) {
+  const margin = 40;
+  const width = doc.internal.pageSize.getWidth();
+  const gap = 10;
+  const columns = 2;
+  const tileWidth = (width - margin * 2 - gap) / columns;
+  const tileHeight = 52;
+
+  ensurePdfSpace(doc, cursor, Math.ceil(metrics.length / columns) * (tileHeight + gap));
+  const startY = cursor.y;
+  metrics.forEach((metric, index) => {
+    const row = Math.floor(index / columns);
+    const y = startY + row * (tileHeight + gap);
+    const x = margin + (index % columns) * (tileWidth + gap);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(x, y, tileWidth, tileHeight, 6, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(3, 127, 129);
+    doc.text(String(metric.value ?? 0), x + 14, y + 22);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(metric.label, x + 14, y + 38, { maxWidth: tileWidth - 28 });
+  });
+  cursor.y += Math.ceil(metrics.length / columns) * (tileHeight + gap) + 10;
+}
+
+function addModulePage(doc, title, metrics, tables) {
+  doc.addPage();
+  const cursor = { y: 44 };
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(3, 127, 129);
+  doc.text(title, 40, cursor.y);
+  cursor.y += 28;
+  addMetricTiles(doc, metrics, cursor);
+  tables.forEach((table) => addPdfTable(doc, table, cursor));
+}
+
+function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsData }) {
+  const modules = [];
+  const cases = rawData?.cases || [];
+
+  if (activeModules.cases && dataAvailability.caseData) {
+    modules.push({
+      key: "cases",
+      title: "Case Management",
+      metrics: [
+        { label: "Open Reports", value: dataAvailability.caseData.openCases },
+        { label: "Under Investigation", value: analyticsData?.underInvestigation ?? 0 },
+        { label: "Completed Reports", value: dataAvailability.caseData.closedCases },
+        { label: "Total Cases", value: dataAvailability.caseData.total },
+      ],
+      tables: [
+        { title: "Last 30 Days Numeric Summary", headers: ["Metric", "Value"], rows: buildCaseTrendSummaryRows(analyticsData) },
+        { title: "Reports by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byCity, dataAvailability.caseData.total) },
+        { title: "Reports by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byStatus, dataAvailability.caseData.total) },
+        { title: "Case Types", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byType, dataAvailability.caseData.total) },
+        { title: "Perpetrator Relationship", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.perpetrator_relationship), cases.length) },
+        { title: "Perpetrator Occupation", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.perpetrator_occupation), cases.length) },
+        { title: "Incident Location Type", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.incident_location_type), cases.length) },
+        { title: "Incident Location", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.incident_location), cases.length) },
+        { title: "Harassment/Abuse Categories", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => [item.primary_category, ...(item.additional_categories || [])].filter(Boolean))) },
+        {
+          title: "Legal Endorsement Crosstab",
+          headers: ["Endorsed To", ...LEGAL_CROSSTAB_COLUMNS, "Subtotal"],
+          rows: buildEndorsementCrosstabRows(cases),
+        },
+      ],
+    });
+  }
+
+  if (activeModules.legal && dataAvailability.legalData) {
+    modules.push({
+      key: "legal",
+      title: "Legal Review",
+      metrics: [
+        { label: "Cases in Legal", value: dataAvailability.legalData.total },
+        { label: "Cases Filed", value: dataAvailability.legalData.casesFiled },
+        { label: "Cases Resolved", value: dataAvailability.legalData.casesResolved },
+        { label: "Referrals Suggested", value: dataAvailability.legalData.referralSuggested },
+      ],
+      tables: [
+        { title: "Legal Cases by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.byCity, dataAvailability.legalData.total) },
+        { title: "Legal Case Status Distribution", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.byStatus, dataAvailability.legalData.total) },
+        { title: "Legal Case Types", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.byType, dataAvailability.legalData.total) },
+        { title: "Referral Outcome", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.legalData.referralBreakdown) },
+      ],
+    });
+  }
+
+  if (activeModules.volunteers && dataAvailability.volunteerData) {
+    modules.push({
+      key: "volunteers",
+      title: "Volunteer Application Management",
+      metrics: [
+        { label: "Total Applications", value: dataAvailability.volunteerData.total },
+        { label: "Approval Rate", value: `${dataAvailability.volunteerData.approvalRate}%` },
+        { label: "Average Score", value: dataAvailability.volunteerData.avgScore },
+      ],
+      tables: [
+        { title: "Applications by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.volunteerData.byStatus, dataAvailability.volunteerData.total) },
+        { title: "Top Fields of Background", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(Object.fromEntries(dataAvailability.volunteerData.topFields || [])) },
+      ],
+    });
+  }
+
+  if (activeModules.projects && dataAvailability.projectData) {
+    modules.push({
+      key: "projects",
+      title: "Project Tracker",
+      metrics: [
+        { label: "Total Projects", value: dataAvailability.projectData.total },
+        { label: "Active Projects", value: dataAvailability.projectData.activeProjects },
+        { label: "Completed", value: dataAvailability.projectData.completedOnTime },
+        { label: "Overdue (Ongoing)", value: dataAvailability.projectData.overdueCount },
+      ],
+      tables: [
+        { title: "Projects by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byStatus, dataAvailability.projectData.total) },
+        { title: "Projects by Category", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byCategory, dataAvailability.projectData.total) },
+        { title: "Approval Breakdown", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byApproval, dataAvailability.projectData.total) },
+      ],
+    });
+  }
+
+  if (activeModules.users && dataAvailability.userData) {
+    modules.push({
+      key: "users",
+      title: "User Management",
+      metrics: [
+        { label: "Total Users", value: dataAvailability.userData.total },
+        { label: "Active Users", value: dataAvailability.userData.activeUsers },
+        { label: "New This Month", value: dataAvailability.userData.newThisMonth },
+        { label: "Deactivated", value: dataAvailability.userData.deactivated },
+      ],
+      tables: [
+        { title: "Users by Role", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.byRole, dataAvailability.userData.total) },
+        { title: "Users by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.byCity, dataAvailability.userData.total) },
+        { title: "Active vs. Deactivated", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.activeBreakdown, dataAvailability.userData.total) },
+      ],
+    });
+  }
+
+  return modules;
+}
+
+async function exportToPDF({ activeModules, dateRange, dataAvailability, rawData, analyticsData }) {
+  const generatedAt = new Date();
+  const modules = buildPdfModules({ activeModules, dataAvailability, rawData, analyticsData });
+  if (modules.length === 0) return;
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4", compress: true });
+  addPdfCoverPage(doc, { dateRange, generatedAt, modules });
+
+  modules.forEach((reportModule) => {
+    addModulePage(doc, reportModule.title, reportModule.metrics, reportModule.tables);
+  });
+
+  addPdfFooter(doc, generatedAt);
+  return {
+    blob: doc.output("blob"),
+    filename: `report_${generatedAt.toISOString().slice(0, 10)}.pdf`,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1220,9 +1897,12 @@ export default function ReportGenerator() {
   const [loading, setLoading]               = useState(true);
   const [lastGenerated, setLastGenerated]   = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportingPdf, setExportingPdf]     = useState(false);
+  const [pdfPreview, setPdfPreview]         = useState(null);
   const [error, setError]                   = useState(null);
   const exportMenuRef                       = useRef(null);
-  const rawRef = useRef({ cases: [], volunteers: [], projects: [], users: [] });
+  const rawRef = useRef({ cases: [], volunteers: [], projects: [], users: [], statusHistoryByCaseId: {} });
+  const [filterOptionsSource, setFilterOptionsSource] = useState({ cases: [], volunteers: [], users: [] });
 
   const [caseData,      setCaseData]      = useState(null);
   const [legalData,     setLegalData]     = useState(null);
@@ -1240,6 +1920,12 @@ export default function ReportGenerator() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [exportMenuOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (pdfPreview?.url) URL.revokeObjectURL(pdfPreview.url);
+    };
+  }, [pdfPreview]);
+
   const buildSummaries = useCallback((raw, range, filters) => {
     const legalStatuses = ["Case Filed", "Investigation Ongoing", "Hearing Ongoing", "Dismissed", "Perpetrator Convicted"];
     const { cases, volunteers, projects, users } = applyAdvancedFilters(raw, range, filters);
@@ -1250,7 +1936,7 @@ export default function ReportGenerator() {
     setVolunteerData(buildVolunteerSummary(volunteers));
     setProjectData(buildProjectSummary(projects));
     setUserData(buildUserSummary(users));
-    setAnalyticsData(buildAnalytics(cases, volunteers, projects, users));
+    setAnalyticsData(buildAnalytics(cases, volunteers, projects, users, raw.statusHistoryByCaseId));
     setLastGenerated(new Date());
   }, []);
 
@@ -1275,12 +1961,17 @@ export default function ReportGenerator() {
         safeJson(casesRes), safeJson(volunteersRes), safeJson(projectsRes), safeJson(usersRes),
       ]);
 
+      const normalizedCases = toArray(casesRaw).map(normalizeCaseReport);
+      const statusHistoryByCaseId = await fetchApprovedStatusHistoryMap(API_URL, normalizedCases);
+
       rawRef.current = {
-        cases:      toArray(casesRaw).map(normalizeCaseReport),
+        cases:      normalizedCases,
         volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
         projects:   toArray(projectsRaw).map(normalizeProject),
         users:      toArray(usersRaw).map(normalizeUser),
+        statusHistoryByCaseId,
       };
+      setFilterOptionsSource(rawRef.current);
 
       buildSummaries(rawRef.current, dateRange, advancedFilters);
     } catch (err) {
@@ -1303,12 +1994,12 @@ export default function ReportGenerator() {
   const filterOptions = useMemo(() => {
     const clean = (values) => [...new Set(values.filter(Boolean))].map(String).sort((a, b) => a.localeCompare(b));
     return {
-      sites:     clean([...rawRef.current.cases.map((c) => c.site || c.region), ...rawRef.current.volunteers.map((v) => v.site)]),
-      caseTypes: clean(rawRef.current.cases.map((c) => c.case_type)),
-      roles:     clean(rawRef.current.users.map((u) => u.role_name)),
-      cities:    clean(rawRef.current.cases.map((c) => c.city).filter(Boolean)),
+      sites:     clean([...filterOptionsSource.cases.map((c) => c.site || c.region), ...filterOptionsSource.volunteers.map((v) => v.site)]),
+      caseTypes: clean(filterOptionsSource.cases.map((c) => c.case_type)),
+      roles:     clean(filterOptionsSource.users.map((u) => u.role_name)),
+      cities:    clean(filterOptionsSource.cases.map((c) => c.city).filter(Boolean)),
     };
-  }, [analyticsData]);
+  }, [filterOptionsSource]);
 
   function toggleModule(key) {
     setActiveModules((prev) => {
@@ -1317,15 +2008,65 @@ export default function ReportGenerator() {
     });
   }
 
-  function handleExportCSV() {
-    const parts = [];
-    if (activeModules.cases      && caseData)      parts.push({ title: "Case Management",                  summary: caseData });
-    if (activeModules.legal      && legalData)     parts.push({ title: "Legal Review",                     summary: legalData });
-    if (activeModules.volunteers && volunteerData) parts.push({ title: "Volunteer Application Management", summary: volunteerData });
-    if (activeModules.projects   && projectData)   parts.push({ title: "Project Tracker",                 summary: projectData });
-    if (activeModules.users      && userData)      parts.push({ title: "User Management",                  summary: userData });
-    if (parts.length) exportToCSV(parts);
+  async function handleExportXLSX() {
     setExportMenuOpen(false);
+    try {
+      await exportToXLSX({
+        activeModules,
+        dataAvailability: {
+          caseData,
+          legalData,
+          volunteerData,
+          projectData,
+          userData,
+        },
+        analyticsData,
+      });
+    } catch (err) {
+      console.error("Excel export failed:", err);
+      setError("Failed to generate Excel workbook. Please try again.");
+    }
+  }
+
+  async function handleExportPDF() {
+    setExportMenuOpen(false);
+    setExportingPdf(true);
+    try {
+      const result = await exportToPDF({
+        activeModules,
+        dateRange,
+        dataAvailability: {
+          caseData,
+          legalData,
+          volunteerData,
+          projectData,
+          userData,
+        },
+        rawData: rawRef.current,
+        analyticsData,
+      });
+      if (result?.blob) {
+        setPdfPreview((current) => {
+          if (current?.url) URL.revokeObjectURL(current.url);
+          return {
+            url: URL.createObjectURL(result.blob),
+            filename: result.filename,
+          };
+        });
+      }
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      setError("Failed to generate PDF. Please try again.");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
+  function closePdfPreview() {
+    setPdfPreview((current) => {
+      if (current?.url) URL.revokeObjectURL(current.url);
+      return null;
+    });
   }
 
   // Build insight strip for the analytics overview
@@ -1343,10 +2084,10 @@ export default function ReportGenerator() {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>
             <FiBarChart2 className={styles.titleIcon} />
-            Reports & Analytics
+            Report
           </h1>
           <p className={styles.pageSubtitle}>
-            Aggregated summaries across all system modules.
+            Aggregated report summaries across all system modules.
           </p>
         </div>
 
@@ -1375,11 +2116,11 @@ export default function ReportGenerator() {
             </button>
             {exportMenuOpen && (
               <div className={styles.exportDropdown}>
-                <button className={styles.exportOption} onClick={() => { setExportMenuOpen(false); exportToPDF(); }}>
-                  <FiPrinter /> Export as PDF
+                <button className={styles.exportOption} onClick={handleExportPDF} disabled={exportingPdf}>
+                  <FiPrinter /> {exportingPdf ? "Generating PDF..." : "Export as PDF"}
                 </button>
-                <button className={styles.exportOption} onClick={handleExportCSV}>
-                  <FiFileText /> Export as CSV/Excel
+                <button className={styles.exportOption} onClick={handleExportXLSX}>
+                  <FiFileText /> Export as Excel
                 </button>
               </div>
             )}
@@ -1703,6 +2444,29 @@ export default function ReportGenerator() {
             </ReportSection>
           )}
 
+        </div>
+      )}
+
+      {pdfPreview && (
+        <div className={styles.pdfPreviewOverlay} role="dialog" aria-modal="true" aria-label="PDF preview">
+          <div className={styles.pdfPreviewModal}>
+            <div className={styles.pdfPreviewHeader}>
+              <div>
+                <h2 className={styles.pdfPreviewTitle}>PDF Preview</h2>
+                <p className={styles.pdfPreviewSubtitle}>Review the generated report before downloading.</p>
+              </div>
+              <button type="button" className={styles.modalClose} onClick={closePdfPreview} aria-label="Close PDF preview">
+                <FiX />
+              </button>
+            </div>
+            <iframe className={styles.pdfPreviewFrame} src={pdfPreview.url} title="Generated report PDF preview" />
+            <div className={styles.pdfPreviewFooter}>
+              <button type="button" className={styles.btnSecondary} onClick={closePdfPreview}>Close</button>
+              <a className={styles.btnPrimary} href={pdfPreview.url} download={pdfPreview.filename}>
+                <FiDownload /> Download PDF
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>

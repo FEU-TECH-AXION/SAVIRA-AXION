@@ -59,6 +59,19 @@ export async function markAllRead() {
   }
 }
 
+export async function dismissNotification(id) {
+  const previous = notifications;
+  emit(notifications.filter(n => String(n.id) !== String(id)));
+
+  try {
+    const response = await authFetch(`${API_URL}/api/notifications/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to dismiss notification');
+  } catch (error) {
+    emit(previous);
+    throw error;
+  }
+}
+
 export function formatNotificationTime(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return '';
@@ -130,6 +143,7 @@ export function useNotificationStore({ enabled = true } = {}) {
     loading,
     error,
     addNotification,
+    dismissNotification,
     markAllRead,
     refreshNotifications,
   };
