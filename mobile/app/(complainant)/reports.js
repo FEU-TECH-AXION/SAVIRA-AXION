@@ -23,7 +23,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { API_URL } from "../../lib/config";
+import { API_URL, MAPBOX_TOKEN } from "../../lib/config";
 import { translateText, useI18n } from "../../lib/i18n";
 
 const { DeviceFilePicker } = NativeModules;
@@ -62,6 +62,7 @@ const EMAIL_MAX_LENGTH = 254;
 const UNSAFE_TEXT_CHARS_REGEX = /[<>\\`]/g;
 const SCRIPT_LIKE_TEXT_REGEX = /\b(?:javascript|data|vbscript):|on\w+\s*=|<\s*\/?\s*[a-z][^>]*>/gi;
 const STRICT_EMAIL_REGEX = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
+const MAPBOX_PROXIMITY_NCR = "121.0244,14.5547";
 
 function Text({ children, ...props }) {
   const language = useContext(ReportLanguageContext);
@@ -188,6 +189,62 @@ function parseIncidentParts(incident) {
   const month = Number.parseInt(incident?.incidentMonth || legacyMonth, 10);
   const day = Number.parseInt(incident?.incidentDay || legacyDay, 10);
   return { year, month, day };
+}
+
+async function searchMapboxLocations(query, sessionToken) {
+  if (!MAPBOX_TOKEN) return { suggestions: [], features: [] };
+  const search = new URLSearchParams({
+    q: query,
+    session_token: sessionToken,
+    access_token: MAPBOX_TOKEN,
+    country: "PH",
+    limit: "8",
+    proximity: MAPBOX_PROXIMITY_NCR,
+    language: "en",
+  });
+  const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${search}`);
+  if (!res.ok) throw new Error("Location search failed.");
+  return res.json();
+}
+
+async function searchMapboxPoliceStations(query) {
+  if (!MAPBOX_TOKEN) return { features: [] };
+  const search = new URLSearchParams({
+    q: query,
+    access_token: MAPBOX_TOKEN,
+    country: "PH",
+    limit: "6",
+    proximity: MAPBOX_PROXIMITY_NCR,
+    language: "en",
+    types: "poi",
+    poi_category: "police_station",
+    auto_complete: "true",
+  });
+  const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/forward?${search}`);
+  if (!res.ok) throw new Error("Police station search failed.");
+  return res.json();
+}
+
+function normalizeMapboxSuggestion(feature) {
+  const properties = feature?.properties || feature || {};
+  const name = properties.name_preferred || properties.name || feature?.text;
+  if (!name) return null;
+
+  const address =
+    properties.full_address ||
+    properties.place_formatted ||
+    properties.address ||
+    feature?.place_name ||
+    "";
+  const addressIncludesName = address.toLowerCase().includes(String(name).toLowerCase());
+  const value = address && !addressIncludesName ? `${name}, ${address}` : address || name;
+
+  return {
+    id: properties.mapbox_id || feature?.id || `${name}-${address}`,
+    text: name,
+    placeName: address,
+    value,
+  };
 }
 
 function toTwentyFourHourTime(value) {
@@ -392,6 +449,130 @@ function StyledInput({ error, multiline, numberOfLines, onFocus, focusLift = 0, 
 }
 
 // ── Date Picker Field ─────────────────────────────────────────────────────────
+function LocationTypeaheadInput({
+  value,
+  onChangeText,
+  placeholder,
+  city,
+  mode = "location",
+  maxLength = MEDIUM_TEXT_MAX_LENGTH,
+  error,
+}) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [status, setStatus] = useState("idle");
+  const [isTyping, setIsTyping] = useState(false);
+  const sessionTokenRef = useRef(null);
+
+  useEffect(() => {
+    const trimmed = String(value || "").trim();
+    if (!isTyping || trimmed.length < 2) {
+      setSuggestions([]);
+      setStatus("idle");
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setStatus("loading");
+      try {
+        if (!sessionTokenRef.current) {
+          sessionTokenRef.current = `mobile-location-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+        const query =
+          mode === "police"
+            ? [trimmed, city, "Metro Manila police station"].filter(Boolean).join(", ")
+            : [trimmed, city, "Metro Manila"].filter(Boolean).join(", ");
+        const data =
+          mode === "police"
+            ? await searchMapboxPoliceStations(query)
+            : await searchMapboxLocations(query, sessionTokenRef.current);
+        if (cancelled) return;
+        const nextSuggestions = (data.suggestions || data.features || [])
+          .map(normalizeMapboxSuggestion)
+          .filter(Boolean)
+          .filter(
+            (item, index, list) =>
+              index === list.findIndex((candidate) => candidate.value === item.value)
+          )
+          .slice(0, mode === "police" ? 6 : 8);
+        setSuggestions(nextSuggestions);
+        setStatus(nextSuggestions.length > 0 ? "idle" : "empty");
+      } catch (_) {
+        if (!cancelled) {
+          setSuggestions([]);
+          setStatus(MAPBOX_TOKEN ? "error" : "missingToken");
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [city, isTyping, mode, value]);
+
+  const selectSuggestion = (item) => {
+    onChangeText(item.value);
+    setSuggestions([]);
+    setStatus("idle");
+    setIsTyping(false);
+    sessionTokenRef.current = null;
+    Keyboard.dismiss();
+  };
+
+  const hint =
+    status === "loading"
+      ? mode === "police"
+        ? "Looking for nearby police station matches..."
+        : "Finding location suggestions..."
+      : status === "empty"
+      ? "No suggestions found. You can still enter it manually."
+      : status === "error" || status === "missingToken"
+      ? "Suggestions are unavailable. You can still enter it manually."
+      : "";
+
+  return (
+    <View style={s.typeaheadWrap}>
+      <StyledInput
+        placeholder={placeholder}
+        value={value}
+        onChangeText={(text) => {
+          setIsTyping(true);
+          onChangeText(text);
+        }}
+        onBlur={() => {
+          setTimeout(() => {
+            setIsTyping(false);
+            sessionTokenRef.current = null;
+          }, 160);
+        }}
+        maxLength={maxLength}
+        error={error}
+      />
+      {isTyping && suggestions.length > 0 && (
+        <View style={s.suggestionsList}>
+          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {suggestions.map((item) => (
+              <Pressable
+                key={item.id}
+                style={({ pressed }) => [
+                  s.suggestionItem,
+                  pressed && s.suggestionItemPressed,
+                ]}
+                onPress={() => selectSuggestion(item)}
+              >
+                <Text style={s.suggestionName}>{item.text}</Text>
+                {item.placeName ? <Text style={s.suggestionAddress}>{item.placeName}</Text> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+      {isTyping && hint ? <Text style={s.fieldHint}>{hint}</Text> : null}
+    </View>
+  );
+}
+
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December",
@@ -1450,11 +1631,14 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldE
         label="Specific Place / Venue"
         hint="e.g. school campus, community center, online — do not include your home address."
       >
-        <StyledInput
+        <LocationTypeaheadInput
           placeholder="e.g. Barangay hall, online platform, school"
           value={data.incidentVenue || ""}
-          onChangeText={setSafeText("incidentVenue")}
+          onChangeText={(text) => setSafeText("incidentVenue")(text)}
+          city={data.locationType === "Physical Location" ? data.incidentCity : ""}
+          mode="location"
           maxLength={MEDIUM_TEXT_MAX_LENGTH}
+          error={errors.incidentVenue}
         />
       </Field>
 
@@ -1717,11 +1901,14 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldE
           label="Which police station?"
           hint="e.g. Quezon City Police District, Station 5"
         >
-          <StyledInput
+          <LocationTypeaheadInput
             placeholder="e.g. QCPD Station 5"
             value={data.policeStation || ""}
-            onChangeText={setSafeText("policeStation")}
+            onChangeText={(text) => setSafeText("policeStation")(text)}
+            city={data.incidentCity || ""}
+            mode="police"
             maxLength={MEDIUM_TEXT_MAX_LENGTH}
+            error={errors.policeStation}
           />
         </Field>
       )}
@@ -3802,6 +3989,44 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
   fieldError: { fontSize: 11, color: ERROR, marginTop: 3 },
+  typeaheadWrap: {
+    position: "relative",
+  },
+  suggestionsList: {
+    maxHeight: 220,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+  },
+  suggestionItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eef2f7",
+    backgroundColor: "#fff",
+  },
+  suggestionItemPressed: {
+    backgroundColor: "#f0fafa",
+  },
+  suggestionName: {
+    fontSize: 13,
+    color: "#1f2937",
+    fontWeight: "800",
+  },
+  suggestionAddress: {
+    marginTop: 2,
+    fontSize: 11,
+    color: "#6b7280",
+    lineHeight: 15,
+  },
 
   // Input
   input: {
