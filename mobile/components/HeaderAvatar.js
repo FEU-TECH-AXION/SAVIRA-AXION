@@ -4,11 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { clearSession } from '../lib/session';
+import { useI18n } from '../lib/i18n';
 
 export default function HeaderAvatar({ user: propUser }) {
   const [user, setUser] = useState(propUser || null);
   const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!propUser) {
@@ -71,21 +73,21 @@ export default function HeaderAvatar({ user: propUser }) {
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
           <Pressable style={styles.menuContainer} onPress={() => {}}>
             <View style={styles.menuHeader}>
-              <Text style={styles.userName}>{displayName || user?.email || 'User'}</Text>
-              <Text style={styles.userRole}>{user?.role || 'User'}</Text>
+              <Text style={styles.userName}>{displayName || user?.email || t('navUser')}</Text>
+              <Text style={styles.userRole}>{user?.role || t('navUser')}</Text>
             </View>
             <View style={styles.menuDivider} />
             <Pressable style={styles.menuItem} onPress={() => { setModalVisible(false); router.push({ pathname: '/(complainant)/settings', params: { tab: 'Profile' } }); }}>
               <Ionicons name="person-outline" size={20} color="#333" />
-              <Text style={styles.menuItemText}>My Profile</Text>
+              <Text style={styles.menuItemText}>{t('navMyProfile')}</Text>
             </Pressable>
             <Pressable style={styles.menuItem} onPress={() => { setModalVisible(false); router.push({ pathname: '/(complainant)/settings', params: { tab: 'Account & Privacy' } }); }}>
               <Ionicons name="settings-outline" size={20} color="#333" />
-              <Text style={styles.menuItemText}>Settings</Text>
+              <Text style={styles.menuItemText}>{t('navSettings')}</Text>
             </Pressable>
             <Pressable style={styles.menuItem} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={20} color="#dc2626" />
-              <Text style={[styles.menuItemText, { color: '#dc2626' }]}>Log Out</Text>
+              <Text style={[styles.menuItemText, { color: '#dc2626' }]}>{t('navLogOut')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

@@ -4,37 +4,27 @@ import { useState } from "react";
 import { FiChevronDown, FiMail, FiMessageSquare, FiCheck } from "react-icons/fi";
 import styles from "./HelpCenterTab.module.css";
 
-const FAQS = [
-  {
-    q: "How do I update my contact information?",
-    a: "Go to the Profile tab, edit your email or contact number, then click Save Changes. You may need to re-verify a new email or number.",
-  },
-  {
-    q: "How do I file or check the status of a case?",
-    a: "Cases can be filed and tracked from the Cases section in the main navigation. Status updates are sent to your registered email and shown under Case Notifications.",
-  },
-  {
-    q: "How do I enable two-factor authentication?",
-    a: "Open Settings & Privacy -> Two-Factor Authentication and toggle it on. You'll need a verified email or contact number to receive codes.",
-  },
-  {
-    q: "Who can see my profile information?",
-    a: "By default, your profile is visible to staff and case officers handling your case. You can adjust this under Settings & Privacy -> Data & Privacy.",
-  },
-  {
-    q: "How do I delete or deactivate my account?",
-    a: "Account deactivation is available under Settings & Privacy -> Data & Privacy. Deactivation is temporary; contact support for permanent deletion requests.",
-  },
+const FAQ_KEYS = [
+  ["faqContactInfoQ", "faqContactInfoA"],
+  ["faqCaseStatusQ", "faqCaseStatusA"],
+  ["faqTwoFactorQ", "faqTwoFactorA"],
+  ["faqProfileVisibilityQ", "faqProfileVisibilityA"],
+  ["faqDeactivateQ", "faqDeactivateA"],
 ];
 
-export default function HelpCenterTab({ user }) {
+export default function HelpCenterTab({ user, t }) {
   const [openIndex, setOpenIndex] = useState(0);
   const [search, setSearch] = useState("");
   const [contactForm, setContactForm] = useState({ subject: "", message: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const filteredFaqs = FAQS.filter(
+  const faqs = FAQ_KEYS.map(([questionKey, answerKey]) => ({
+    q: t(questionKey),
+    a: t(answerKey),
+  }));
+
+  const filteredFaqs = faqs.filter(
     (f) =>
       f.q.toLowerCase().includes(search.toLowerCase()) ||
       f.a.toLowerCase().includes(search.toLowerCase())
@@ -76,19 +66,19 @@ export default function HelpCenterTab({ user }) {
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
-        <div className={styles.cardTitle}>Frequently Asked Questions</div>
+        <div className={styles.cardTitle}>{t("faqs")}</div>
 
         <input
           type="text"
           className={styles.searchInput}
-          placeholder="Search help topics..."
+          placeholder={t("searchHelp")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         <div className={styles.faqList}>
           {filteredFaqs.length === 0 && (
-            <p className={styles.emptyNote}>No results for &quot;{search}&quot;. Try a different search, or contact support below.</p>
+            <p className={styles.emptyNote}>{t("noHelpResults")} &quot;{search}&quot;. {t("tryDifferentSearch")}</p>
           )}
           {filteredFaqs.map((faq, i) => {
             const isOpen = openIndex === i;
@@ -110,29 +100,29 @@ export default function HelpCenterTab({ user }) {
       </div>
 
       <div className={styles.card}>
-        <div className={styles.cardTitle}>Contact Support</div>
+        <div className={styles.cardTitle}>{t("contactSupport")}</div>
         <p className={styles.cardDesc}>
-          Didn&apos;t find what you needed? Send our support team a message and we&apos;ll get back to you by email.
+          {t("contactSupportDesc")}
         </p>
 
         <form className={styles.contactForm} onSubmit={handleContactSubmit}>
           <div className={styles.field}>
-            <label className={styles.fieldLabel}>Subject</label>
+            <label className={styles.fieldLabel}>{t("subject")}</label>
             <input
               name="subject"
               value={contactForm.subject}
               onChange={handleContactChange}
-              placeholder="Briefly describe your question"
+              placeholder={t("subjectPlaceholder")}
               required
             />
           </div>
           <div className={styles.field}>
-            <label className={styles.fieldLabel}>Message</label>
+            <label className={styles.fieldLabel}>{t("message")}</label>
             <textarea
               name="message"
               value={contactForm.message}
               onChange={handleContactChange}
-              placeholder="Tell us more..."
+              placeholder={t("messagePlaceholder")}
               rows={5}
               required
             />
@@ -143,7 +133,7 @@ export default function HelpCenterTab({ user }) {
             </a>
             <button type="submit" className={styles.btnPrimary} disabled={sending}>
               <FiMessageSquare size={14} style={{ marginRight: "0.4rem", verticalAlign: "-2px" }} />
-              {sending ? "Sending..." : "Send Message"}
+              {sending ? t("sending") : t("sendMessage")}
             </button>
           </div>
         </form>
@@ -153,10 +143,10 @@ export default function HelpCenterTab({ user }) {
         <div className={styles.modalBackdrop} role="presentation">
           <div className={styles.sentModal} role="dialog" aria-modal="true" aria-labelledby="support-sent-title">
             <span className={styles.modalIcon}><FiCheck size={28} /></span>
-            <h3 id="support-sent-title">Message Sent</h3>
-            <p>Your message was sent successfully. We&apos;ll get back to you by email.</p>
+            <h3 id="support-sent-title">{t("messageSent")}</h3>
+            <p>{t("messageSentDesc")}</p>
             <button type="button" className={styles.modalButton} onClick={() => setSent(false)}>
-              OK
+              {t("ok")}
             </button>
           </div>
         </div>

@@ -51,8 +51,14 @@ const COLORS = {
 };
 
 // ── Shared Tabs Navigation ──────────────────────────────────────────────────
-function TabNav({ activeTab, onTabChange }) {
-  const tabs = ['Profile', 'Account & Privacy', 'Help Center', 'Display', 'Report'];
+function TabNav({ activeTab, onTabChange, t }) {
+  const tabs = [
+    { id: 'Profile', label: t('settingsProfile') },
+    { id: 'Account & Privacy', label: t('settingsAccountPrivacy') },
+    { id: 'Help Center', label: t('settingsHelpCenter') },
+    { id: 'Display', label: t('settingsDisplay') },
+    { id: 'Report', label: t('settingsReport') },
+  ];
 
   return (
     <View style={styles.segmentWrap}>
@@ -60,20 +66,20 @@ function TabNav({ activeTab, onTabChange }) {
         <View style={styles.segment}>
           {tabs.map((tab) => (
             <Pressable
-              key={tab}
-              onPress={() => onTabChange(tab)}
+              key={tab.id}
+              onPress={() => onTabChange(tab.id)}
               style={[
                 styles.segmentBtn,
-                activeTab === tab && styles.segmentBtnActive,
+                activeTab === tab.id && styles.segmentBtnActive,
               ]}
             >
               <Text
                 style={[
                   styles.segmentText,
-                  activeTab === tab && styles.segmentTextActive,
+                  activeTab === tab.id && styles.segmentTextActive,
                 ]}
               >
-                {tab}
+                {tab.label}
               </Text>
             </Pressable>
           ))}
@@ -534,8 +540,8 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <Text style={styles.heroTitle}>Settings</Text>
-          <Text style={styles.heroSubtitle}>Manage your account preferences</Text>
+          <Text style={styles.heroTitle}>{tDisplay('settings')}</Text>
+          <Text style={styles.heroSubtitle}>{tDisplay('settingsSubtitle')}</Text>
         </View>
 
         {/* ── Profile Card Overlay ────────────────────────── */}
@@ -552,7 +558,7 @@ export default function SettingsScreen() {
             <Text style={[styles.profileEmail, displayStyles.muted, { fontSize: 13 * fontScale }]}>{user?.email}</Text>
             <View style={styles.completionInline}>
               <View style={styles.completionInlineHeader}>
-                <Text style={styles.completionInlineLabel}>Profile completion</Text>
+                <Text style={styles.completionInlineLabel}>{tDisplay('profileCompletion')}</Text>
                 <Text style={styles.completionInlinePercent}>{completion}%</Text>
               </View>
               <View style={styles.completionInlineBar}>
@@ -570,7 +576,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Tabs Navigation ─────────────────────────────── */}
-        <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <TabNav activeTab={activeTab} onTabChange={setActiveTab} t={tDisplay} />
 
         {/* ── Content ─────────────────────────────────────── */}
         <View style={styles.tabContent}>
@@ -676,7 +682,7 @@ export default function SettingsScreen() {
               </View>
 
               <Pressable style={styles.btnPrimary} onPress={handleProfileSave} disabled={profileSaving}>
-                {profileSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Save Changes</Text>}
+                {profileSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>{tDisplay('saveChanges')}</Text>}
               </Pressable>
             </View>
           </View>

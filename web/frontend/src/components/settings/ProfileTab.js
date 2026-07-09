@@ -57,14 +57,14 @@ function birthdayForAge(age) {
   return formatDateInput(date);
 }
 
-function validateProfile(data) {
+function validateProfile(data, t) {
   const errors = {};
-  if (!data.first_name?.trim()) errors.first_name = "First name is required.";
-  if (!data.last_name?.trim()) errors.last_name = "Last name is required.";
-  if (!data.user_name?.trim()) errors.user_name = "Username is required.";
-  if (!data.email?.trim()) errors.email = "Email is required.";
+  if (!data.first_name?.trim()) errors.first_name = t("firstNameRequired");
+  if (!data.last_name?.trim()) errors.last_name = t("lastNameRequired");
+  if (!data.user_name?.trim()) errors.user_name = `${t("username")} is required.`;
+  if (!data.email?.trim()) errors.email = t("emailRequired");
   if (!data.birthday) {
-    errors.birthday = "Birthday is required.";
+    errors.birthday = `${t("birthday")} is required.`;
   } else {
     const birthdayError = validateBirthday(data.birthday);
     if (birthdayError) errors.birthday = birthdayError;
@@ -73,24 +73,24 @@ function validateProfile(data) {
     errors.gender_identity = "Select a valid gender identity.";
   }
   if (!data.contact_number) {
-    errors.contact_number = "Contact number is required.";
+    errors.contact_number = `${t("contactNumber")} is required.`;
   } else if (!PHONE_REGEX.test(data.contact_number)) {
     errors.contact_number = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
   }
   if (!data.city) {
-    errors.city = "City is required.";
+    errors.city = `${t("city")} is required.`;
   } else if (!NCR_CITIES.includes(data.city)) {
     errors.city = "City must be from Metro Manila/NCR.";
   }
   if (!data.province) {
-    errors.province = "Province is required.";
+    errors.province = `${t("province")} is required.`;
   } else if (data.province !== "National Capital Region (NCR)") {
     errors.province = "Province must be National Capital Region (NCR).";
   }
   return errors;
 }
 
-export default function ProfileTab({ user, setUser, form, setForm }) {
+export default function ProfileTab({ user, setUser, form, setForm, t }) {
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [success, setSuccess] = useState("");
@@ -131,7 +131,7 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const errors = validateProfile(form);
+    const errors = validateProfile(form, t);
     if (Object.keys(errors).length) {
       setFormErrors(errors);
       setValidationDialog(errors);
@@ -149,9 +149,9 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Update failed.");
+      if (!res.ok) throw new Error(data.error || t("updateFailed"));
       if (setUser) setUser(data);
-      flash("success", "Profile updated successfully!");
+      flash("success", t("profileUpdated"));
     } catch (err) {
       flash("error", err.message);
     } finally {
@@ -169,52 +169,52 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
         <div className={styles.flashError}><FiAlertCircle size={16} /> {error}</div>
       )}
 
-      <div className={styles.sectionTitle}>Personal Information</div>
+      <div className={styles.sectionTitle}>{t("personalInformation")}</div>
 
       <div className={styles.grid3}>
-        <Field label="First Name" required error={formErrors.first_name}>
+        <Field label={t("firstName")} required error={formErrors.first_name}>
           <input name="first_name" value={form.first_name}
-            onChange={handleChange} placeholder="First Name" required />
+            onChange={handleChange} placeholder={t("firstName")} required />
         </Field>
-        <Field label="Middle Name" badge="Optional">
+        <Field label={t("middleName")} badge={t("optional")}>
           <input name="middle_name" value={form.middle_name}
-            onChange={handleChange} placeholder="Middle Name" />
+            onChange={handleChange} placeholder={t("middleName")} />
         </Field>
-        <Field label="Last Name" required error={formErrors.last_name}>
+        <Field label={t("lastName")} required error={formErrors.last_name}>
           <input name="last_name" value={form.last_name}
-            onChange={handleChange} placeholder="Last Name" required />
+            onChange={handleChange} placeholder={t("lastName")} required />
         </Field>
       </div>
 
       <div className={styles.grid2}>
-        <Field label="Extension Name" badge="Optional">
+        <Field label={t("extensionName")} badge={t("optional")}>
           <select name="extension_name" value={form.extension_name} onChange={handleChange}>
-            <option value="">None</option>
+            <option value="">{t("none")}</option>
             {["Jr.", "Sr.", "II", "III", "IV"].map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
           </select>
         </Field>
-        <Field label="Username" required hint="Must be unique across Savira." error={formErrors.user_name}>
+        <Field label={t("username")} required hint={t("usernameHint")} error={formErrors.user_name}>
           <input name="user_name" value={form.user_name}
             onChange={handleChange} placeholder="@username" required />
         </Field>
       </div>
 
       <div className={styles.sectionTitle} style={{ marginTop: "1.5rem" }}>
-        About You
+        {t("aboutYou")}
       </div>
 
       <div className={styles.grid2}>
-        <Field label="Birthday" required hint="Helps us confirm age-appropriate access where required." error={formErrors.birthday}>
+        <Field label={t("birthday")} required hint={t("birthdayHint")} error={formErrors.birthday}>
           <input name="birthday" type="date" value={form.birthday}
             onChange={handleChange}
             min={formatDateInput(new Date(new Date().setFullYear(new Date().getFullYear() - 125)))}
             max={birthdayForAge(13)} />
         </Field>
-        <Field label="Gender Identity" badge="Optional" hint="Visible only to you and authorized SASHA personnel." error={formErrors.gender_identity}>
+        <Field label={t("genderIdentity")} badge={t("optional")} hint={t("genderIdentityHint")} error={formErrors.gender_identity}>
           <select name="gender_identity" value={form.gender_identity} onChange={handleChange}>
-            <option value="">Select…</option>
+            <option value="">{t("select")}</option>
             {GENDER_IDENTITIES.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}
@@ -223,14 +223,14 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
       </div>
 
       <div className={styles.sectionTitle} style={{ marginTop: "1.5rem" }}>
-        Contact &amp; Location
+        {t("contactLocation")}
       </div>
 
       <div className={styles.grid2}>
         <Field
-          label="Email"
+          label={t("email")}
           required
-          hint={user.is_email_verified ? "Verified" : "Not yet verified — check your inbox."}
+          hint={user.is_email_verified ? t("verified") : t("notVerifiedInbox")}
           hintColor={user.is_email_verified ? "var(--sasha-teal)" : "#e53e3e"}
           error={formErrors.email}
         >
@@ -238,9 +238,9 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
             placeholder="you@example.com" readOnly required />
         </Field>
         <Field
-          label="Contact Number"
+          label={t("contactNumber")}
           required
-          hint={user.is_contact_number_verified ? "Verified" : "Add a number to improve account security."}
+          hint={user.is_contact_number_verified ? t("verified") : t("contactNumberHint")}
           hintColor={user.is_contact_number_verified ? "var(--sasha-teal)" : "#888"}
           error={formErrors.contact_number}
         >
@@ -250,15 +250,15 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
       </div>
 
       <div className={styles.grid2}>
-        <Field label="City" required error={formErrors.city}>
+        <Field label={t("city")} required error={formErrors.city}>
           <select name="city" value={form.city} onChange={handleChange}>
-            <option value="">Select city / municipality</option>
+            <option value="">{t("selectCity")}</option>
             {NCR_CITIES.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </Field>
-        <Field label="Province" required error={formErrors.province}>
+        <Field label={t("province")} required error={formErrors.province}>
           <input name="province" value={form.province}
             onChange={handleChange} placeholder="National Capital Region (NCR)" readOnly />
         </Field>
@@ -266,16 +266,16 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
 
       <div className={styles.formActions}>
         <button type="submit" className={styles.btnPrimary} disabled={saving}>
-          {saving ? "Saving…" : "Save Changes"}
+          {saving ? t("saving") : t("saveChanges")}
         </button>
       </div>
     </form>
     <ConfirmDialog
       open={underageDialogOpen}
-      title="Minimum age requirement"
-      description="Savira accounts are available only to users who are at least 13 years old."
-      detail="Please choose a birthday that confirms you are 13 or older."
-      confirmLabel="Choose another birthday"
+      title={t("minimumAgeRequirement")}
+      description={t("minimumAgeDesc")}
+      detail={t("minimumAgeDetail")}
+      confirmLabel={t("chooseAnotherBirthday")}
       tone="danger"
       hideCancel
       dismissible={false}
@@ -287,10 +287,10 @@ export default function ProfileTab({ user, setUser, form, setForm }) {
     />
     <ConfirmDialog
       open={Boolean(validationDialog)}
-      title="Complete required profile details"
-      description="Please review the highlighted fields before saving your profile."
+      title={t("completeRequiredProfile")}
+      description={t("reviewHighlightedFields")}
       detail={validationDialog ? Object.values(validationDialog).join(" ") : ""}
-      confirmLabel="Review fields"
+      confirmLabel={t("reviewFields")}
       tone="danger"
       hideCancel
       onConfirm={() => setValidationDialog(null)}

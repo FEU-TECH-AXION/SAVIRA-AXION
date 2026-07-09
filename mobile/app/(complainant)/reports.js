@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
-  Text,
+  Text as RNText,
   ScrollView,
   Pressable,
   Image,
@@ -24,6 +24,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_URL } from "../../lib/config";
+import { translateText, useI18n } from "../../lib/i18n";
 
 const { DeviceFilePicker } = NativeModules;
 
@@ -48,6 +49,17 @@ const ALLOWED_EVIDENCE_FILE_TYPES_LABEL = "PDF, JPG, JPEG, PNG, and MP4";
 const INPUT_PLACEHOLDER_COLOR = "#6b7280";
 const CASE_REPORT_DRAFT_KEY = "savira_mobile_case_report_draft";
 const FormInputFocusContext = createContext(() => {});
+const ReportLanguageContext = createContext("en");
+
+function Text({ children, ...props }) {
+  const language = useContext(ReportLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === "string") return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 function getFileExtension(file) {
   const name = String(file?.name || file?.fileName || file?.uri || "");
@@ -279,10 +291,17 @@ function Navbar({ onBurger, notifCount = 0 }) {
 }
 
 // ── Wizard Stepper ────────────────────────────────────────────────────────────
-function WizardStepper({ current }) {
+function WizardStepper({ current, t }) {
+  const steps = [
+    { id: 0, label: t("Consent") },
+    { id: 1, label: t("Complainant's\nInfo") },
+    { id: 2, label: t("Incident\nDetails") },
+    { id: 3, label: t("Supporting\nEvidence") },
+    { id: 4, label: t("Review &\nSubmit") },
+  ];
   return (
     <View style={s.wizardRow}>
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const done = i < current;
         const active = i === current;
         return (
@@ -1632,19 +1651,19 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
 }
 
 // ── STEP 3: Supporting Evidence ───────────────────────────────────────────────
-function StepEvidence({ data, onChange }) {
+function StepEvidence({ data, onChange, t }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const askUploadAccess = ({ title, message }) =>
     new Promise((resolve) => {
       Alert.alert(title, message, [
         {
-          text: "Don't Allow",
+          text: t("Don't Allow"),
           style: "cancel",
           onPress: () => resolve(false),
         },
         {
-          text: "Allow",
+          text: t("Allow"),
           onPress: () => resolve(true),
         },
       ]);
@@ -1660,30 +1679,30 @@ function StepEvidence({ data, onChange }) {
 
     if (unsupportedFiles.length > 0) {
       Alert.alert(
-        "File Type Not Allowed",
-        `Cannot upload this file type. Available file types are: ${ALLOWED_EVIDENCE_FILE_TYPES_LABEL}.`
+        t("File Type Not Allowed"),
+        t("Cannot upload this file type. Available file types are: {types}.", { types: ALLOWED_EVIDENCE_FILE_TYPES_LABEL })
       );
     }
 
     if (oversizedFiles.length > 0) {
       Alert.alert(
-        "File Too Large",
-        `Each evidence file must be ${MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller. Please choose a smaller file.`
+        t("File Too Large"),
+        t("Each evidence file must be {size} or smaller. Please choose a smaller file.", { size: MAX_EVIDENCE_FILE_SIZE_LABEL })
       );
     }
 
     if (remainingSlots <= 0) {
       Alert.alert(
-        "File Limit Reached",
-        `You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`
+        t("File Limit Reached"),
+        t("You can upload up to {count} evidence files per report.", { count: MAX_EVIDENCE_FILES })
       );
       return;
     }
 
     if (sizeAllowedFiles.length > validFiles.length) {
       Alert.alert(
-        "File Limit Reached",
-        `Only ${remainingSlots} more file${remainingSlots === 1 ? "" : "s"} can be added. You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`
+        t("File Limit Reached"),
+        t("Only {remaining} more file(s) can be added. You can upload up to {count} evidence files per report.", { remaining: remainingSlots, count: MAX_EVIDENCE_FILES })
       );
     }
 
@@ -1694,8 +1713,8 @@ function StepEvidence({ data, onChange }) {
 
   const pickFiles = async () => {
     Alert.alert(
-      "Attach Evidence",
-      "Choose where you want to select your evidence files or media from:",
+      t("Attach Evidence"),
+      t("Choose where you want to select your evidence files or media from:"),
       [
         {
           text: "🖼️ Photo Gallery",
@@ -1703,7 +1722,7 @@ function StepEvidence({ data, onChange }) {
             try {
               const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
               if (status !== "granted") {
-                Alert.alert("Permission Denied", "We need permission to access your local gallery to attach evidence.");
+                Alert.alert(t("Permission Denied"), t("We need permission to access your local gallery to attach evidence."));
                 return;
               }
               const result = await ImagePicker.launchImageLibraryAsync({
@@ -1722,7 +1741,7 @@ function StepEvidence({ data, onChange }) {
                 appendValidFiles(mappedAssets);
               }
             } catch (err) {
-              Alert.alert("Error", "Could not pick images/videos from gallery.");
+              Alert.alert(t("error"), t("Could not pick images/videos from gallery."));
             }
           },
         },
@@ -1739,12 +1758,12 @@ function StepEvidence({ data, onChange }) {
                 appendValidFiles(result.assets);
               }
             } catch (e) {
-              Alert.alert("Error", "Could not pick files.");
+              Alert.alert(t("error"), t("Could not pick files."));
             }
           },
         },
         {
-          text: "Cancel",
+          text: t("Cancel"),
           style: "cancel",
         },
       ]
@@ -1755,14 +1774,14 @@ function StepEvidence({ data, onChange }) {
     setPickerOpen(false);
     try {
       const allowed = await askUploadAccess({
-        title: "Allow access to photos and videos?",
-        message: "SAVIRA needs access to your phone's photo and video gallery so you can attach evidence to your report.",
+        title: t("Allow access to photos and videos?"),
+        message: t("SAVIRA needs access to your phone's photo and video gallery so you can attach evidence to your report."),
       });
       if (!allowed) return;
 
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Denied", "We need permission to access your local gallery to attach evidence.");
+        Alert.alert(t("Permission Denied"), t("We need permission to access your local gallery to attach evidence."));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -1781,7 +1800,7 @@ function StepEvidence({ data, onChange }) {
         appendValidFiles(mappedAssets);
       }
     } catch (err) {
-      Alert.alert("Error", "Could not pick images/videos from gallery.");
+      Alert.alert(t("error"), t("Could not pick images/videos from gallery."));
     }
   };
 
@@ -1789,8 +1808,8 @@ function StepEvidence({ data, onChange }) {
     setPickerOpen(false);
     try {
       const allowed = await askUploadAccess({
-        title: "Allow access to device files?",
-        message: "SAVIRA needs permission to open your phone's file picker so you can attach documents or saved media.",
+        title: t("Allow access to device files?"),
+        message: t("SAVIRA needs permission to open your phone's file picker so you can attach documents or saved media."),
       });
       if (!allowed) return;
 
@@ -1805,7 +1824,7 @@ function StepEvidence({ data, onChange }) {
         appendValidFiles(result.assets);
       }
     } catch (e) {
-      Alert.alert("Error", "Could not pick files.");
+      Alert.alert(t("error"), t("Could not pick files."));
     }
   };
 
@@ -1822,11 +1841,10 @@ function StepEvidence({ data, onChange }) {
   return (
     <View style={s.stepContainer}>
       <Text style={s.stepTitle}>
-        <Text style={{ color: TEAL }}>Supporting </Text>Evidence
+        <Text style={{ color: TEAL }}>{t("Supporting")} </Text>{t("Evidence")}
       </Text>
       <Text style={s.stepDesc}>
-        Attach any files, photos, or documents relevant to the incident
-        (optional). Each file must be {MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller. You can add up to {MAX_EVIDENCE_FILES} files.
+        {t("Attach any files, photos, or documents relevant to the incident (optional). Each file must be {size} or smaller. You can add up to {count} files.", { size: MAX_EVIDENCE_FILE_SIZE_LABEL, count: MAX_EVIDENCE_FILES })}
       </Text>
 
       <View style={s.credSection}>
@@ -1834,21 +1852,21 @@ function StepEvidence({ data, onChange }) {
           <View style={s.uploadIconWrap}>
             <Ionicons name="phone-portrait-outline" size={30} color={TEAL} />
           </View>
-          <Text style={s.dropText}>Add evidence files</Text>
-          <Text style={s.dropSubtext}>Photos, videos, PDFs, JPG, PNG, or MP4</Text>
+          <Text style={s.dropText}>{t("Add evidence files")}</Text>
+          <Text style={s.dropSubtext}>{t("Photos, videos, PDFs, JPG, PNG, or MP4")}</Text>
           <View style={s.browseBtn}>
             <Ionicons name="add" size={16} color="#fff" />
-            <Text style={s.browseBtnText}>Choose Files</Text>
+            <Text style={s.browseBtnText}>{t("Choose Files")}</Text>
           </View>
-          <Text style={s.dropHint}>Max {MAX_EVIDENCE_FILE_SIZE_LABEL} per file, {MAX_EVIDENCE_FILES} files total</Text>
+          <Text style={s.dropHint}>{t("Max {size} per file, {count} files total", { size: MAX_EVIDENCE_FILE_SIZE_LABEL, count: MAX_EVIDENCE_FILES })}</Text>
         </Pressable>
 
         <View style={s.fileList}>
-          <Text style={s.fileListTitle}>Attached Files</Text>
+          <Text style={s.fileListTitle}>{t("Attached Files")}</Text>
           {!data.files || data.files.length === 0 ? (
             <View style={s.noFilesBox}>
               <Ionicons name="document-attach-outline" size={18} color="#6b7280" />
-              <Text style={s.noFilesText}>No files added yet.</Text>
+              <Text style={s.noFilesText}>{t("No files added yet.")}</Text>
             </View>
           ) : (
             data.files.map((f, i) => (
@@ -1884,9 +1902,9 @@ function StepEvidence({ data, onChange }) {
             <View style={s.uploadModalHandle} />
             <View style={s.uploadModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={s.uploadModalTitle}>Add Evidence</Text>
+                <Text style={s.uploadModalTitle}>{t("Add Evidence")}</Text>
                 <Text style={s.uploadModalSubtitle}>
-                  Choose from your device. Up to {MAX_EVIDENCE_FILE_SIZE_LABEL} per file and {MAX_EVIDENCE_FILES} files total.
+                  {t("Choose from your device. Up to {size} per file and {count} files total.", { size: MAX_EVIDENCE_FILE_SIZE_LABEL, count: MAX_EVIDENCE_FILES })}
                 </Text>
               </View>
               <Pressable style={s.uploadModalClose} onPress={() => setPickerOpen(false)}>
@@ -1899,9 +1917,9 @@ function StepEvidence({ data, onChange }) {
                 <Ionicons name="images-outline" size={22} color={TEAL} />
               </View>
               <View style={s.uploadOptionTextWrap}>
-                <Text style={s.uploadOptionTitle}>Photo & Video Gallery</Text>
+                <Text style={s.uploadOptionTitle}>{t("Photo & Video Gallery")}</Text>
                 <Text style={s.uploadOptionDesc}>
-                  Select screenshots, photos, or recorded clips from this phone.
+                  {t("Select screenshots, photos, or recorded clips from this phone.")}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
@@ -1912,9 +1930,9 @@ function StepEvidence({ data, onChange }) {
                 <Ionicons name="folder-open-outline" size={22} color={TEAL} />
               </View>
               <View style={s.uploadOptionTextWrap}>
-                <Text style={s.uploadOptionTitle}>Device Files</Text>
+                <Text style={s.uploadOptionTitle}>{t("Device Files")}</Text>
                 <Text style={s.uploadOptionDesc}>
-                  Opens Android's file picker for documents and saved media.
+                  {t("Opens Android's file picker for documents and saved media.")}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
@@ -2383,6 +2401,7 @@ function getWithdrawalCopy(status) {
 export default function ReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { language, t } = useI18n();
   const formScrollRef = useRef(null);
   const formScrollYRef = useRef(0);
   const [navOpen, setNavOpen] = useState(false);
@@ -2532,7 +2551,7 @@ export default function ReportScreen() {
         }
         if (draft?.evidence) setEvidence((current) => ({ ...current, ...draft.evidence }));
         if (draft?.consents) setConsents((current) => ({ ...current, ...draft.consents }));
-        setDraftNotice("Your unfinished report draft has been restored.");
+        setDraftNotice(t("Your unfinished report draft has been restored."));
       } catch (err) {
         console.error("[loadReportDraft]", err);
       } finally {
@@ -2779,9 +2798,7 @@ export default function ReportScreen() {
   const handleSubmit = async () => {
     setSubmitError(null);
     if (!API_URL || API_URL.includes("localhost") || API_URL.includes("127.0.0.1")) {
-      setSubmitError(
-        "The mobile app is not pointed at the online backend. Please rebuild the APK with the public API URL."
-      );
+      setSubmitError(t("The mobile app is not pointed at the online backend. Please rebuild the APK with the public API URL."));
       return;
     }
     const oversizedFiles = (evidence.files || []).filter(
@@ -2792,18 +2809,18 @@ export default function ReportScreen() {
     );
     if (unsupportedFiles.length > 0) {
       setSubmitError(
-        `Cannot upload this file type. Available file types are: ${ALLOWED_EVIDENCE_FILE_TYPES_LABEL}.`
+        t("Cannot upload this file type. Available file types are: {types}.", { types: ALLOWED_EVIDENCE_FILE_TYPES_LABEL })
       );
       setStep(3);
       return;
     }
     if (oversizedFiles.length > 0) {
-      setSubmitError(`Each evidence file must be ${MAX_EVIDENCE_FILE_SIZE_LABEL} or smaller.`);
+      setSubmitError(t("Each evidence file must be {size} or smaller.", { size: MAX_EVIDENCE_FILE_SIZE_LABEL }));
       setStep(3);
       return;
     }
     if ((evidence.files || []).length > MAX_EVIDENCE_FILES) {
-      setSubmitError(`You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`);
+      setSubmitError(t("You can upload up to {count} evidence files per report.", { count: MAX_EVIDENCE_FILES }));
       setStep(3);
       return;
     }
@@ -2852,7 +2869,7 @@ export default function ReportScreen() {
       await AsyncStorage.removeItem(CASE_REPORT_DRAFT_KEY);
       fetchReports();
     } catch (err) {
-      setSubmitError(formatErrorMessage(err, "Failed to submit report."));
+      setSubmitError(formatErrorMessage(err, t("Failed to submit report.")));
     } finally {
       setIsSubmitting(false);
     }
@@ -2951,6 +2968,7 @@ export default function ReportScreen() {
   }, [historyPage, historyTotalPages]);
 
   return (
+    <ReportLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} notifCount={notifCount} />
@@ -2962,14 +2980,14 @@ export default function ReportScreen() {
           onPress={() => { setActiveTab('submit'); setSubmitted(false); setStep(0); }}
         >
           <Ionicons name="document-text-outline" size={16} color={activeTab === 'submit' ? TEAL : '#9ca3af'} />
-          <Text style={[s.tabLabel, activeTab === 'submit' && s.tabLabelActive]}>Submit Report</Text>
+          <Text style={[s.tabLabel, activeTab === 'submit' && s.tabLabelActive]}>{t("Submit Report")}</Text>
         </Pressable>
         <Pressable
           style={[s.tabItem, activeTab === 'history' && s.tabItemActive]}
           onPress={() => setActiveTab('history')}
         >
           <Ionicons name="time-outline" size={16} color={activeTab === 'history' ? TEAL : '#9ca3af'} />
-          <Text style={[s.tabLabel, activeTab === 'history' && s.tabLabelActive]}>Report History</Text>
+          <Text style={[s.tabLabel, activeTab === 'history' && s.tabLabelActive]}>{t("Report History")}</Text>
           {reports.length > 0 && (
             <View style={s.tabBadge}><Text style={s.tabBadgeText}>{reports.length}</Text></View>
           )}
@@ -2984,24 +3002,22 @@ export default function ReportScreen() {
               <View style={s.successIcon}>
                 <Ionicons name="checkmark" size={36} color="#fff" />
               </View>
-              <Text style={s.successEyebrow}>Submitted securely</Text>
-              <Text style={s.successTitle}>Report submitted</Text>
+              <Text style={s.successEyebrow}>{t("Submitted securely")}</Text>
+              <Text style={s.successTitle}>{t("Report submitted")}</Text>
               <Text style={s.successDesc}>
-                Your report has been received. We will review it and get back to
-                you via your provided contact details. All information is handled
-                with strict confidentiality.
+                {t("Your report has been received. We will review it and get back to you via your provided contact details. All information is handled with strict confidentiality.")}
               </Text>
               <View style={s.successInfoBox}>
                 <Ionicons name="time-outline" size={18} color={TEAL} />
-                <Text style={s.successInfoText}>Initial review may take up to 72 hours.</Text>
+                <Text style={s.successInfoText}>{t("Initial review may take up to 72 hours.")}</Text>
               </View>
               <Pressable style={s.successPrimaryBtn} onPress={handleReset}>
                 <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                <Text style={s.successPrimaryText}>Submit another report</Text>
+                <Text style={s.successPrimaryText}>{t("Submit another report")}</Text>
               </Pressable>
               <Pressable style={s.successSecondaryBtn} onPress={() => { handleReset(); setActiveTab('history'); }}>
                 <Ionicons name="time-outline" size={18} color={ORANGE} />
-                <Text style={s.successSecondaryText}>View report history</Text>
+                <Text style={s.successSecondaryText}>{t("View report history")}</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -3029,17 +3045,16 @@ export default function ReportScreen() {
                 <View style={s.formHeader}>
                   <View style={s.heroLabel}>
                     <View style={s.heroLabelLine} />
-                    <Text style={s.heroLabelText}>Submit a Report</Text>
+                    <Text style={s.heroLabelText}>{t("Submit a Report")}</Text>
                   </View>
                   <Text style={s.heroTitle}>
-                    <Text style={{ color: TEAL }}>We're Here </Text>
-                    <Text style={{ color: ORANGE }}>to Help</Text>
+                    <Text style={{ color: TEAL }}>{t("We're Here ")} </Text>
+                    <Text style={{ color: ORANGE }}>{t("to Help")}</Text>
                   </Text>
                   <Text style={s.heroDesc}>
-                    Please provide accurate and detailed information. All reports are
-                    handled with strict confidentiality.
+                    {t("Please provide accurate and detailed information. All reports are handled with strict confidentiality.")}
                   </Text>
-                  <Text style={s.formCardTitle}>Report Submission Form</Text>
+                  <Text style={s.formCardTitle}>{t("Report Submission Form")}</Text>
                 </View>
 
                 {draftNotice ? (
@@ -3049,12 +3064,12 @@ export default function ReportScreen() {
                   </View>
                 ) : null}
 
-                <WizardStepper current={step} />
+                <WizardStepper current={step} t={t} />
 
                 {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} onOpenHelplines={() => router.push('/(complainant)/helplines')} />}
                 {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
                 {step === 2 && <StepIncidentDetails data={incident} complainantAge={complainant.age} onChange={setIncident} errors={errors} />}
-                {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} />}
+                {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} t={t} />}
                 {step === 4 && <StepReview complainant={complainant} incident={incident} evidence={evidence} />}
 
                 {submitError && (
@@ -3070,14 +3085,14 @@ export default function ReportScreen() {
               {step > 0 ? (
                 <Pressable style={s.backBtn} onPress={handleBack}>
                   <Ionicons name="chevron-back" size={17} color={TEAL} />
-                  <Text style={s.backBtnText}>Back</Text>
+                  <Text style={s.backBtnText}>{t("Back")}</Text>
                 </Pressable>
               ) : (
                 <View style={s.navSpacer} />
               )}
               {step < totalSteps - 1 ? (
                 <Pressable style={s.nextBtn} onPress={handleNext}>
-                  <Text style={s.nextBtnText}>Next</Text>
+                  <Text style={s.nextBtnText}>{t("Next")}</Text>
                   <Ionicons name="chevron-forward" size={17} color="#fff" />
                 </Pressable>
               ) : (
@@ -3086,7 +3101,7 @@ export default function ReportScreen() {
                   onPress={handleSubmit}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Submit Report</Text>}
+                  {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>{t("Submit Report")}</Text>}
                 </Pressable>
               )}
             </View>}
@@ -3413,6 +3428,7 @@ export default function ReportScreen() {
         </View>
       </Modal>
     </View>
+    </ReportLanguageContext.Provider>
   );
 }
 

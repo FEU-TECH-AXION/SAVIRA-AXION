@@ -13,13 +13,16 @@ const FONT_SIZES = [
   { id: "xl", labelKey: "extraLarge" },
 ];
 
-export default function DisplayAccessibilityTab() {
+export default function DisplayAccessibilityTab({ onLanguageChange }) {
   const [prefs, setPrefs] = useState(() => readDisplayPrefs());
   const [saved, setSaved] = useState(false);
   const language = normalizeLanguage(prefs.language);
   const t = (key) => translate(language, key);
 
   const updatePrefs = (updates) => {
+    if (updates.language) {
+      onLanguageChange?.(normalizeLanguage(updates.language));
+    }
     setPrefs((current) => {
       const next = { ...current, ...updates };
       applyDisplayPrefs(next);

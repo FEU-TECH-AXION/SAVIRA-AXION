@@ -1,30 +1,29 @@
+"use client";
+
 import Link from "next/link";
 import PolicyMarkdown from "@/components/policies/PolicyMarkdown";
 import { POLICIES } from "@/components/policies/policyContent";
 import styles from "./privacy.module.css";
-
-export const metadata = {
-  title: "Privacy Policy | SASHA",
-  description: "How SASHA collects, uses, stores, and protects personal information.",
-};
+import { useI18n } from "@/lib/i18n";
 
 export default function PrivacyPage() {
+  const { t } = useI18n();
   const policy = POLICIES.privacy;
 
   return (
     <main className={styles.page}>
       <div className={styles.hero}>
         <div className={styles.container}>
-          <p className={styles.eyebrow}>SASHA Policies</p>
-          <h1>{policy.title}</h1>
+          <p className={styles.eyebrow}>{t("policyEyebrow")}</p>
+          <h1>{t("privacy")}</h1>
         </div>
       </div>
 
       <div className={`${styles.container} ${styles.layout}`}>
         <aside className={styles.aside}>
-          <strong>Policies</strong>
-          <Link href="/terms">Terms and Conditions</Link>
-          <Link className={styles.active} href="/privacy">Privacy Policy</Link>
+          <strong>{t("policyPolicies")}</strong>
+          <Link href="/terms">{t("terms")}</Link>
+          <Link className={styles.active} href="/privacy">{t("privacy")}</Link>
         </aside>
 
         <article className={styles.content}>

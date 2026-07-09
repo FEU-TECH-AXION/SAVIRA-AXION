@@ -12,9 +12,10 @@ import VolunteerApplicationStatusCard, {
 import DashboardHeatmapCard from "./DashboardHeatmapCard";
 import DashboardEventsCard from "./DashboardEventsCard";
 import { formatNotificationTime, useNotificationStore } from "@/lib/notificationStore";
+import { useI18n } from "@/lib/i18n";
 
 // ── Action Card (Submit Report / Apply as Volunteer) ─────────────────────────
-function ActionCard({ icon, title, description, onView }) {
+function ActionCard({ icon, title, description, onView, viewLabel }) {
   return (
     <div className={styles.actionCard}>
       <div className={styles.actionIconWrap}>
@@ -26,7 +27,7 @@ function ActionCard({ icon, title, description, onView }) {
       </div>
       <div className={styles.notifViewRow}>
       <button className={styles.viewBtn} onClick={onView}>
-        View &rarr;
+        {viewLabel} &rarr;
       </button>
       </div>
     </div>
@@ -44,15 +45,15 @@ function ActionCard({ icon, title, description, onView }) {
 //   currentStep: 0 = Pending, 1 = Reviewing, 2 = Approved
 // ── Important Notifications Card ─────────────────────────────────────────────
 // `notifications` — array of { id, text } objects from API / context
-function NotificationsCard({ notifications = [], onView }) {
+function NotificationsCard({ notifications = [], onView, t }) {
   return (
     <div className={styles.notifCard}>
       <div className={styles.statusCardHeader}>
-        <span>Important Notifications</span>
+        <span>{t("dashboardImportantNotifications")}</span>
       </div>
       <div className={styles.notifBody}>
         {notifications.length === 0 ? (
-          <p className={styles.notifEmpty}>No new notifications.</p>
+          <p className={styles.notifEmpty}>{t("dashboardNoNotifications")}</p>
         ) : (
           notifications.map((n) => (
             <div key={n.id} className={styles.notifItem}>
@@ -67,7 +68,7 @@ function NotificationsCard({ notifications = [], onView }) {
         )}
         <div className={styles.notifViewRow}>
           <button className={styles.viewBtn} onClick={onView}>
-            View &rarr;
+            {t("dashboardView")} &rarr;
           </button>
         </div>
       </div>
@@ -111,6 +112,7 @@ export default function ComplainantDashboard({
   totalNotifications = 0,
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const { user: authUser, loading: authLoading } = useAuth();
   const {
     notifications: storedNotifications,
@@ -126,7 +128,7 @@ export default function ComplainantDashboard({
       }
     : { role: "", firstName: "", lastName: "" };
 
-  if (authLoading) return <p>Loading...</p>;
+  if (authLoading) return <p>{t("loading")}</p>;
   if (!authUser) return null;
 
   // Normalise whatever shape the parent passes into what the card expects
@@ -153,7 +155,7 @@ export default function ComplainantDashboard({
           <div className="container-xl">
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>
-                Welcome, {user.firstName} {user.lastName}!
+                {t("dashboardWelcome")}, {user.firstName} {user.lastName}!
               </h1>
 
               <div className="row g-3">
@@ -161,7 +163,7 @@ export default function ComplainantDashboard({
                   <div className={styles.statCard}>
                     {/* <span className={styles.statDot} /> */}
                     <p className={styles.statNum}>{resolvedTotalNotif}</p>
-                    <p className={styles.statLabel}>Total Notifications</p>
+                    <p className={styles.statLabel}>{t("dashboardTotalNotifications")}</p>
                   </div>
                 </div>
               </div>
@@ -173,7 +175,7 @@ export default function ComplainantDashboard({
 
           {/* ── What would you like to do? ── */}
           <div className={styles.sectionHeading}>
-            <h2 className={styles.sectionTitle}>What would you like to do?</h2>
+            <h2 className={styles.sectionTitle}>{t("dashboardWhatToDo")}</h2>
             <div className={styles.headingLine} />
           </div>
 
@@ -181,16 +183,18 @@ export default function ComplainantDashboard({
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon=<img src="FileAReportIcon.png" alt="" className={styles.actionIconImg} />
-                title="Submit a Report"
-                description="Report safely and securely."
+                title={t("dashboardSubmitReportTitle")}
+                description={t("dashboardSubmitReportDesc")}
+                viewLabel={t("dashboardView")}
                 onView={() => router.push("/cases")}
               />
             </div>
             <div className="col-12 col-sm-6">
               <ActionCard
                 icon=<img src="VolunteerIcon.png" alt="" className={styles.actionIconImg} />
-                title="Apply as Volunteer"
-                description="Join our mission to support survivors."
+                title={t("dashboardApplyVolunteerTitle")}
+                description={t("dashboardApplyVolunteerDesc")}
+                viewLabel={t("dashboardView")}
                 onView={() => router.push("/volunteer/apply")}
               />
             </div>
@@ -198,7 +202,7 @@ export default function ComplainantDashboard({
 
           {/* ── Overview ── */}
           <div className={styles.sectionHeading}>
-            <h2 className={styles.sectionTitle}>Overview</h2>
+            <h2 className={styles.sectionTitle}>{t("dashboardOverview")}</h2>
             <div className={styles.headingLine} />
           </div>
 
@@ -209,17 +213,17 @@ export default function ComplainantDashboard({
                 <div className="col-12">
                   {normalisedReports.length > 0 ? (
                     <ReportStatusCard
-                      reportNumber="Latest"
+                      reportNumber={t("dashboardLatest")}
                       report={normalisedReports[0]}
                       showManagementActions={false}
-                      headerLabel="Latest Report"
+                      headerLabel={t("dashboardLatestReport")}
                       viewFrom="dashboard"
                     />
                   ) : (
                     <EmptyStatusCard
-                      title="Latest Report"
-                      message="No reports submitted yet."
-                      buttonLabel="Submit Report"
+                      title={t("dashboardLatestReport")}
+                      message={t("dashboardNoReports")}
+                      buttonLabel={t("dashboardSubmitReportTitle")}
                       onAction={() => router.push("/cases")}
                     />
                   )}
@@ -228,13 +232,13 @@ export default function ComplainantDashboard({
                   {resolvedApplication ? (
                     <VolunteerApplicationStatusCard
                       application={resolvedApplication}
-                      title="Latest Volunteer Application"
+                      title={t("dashboardLatestVolunteerApplication")}
                     />
                   ) : (
                     <EmptyStatusCard
-                      title="Latest Volunteer Application"
-                      message="No volunteer application submitted yet."
-                      buttonLabel="Apply Now"
+                      title={t("dashboardLatestVolunteerApplication")}
+                      message={t("dashboardNoVolunteerApplication")}
+                      buttonLabel={t("dashboardApplyNow")}
                       onAction={() => router.push("/volunteer/apply")}
                     />
                   )}
@@ -247,6 +251,7 @@ export default function ComplainantDashboard({
               <NotificationsCard
                 notifications={resolvedNotifications}
                 onView={() => router.push("/dashboard")}
+                t={t}
               />
             </div>
           </div>

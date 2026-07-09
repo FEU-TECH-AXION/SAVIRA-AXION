@@ -33,6 +33,7 @@ import {
   getSidebarLinks,
   // SIDEBAR_FOOTER_LINKS,
 } from "@/components/navigation/navigationLinks";
+import { useI18n } from "@/lib/i18n";
 import styles from "./sidebar.module.css";
 
 const ICONS = {
@@ -68,7 +69,11 @@ function withIcons(items) {
   }));
 }
 
-function AccordionItem({ item, pathname, onNavigate }) {
+function navLabel(t, item) {
+  return item.labelKey ? t(item.labelKey) : item.label;
+}
+
+function AccordionItem({ item, pathname, onNavigate, t }) {
   const isAnyChildActive = item.children?.some((child) => pathname === child.href);
   const [open, setOpen] = useState(isAnyChildActive);
 
@@ -82,7 +87,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
         aria-expanded={open}
       >
         {item.icon && <span className={styles.sidebarIcon}>{item.icon}</span>}
-        <span className={styles.sidebarLabel}>{item.label}</span>
+        <span className={styles.sidebarLabel}>{navLabel(t, item)}</span>
         <span className={styles.accordionChevron}>
           {open ? <MdExpandLess /> : <MdExpandMore />}
         </span>
@@ -99,7 +104,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
                 }`}
                 onClick={onNavigate}
               >
-                {child.label}
+                {navLabel(t, child)}
               </Link>
             </li>
           ))}
@@ -109,7 +114,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
   );
 }
 
-function SidebarFooter({ logout }) {
+function SidebarFooter({ logout, t }) {
   return (
     <div className={styles.sidebarFooter}>
       <hr className={styles.footerDivider} />
@@ -132,21 +137,21 @@ function SidebarFooter({ logout }) {
             <span className={styles.sidebarIcon}>
               <MdLogout />
             </span>
-            <span className={styles.sidebarLabel}>Log out</span>
+            <span className={styles.sidebarLabel}>{t("navLogOut")}</span>
           </button>
         </li>
       </ul>
 
       <div className={styles.footerPrivacy}>
-        <Link href="/privacy">Privacy</Link>
+        <Link href="/privacy">{t("navPrivacy")}</Link>
         <span>&middot;</span>
-        <Link href="/terms">Terms</Link>
+        <Link href="/terms">{t("navTerms")}</Link>
       </div>
     </div>
   );
 }
 
-function SidebarHeader({ user, onClose }) {
+function SidebarHeader({ user, onClose, t }) {
   return (
     <div className={styles.sidebarHeader}>
       {user ? (
@@ -169,7 +174,7 @@ function SidebarHeader({ user, onClose }) {
           <img src="/sasha-logo-teal.png" alt="SASHA" />
         </Link>
       )}
-      <button className={styles.closeBtn} onClick={onClose} aria-label="Close sidebar">
+      <button className={styles.closeBtn} onClick={onClose} aria-label={t("navCloseSidebar")}>
         <MdClose size={20} />
       </button>
     </div>
@@ -178,6 +183,7 @@ function SidebarHeader({ user, onClose }) {
 
 export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const pathname = usePathname();
   const sidebarRef = useRef(null);
   const links = withIcons(getSidebarLinks(user));
@@ -220,9 +226,9 @@ export default function Sidebar({ isOpen, onClose }) {
       <aside
         ref={sidebarRef}
         className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
-        aria-label="Sidebar navigation"
+        aria-label={t("navSidebar")}
       >
-        <SidebarHeader user={user} onClose={onClose} />
+        <SidebarHeader user={user} onClose={onClose} t={t} />
 
         <div className={styles.sidebarBody}>
           <hr className={styles.divider} />
@@ -236,6 +242,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     item={item}
                     pathname={pathname}
                     onNavigate={onClose}
+                    t={t}
                   />
                 ) : (
                   <li key={item.href}>
@@ -251,7 +258,7 @@ export default function Sidebar({ isOpen, onClose }) {
                       onClick={onClose}
                     >
                       {item.icon && <span className={styles.sidebarIcon}>{item.icon}</span>}
-                      <span className={styles.sidebarLabel}>{item.label}</span>
+                      <span className={styles.sidebarLabel}>{navLabel(t, item)}</span>
                     </Link>
                   </li>
                 )
@@ -259,7 +266,7 @@ export default function Sidebar({ isOpen, onClose }) {
             </ul>
           </nav>
 
-          {user && <SidebarFooter logout={logout} />}
+          {user && <SidebarFooter logout={logout} t={t} />}
         </div>
       </aside>
     </>

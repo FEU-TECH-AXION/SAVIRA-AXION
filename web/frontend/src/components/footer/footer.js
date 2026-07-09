@@ -6,9 +6,11 @@ import { FaFacebook, FaInstagram} from "react-icons/fa6";
 import styles from "./footer.module.css";
 import { useAuth } from "@/lib/AuthContext";
 import { getFooterQuickLinks } from "@/components/navigation/navigationLinks";
+import { useI18n } from "@/lib/i18n";
 
 export default function Footer() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const quickLinks = getFooterQuickLinks(user);
   const pathname = usePathname();
 
@@ -23,9 +25,7 @@ export default function Footer() {
         <div className={styles.footerBrand}>
           <img src="/sasha-logo-white.png" alt="SASHA" className={styles.footerLogo} />
           <p className={styles.footerBrandDesc}>
-            This platform is designed for secure case reporting and organizational
-            management. Unauthorized access, misuse, or reproduction of content is
-            strictly prohibited.
+            {t("footerBrandDesc")}
           </p>
           <div className={styles.footerSocials}>
             <a href="https://www.facebook.com/PHsasha" target="_blank"
@@ -39,15 +39,15 @@ export default function Footer() {
 
         {/* Quick links */}
         <div className={styles.footerCol}>
-          <h4 className={styles.footerColTitle}>Quick Links</h4>
+          <h4 className={styles.footerColTitle}>{t("navQuickLinks")}</h4>
           <ul className={`${styles.footerList} ${styles.quickLinksGrid}`}>
-            {quickLinks.map(({ href, label }) => (
+            {quickLinks.map(({ href, label, labelKey }) => (
               <li key={href}>
                 <Link
                   href={href}
                   className={isActive(href) ? styles.footerLinkActive : styles.footerLink}
                 >
-                  {label}
+                  {labelKey ? t(labelKey) : label}
                 </Link>
               </li>
             ))}
@@ -56,12 +56,12 @@ export default function Footer() {
 
         {/* ── Support column ── */}
         <div className={styles.footerCol}>
-          <h4 className={styles.footerColTitle}>Support &amp; Information</h4>
+          <h4 className={styles.footerColTitle}>{t("navSupportInformation")}</h4>
           <ul className={styles.footerList}>
-            <li><a href="#">Frequently Asked Questions</a></li>
-            <li><a href="#">Code of Conduct</a></li>
-            <li><a href="#">Data Privacy Policy</a></li>
-            <li><a href="#">Terms of Use</a></li>
+            <li><a href="#">{t("navFaq")}</a></li>
+            <li><a href="#">{t("navCodeOfConduct")}</a></li>
+            <li><a href="#">{t("navDataPrivacyPolicy")}</a></li>
+            <li><a href="#">{t("navTermsOfUse")}</a></li>
           </ul>
         </div>
 

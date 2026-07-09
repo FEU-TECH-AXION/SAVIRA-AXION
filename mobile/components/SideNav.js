@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { clearSession } from '../lib/session';
+import { useI18n } from '../lib/i18n';
 
 const TEAL   = '#037F81';
 const ORANGE = '#E96433';
@@ -24,67 +25,76 @@ const NAV_SECTIONS = [
   {
     type: 'link',
     label: 'Home',
+    labelKey: 'navHome',
     icon: 'grid-outline',
     href: '/(complainant)/dashboard',
   },
   {
     type: 'group',
     label: 'Report',
+    labelKey: 'navReport',
     icon: 'document-text-outline',
     children: [
-      { label: 'Report',          icon: 'create-outline',   href: '/(complainant)/reports' },
-      { label: 'Report History',  icon: 'time-outline',     href: '/(complainant)/reports?tab=history' },
+      { label: 'Report', labelKey: 'navReport', icon: 'create-outline', href: '/(complainant)/reports' },
+      { label: 'Report History', labelKey: 'navReportHistory', icon: 'time-outline', href: '/(complainant)/reports?tab=history' },
     ],
   },
   {
     type: 'link',
     label: 'Events',
+    labelKey: 'navEvents',
     icon: 'calendar-outline',
     href: '/(complainant)/events',
   },
   {
     type: 'link',
     label: 'About SASHA',
+    labelKey: 'navAboutSasha',
     icon: 'information-circle-outline',
     href: '/(complainant)/about',
   },
   {
     type: 'link',
     label: 'Contact Us',
+    labelKey: 'navContactUs',
     icon: 'mail-outline',
     href: '/(complainant)/contact',
   },
   {
     type: 'link',
     label: 'Heatmap',
+    labelKey: 'navHeatmap',
     icon: 'map-outline',
     href: '/(complainant)/heatmap',
   },
   {
     type: 'group',
     label: 'Support & Resources',
+    labelKey: 'navSupportResources',
     icon: 'medkit-outline',
     children: [
-      { label: 'Nearby Hospitals',       icon: 'medical-outline',    href: '/(complainant)/support?tab=Hospitals' },
-      { label: 'Nearby Police Stations', icon: 'shield-outline',     href: '/(complainant)/support?tab=Police' },
-      { label: 'Helplines',              icon: 'call-outline',       href: '/(complainant)/helplines' },
+      { label: 'Nearby Hospitals', labelKey: 'navNearbyHospitals', icon: 'medical-outline', href: '/(complainant)/support?tab=Hospitals' },
+      { label: 'Nearby Police Stations', labelKey: 'navNearbyPoliceStations', icon: 'shield-outline', href: '/(complainant)/support?tab=Police' },
+      { label: 'Helplines', labelKey: 'navHelplines', icon: 'call-outline', href: '/(complainant)/helplines' },
     ],
   },
   { type: 'divider' },
   {
     type: 'group',
     label: 'Settings',
+    labelKey: 'navSettings',
     icon: 'settings-outline',
     children: [
-      { label: 'Account & Privacy',       icon: 'person-circle-outline', href: { pathname: '/(complainant)/settings', params: { tab: 'Account & Privacy' } } },
-      { label: 'Help Center',             icon: 'help-circle-outline',   href: { pathname: '/(complainant)/settings', params: { tab: 'Help Center' } } },
-      { label: 'Display & Accessibility', icon: 'contrast-outline',      href: { pathname: '/(complainant)/settings', params: { tab: 'Display' } } },
-      { label: 'Report a Problem',        icon: 'bug-outline',           href: { pathname: '/(complainant)/settings', params: { tab: 'Report' } } },
+      { label: 'Account & Privacy', labelKey: 'settingsAccountPrivacy', icon: 'person-circle-outline', href: { pathname: '/(complainant)/settings', params: { tab: 'Account & Privacy' } } },
+      { label: 'Help Center', labelKey: 'settingsHelpCenter', icon: 'help-circle-outline', href: { pathname: '/(complainant)/settings', params: { tab: 'Help Center' } } },
+      { label: 'Display & Accessibility', labelKey: 'navDisplayAccessibility', icon: 'contrast-outline', href: { pathname: '/(complainant)/settings', params: { tab: 'Display' } } },
+      { label: 'Report a Problem', labelKey: 'navReportProblem', icon: 'bug-outline', href: { pathname: '/(complainant)/settings', params: { tab: 'Report' } } },
     ],
   },
   {
     type: 'link',
     label: 'Privacy & Terms',
+    labelKey: 'navPrivacyTerms',
     icon: 'shield-checkmark-outline',
     href: '/(complainant)/privacy-terms',
   },
@@ -92,6 +102,7 @@ const NAV_SECTIONS = [
 
 export default function SideNav({ open, onClose }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState({});
   const [user, setUser] = useState(null);
 
@@ -132,7 +143,7 @@ export default function SideNav({ open, onClose }) {
   const firstName = user?.firstName || user?.first_name || '';
   const lastName = user?.lastName || user?.last_name || '';
   const displayName = `${firstName} ${lastName}`.trim() || user?.name || user?.email || 'User';
-  const displayRole = user?.role_name || user?.roleName || user?.role || 'Complainant';
+  const displayRole = user?.role_name || user?.roleName || user?.role || t('navComplainant');
   const profileImage = user?.profile_img || user?.profilePicture || user?.profile_picture;
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
@@ -191,7 +202,7 @@ export default function SideNav({ open, onClose }) {
                     <View style={s.navIconWrap}>
                       <Ionicons name={item.icon} size={18} color={TEAL} />
                     </View>
-                    <Text style={s.navLabel}>{item.label}</Text>
+                    <Text style={s.navLabel}>{item.labelKey ? t(item.labelKey) : item.label}</Text>
                   </Pressable>
                 );
               }
@@ -208,7 +219,7 @@ export default function SideNav({ open, onClose }) {
                       <View style={s.navIconWrap}>
                         <Ionicons name={item.icon} size={18} color={TEAL} />
                       </View>
-                      <Text style={[s.navLabel, s.groupLabel]}>{item.label}</Text>
+                      <Text style={[s.navLabel, s.groupLabel]}>{item.labelKey ? t(item.labelKey) : item.label}</Text>
                       <Ionicons
                         name={isOpen ? 'chevron-up' : 'chevron-down'}
                         size={16}
@@ -227,7 +238,7 @@ export default function SideNav({ open, onClose }) {
                             onPress={() => navigate(child.href)}
                           >
                             <Ionicons name={child.icon} size={15} color="#6b7280" />
-                            <Text style={s.childLabel}>{child.label}</Text>
+                            <Text style={s.childLabel}>{child.labelKey ? t(child.labelKey) : child.label}</Text>
                           </Pressable>
                         ))}
                       </View>
@@ -246,7 +257,7 @@ export default function SideNav({ open, onClose }) {
           {/* Logout */}
           <Pressable style={s.logoutBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={s.logoutText}>Log Out</Text>
+            <Text style={s.logoutText}>{t('navLogOut')}</Text>
           </Pressable>
         </View>
 

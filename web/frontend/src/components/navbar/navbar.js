@@ -15,10 +15,12 @@ import Sidebar from "@/components/sidebar/sidebar";
 import { PUBLIC_LINKS, ROLE_LABELS } from "@/components/navigation/navigationLinks";
 import styles from "./navbar.module.css";
 import { formatNotificationTime, useNotificationStore } from '@/lib/notificationStore';
+import { useI18n } from "@/lib/i18n";
 
 // ── Component ──────────────────────────────────────────────
 
 export default function Navbar() {
+  const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openPublicMenu, setOpenPublicMenu] = useState(null);
   const navbarRef = useRef(null);
@@ -114,7 +116,7 @@ export default function Navbar() {
               <button
                 className={styles.hamburgerBtn}
                 onClick={() => setSidebarOpen(true)}
-                aria-label="Open sidebar menu"
+                aria-label={t("navOpenSidebar")}
                 aria-expanded={sidebarOpen}
               >
                 <FiMenu size={22} />
@@ -134,8 +136,8 @@ export default function Navbar() {
                 <input
                   type="text"
                   className={styles.searchInput}
-                  placeholder="Search…"
-                  aria-label="Search"
+                  placeholder={t("navSearchPlaceholder")}
+                  aria-label={t("navSearch")}
                 />
               </div>
 
@@ -144,7 +146,7 @@ export default function Navbar() {
                 <div className={styles.notifWrapper} ref={notifRef}>
                   <button
                     className={styles.iconBtn}
-                    aria-label="Notifications"
+                    aria-label={t("navNotifications")}
                     aria-expanded={notifOpen}
                     onClick={() => { setNotifOpen(o => !o); markAllRead(); }}
                   >
@@ -156,9 +158,9 @@ export default function Navbar() {
 
                   {notifOpen && (
                     <div className={styles.notifDropdown}>
-                      <div className={styles.notifHeader}>Notifications</div>
+                      <div className={styles.notifHeader}>{t("navNotifications")}</div>
                       {notifications.length === 0 ? (
-                        <div className={styles.notifEmpty}>No notifications yet</div>
+                        <div className={styles.notifEmpty}>{t("navNoNotifications")}</div>
                       ) : (
                         notifications.map(n => (
                           <div
@@ -178,10 +180,10 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-                <button className={styles.iconBtn} aria-label="Help">
+                <button className={styles.iconBtn} aria-label={t("navHelp")}>
                   <FiHelpCircle size={20} />
                 </button>
-                <UserMenu key={pathname} user={user} logout={logout} />
+                <UserMenu key={pathname} user={user} logout={logout} t={t} />
               </div>
             </>
           ) : (
@@ -191,7 +193,7 @@ export default function Navbar() {
               <button
                 className={styles.publicMenuBtn}
                 onClick={() => setSidebarOpen(true)}
-                aria-label="Open sidebar menu"
+                aria-label={t("navOpenSidebar")}
                 aria-expanded={sidebarOpen}
               >
                 <FiMenu size={20} />
@@ -204,7 +206,8 @@ export default function Navbar() {
               {/* Desktop public links */}
               <ul className={styles.navLinks} ref={publicNavRef}>
                 {PUBLIC_LINKS.map((item) => {
-                  const { href, label, children } = item;
+                  const { href, label, labelKey, children } = item;
+                  const displayLabel = labelKey ? t(labelKey) : label;
 
                   if (children?.length) {
                     const isGroupActive = children.some((child) =>
@@ -236,7 +239,7 @@ export default function Navbar() {
                             )
                           }
                         >
-                          {label}
+                          {displayLabel}
                           <FiChevronDown
                             className={styles.navGroupChevron}
                             aria-hidden="true"
@@ -258,7 +261,7 @@ export default function Navbar() {
                                     : styles.navDropdownLink
                                 }
                               >
-                                {child.label}
+                                {child.labelKey ? t(child.labelKey) : child.label}
                               </Link>
                             </li>
                           ))}
@@ -275,7 +278,7 @@ export default function Navbar() {
                           isActive(href) ? styles.navLinkActive : styles.navLink
                         }
                       >
-                        {label}
+                        {displayLabel}
                       </Link>
                     </li>
                   );
@@ -285,7 +288,7 @@ export default function Navbar() {
               {/* Right slot */}
               <div className={styles.navRight}>
                 <Link href="/login" className={styles.navLoginBtn}>
-                  Log In
+                  {t("navLogIn")}
                 </Link>
               </div>
             </>
@@ -302,7 +305,7 @@ export default function Navbar() {
 
 // ── UserMenu ──────────────────────────────────────────────
 
-function UserMenu({ user, logout }) {
+function UserMenu({ user, logout, t }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -335,7 +338,7 @@ function UserMenu({ user, logout }) {
       <button
         className={styles.userAvatar}
         onClick={() => setOpen((current) => !current)}
-        aria-label="Account menu"
+        aria-label={t("navMyProfile")}
         aria-expanded={open}
       >
         {user.profile_img ? (
@@ -354,7 +357,7 @@ function UserMenu({ user, logout }) {
             {user.first_name} {user.last_name}
           </p>
           <p className={styles.dropdownRole}>
-            {ROLE_LABELS[user.role_name?.toLowerCase()] ?? user.role_name}
+            {ROLE_LABELS[user.role_name?.toLowerCase()] ? t(ROLE_LABELS[user.role_name?.toLowerCase()]) : user.role_name}
           </p>
 
           <hr className={styles.dropdownDivider} />
@@ -364,14 +367,14 @@ function UserMenu({ user, logout }) {
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >
-            My Profile
+            {t("navMyProfile")}
           </Link>
           <Link
             href="/settings?tab=lock"
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >
-            Settings
+            {t("navSettings")}
           </Link>
 
           <hr className={styles.dropdownDivider} />
@@ -380,7 +383,7 @@ function UserMenu({ user, logout }) {
             className={`${styles.dropdownItem} ${styles.dropdownLogout}`}
             onClick={() => { setOpen(false); logout(); }}
           >
-            Log Out
+            {t("navLogOut")}
           </button>
         </div>
       )}

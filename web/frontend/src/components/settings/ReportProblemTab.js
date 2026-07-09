@@ -5,14 +5,14 @@ import { FiCheck, FiAlertCircle, FiPaperclip, FiX } from "react-icons/fi";
 import styles from "./ReportProblemTab.module.css";
 
 const ISSUE_TYPES = [
-  { id: "bug", label: "Something isn't working" },
-  { id: "data", label: "Incorrect information" },
-  { id: "access", label: "Can't access a feature" },
-  { id: "abuse", label: "Inappropriate content or behavior" },
-  { id: "other", label: "Something else" },
+  { id: "bug", labelKey: "issueBug" },
+  { id: "data", labelKey: "issueData" },
+  { id: "access", labelKey: "issueAccess" },
+  { id: "abuse", labelKey: "issueAbuse" },
+  { id: "other", labelKey: "issueOther" },
 ];
 
-export default function ReportProblemTab({ user }) {
+export default function ReportProblemTab({ user, t }) {
   const fileRef = useRef(null);
   const [issueType, setIssueType] = useState("bug");
   const [description, setDescription] = useState("");
@@ -38,7 +38,7 @@ export default function ReportProblemTab({ user }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!description.trim()) {
-      flash("error", "Please describe the problem before submitting.");
+      flash("error", t("describeProblemRequired"));
       return;
     }
 
@@ -78,17 +78,17 @@ export default function ReportProblemTab({ user }) {
     return (
       <div className={`${styles.card} ${styles.successCard}`}>
         <div className={styles.successIcon}><FiCheck size={28} /></div>
-        <div className={styles.cardTitle}>Report Submitted</div>
-        <h3 className={styles.successTitle}>Thank you. Your support report was sent successfully.</h3>
+        <div className={styles.cardTitle}>{t("reportSubmitted")}</div>
+        <h3 className={styles.successTitle}>{t("reportSubmittedTitle")}</h3>
         <p className={styles.successDesc}>
-          Our team will review what you shared and use your contact details if we need to follow up.
+          {t("reportSubmittedDesc")}
         </p>
         <div className={styles.successNext}>
-          <p>What happens next?</p>
+          <p>{t("whatHappensNext")}</p>
           <ul>
-            <li>We will check the details and any attachment you included.</li>
-            <li>Critical access or safety issues are prioritized first.</li>
-            <li>You can submit another report if you notice a separate issue.</li>
+            <li>{t("reportNext1")}</li>
+            <li>{t("reportNext2")}</li>
+            <li>{t("reportNext3")}</li>
           </ul>
         </div>
         <button
@@ -96,7 +96,7 @@ export default function ReportProblemTab({ user }) {
           className={styles.btnPrimary}
           onClick={() => setSubmitted(false)}
         >
-          Submit Another Report
+          {t("submitAnotherReport")}
         </button>
       </div>
     );
@@ -104,53 +104,53 @@ export default function ReportProblemTab({ user }) {
 
   return (
     <form className={styles.card} onSubmit={handleSubmit}>
-      <div className={styles.cardTitle}>Report a Problem</div>
+      <div className={styles.cardTitle}>{t("settingsReportProblem")}</div>
       <p className={styles.cardDesc}>
-        Let us know what went wrong. The more detail you give, the faster we can fix it.
+        {t("reportProblemDesc")}
       </p>
 
       {success && <div className={styles.flashSuccess}><FiCheck size={16} /> {success}</div>}
       {error && <div className={styles.flashError}><FiAlertCircle size={16} /> {error}</div>}
 
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>What kind of problem is this?</label>
+        <label className={styles.fieldLabel}>{t("problemKind")}</label>
         <div className={styles.issueGrid}>
-          {ISSUE_TYPES.map(({ id, label }) => (
+          {ISSUE_TYPES.map(({ id, labelKey }) => (
             <button
               key={id}
               type="button"
               className={`${styles.issueChip} ${issueType === id ? styles.issueChipActive : ""}`}
               onClick={() => setIssueType(id)}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
       </div>
 
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>Describe the problem<span className={styles.required}>*</span></label>
+        <label className={styles.fieldLabel}>{t("describeProblem")}<span className={styles.required}>*</span></label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="What happened? What did you expect to happen instead?"
+          placeholder={t("describeProblemPlaceholder")}
           rows={6}
           required
         />
       </div>
 
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>Page or screen <span className={styles.badge}>Optional</span></label>
+        <label className={styles.fieldLabel}>{t("pageOrScreen")} <span className={styles.badge}>{t("optional")}</span></label>
         <input
           type="text"
           value={pageUrl}
           onChange={(e) => setPageUrl(e.target.value)}
-          placeholder="e.g. /cases/history or 'Profile page'"
+          placeholder={t("pageOrScreenPlaceholder")}
         />
       </div>
 
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>Attach a screenshot <span className={styles.badge}>Optional</span></label>
+        <label className={styles.fieldLabel}>{t("attachScreenshot")} <span className={styles.badge}>{t("optional")}</span></label>
         {attachment ? (
           <div className={styles.attachmentRow}>
             <FiPaperclip size={14} />
@@ -161,7 +161,7 @@ export default function ReportProblemTab({ user }) {
           </div>
         ) : (
           <button type="button" className={styles.attachBtn} onClick={() => fileRef.current?.click()}>
-            <FiPaperclip size={14} /> Choose a file
+            <FiPaperclip size={14} /> {t("chooseFile")}
           </button>
         )}
         <input
@@ -175,7 +175,7 @@ export default function ReportProblemTab({ user }) {
 
       <div className={styles.formActions}>
         <button type="submit" className={styles.btnPrimary} disabled={submitting}>
-          {submitting ? "Submitting…" : "Submit Report"}
+          {submitting ? t("submitting") : t("submitReport")}
         </button>
       </div>
     </form>

@@ -10,13 +10,13 @@ import { POLICIES } from "@/components/policies/policyContent";
 import styles from "./AccountPrivacyTab.module.css";
 
 const SECTIONS = [
-  { id: "email", label: "Email" },
-  { id: "password", label: "Password" },
-  { id: "notifications", label: "Notifications" },
-  { id: "policies", label: "Policies" },
+  { id: "email", labelKey: "email" },
+  { id: "password", labelKey: "password" },
+  { id: "notifications", labelKey: "notifications" },
+  { id: "policies", labelKey: "policies" },
 ];
 
-export default function AccountPrivacyTab({ user, setUser }) {
+export default function AccountPrivacyTab({ user, setUser, t }) {
   const [section, setSection] = useState("email");
   const [policy, setPolicy] = useState("terms");
   const [saving, setSaving] = useState(false);
@@ -205,7 +205,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
                 className={`${styles.subNavItem} ${section === s.id ? styles.subNavItemActive : ""}`}
                 onClick={() => setSection(s.id)}
               >
-                {s.label}
+                {t(s.labelKey)}
               </button>
               {s.id === "policies" && section === "policies" && (
                 <div className={styles.policySubNav}>
@@ -233,7 +233,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
             className={`${styles.subNavItem} ${styles.deactivateNavItem} ${section === "deactivate" ? styles.deactivateNavItemActive : ""}`}
             onClick={() => setSection("deactivate")}
           >
-            Deactivate Account
+            {t("deactivateAccount")}
           </button>
         </nav>
 
@@ -242,17 +242,17 @@ export default function AccountPrivacyTab({ user, setUser }) {
 
           {section === "email" && (
             <form className={styles.card} onSubmit={emailForm.awaitingCode ? verifyEmailChange : requestEmailChange}>
-              <div className={styles.cardTitle}>Email</div>
+              <div className={styles.cardTitle}>{t("email")}</div>
               <p className={styles.cardDesc}>
                 {user.email}
                 <br />
                 {user.is_email_verified
-                  ? "Verified"
-                  : "Not yet verified — check your inbox."}
+                  ? t("verified")
+                  : t("notVerifiedInbox")}
               </p>
 
               <div className={styles.grid1}>
-                <Field label="Email address">
+                <Field label={t("emailAddress")}>
                   <input
                     type="email"
                     value={emailForm.newEmail}
@@ -262,7 +262,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
                 </Field>
 
                 {emailForm.awaitingCode && (
-                  <Field label="Verification code">
+                  <Field label={t("verificationCode")}>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -278,12 +278,12 @@ export default function AccountPrivacyTab({ user, setUser }) {
               <div className={styles.formActions}>
                 <button type="submit" className={styles.btnPrimary} disabled={saving || (!emailForm.awaitingCode && emailCodeCooldown > 0)}>
                   {saving
-                    ? "Working..."
+                    ? t("working")
                     : !emailForm.awaitingCode && emailCodeCooldown > 0
-                    ? `Send again in ${emailCodeCooldown}s`
+                    ? `${t("sendAgainIn")} ${emailCodeCooldown}s`
                     : emailForm.awaitingCode
-                    ? "Verify Email"
-                    : "Send Verification Code"}
+                    ? t("verifyEmail")
+                    : t("sendVerificationCode")}
                 </button>
               </div>
             </form>
@@ -291,13 +291,13 @@ export default function AccountPrivacyTab({ user, setUser }) {
 
           {section === "password" && (
             <form className={styles.card} onSubmit={handlePasswordSave}>
-              <div className={styles.cardTitle}>Change Password</div>
+              <div className={styles.cardTitle}>{t("changePassword")}</div>
               <p className={styles.cardDesc}>
-                Use a strong password — at least 8 characters, one uppercase letter, and one number.
+                {t("changePasswordDesc")}
               </p>
 
               <div className={styles.grid1}>
-                <Field label="Current Password" error={pwErrors.current_password}>
+                <Field label={t("currentPassword")} error={pwErrors.current_password}>
                   <div className={styles.pwWrap}>
                     <input
                       name="current_password"
@@ -313,7 +313,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
                   </div>
                 </Field>
 
-                <Field label="New Password" error={pwErrors.new_password}>
+                <Field label={t("newPassword")} error={pwErrors.new_password}>
                   <div className={styles.pwWrap}>
                     <input
                       name="new_password"
@@ -342,7 +342,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
                   )}
                 </Field>
 
-                <Field label="Confirm New Password" error={pwErrors.confirm_password}>
+                <Field label={t("confirmNewPassword")} error={pwErrors.confirm_password}>
                   <div className={styles.pwWrap}>
                     <input
                       name="confirm_password"
@@ -361,7 +361,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
 
               <div className={styles.formActions}>
                 <button type="submit" className={styles.btnPrimary} disabled={saving}>
-                  {saving ? "Updating…" : "Update Password"}
+                  {saving ? t("updating") : t("updatePassword")}
                 </button>
               </div>
 
@@ -403,14 +403,14 @@ export default function AccountPrivacyTab({ user, setUser }) {
 
           {section === "notifications" && (
             <div className={styles.card}>
-              <div className={styles.cardTitle}>Notification Preferences</div>
-              <p className={styles.cardDesc}>Choose what updates you receive from Savira.</p>
+              <div className={styles.cardTitle}>{t("notificationPreferences")}</div>
+              <p className={styles.cardDesc}>{t("notificationPreferencesDesc")}</p>
               <div className={styles.notifList}>
                 {[
-                  { key: "email_updates", label: "General email updates", desc: "News, announcements and platform updates." },
-                  { key: "case_updates", label: "Case status notifications", desc: "Updates on cases you filed or are involved in." },
-                  { key: "event_reminders", label: "Event reminders", desc: "Reminders for upcoming SASHA events." },
-                  { key: "volunteer_news", label: "Volunteer opportunities", desc: "New volunteer programs and calls to action." },
+                  { key: "email_updates", label: t("generalEmailUpdates"), desc: t("generalEmailUpdatesDesc") },
+                  { key: "case_updates", label: t("caseStatusNotifications"), desc: t("caseStatusNotificationsDesc") },
+                  { key: "event_reminders", label: t("eventReminders"), desc: t("eventRemindersDesc") },
+                  { key: "volunteer_news", label: t("volunteerOpportunities"), desc: t("volunteerOpportunitiesDesc") },
                 ].map(({ key, label, desc }) => (
                   <label key={key} className={styles.notifRow}>
                     <div>
@@ -430,9 +430,9 @@ export default function AccountPrivacyTab({ user, setUser }) {
                 <button
                   type="button"
                   className={styles.btnPrimary}
-                  onClick={() => flash("success", "Notification preferences saved!")}
+                  onClick={() => flash("success", t("notificationPrefsSaved"))}
                 >
-                  Save Preferences
+                  {t("savePreferences")}
                 </button>
               </div>
             </div>
@@ -440,7 +440,7 @@ export default function AccountPrivacyTab({ user, setUser }) {
 
           {section === "policies" && (
             <div className={styles.card}>
-              <div className={styles.cardTitle}>Policies</div>
+              <div className={styles.cardTitle}>{t("policies")}</div>
               <h2 className={styles.policyTitle}>
                 {POLICIES[policy].title}
               </h2>
@@ -453,22 +453,22 @@ export default function AccountPrivacyTab({ user, setUser }) {
 
           {section === "deactivate" && (
             <div className={styles.card}>
-              <div className={`${styles.cardTitle} ${styles.dangerTitle}`}>Deactivate Account</div>
+              <div className={`${styles.cardTitle} ${styles.dangerTitle}`}>{t("deactivateAccount")}</div>
               <p className={styles.cardDesc}>
-                Temporarily disable your account. You can reactivate it by signing back in.
+                {t("deactivateDesc")}
               </p>
               <div className={styles.dangerPanel}>
                 <div>
                   <p className={styles.dangerPanelTitle}>
                     <FiTrash2 size={16} />
-                    Deactivate your Savira account
+                    {t("deactivateAccount")}
                   </p>
                   <p className={styles.privacyDesc}>
-                    Your profile will no longer be accessible until you reactivate your account.
+                    {t("deactivatePanelDesc")}
                   </p>
                 </div>
                 <button type="button" className={styles.btnDanger}>
-                  Deactivate Account
+                  {t("deactivateAccount")}
                 </button>
               </div>
             </div>

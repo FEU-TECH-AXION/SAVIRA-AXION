@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { FaCheck } from "react-icons/fa6";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
 import { useAuth, authFetch } from "@/lib/AuthContext";
+import { useI18n } from "@/lib/i18n";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -78,11 +79,11 @@ function humanizeCategory(value) {
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 0, label: "Applicant's Info" },
-  { id: 1, label: "Screening Questions" },
-  { id: 2, label: "Essay" },
+  { id: 0, label: "Applicant's Info", labelKey: "volunteerStepApplicant" },
+  { id: 1, label: "Screening Questions", labelKey: "volunteerStepScreening" },
+  { id: 2, label: "Essay", labelKey: "volunteerStepEssay" },
   // { id: 3, label: "Supporting Credentials" },
-  { id: 3, label: "Review & Submit" },
+  { id: 3, label: "Review & Submit", labelKey: "applicationReviewSubmit" },
 ];
 
 const APP_STATUS_DISPLAY = {
@@ -147,7 +148,7 @@ const INITIAL_ESSAY = {
 };
 
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
-function WizardStepper({ current }) {
+function WizardStepper({ current, t }) {
   return (
     <div className={styles.wizardStepper}>
       {STEPS.map((step, i) => {
@@ -166,7 +167,7 @@ function WizardStepper({ current }) {
               {done ? <FaCheck /> : i + 1}
             </div>
             <span className={`${styles.wizardLabel} ${active ? styles.wizardLabelActive : ""} ${done ? styles.wizardLabelDone : ""}`}>
-              {step.label}
+              {step.labelKey ? t(step.labelKey) : step.label}
             </span>
           </div>
         );
@@ -1315,6 +1316,7 @@ export default function CreateApplication({
   notifications   = [],
   events          = [],
 }) {
+  const { t } = useI18n();
   const { user: authUser, loading: authLoading } = useAuth();
   const [step, setStep]   = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -1597,7 +1599,7 @@ export default function CreateApplication({
             <div className={styles.heroContent}>
               <p className={styles.heroEyebrow}>
                 <span className={styles.heroLine} />
-                Submit an Application
+                {t("volunteerHeroLabel")}
               </p>
               <h1 className={styles.heroTitle}>
                 Volunteer
@@ -1633,14 +1635,14 @@ export default function CreateApplication({
               <div className={styles.formCardHeaderLines}>
                 <div className={styles.formCardHeaderLine} />
               </div>
-              <h2 className={styles.formCardTitle}>Application Submission Form</h2>
+              <h2 className={styles.formCardTitle}>{t("volunteerFormTitle")}</h2>
               <div className={styles.formCardHeaderLines}>
                 <div className={styles.formCardHeaderLine} />
               </div>
             </div>
 
             {/* Wizard stepper */}
-            <WizardStepper current={step} />
+              <WizardStepper current={step} t={t} />
 
             {/* Step content */}
             <div className={styles.formBody}>
@@ -1698,17 +1700,17 @@ export default function CreateApplication({
             <div className={styles.formNav}>
               {step > 0 ? (
                 <button type="button" className={styles.backBtn} onClick={handleBack}>
-                  ← Back
+                  ← {t("back")}
                 </button>
               ) : <div />}
 
               {step < totalSteps - 1 ? (
                 <button type="button" className={styles.nextBtn} onClick={handleNext}>
-                  Next →
+                  {t("next")} →
                 </button>
               ) : (
                 <button type="button" className={styles.submitBtn} onClick={handleSubmit}>
-                  Submit Application
+                  {t("volunteerSubmitApplication")}
                 </button>
               )}
             </div>
@@ -1716,13 +1718,13 @@ export default function CreateApplication({
         ) : (
           <div className={styles.successCard}>
             <div className={styles.successIcon}><FaCheck /></div>
-            <h2 className={styles.successTitle}>Application Submitted!</h2>
+            <h2 className={styles.successTitle}>{t("volunteerSubmittedTitle")}</h2>
             <p className={styles.successDesc}>
               Your application has been received. We will review it and get back to you via your provided contact details.
               All information is handled with strict confidentiality.
             </p>
             <button className={styles.submitBtn} onClick={() => { setSubmitted(false); setStep(0); }}>
-              Submit Another Application
+              {t("volunteerSubmitAnother")}
             </button>
           </div>
         )}
@@ -1730,7 +1732,7 @@ export default function CreateApplication({
         {/* ── Your Application Status ── */}
         {false && (
         <div className={`${styles.sectionHeading} mt-5`}>
-          <h2 className={styles.sectionTitle}>Your Application Status</h2>
+          <h2 className={styles.sectionTitle}>{t("volunteerStatusTitle")}</h2>
           <div className={styles.headingLine} />
         </div>
         )}

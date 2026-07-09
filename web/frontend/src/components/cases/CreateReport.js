@@ -7,6 +7,7 @@ import styles from "./CreateReport.module.css";
 import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
 import { useAuth, authFetch, authHeaders } from "@/lib/AuthContext";
+import { useI18n } from "@/lib/i18n";
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -31,11 +32,11 @@ const NCR_CITIES = [
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 0, label: "Consent" },
-  { id: 1, label: "Complainant's Info" },
-  { id: 2, label: "Incident Details" },
-  { id: 3, label: "Supporting Evidence" },
-  { id: 4, label: "Review & Submit" },
+  { id: 0, label: "Consent", labelKey: "reportStepConsent" },
+  { id: 1, label: "Complainant's Info", labelKey: "reportStepComplainant" },
+  { id: 2, label: "Incident Details", labelKey: "reportStepIncident" },
+  { id: 3, label: "Supporting Evidence", labelKey: "reportStepEvidence" },
+  { id: 4, label: "Review & Submit", labelKey: "reportStepReview" },
 ];
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -318,7 +319,7 @@ function normalizeLocationSuggestion(feature) {
 
 // ── Cookie ───────────────────────────────────────────────────────
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
-function WizardStepper({ current }) {
+function WizardStepper({ current, t }) {
   return (
     <div className={styles.wizardStepper}>
       {STEPS.map((step, i) => {
@@ -337,7 +338,7 @@ function WizardStepper({ current }) {
               {done ? <FaCheck /> : i + 1}
             </div>
             <span className={`${styles.wizardLabel} ${active ? styles.wizardLabelActive : ""} ${done ? styles.wizardLabelDone : ""}`}>
-              {step.label}
+              {step.labelKey ? t(step.labelKey) : step.label}
             </span>
           </div>
         );
@@ -2345,6 +2346,7 @@ export default function CreateReport({
   notifications   = [],
   events          = [],
 }) {
+  const { t } = useI18n();
   const { user: authUser, loading: authLoading } = useAuth();
   const [step, setStep]                   = useState(0);
   const [submitted, setSubmitted]         = useState(false);
@@ -2605,7 +2607,7 @@ export default function CreateReport({
               <div className={styles.heroContent}>
                 <p className={styles.heroEyebrow}>
                   <span className={styles.heroLine} />
-                  Submit a Report
+                  {t("reportHeroLabel")}
                 </p>
                 <h1 className={styles.heroTitle}>
                   We&apos;re Here
@@ -2640,13 +2642,13 @@ export default function CreateReport({
                 <div className={styles.formCardHeaderLines}>
                   <div className={styles.formCardHeaderLine} />
                 </div>
-                <h2 className={styles.formCardTitle}>Report Submission Form</h2>
+                <h2 className={styles.formCardTitle}>{t("reportFormTitle")}</h2>
                 <div className={styles.formCardHeaderLines}>
                   <div className={styles.formCardHeaderLine} />
                 </div>
               </div>
 
-              <WizardStepper current={step} />
+              <WizardStepper current={step} t={t} />
 
               <div className={styles.formBody}>
                 {step === 0 && (
@@ -2701,17 +2703,17 @@ export default function CreateReport({
               <div className={styles.formNav}>
                 {step > 0 ? (
                   <button type="button" className={styles.backBtn} onClick={handleBack}>
-                    ← Back
+                    ← {t("back")}
                   </button>
                 ) : <div />}
 
                 {step < totalSteps - 1 ? (
                   <button type="button" className={styles.nextBtn} onClick={handleNext} disabled={isSubmitting}>
-                    Next →
+                    {t("next")} →
                   </button>
                 ) : (
                   <button type="button" className={styles.submitBtn} onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? "Submitting..." : "Submit Report"}
+                    {isSubmitting ? t("submitting") : t("submitReport")}
                   </button>
                 )}
               </div>
@@ -2719,14 +2721,14 @@ export default function CreateReport({
           ) : (
             <div className={styles.successCard}>
               <div className={styles.successIcon}><FaCheck /></div>
-              <h2 className={styles.successTitle}>Thank you for sharing your story.</h2>
+              <h2 className={styles.successTitle}>{t("reportSuccessTitle")}</h2>
               <p className={styles.successDesc}>
                 It takes courage to come forward, and we&apos;re glad you did. Your report has been
                 received and will be kept private and handled with care.
               </p>
 
               <div className={styles.successNextSteps}>
-                <h3>What happens next?</h3>
+                <h3>{t("whatHappensNext")}</h3>
                 <ul className={styles.successStepsList}>
                   <li>Our team will carefully review your report.</li>
                   <li>
@@ -2752,7 +2754,7 @@ export default function CreateReport({
               <p className={styles.successAnotherReport}>
                 Need to file for a different incident?{" "}
                 <button type="button" onClick={() => window.location.reload()}>
-                  Submit another report
+                  {t("reportSubmitAnother")}
                 </button>
               </p>
             </div>
@@ -2761,7 +2763,7 @@ export default function CreateReport({
           {/* ── Your Report Status ── */}
           {false && (
           <div className={`${styles.sectionHeading} mt-5`}>
-            <h2 className={styles.sectionTitle}>Your Report Status</h2>
+            <h2 className={styles.sectionTitle}>{t("reportStatusTitle")}</h2>
             <div className={styles.headingLine} />
           </div>
           )}

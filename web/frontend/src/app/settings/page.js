@@ -11,14 +11,15 @@ import AccountPrivacyTab from "@/components/settings/AccountPrivacyTab";
 import HelpCenterTab from "@/components/settings/HelpCenterTab";
 import DisplayAccessibilityTab from "@/components/settings/DisplayAccessibilityTab";
 import ReportProblemTab from "@/components/settings/ReportProblemTab";
+import { getCurrentLanguage, translate } from "@/lib/i18n";
 
 // ── Tabs ─────────────────────────────────────────────────────
 const TABS = [
-  { id: "profile",  label: "Profile",                icon: FiUser },
-  { id: "lock", label: "Account & Privacy",      icon: FiLock },
-  { id: "help",     label: "Help Center",              icon: FiHelpCircle },
-  { id: "display",  label: "Display & Accessibility", icon: FiSliders },
-  { id: "report",   label: "Report a Problem",         icon: FiFlag },
+  { id: "profile",  labelKey: "settingsProfile", icon: FiUser },
+  { id: "lock", labelKey: "settingsAccountPrivacy", icon: FiLock },
+  { id: "help",     labelKey: "settingsHelpCenter", icon: FiHelpCircle },
+  { id: "display",  labelKey: "settingsDisplayAccessibility", icon: FiSliders },
+  { id: "report",   labelKey: "settingsReportProblem", icon: FiFlag },
 ];
 
 // ── Completion helpers ────────────────────────────────────────
@@ -55,6 +56,8 @@ function SettingsPageContent() {
   const [pendingAvatarPreview, setPendingAvatarPreview] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
+  const [language, setLanguage] = useState(() => getCurrentLanguage());
+  const t = (key) => translate(language, key);
   const requestedTab = searchParams.get("tab");
   const activeTab = TABS.some((tab) => tab.id === requestedTab)
     ? requestedTab
@@ -197,7 +200,7 @@ function SettingsPageContent() {
           {/* ── Completion card ─────────────────────── */}
           <div className={styles.completionCard}>
             <div className={styles.completionHeader}>
-              <span>Profile completion</span>
+              <span>{t("profileCompletion")}</span>
               <strong>{completion}%</strong>
             </div>
             <div className={styles.completionBar}>
@@ -205,9 +208,9 @@ function SettingsPageContent() {
             </div>
             {missingFields.length > 0 && (
               <p className={styles.completionHint}>
-                Add your{" "}
-                {missingFields.map((f) => f.label).join(", ")}{" "}
-                to complete your profile.
+                {t("addProfileFields")}{" "}
+                {missingFields.map((f) => t(`profileField.${f.key}`)).join(", ")}{" "}
+                {t("toCompleteProfile")}
               </p>
             )}
           </div>
@@ -219,7 +222,7 @@ function SettingsPageContent() {
 
         {/* Tabs */}
         <div className={styles.tabs}>
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {TABS.map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -227,25 +230,25 @@ function SettingsPageContent() {
               onClick={() => handleTabChange(id)}
             >
               <Icon size={15} />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
 
         {activeTab === "profile" && (
-          <ProfileTab user={user} setUser={setUser} form={form} setForm={setForm} />
+          <ProfileTab user={user} setUser={setUser} form={form} setForm={setForm} t={t} />
         )}
         {activeTab === "lock" && (
-          <AccountPrivacyTab user={user} setUser={setUser} />
+          <AccountPrivacyTab user={user} setUser={setUser} t={t} />
         )}
         {activeTab === "help" && (
-          <HelpCenterTab user={user} />
+          <HelpCenterTab user={user} t={t} />
         )}
         {activeTab === "display" && (
-          <DisplayAccessibilityTab />
+          <DisplayAccessibilityTab onLanguageChange={setLanguage} />
         )}
         {activeTab === "report" && (
-          <ReportProblemTab user={user} />
+          <ReportProblemTab user={user} t={t} />
         )}
 
       </div>
@@ -257,8 +260,8 @@ function SettingsPageContent() {
               <img src={pendingAvatarPreview} alt="Selected profile preview" className={styles.confirmPreview} />
             </div>
             <div className={styles.confirmContent}>
-              <h2 id="avatar-confirm-title">Use this as your profile photo?</h2>
-              <p>You will not be able to change it again until next week.</p>
+              <h2 id="avatar-confirm-title">{t("useProfilePhotoTitle")}</h2>
+              <p>{t("useProfilePhotoDesc")}</p>
               {avatarError && <p className={styles.confirmError}>{avatarError}</p>}
               <div className={styles.confirmActions}>
                 <button
@@ -267,7 +270,7 @@ function SettingsPageContent() {
                   onClick={cancelAvatarUpload}
                   disabled={avatarUploading}
                 >
-                  Choose another
+                  {t("chooseAnother")}
                 </button>
                 <button
                   type="button"
@@ -275,7 +278,7 @@ function SettingsPageContent() {
                   onClick={confirmAvatarUpload}
                   disabled={avatarUploading}
                 >
-                  {avatarUploading ? "Saving..." : "Yes, use this photo"}
+                  {avatarUploading ? t("saving") : t("yesUsePhoto")}
                 </button>
               </div>
             </div>

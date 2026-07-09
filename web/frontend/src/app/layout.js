@@ -7,6 +7,7 @@ import NotificationsInit from '@/components/notification/notificationsInit';
 import NavbarClient from '@/components/navbar/NavbarClient';
 import ClientShell from '@/components/ClientShell';
 import DisplayPreferencesClient from '@/components/settings/DisplayPreferencesClient';
+import { I18nProvider } from '@/lib/i18n';
 
 export const metadata = {
   title: 'SASHA',
@@ -32,18 +33,20 @@ export default function RootLayout({ children }) {
 
       <body>
         <AuthProvider>
-          <DisplayPreferencesClient />
-          <NotificationsInit />
+          <I18nProvider>
+            <DisplayPreferencesClient />
+            <NotificationsInit />
 
-          <ClientShell>
-            <NavbarClient />
+            <ClientShell>
+              <NavbarClient />
 
-            <main className="appMain">
-              {children}
-            </main>
+              <main className="appMain">
+                {children}
+              </main>
 
-            <Footer />
-          </ClientShell>
+              <Footer />
+            </ClientShell>
+          </I18nProvider>
         </AuthProvider>
       </body>
     </html>

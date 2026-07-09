@@ -4,10 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node --max-old-space-size=8192 ./node_modules/next/dist/bin/next dev",
+    "build": "node --max-old-space-size=8192 ./node_modules/next/dist/bin/next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "node --max-old-space-size=8192 ./node_modules/eslint/bin/eslint.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

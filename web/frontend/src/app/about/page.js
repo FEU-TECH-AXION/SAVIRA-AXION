@@ -1,11 +1,10 @@
-import styles from "./about.module.css";
+"use client";
 
-export const metadata = {
-  title: "About | SASHA",
-  description: "Know more about Scouts Against Sexual Harassment and Abuse (SASHA).",
-};
+import styles from "./about.module.css";
+import { useI18n } from "@/lib/i18n";
 
 export default function AboutPage() {
+  const { t } = useI18n();
   function calculateYears() {
     const launchDate = new Date(2022, 10, 25);
     const today = new Date();
@@ -30,7 +29,7 @@ export default function AboutPage() {
       <section className={styles.hero}>
         <div className={styles.heroOverlay} />
         <h1 className={styles.heroTitle}>
-          Know More About <span className={styles.accent}>SASHA</span>
+          {t("aboutHero")} <span className={styles.accent}>SASHA</span>
         </h1>
       </section>
 
@@ -61,15 +60,11 @@ export default function AboutPage() {
           {/* Right — text */}
           <div className={styles.aboutText}>
             <p className={styles.sectionLabel}>
-              <span className={styles.labelLine} /> About Us
+              <span className={styles.labelLine} /> {t("aboutUs")}
             </p>
-            <h2 className={styles.aboutHeading}>SASHA is:</h2>
+            <h2 className={styles.aboutHeading}>{t("aboutSashaIs")}</h2>
             <p className={styles.aboutBody}>
-              Scouts Against Sexual Harassment and Abuse (SASHA) is a Scout-led
-              organization established in 2022 to address issues of sexual
-              harassment and abuse affecting children, women, youth, and LGBTQIA+
-              individuals. It unites members from different sectors who share a
-              commitment to gender equality and social justice.
+              {t("aboutBody")}
             </p>
           </div>
         </div>
@@ -78,19 +73,16 @@ export default function AboutPage() {
       {/* ── Mission & Vision ── */}
       <section className={styles.mvSection}>
         <div className={styles.missionBox}>
-          <h2 className={styles.missionTitle}>Our Mission</h2>
+          <h2 className={styles.missionTitle}>{t("aboutMission")}</h2>
           <p className={styles.missionBody}>
-            To defend and uphold the rights of vulnerable sectors against sexual
-            harassment and abuse by providing structured reporting mechanisms,
-            responsible case management, and sustained advocacy.
+            {t("aboutMissionBody")}
           </p>
         </div>
         <div className={styles.visionBox}>
-          <h2 className={styles.visionTitle}>Our Vision</h2>
+          <h2 className={styles.visionTitle}>{t("aboutVision")}</h2>
           <div className={styles.visionCard}>
             <p className={styles.visionBody}>
-              A society where safe spaces are ensured, abuse is not tolerated,
-              and survivors are supported with dignity, respect, and justice.
+              {t("aboutVisionBody")}
             </p>
           </div>
         </div>
@@ -99,27 +91,27 @@ export default function AboutPage() {
       {/* ── Core Values ── */}
       <section className={styles.valuesSection}>
         <p className={styles.sectionLabel}>
-          <span className={styles.labelLine} /> What We Believe
+          <span className={styles.labelLine} /> {t("aboutBelieve")}
         </p>
         <h2 className={styles.valuesHeading}>
-          Our <span className={styles.accent}>Core Values</span>
+          {t("aboutCoreValues")}
         </h2>
         <div className={styles.valuesGrid}>
           {[
             {
               num: "01",
-              title: "Safe Spaces Commitment",
-              body: "SASHA maintains a firm stance against all forms of sexual harassment and abuse. We advocate for prevention, survivor protection, and accountability to ensure safe and respectful spaces for everyone.",
+              title: t("aboutValueSafeTitle"),
+              body: t("aboutValueSafeBody"),
             },
             {
               num: "02",
-              title: "Gender Equality",
-              body: "SASHA upholds the equal rights, dignity, and opportunities of all genders. The organization actively challenges discrimination, harmful stereotypes, and systems that enable inequality and abuse.",
+              title: t("aboutValueEqualityTitle"),
+              body: t("aboutValueEqualityBody"),
             },
             {
               num: "03",
-              title: "Youth Empowerment",
-              body: "SASHA believes that young people are not only beneficiaries of protection but also leaders of change. The organization promotes youth participation in advocacy, education, and decision-making processes.",
+              title: t("aboutValueYouthTitle"),
+              body: t("aboutValueYouthBody"),
             },
           ].map((v) => (
             <div key={v.num} className={styles.valueCard}>
