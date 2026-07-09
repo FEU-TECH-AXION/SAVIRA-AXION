@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./LegalReviewManagement.module.css";
-import { FiSearch, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiCalendar } from "react-icons/fi";
+import { FiSearch, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiCalendar, FiHelpCircle } from "react-icons/fi";
 import LegalTable from "./LegalTable";
 import FilterMenu from "./FilterMenu";
 import UpdateStatusModal from "../cases/UpdateStatusModals";
@@ -23,6 +23,7 @@ import {
   EndorseModal,
   MonitoringModal,
 } from "./LegalReviewModals";
+import LegalGuide from "./LegalGuide";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -1207,6 +1208,7 @@ export default function LegalReviewManagement() {
 
   const [cases, setCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
+  const [legalGuideOpen, setLegalGuideOpen] = useState(false);
   // Legal personnels fetched from backend (for assign dropdown + filter)
   const [legalPersonnels, setLegalPersonnels] = useState([]);
   const currentLegalPersonnel = useMemo(
@@ -1605,6 +1607,14 @@ export default function LegalReviewManagement() {
           <div className="container-xl">
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Legal Review</h1>
+              <button
+                type="button"
+                className={styles.legalGuideBtn}
+                onClick={() => setLegalGuideOpen(true)}
+              >
+                <FiHelpCircle />
+                Legal Guide
+              </button>
               <div className="row g-3 justify-content-center">
                 {stats.map(({ num, label, highlight }) => (
                   <div key={label} className="col-12 col-md-3">
@@ -1724,6 +1734,7 @@ export default function LegalReviewManagement() {
           </div>
         </section>
       </main>
+      <LegalGuide open={legalGuideOpen} onClose={() => setLegalGuideOpen(false)} />
 
       {/* ══ MODALS ══ */}
       <ParalegalSupportModal open={modal === "paralegal"} onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />

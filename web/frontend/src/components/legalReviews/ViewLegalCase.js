@@ -9,6 +9,7 @@ import {
   FiClock,
   FiAlertCircle,
   FiCheck,
+  FiHelpCircle,
 } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, } from "react-icons/io";
 import styles from "./ViewLegalCase.module.css";
@@ -30,6 +31,7 @@ import {
 } from "./LegalReviewModals";
 import { getLegalCaseDeadlines } from "./legalReviewCalendar";
 import { useAuth } from "@/lib/AuthContext";
+import LegalGuide from "./LegalGuide";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -957,6 +959,7 @@ export default function ViewCase() {
   const [error, setError]       = useState(null);
   const [activeTab, setActiveTab] = useState("details");
   const [toast, setToast]       = useState(null);
+  const [legalGuideOpen, setLegalGuideOpen] = useState(false);
 
   const user = {
     role: authUser?.role_name || authUser?.role || null,
@@ -1217,6 +1220,14 @@ export default function ViewCase() {
             </div>
             <div className={styles.headerActions}>
               <StatusBadge status={caseData.status} />
+              <button
+                type="button"
+                className={styles.legalGuideBtn}
+                onClick={() => setLegalGuideOpen(true)}
+              >
+                <FiHelpCircle />
+                Guide
+              </button>
             </div>
           </div>
         </div>
@@ -1268,6 +1279,7 @@ export default function ViewCase() {
 
         </div>
       </div>
+      <LegalGuide open={legalGuideOpen} onClose={() => setLegalGuideOpen(false)} />
     </div>
   );
 }
