@@ -1,5 +1,9 @@
 const LegalCaseAssignmentsModel = require('../models/legal_case_assignments.model')
 const supabase = require('../config/supabase')
+const {
+    fireAndForget,
+    notifyUser,
+} = require('../services/notificationService')
 
 async function requireParalegalForLegalPersonnel(req, res) {
     const role = String(req.user?.role || req.user?.role_name || '').toLowerCase()
@@ -56,7 +60,7 @@ const assignCase = async (req, res) => {
     // 1. Resolve assignment_role from legal_personnel_type
     const { data: personnelData, error: personnelError } = await supabase
       .from('legal_personnels')
-      .select('legal_personnel_type, users(first_name, last_name)')
+      .select('user_id, legal_personnel_type, users(first_name, last_name)')
       .eq('legal_personnel_id', legal_personnel_id)
       .single()
 
@@ -110,6 +114,23 @@ const assignCase = async (req, res) => {
       performed_by_user_id: performed_by,
       performed_at:         new Date().toISOString(),
     }])
+
+    if (personnelData.user_id) {
+      fireAndForget(
+        notifyUser(personnelData.user_id, {
+          title: 'Legal case assigned',
+          body: 'You have been assigned to a legal review case.',
+          data: {
+            type: 'legal_assignment',
+            case_report_id,
+            legal_case_assignment_id: assignment.legal_case_assignment_id || '',
+            link: `/legalReviews/view?caseId=${case_report_id}`,
+            priority: 'normal',
+          },
+        }),
+        'Failed to notify legal personnel about assignment'
+      )
+    }
 
     res.status(201).json({ data: assignment })
   } catch (err) {
@@ -165,7 +186,7 @@ const bulkAssignCase = async (req, res) => {
             // 2. Resolve assignment_role from legal_personnel_type
             const { data: personnelData, error: personnelError } = await supabase
                 .from('legal_personnels')
-                .select('legal_personnel_type, users(first_name, last_name)')
+                .select('user_id, legal_personnel_type, users(first_name, last_name)')
                 .eq('legal_personnel_id', legal_personnel_id)
                 .single()
 
@@ -198,6 +219,7 @@ const bulkAssignCase = async (req, res) => {
                 assigned_by:  performed_by,
                 notes:        notes ?? null,
                 is_active:    true,
+                _user_id: personnelData.user_id,
                 _name: personnelData.users
                     ? `${personnelData.users.first_name} ${personnelData.users.last_name}`.trim()
                     : `Personnel #${legal_personnel_id}`,
@@ -206,7 +228,7 @@ const bulkAssignCase = async (req, res) => {
 
         // 3. Bulk insert all valid rows with shared batch_id
         if (validRows.length > 0) {
-            const rowsToInsert = validRows.map(({ _name, ...row }) => row)
+            const rowsToInsert = validRows.map(({ _name, _user_id, ...row }) => row)
             await LegalCaseAssignmentsModel.bulkCreate(rowsToInsert)
 
             // 4. Log each assignment to case_report_logs
@@ -218,6 +240,25 @@ const bulkAssignCase = async (req, res) => {
                 performed_at:         new Date().toISOString(),
             }))
             await supabase.from('case_report_logs').insert(logRows)
+
+            validRows
+                .filter((row) => row._user_id)
+                .forEach((row) => {
+                    fireAndForget(
+                        notifyUser(row._user_id, {
+                            title: 'Legal case assigned',
+                            body: 'You have been assigned to a legal review case.',
+                            data: {
+                                type: 'legal_assignment',
+                                case_report_id,
+                                legal_personnel_id: row.legal_personnel_id,
+                                link: `/legalReviews/view?caseId=${case_report_id}`,
+                                priority: 'normal',
+                            },
+                        }),
+                        'Failed to notify legal personnel about assignment'
+                    )
+                })
 
             results.assigned = validRows.map(r => ({
                 legal_personnel_id: r.legal_personnel_id,

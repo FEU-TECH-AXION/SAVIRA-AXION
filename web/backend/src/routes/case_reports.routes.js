@@ -4,6 +4,7 @@ const { getItems, createItem, submitReport, getUserReports, getCaseStats, getAll
 const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
+const { validateCaseReport } = require('../middleware/case_reports_validation.middleware')
 const { amendCaseFields, createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
 const { getPublicUpdates } = require('../controllers/case_updates.controller')
 const multer = require('multer');
@@ -37,7 +38,7 @@ router.get('/heatmap/data', getHeatmapData);
 router.get('/stats',      verifyToken, requireCaseAccess, getCaseStats);
 router.get('/all',        verifyToken, requireCaseAccess, getAllCases);
 router.get('/my-reports', verifyToken, getUserReports);
-router.post('/submit', verifyToken, handleEvidenceUpload, submitReport);
+router.post('/submit', verifyToken, handleEvidenceUpload, validateCaseReport, submitReport);
 
 router.get('/:id/follow-ups', verifyToken, listFollowUps);
 router.post('/:id/follow-ups', verifyToken, upload.single('file'), createFollowUp);

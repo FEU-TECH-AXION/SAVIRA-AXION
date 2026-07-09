@@ -53,7 +53,30 @@
   color: var(--sasha-white);
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 800;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.legalGuideBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255,255,255,0.42);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  color: var(--sasha-white);
+  padding: 0.55rem 0.95rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.15s, transform 0.12s;
+}
+
+.legalGuideBtn:hover {
+  background: rgba(255,255,255,0.26);
+  transform: translateY(-1px);
 }
 
 .statCard {

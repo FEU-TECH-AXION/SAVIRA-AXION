@@ -101,6 +101,8 @@ const STATUS_COLORS = {
   "Withdrawn":             { bg: "#fef3c7", color: "#92400e" },
 };
 
+const ALL_STATUS_OPTIONS = Object.keys(STATUS_COLORS);
+
 // ─── Transition Rules ─────────────────────────────────────────────────────────
 
 export const TRANSITION_RULES = {
@@ -1100,6 +1102,7 @@ export default function UpdateStatusModal({
   viewCaseMode = false,
   allowedStatuses,
   includeCurrentStatus = false,
+  onOverrideSubmit,
   onOpenDuplicateCheck,
   onOpenNlpAnalysis,
   onRequestClarification,
@@ -1107,6 +1110,10 @@ export default function UpdateStatusModal({
 }) {
   const [activeModal, setActiveModal] = useState(null);
   const [nextStatus, setNextStatus]   = useState("");
+  const [overrideStatus, setOverrideStatus] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideError, setOverrideError] = useState("");
+  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
   const [fetchedNlpClarification, setFetchedNlpClarification] = useState(null);
   const [nlpClarificationLoading, setNlpClarificationLoading] = useState(false);
 
@@ -1114,6 +1121,10 @@ export default function UpdateStatusModal({
     if (open) {
       setActiveModal(null);
       setNextStatus("");
+      setOverrideStatus("");
+      setOverrideReason("");
+      setOverrideError("");
+      setOverrideSubmitting(false);
     }
   }, [open, caseData?.id]);
 
@@ -1175,6 +1186,28 @@ export default function UpdateStatusModal({
 
   function handleSubModalClose() {
     setActiveModal(null);
+  }
+
+  async function handleOverrideSubmit() {
+    const reason = overrideReason.trim();
+    if (!overrideStatus || !reason) return;
+    if (!onOverrideSubmit) {
+      setOverrideError("Override action is not available from this view.");
+      return;
+    }
+
+    setOverrideSubmitting(true);
+    setOverrideError("");
+    try {
+      await onOverrideSubmit(overrideStatus, reason);
+      setActiveModal(null);
+      setOverrideStatus("");
+      setOverrideReason("");
+    } catch (err) {
+      setOverrideError(err.message || "Failed to override case status.");
+    } finally {
+      setOverrideSubmitting(false);
+    }
   }
 
   const effectiveNlpClarification =
@@ -1242,6 +1275,20 @@ export default function UpdateStatusModal({
         )}
 
         <div className={styles.modalFooter}>
+          {isAdmin && onOverrideSubmit && (
+            <button
+              type="button"
+              className={styles.btnOverride}
+              onClick={() => {
+                setOverrideStatus("");
+                setOverrideReason("");
+                setOverrideError("");
+                setActiveModal("override");
+              }}
+            >
+              <FiAlertTriangle /> Override Status (Admin)
+            </button>
+          )}
           <button className={styles.btnSecondary} onClick={onClose}>
             Cancel
           </button>
@@ -1265,6 +1312,68 @@ export default function UpdateStatusModal({
       </Modal>
 
       {/* ── Status-specific sub-modals ─────────────────────────────────────── */}
+      <Modal open={open && activeModal === "override"} onClose={handleSubModalClose} title="Override Status" wide>
+        <div className={styles.overrideNotice}>
+          <FiAlertTriangle className={styles.overrideNoticeIcon} />
+          <div>
+            <strong>Admin override</strong>
+            <p>This records a deliberate workflow override. Use normal status updates for routine transitions.</p>
+          </div>
+        </div>
+
+        <FormGroup label="Case ID">
+          <FInput value={caseData.caseId} disabled />
+        </FormGroup>
+
+        <FormGroup label="Current Status">
+          <FInput value={caseData.status} disabled />
+        </FormGroup>
+
+        <FormGroup label="Override Target Status" required>
+          <select
+            className={styles.select}
+            value={overrideStatus}
+            onChange={(e) => {
+              setOverrideStatus(e.target.value);
+              setOverrideError("");
+            }}
+          >
+            <option value="" disabled>Select target status</option>
+            {ALL_STATUS_OPTIONS
+              .filter((status) => status !== caseData.status)
+              .map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+          </select>
+        </FormGroup>
+
+        <FormGroup label="Override Reason" required hint="Required for audit review. Be specific and factual.">
+          <FTextarea
+            value={overrideReason}
+            onChange={(e) => {
+              setOverrideReason(e.target.value);
+              setOverrideError("");
+            }}
+            placeholder="Explain why this case status must bypass the normal workflow..."
+          />
+        </FormGroup>
+
+        {overrideError && <p className={styles.inlineError}>{overrideError}</p>}
+
+        <div className={styles.modalFooter}>
+          <button className={styles.btnSecondary} onClick={handleSubModalClose} disabled={overrideSubmitting}>
+            Cancel
+          </button>
+          <button
+            className={styles.btnOverridePrimary}
+            disabled={!overrideStatus || !overrideReason.trim() || overrideSubmitting}
+            onClick={handleOverrideSubmit}
+          >
+            <FiAlertTriangle /> {overrideSubmitting ? "Recording..." : "Record Override"}
+          </button>
+        </div>
+      </Modal>
+
       {subModals}
     </>
   );

@@ -110,6 +110,28 @@
   min-height: 34px;
 }
 
+.statusGuideBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+
+.statusGuideBtn:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+}
+
 .caseTitle {
   margin: 0;
   color: #fff;
@@ -458,6 +480,28 @@
   gap: 1rem;
 }
 
+.historyStatusLine {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.overrideBadge {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  color: #9a3412;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 0.28rem 0.55rem;
+  text-transform: uppercase;
+}
+
 .historyDot {
   width: 12px;
   height: 12px;
@@ -478,6 +522,21 @@
   font-size: 0.825rem;
   color: #4b5563;
   line-height: 1.5;
+}
+
+.overrideReason {
+  background: #fff7ed;
+  border-left: 3px solid #fb923c;
+  border-radius: 0 8px 8px 0;
+  color: #7c2d12;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0.7rem;
+}
+
+.overrideReason strong {
+  color: #9a3412;
 }
 
 .followUpButton {

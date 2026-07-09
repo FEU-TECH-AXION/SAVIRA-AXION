@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
-import { FiSearch, FiX, FiCheck, FiClock } from "react-icons/fi";
+import { FiSearch, FiX, FiCheck, FiClock, FiHelpCircle } from "react-icons/fi";
 import { IoMdClose } from "react-icons/io";
 import { GoDotFill } from "react-icons/go";
 import CasesTable from "./CasesTable";
@@ -14,6 +14,8 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import { useAuth } from "@/lib/AuthContext";
+import StatusGuide from "./StatusGuide";
+import { STATUS_COLORS } from "./caseStatusConstants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY FUNCTIONS
@@ -158,22 +160,6 @@ const PLACEHOLDER_CASES = Array.from({ length: 22 }, (_, i) => makeCase(i + 1));
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
-
-const STATUS_COLORS = {
-  "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
-  "For Verification":      { bg: "#dbeafe", color: "#1e40af" }, // Blue
-  "Undergoing Review":     { bg: "#fef9c3", color: "#854d0e" }, // Yellow
-  "Verified - True":       { bg: "#dcfce7", color: "#166534" }, // Green
-  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" }, // Red
-  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" }, // Purple
-  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" }, // Orange
-  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" }, // Cyan
-  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" }, // Pink
-  "Dismissed":             { bg: "#f1f5f9", color: "#475569" }, // Slate/Gray
-  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" }, // Emerald Green
-  "Resolved":              { bg: "#ccfbf1", color: "#115e59" }, // Teal
-  "Withdrawn":             { bg: "#fef3c7", color: "#92400e" }, // Amber/Muted Brown
-};
 
 function StatusBadge({ status }) {
   const s = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
@@ -950,6 +936,7 @@ export default function CaseManagement() {
   const [page, setPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [toast, setToast] = useState(null);
+  const [statusGuideOpen, setStatusGuideOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState({
     status: "",
     assignedOfficer: "",
@@ -1403,6 +1390,14 @@ const stats = useMemo(() => {
           <div className="container-xl">
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Case Management</h1>
+              <button
+                type="button"
+                className={styles.statusGuideBtn}
+                onClick={() => setStatusGuideOpen(true)}
+              >
+                <FiHelpCircle />
+                Status Guide
+              </button>
               <div className="row g-3 justify-content-center">
                 {stats.map(({ num, label, highlight }) => (
                   <div key={label} className="col-12 col-md-3">
@@ -1531,6 +1526,7 @@ const stats = useMemo(() => {
           </div>
         </section>
       </main>
+      <StatusGuide open={statusGuideOpen} onClose={() => setStatusGuideOpen(false)} />
 
       {/* ══ MODALS ══ */}
 

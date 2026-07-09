@@ -430,7 +430,124 @@ export function RadioGroup({ name, options, value, onChange, error }) {
 // ── Validation helpers ────────────────────────────────────────────────────────
 // ── Contact & email format helpers ───────────────────────────────────────────
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
+const EMAIL_LINE_BREAK_REGEX = /[\r\n]/g;
+const AGE_MIN = 13;
+const AGE_MAX = 120;
+const EMAIL_MAX_LENGTH = 254;
+const SHORT_TEXT_MAX_LENGTH = 150;
+const MEDIUM_TEXT_MAX_LENGTH = 300;
+const LONG_TEXT_MAX_LENGTH = 1000;
+const DESCRIPTION_MAX_LENGTH = 5000;
+
+const REPORT_TYPE_OPTIONS = ["Me (Myself)", "Someone else"];
+const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"];
+const ORGANIZATION_OPTIONS = [
+  "Boy Scouts of the Philippines (BSP)",
+  "Girl Scouts of the Philippines (GSP)",
+  "No Organization / Independent",
+  "Others",
+];
+const ORGANIZATION_TYPE_OPTIONS = [
+  "School / University",
+  "Workplace / Company",
+  "Government Agency",
+  "Non-Governmental Organization",
+  "Community / Youth Organization",
+  "Religious Organization",
+  "Online Community / Platform",
+  "Other",
+];
+const LOCATION_TYPE_OPTIONS = ["Physical Location", "Online"];
+const YES_NO_OPTIONS = ["Yes", "No"];
+const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Unknown"];
+const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Unable to tell"];
+
+function trimString(value) {
+  return typeof value === "string" ? value.trim() : value;
+}
+
+function limitString(value, maxLength) {
+  if (typeof value !== "string") return value;
+  return value.slice(0, maxLength);
+}
+
+function normalizeEmail(value) {
+  return trimString(value || "").toLowerCase();
+}
+
+function stripEmailLineBreaks(value) {
+  return String(value || "").replace(EMAIL_LINE_BREAK_REGEX, "");
+}
+
+function getEmailValidationError(value) {
+  const normalized = normalizeEmail(value);
+  const atCount = (normalized.match(/@/g) || []).length;
+  const [localPart = "", domainPart = ""] = normalized.split("@");
+
+  if (!normalized) return "Email is required.";
+  if (/[\r\n]/.test(String(value || ""))) {
+    return "Email cannot contain line breaks.";
+  }
+  if (normalized.length > EMAIL_MAX_LENGTH) {
+    return `Email must be ${EMAIL_MAX_LENGTH} characters or fewer.`;
+  }
+  if (localPart.length > 64) {
+    return "Email local part must be 64 characters or fewer.";
+  }
+  if (atCount !== 1) return "Email must contain exactly one @ symbol.";
+  if (!localPart) return "Email must include text before @.";
+  if (!domainPart) return "Email must include a domain after @.";
+  if (!domainPart.includes(".")) return "Email domain must include a top-level domain.";
+  if (normalized.includes("..")) return "Email cannot contain consecutive dots.";
+  if (localPart.startsWith(".") || localPart.endsWith(".")) {
+    return "Email local part cannot start or end with a dot.";
+  }
+  if (!EMAIL_REGEX.test(normalized)) {
+    return "Enter a valid email address such as john+alerts@mail.company.co.uk.";
+  }
+  return "";
+}
+
+function sanitizeComplainant(data) {
+  return {
+    ...data,
+    name: limitString(trimString(data.name) || "", SHORT_TEXT_MAX_LENGTH),
+    age: trimString(data.age) || "",
+    council: limitString(trimString(data.council) || "", SHORT_TEXT_MAX_LENGTH),
+    orgName: limitString(trimString(data.orgName) || "", SHORT_TEXT_MAX_LENGTH),
+    organizationTypeOther: limitString(trimString(data.organizationTypeOther) || "", SHORT_TEXT_MAX_LENGTH),
+    contactNumber: trimString(data.contactNumber) || "",
+    email: normalizeEmail(data.email),
+  };
+}
+
+function sanitizeIncident(data) {
+  return {
+    ...data,
+    incidentVenue: limitString(trimString(data.incidentVenue) || "", MEDIUM_TEXT_MAX_LENGTH),
+    description: limitString(trimString(data.description) || "", DESCRIPTION_MAX_LENGTH),
+    perpetratorName: limitString(trimString(data.perpetratorName) || "", SHORT_TEXT_MAX_LENGTH),
+    perpetratorOccupation: limitString(trimString(data.perpetratorOccupation) || "", SHORT_TEXT_MAX_LENGTH),
+    perpetratorRelationship: limitString(trimString(data.perpetratorRelationship) || "", SHORT_TEXT_MAX_LENGTH),
+    perpetratorUnknownAppearance: limitString(trimString(data.perpetratorUnknownAppearance) || "", LONG_TEXT_MAX_LENGTH),
+    witnessName: limitString(trimString(data.witnessName) || "", SHORT_TEXT_MAX_LENGTH),
+    witnessContact: limitString(trimString(data.witnessContact) || "", SHORT_TEXT_MAX_LENGTH),
+    witnessRelationship: limitString(trimString(data.witnessRelationship) || "", SHORT_TEXT_MAX_LENGTH),
+    toldAnyoneWho: limitString(trimString(data.toldAnyoneWho) || "", SHORT_TEXT_MAX_LENGTH),
+    policeStation: limitString(trimString(data.policeStation) || "", MEDIUM_TEXT_MAX_LENGTH),
+  };
+}
+
+function isIntegerString(value) {
+  return /^\d+$/.test(String(value).trim());
+}
+
+function isValidEmailOrPhone(value) {
+  const trimmed = trimString(value) || "";
+  if (!trimmed) return true;
+  return !getEmailValidationError(trimmed) || PHONE_REGEX.test(normalisePhone(trimmed));
+}
 
 /**
  * Normalises a raw phone input into +63XXXXXXXXXX format.
@@ -507,47 +624,63 @@ function validateConsentStep(data, consents) {
 
 export function validateStep0(data) {
   const errors = {};
+  const sanitized = sanitizeComplainant(data);
 
-  if (!data.reporteeType) errors.reporteeType = "Please select who this report is about.";
-  if (!data.age)           errors.age           = "Age is required.";
-  if (!data.gender)        errors.gender        = "Gender identity is required.";
+  if (!REPORT_TYPE_OPTIONS.includes(sanitized.reporteeType)) errors.reporteeType = "Please select who this report is about.";
 
-  if (!data.contactNumber) {
+  const age = Number(sanitized.age);
+  if (!sanitized.age) {
+    errors.age = "Age is required.";
+  } else if (!isIntegerString(sanitized.age) || !Number.isInteger(age)) {
+    errors.age = "Age must be a whole number.";
+  } else if (age < AGE_MIN || age > AGE_MAX) {
+    errors.age = `Enter an age from ${AGE_MIN} to ${AGE_MAX}.`;
+  }
+
+  if (!GENDER_OPTIONS.includes(sanitized.gender)) errors.gender = "Gender identity is required.";
+
+  if (!sanitized.contactNumber) {
     errors.contactNumber = "Contact number is required.";
-  } else if (!PHONE_REGEX.test(data.contactNumber)) {
-    errors.contactNumber = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
+  } else if (!PHONE_REGEX.test(sanitized.contactNumber)) {
+    errors.contactNumber = "Enter a valid Philippine mobile number.";
   }
 
-  if (!data.email) {
-    errors.email = "Email is required.";
-  } else if (!EMAIL_REGEX.test(data.email)) {
-    errors.email = "Enter a valid email address such as sample@gmail.com.";
-  }
+  const emailError = getEmailValidationError(data.email);
+  if (emailError) errors.email = emailError;
 
-  if (!data.organization)  errors.organization  = "Organization is required.";
+  if (!ORGANIZATION_OPTIONS.includes(sanitized.organization)) errors.organization = "Organization is required.";
 
   const isScoutOrg =
-    data.organization === "Boy Scouts of the Philippines (BSP)" ||
-    data.organization === "Girl Scouts of the Philippines (GSP)";
-  const isIndependent = data.organization === "No Organization / Independent";
+    sanitized.organization === "Boy Scouts of the Philippines (BSP)" ||
+    sanitized.organization === "Girl Scouts of the Philippines (GSP)";
+  const isIndependent = sanitized.organization === "No Organization / Independent";
 
   if (isScoutOrg) {
-    if (!data.council) errors.council = "Council is required.";
-  }
-
-  if (data.organization === "Others") {
-    if (!data.organizationType) errors.organizationType = "Organization type is required.";
-
-    const hasAffiliation =
-      data.organizationType && data.organizationType !== "No Organization / Independent";
-
-    if (hasAffiliation) {
-      if (!data.orgName) errors.orgName = "Organization name is required.";
-      if (!data.orgCity) errors.orgCity = "Organization city is required.";
+    if (!sanitized.council) errors.council = "Council is required.";
+    else if (sanitized.council.length > SHORT_TEXT_MAX_LENGTH) {
+      errors.council = `Council must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
     }
   }
 
-  if ((data.organization === "Others" || isIndependent) && !data.userCity) {
+  if (sanitized.organization === "Others") {
+    if (!ORGANIZATION_TYPE_OPTIONS.includes(sanitized.organizationType)) errors.organizationType = "Organization type is required.";
+    if (sanitized.organizationType === "Other" && sanitized.organizationTypeOther.length > SHORT_TEXT_MAX_LENGTH) {
+      errors.organizationTypeOther = `Organization type must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+    }
+
+    const hasAffiliation =
+      sanitized.organizationType && sanitized.organizationType !== "No Organization / Independent";
+
+    if (hasAffiliation) {
+      if (!sanitized.orgName) errors.orgName = "Organization name is required.";
+      else if (sanitized.orgName.length > SHORT_TEXT_MAX_LENGTH) {
+        errors.orgName = `Organization name must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+      }
+      if (!NCR_CITIES.includes(sanitized.orgCity)) errors.orgCity = "Organization city is required.";
+    }
+  }
+
+  if ((sanitized.organization === "Others" || isIndependent) && !NCR_CITIES.includes(sanitized.userCity)) {
     errors.userCity = "Your city/municipality is required.";
   }
 
@@ -556,16 +689,18 @@ export function validateStep0(data) {
 
 export function validateStep1(data, complainantAge) {
   const errors = {};
+  const sanitized = sanitizeIncident(data);
 
   const currentYear = new Date().getFullYear();
   const earliestYear = getEarliestIncidentYear(complainantAge);
-  const incidentYear = Number.parseInt(data.incidentYear, 10);
-  const incidentMonth = Number.parseInt(data.incidentMonth, 10);
-  const incidentDay = Number.parseInt(data.incidentDay, 10);
+  const incidentYear = Number.parseInt(sanitized.incidentYear, 10);
+  const incidentMonth = Number.parseInt(sanitized.incidentMonth, 10);
+  const incidentDay = Number.parseInt(sanitized.incidentDay, 10);
 
-  if (!data.incidentYear) {
+  if (!sanitized.incidentYear) {
     errors.incidentYear = "Incident year is required.";
   } else if (
+    !isIntegerString(sanitized.incidentYear) ||
     Number.isNaN(incidentYear) ||
     incidentYear < earliestYear ||
     incidentYear > currentYear
@@ -573,64 +708,101 @@ export function validateStep1(data, complainantAge) {
     errors.incidentYear = `Enter a valid year from ${earliestYear} to ${currentYear}.`;
   }
 
-  if (data.incidentMonthText && !data.incidentMonth) {
+  if (sanitized.incidentMonthText && !sanitized.incidentMonth) {
     errors.incidentMonth = "Choose a month from the suggestions.";
-  } else if (data.incidentMonth && (Number.isNaN(incidentMonth) || incidentMonth < 1 || incidentMonth > 12)) {
+  } else if (sanitized.incidentMonth && (!isIntegerString(sanitized.incidentMonth) || Number.isNaN(incidentMonth) || incidentMonth < 1 || incidentMonth > 12)) {
     errors.incidentMonth = "Enter a valid month.";
   }
 
-  if (data.incidentDay && !data.incidentMonth) {
+  if (sanitized.incidentDay && !sanitized.incidentMonth) {
     errors.incidentMonth = "Choose a month if you include a date.";
   }
 
-  if (data.incidentDay && (Number.isNaN(incidentDay) || incidentDay < 1 || incidentDay > 31)) {
+  if (sanitized.incidentDay && (!isIntegerString(sanitized.incidentDay) || Number.isNaN(incidentDay) || incidentDay < 1 || incidentDay > 31)) {
     errors.incidentDay = "Enter a valid date.";
   }
 
-  if (data.incidentMonth && data.incidentDay && incidentYear) {
+  if (sanitized.incidentMonth && sanitized.incidentDay && incidentYear) {
     const daysInMonth = getDaysInMonth(incidentYear, incidentMonth);
     if (incidentDay > daysInMonth) {
       errors.incidentDay = "Enter a valid date for the selected month and year.";
     }
   }
 
-  if (data.incidentYear && (isPartialIncidentDateInFuture(data) || isFutureIncident(data, data.time))) {
+  if (sanitized.incidentYear && (isPartialIncidentDateInFuture(sanitized) || isFutureIncident(sanitized, sanitized.time))) {
     errors.incidentYear = "The incident date and time cannot be in the future.";
-    if (data.time) errors.time = "The incident time cannot be in the future for the selected date.";
+    if (sanitized.time) errors.time = "The incident time cannot be in the future for the selected date.";
   }
-  if (!data.locationType)
+  if (!LOCATION_TYPE_OPTIONS.includes(sanitized.locationType))
     errors.locationType = "Please let us know whether this happened in person or online — this helps us understand the nature of the incident.";
 
-  if (data.locationType === "Physical Location") {
-    if (!data.incidentCity)
+  if (sanitized.locationType === "Physical Location") {
+    if (!NCR_CITIES.includes(sanitized.incidentCity))
       errors.incidentCity = "Please select the city or municipality where this took place — this helps us connect you with the right local support.";
   }
 
-  if (!data.description) {
+  if (sanitized.incidentVenue.length > MEDIUM_TEXT_MAX_LENGTH) {
+    errors.incidentVenue = `Location details must be ${MEDIUM_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+
+  if (!sanitized.description) {
     errors.description = "Please share what happened — even a few words can help us understand your situation.";
+  } else if (sanitized.description.length > DESCRIPTION_MAX_LENGTH) {
+    errors.description = `Description must be ${DESCRIPTION_MAX_LENGTH} characters or fewer.`;
   } else {
-    const wordCount = data.description.trim().split(/\s+/).filter(Boolean).length;
+    const wordCount = sanitized.description.split(/\s+/).filter(Boolean).length;
     if (wordCount < 50) {
       errors.description = `We want to make sure we fully understand what you went through. Could you share a little more? At least 50 words is recommended`;
     }
   }
 
-  if (!data.perpetratorKnown)
+  if (!YES_NO_OPTIONS.includes(sanitized.perpetratorKnown))
     errors.perpetratorKnown = "Please let us know if you recognise who did this — even partial information can help us take the right steps to support you.";
 
-  if (!data.witnesses)
+  if (!YES_NO_OPTIONS.includes(sanitized.witnesses))
     errors.witnesses = "Please indicate if anyone else was present — witnesses can play an important role in strengthening your case.";
 
-  if (!data.toldAnyone)
+  if (!YES_NO_OPTIONS.includes(sanitized.toldAnyone))
     errors.toldAnyone = "Please let us know if you've spoken to anyone about this — it helps us understand what support you may already have around you.";
 
-  if (!data.toldPolice)
+  if (!YES_NO_OPTIONS.includes(sanitized.toldPolice))
     errors.toldPolice = "Please let us know if the police have been informed — this helps us coordinate the appropriate next steps for your case.";
 
-  if (data.perpetratorKnown === "Yes") {
-    if (!data.perpetratorName)
+  if (sanitized.perpetratorUnknownGender && !UNKNOWN_PERPETRATOR_GENDER_OPTIONS.includes(sanitized.perpetratorUnknownGender)) {
+    errors.perpetratorUnknownGender = "Select a valid gender option.";
+  }
+  if (sanitized.perpetratorOccupation.length > SHORT_TEXT_MAX_LENGTH) {
+    errors.perpetratorOccupation = `Occupation must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+  if (sanitized.perpetratorRelationship.length > SHORT_TEXT_MAX_LENGTH) {
+    errors.perpetratorRelationship = `Relationship must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+  if (sanitized.perpetratorUnknownAppearance.length > LONG_TEXT_MAX_LENGTH) {
+    errors.perpetratorUnknownAppearance = `Appearance details must be ${LONG_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+  if (sanitized.witnessName.length > SHORT_TEXT_MAX_LENGTH) {
+    errors.witnessName = `Witness name must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+  if (sanitized.witnessContact && !isValidEmailOrPhone(sanitized.witnessContact)) {
+    errors.witnessContact = "Enter a valid witness email or Philippine mobile number.";
+  }
+  if (sanitized.witnessRelationship.length > SHORT_TEXT_MAX_LENGTH) {
+    errors.witnessRelationship = `Witness relationship must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+  if (sanitized.toldAnyoneWho.length > SHORT_TEXT_MAX_LENGTH) {
+    errors.toldAnyoneWho = `This field must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+  if (sanitized.policeStation.length > MEDIUM_TEXT_MAX_LENGTH) {
+    errors.policeStation = `Police station must be ${MEDIUM_TEXT_MAX_LENGTH} characters or fewer.`;
+  }
+
+  if (sanitized.perpetratorKnown === "Yes") {
+    if (!sanitized.perpetratorName)
       errors.perpetratorName = "If you know their name, please share it — this helps us properly document who was involved.";
-    if (!data.perpetratorGender)
+    else if (sanitized.perpetratorName.length > SHORT_TEXT_MAX_LENGTH) {
+      errors.perpetratorName = `Name must be ${SHORT_TEXT_MAX_LENGTH} characters or fewer.`;
+    }
+    if (!PERPETRATOR_GENDER_OPTIONS.includes(sanitized.perpetratorGender))
       errors.perpetratorGender = "Please share the perpetrator's gender as you perceive it — this helps us complete the incident record accurately.";
   }
 
@@ -865,15 +1037,36 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
   );
 }
 
-function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUser }) {
+function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError, getCurrentUser }) {
+  const validateField = (key, nextData = data) => {
+    const message = validateStep0(nextData)[key];
+    setFieldError(key, message);
+  };
+
+  const setStepErrorsForKeys = (keys, nextErrors) => {
+    keys.forEach((key) => setFieldError(key, nextErrors[key]));
+  };
+
   const set = (key) => (e) => {
     clearError(key);
     onChange({ ...data, [key]: e.target.value });
   };
 
+  const setAndValidate = (key, value) => {
+    const next = { ...data, [key]: value };
+    onChange(next);
+    validateField(key, next);
+  };
+
+  const trimAndValidate = (key) => () => {
+    const next = sanitizeComplainant(data);
+    onChange(next);
+    validateField(key, next);
+  };
+
   const setRadio = (key) => (v) => {
     clearError(key);
-    onChange({ ...data, [key]: v });
+    setAndValidate(key, v);
   };
 
   const isScoutOrg =
@@ -904,7 +1097,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
               if (isMe) {
                 ["name", "age", "gender", "contactNumber", "email", "userCity"].forEach(clearError);
               }
-              onChange({
+              const next = sanitizeComplainant({
                 ...data,
                 reporteeType: v,
                 ...(isMe
@@ -918,6 +1111,8 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
                       userCity: "",
                     }),
               });
+              onChange(next);
+              setStepErrorsForKeys(["reporteeType", "age", "gender", "contactNumber", "email", "userCity"], validateStep0(next));
             }}
           />
         </Field>
@@ -926,9 +1121,11 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
           <Input
             placeholder="Full name"
             value={data.name}
+            maxLength={SHORT_TEXT_MAX_LENGTH}
             onChange={(e) => {
               set('name')(e);
             }}
+            onBlur={trimAndValidate("name")}
           />
         </Field>
 
@@ -937,15 +1134,25 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
           <Input
             type="number"
             placeholder="Age"
-            min={1}
+            min={AGE_MIN}
+            max={AGE_MAX}
+            step={1}
+            inputMode="numeric"
             value={data.age}
-            onChange={set("age")}
+            onKeyDown={(e) => {
+              if (["-", "+", ".", "e", "E"].includes(e.key)) e.preventDefault();
+            }}
+            onChange={(e) => {
+              clearError("age");
+              setAndValidate("age", e.target.value.replace(/\D/g, "").slice(0, 3));
+            }}
+            onBlur={trimAndValidate("age")}
             error={errors.age}
           />
         </Field>
 
         <Field label="Gender Identity" required hint="How do you identify? This helps us serve you better." error={errors.gender}>
-          <Select value={data.gender} onChange={set("gender")} error={errors.gender}>
+          <Select value={data.gender} onChange={(e) => setAndValidate("gender", e.target.value)} error={errors.gender}>
             <option value="">Select gender identity</option>
             <option>Male</option>
             <option>Female</option>
@@ -955,7 +1162,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
         </Field>
 
         <Field label="Organization" required error={errors.organization}>
-          <Select value={data.organization} onChange={set("organization")} error={errors.organization}>
+          <Select value={data.organization} onChange={(e) => setAndValidate("organization", e.target.value)} error={errors.organization}>
             <option value="">Select organization</option>
             <option>Boy Scouts of the Philippines (BSP)</option>
             <option>Girl Scouts of the Philippines (GSP)</option>
@@ -976,6 +1183,8 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
                 placeholder="Enter your council"
                 value={data.council || ""}
                 onChange={set("council")}
+                onBlur={trimAndValidate("council")}
+                maxLength={SHORT_TEXT_MAX_LENGTH}
                 error={errors.council}
               />
             </Field>
@@ -1005,7 +1214,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
       >
         <Select
           value={data.organizationType || ""}
-          onChange={set("organizationType")}
+          onChange={(e) => setAndValidate("organizationType", e.target.value)}
           error={errors.organizationType}
         >
           <option value="">Select organization type</option>
@@ -1054,6 +1263,8 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
             placeholder="Sports club"
             value={data.organizationTypeOther || ""}
             onChange={set("organizationTypeOther")}
+            onBlur={trimAndValidate("organizationTypeOther")}
+            maxLength={SHORT_TEXT_MAX_LENGTH}
           />
         </Field>
       )}
@@ -1074,6 +1285,8 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
                 placeholder="Organization name"
                 value={data.orgName || ""}
                 onChange={set("orgName")}
+                onBlur={trimAndValidate("orgName")}
+                maxLength={SHORT_TEXT_MAX_LENGTH}
                 error={errors.orgName}
               />
             </Field>
@@ -1099,7 +1312,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
             >
               <Select
                 value={data.orgCity || ""}
-                onChange={set("orgCity")}
+                onChange={(e) => setAndValidate("orgCity", e.target.value)}
                 error={errors.orgCity}
               >
                 <option value="">Select city / municipality</option>
@@ -1140,7 +1353,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
       >
         <Select
           value={data.userCity || ""}
-          onChange={set("userCity")}
+          onChange={(e) => setAndValidate("userCity", e.target.value)}
           error={errors.userCity}
         >
           <option value="">Select city / municipality</option>
@@ -1182,7 +1395,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
             >
               <Select
                 value={data.userCity || ""}
-                onChange={set("userCity")}
+                onChange={(e) => setAndValidate("userCity", e.target.value)}
                 error={errors.userCity}
               >
                 <option value="">Select city / municipality</option>
@@ -1220,8 +1433,10 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
             onChange={(e) => {
               clearError("contactNumber");
               const formatted = normalisePhone(e.target.value);
-              onChange({ ...data, contactNumber: formatted });
+              setAndValidate("contactNumber", formatted);
             }}
+            onBlur={trimAndValidate("contactNumber")}
+            maxLength={13}
             error={errors.contactNumber}
           />
         </Field>
@@ -1232,8 +1447,10 @@ function StepComplainantInfo({ data, onChange, errors, clearError, getCurrentUse
             value={data.email}
             onChange={(e) => {
               clearError("email");
-              onChange({ ...data, email: e.target.value.trim() });
+              setAndValidate("email", normalizeEmail(stripEmailLineBreaks(e.target.value)));
             }}
+            onBlur={trimAndValidate("email")}
+            maxLength={EMAIL_MAX_LENGTH}
             error={errors.email}
           />
         </Field>
@@ -1631,10 +1848,25 @@ function IncidentMonthTypeahead({ value, textValue, onChange, error }) {
   );
 }
 
-function StepIncidentDetails({ data, complainantAge, onChange, errors, clearError }) {
+function StepIncidentDetails({ data, complainantAge, onChange, errors, clearError, setFieldError }) {
+  const validateField = (key, nextData = data) => {
+    const message = validateStep1(nextData, complainantAge)[key];
+    setFieldError(key, message);
+  };
+
   const set = (key) => (e) => {
     clearError(key);
     onChange({ ...data, [key]: e.target.value });
+  };
+  const setAndValidate = (key, value) => {
+    const next = { ...data, [key]: value };
+    onChange(next);
+    validateField(key, next);
+  };
+  const trimAndValidate = (key) => () => {
+    const next = sanitizeIncident(data);
+    onChange({ ...next, date: buildIncidentDate(next) });
+    validateField(key, next);
   };
   const setIncidentMonth = (monthValue, monthText) => {
     clearError("incidentMonth");
@@ -1645,6 +1877,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
       incidentMonthText: monthText,
     };
     onChange({ ...next, date: buildIncidentDate(next) });
+    validateField("incidentMonth", next);
   };
   const setIncidentDay = (e) => {
     clearError("incidentDay");
@@ -1653,6 +1886,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
     const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
     const next = { ...data, incidentDay: digits };
     onChange({ ...next, date: buildIncidentDate(next) });
+    validateField("incidentDay", next);
   };
   const setIncidentYear = (e) => {
     clearError("incidentYear");
@@ -1660,6 +1894,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
     const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
     const next = { ...data, incidentYear: digits };
     onChange({ ...next, date: buildIncidentDate(next) });
+    validateField("incidentYear", next);
   };
   const setRadio = (key) => (v) => {
     clearError(key);
@@ -1716,7 +1951,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
           <Input
             type="time"
             value={data.time}
-            onChange={set("time")}
+            onChange={(e) => setAndValidate("time", e.target.value)}
             max={buildIncidentDate(data) === getTodayInputValue() ? getCurrentTimeInputValue() : undefined}
             error={errors.time}
           />
@@ -1739,7 +1974,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
         {data.locationType === "Physical Location" && (
           <>
             <Field label="City / Municipality" required hint="Select the city or municipality where the incident occurred." error={errors.incidentCity}>
-              <Select value={data.incidentCity || ""} onChange={set("incidentCity")} error={errors.incidentCity}>
+              <Select value={data.incidentCity || ""} onChange={(e) => setAndValidate("incidentCity", e.target.value)} error={errors.incidentCity}>
                 <option value="">Select city / municipality</option>
                 {NCR_CITIES.map((c) => <option key={c}>{c}</option>)}
               </Select>
@@ -1750,7 +1985,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
                 city={data.incidentCity || ""}
                 onChange={(value) => {
                   clearError("incidentVenue");
-                  onChange({ ...data, incidentVenue: value });
+                  setAndValidate("incidentVenue", value);
                 }}
               />
             </Field>
@@ -1763,6 +1998,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
               placeholder="Facebook, Instagram, WhatsApp, email, gaming platform, website"
               value={data.incidentVenue || ""}
               onChange={set("incidentVenue")}
+              onBlur={trimAndValidate("incidentVenue")}
+              maxLength={MEDIUM_TEXT_MAX_LENGTH}
             />
           </Field>
         )}
@@ -1776,7 +2013,9 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
           className={`${styles.textarea} ${errors.description ? styles.inputError : ""}`}
           placeholder="Describe what happened, including relevant details such as individuals involved and the sequence of events."
           value={data.description}
-          onChange={set("description")}
+          onChange={(e) => setAndValidate("description", e.target.value)}
+          onBlur={trimAndValidate("description")}
+          maxLength={DESCRIPTION_MAX_LENGTH}
           rows={5}
         />
         {data.description.trim() && (() => {
@@ -1845,31 +2084,39 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
             <Input
               placeholder="Full name"
               value={data.perpetratorName || ""}
-              onChange={set("perpetratorName")}
+              onChange={(e) => setAndValidate("perpetratorName", e.target.value)}
+              onBlur={trimAndValidate("perpetratorName")}
+              maxLength={SHORT_TEXT_MAX_LENGTH}
               error={errors.perpetratorName}
             />
           </Field>
-          <Field label="Occupation of Perpetrator" hint="What does the perpetrator do for a living?">
+          <Field label="Occupation of Perpetrator" hint="What does the perpetrator do for a living?" error={errors.perpetratorOccupation}>
             <Input
               placeholder="Teacher, coach, relative, stranger"
               value={data.perpetratorOccupation || ""}
               onChange={set("perpetratorOccupation")}
+              onBlur={trimAndValidate("perpetratorOccupation")}
+              maxLength={SHORT_TEXT_MAX_LENGTH}
+              error={errors.perpetratorOccupation}
             />
           </Field>
-          <Field label="Relationship to Perpetrator" hint="How do you know this person?">
+          <Field label="Relationship to Perpetrator" hint="How do you know this person?" error={errors.perpetratorRelationship}>
             <Input
               placeholder="Classmate, supervisor, partner, unknown"
               value={data.perpetratorRelationship || ""}
               onChange={set("perpetratorRelationship")}
+              onBlur={trimAndValidate("perpetratorRelationship")}
+              maxLength={SHORT_TEXT_MAX_LENGTH}
+              error={errors.perpetratorRelationship}
             />
           </Field>
           <Field label="Gender of Perpetrator (as you perceive it)" required hint="What is the gender of the perpetrator?" error={errors.perpetratorGender}>
-            <Select value={data.perpetratorGender || ""} onChange={set("perpetratorGender")} error={errors.perpetratorGender}>
+            <Select value={data.perpetratorGender || ""} onChange={(e) => setAndValidate("perpetratorGender", e.target.value)} error={errors.perpetratorGender}>
               <option value="">Select gender identity</option>
               <option>Male</option>
               <option>Female</option>
               <option>Non-binary</option>
-              <option>Unknown / Prefer not to say</option>
+              <option>Unknown</option>
             </Select>
           </Field>
         </div>
@@ -1879,22 +2126,23 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
       <div className={styles.formDivider} />
       {data.perpetratorKnown === "No" && (
         <div className={styles.formGrid}>
-          <Field label="Gender of Perpetrator (as you perceive it)" hint="Optional. Share only what you remember or feel comfortable noting.">
-            <Select value={data.perpetratorUnknownGender || ""} onChange={set("perpetratorUnknownGender")}>
+          <Field label="Gender of Perpetrator (as you perceive it)" hint="Optional. Share only what you remember or feel comfortable noting." error={errors.perpetratorUnknownGender}>
+            <Select value={data.perpetratorUnknownGender || ""} onChange={(e) => setAndValidate("perpetratorUnknownGender", e.target.value)} error={errors.perpetratorUnknownGender}>
               <option value="">Select if remembered</option>
               <option>Male</option>
               <option>Female</option>
               <option>Non-binary</option>
               <option>Unable to tell</option>
-              <option>Prefer not to say</option>
             </Select>
           </Field>
-          <Field label="Appearance or identifying details" hint="Optional. Any detail you remember may help, but it is okay to leave this blank.">
+          <Field label="Appearance or identifying details" hint="Optional. Any detail you remember may help, but it is okay to leave this blank." error={errors.perpetratorUnknownAppearance}>
             <textarea
-              className={styles.textarea}
+              className={`${styles.textarea} ${errors.perpetratorUnknownAppearance ? styles.inputError : ""}`}
               placeholder="Clothing, approximate age, build, height, voice, marks, or other details you remember"
               value={data.perpetratorUnknownAppearance || ""}
               onChange={set("perpetratorUnknownAppearance")}
+              onBlur={trimAndValidate("perpetratorUnknownAppearance")}
+              maxLength={LONG_TEXT_MAX_LENGTH}
               rows={3}
             />
           </Field>
@@ -1918,22 +2166,29 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
               placeholder="Full name"
               value={data.witnessName || ""}
               onChange={set("witnessName")}
+              onBlur={trimAndValidate("witnessName")}
+              maxLength={SHORT_TEXT_MAX_LENGTH}
               error={errors.witnessName}
             />
           </Field>
-          <Field label="Contact Information of Witness" hint="What is the witness's contact information?">
+          <Field label="Contact Information of Witness" hint="What is the witness's contact information?" error={errors.witnessContact}>
             <Input
               placeholder="Phone number or email"
               value={data.witnessContact || ""}
-              onChange={set("witnessContact")}
+              onChange={(e) => setAndValidate("witnessContact", e.target.value)}
+              onBlur={trimAndValidate("witnessContact")}
+              maxLength={SHORT_TEXT_MAX_LENGTH}
               error={errors.witnessContact}
             />
           </Field>
-          <Field label="Relationship to Witness" hint="How do you know this person?">
+          <Field label="Relationship to Witness" hint="How do you know this person?" error={errors.witnessRelationship}>
             <Input
               placeholder="Classmate, supervisor, partner, unknown"
               value={data.witnessRelationship || ""}
               onChange={set("witnessRelationship")}
+              onBlur={trimAndValidate("witnessRelationship")}
+              maxLength={SHORT_TEXT_MAX_LENGTH}
+              error={errors.witnessRelationship}
             />
           </Field>
         </div>
@@ -1953,11 +2208,14 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
             />
           </Field>
           {data.toldAnyone === "Yes" && (
-            <Field label="Who did you tell?" hint="Share the person or role if you feel comfortable.">
+            <Field label="Who did you tell?" hint="Share the person or role if you feel comfortable." error={errors.toldAnyoneWho}>
               <Input
                 placeholder="Mother, friend, guidance counselor"
                 value={data.toldAnyoneWho || ""}
                 onChange={set("toldAnyoneWho")}
+                onBlur={trimAndValidate("toldAnyoneWho")}
+                maxLength={SHORT_TEXT_MAX_LENGTH}
+                error={errors.toldAnyoneWho}
               />
             </Field>
           )}
@@ -1973,12 +2231,12 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
             />
           </Field>
           {data.toldPolice === "Yes" && (
-            <Field label="Which police station?" hint="Start typing the station, precinct, or district name. Suggestions may appear as you type.">
+            <Field label="Which police station?" hint="Start typing the station, precinct, or district name. Suggestions may appear as you type." error={errors.policeStation}>
               <PoliceStationTypeahead
                 value={data.policeStation || ""}
                 onChange={(value) => {
                   clearError("policeStation");
-                  onChange({ ...data, policeStation: value });
+                  setAndValidate("policeStation", value);
                 }}
               />
             </Field>
@@ -2088,18 +2346,6 @@ function StepEvidence({ data, onChange }) {
             ))
           )}
         </div>
-      </div>
-
-      <div className={styles.anonymousRow}>
-        <label className={styles.checkboxLabel}>
-          <input
-            type="checkbox"
-            className={styles.checkbox}
-            checked={Boolean(data.anonymous)}
-            onChange={(e) => onChange({ ...data, anonymous: e.target.checked })}
-          />
-          I would like to submit anonymously
-        </label>
       </div>
     </div>
   );
@@ -2465,11 +2711,29 @@ export default function CreateReport({
     });
   };
 
+  const setFieldError = (key, message) => {
+    setStepErrors((prev) => {
+      const next = { ...prev };
+      if (message) next[key] = message;
+      else delete next[key];
+      return next;
+    });
+  };
+
   const handleNext = () => {
     let errors = {};
     if (step === 0) errors = validateConsentStep(complainant, consents);
-    if (step === 1) errors = validateStep0(complainant);
-    if (step === 2) errors = validateStep1(incident, complainant.age);
+    if (step === 1) {
+      const sanitized = sanitizeComplainant(complainant);
+      setComplainant(sanitized);
+      errors = validateStep0(sanitized);
+    }
+    if (step === 2) {
+      const sanitized = sanitizeIncident(incident);
+      const nextIncident = { ...sanitized, date: buildIncidentDate(sanitized) };
+      setIncident(nextIncident);
+      errors = validateStep1(nextIncident, complainant.age);
+    }
 
     if (Object.keys(errors).length > 0) {
       setStepErrors(errors);
@@ -2499,14 +2763,33 @@ export default function CreateReport({
   };
 
   const handleSubmit = async () => {
-      // Validate consents first
-      const consentErrs = {};
-      if (!consents.dataPrivacy)  consentErrs.dataPrivacy  = true;
-      if (!consents.caseAnalysis) consentErrs.caseAnalysis = true;
+      const sanitizedComplainant = sanitizeComplainant(complainant);
+      const sanitizedIncident = sanitizeIncident(incident);
+      const nextIncident = { ...sanitizedIncident, date: buildIncidentDate(sanitizedIncident) };
+      setComplainant(sanitizedComplainant);
+      setIncident(nextIncident);
+
+      const consentErrs = validateConsentStep(sanitizedComplainant, consents);
       if (Object.keys(consentErrs).length > 0) {
-      setStepErrors(consentErrs);
-      return;
-    }
+        setStepErrors(consentErrs);
+        setStep(0);
+        return;
+      }
+
+      const complainantErrs = validateStep0(sanitizedComplainant);
+      if (Object.keys(complainantErrs).length > 0) {
+        setStepErrors(complainantErrs);
+        setStep(1);
+        return;
+      }
+
+      const incidentErrs = validateStep1(nextIncident, sanitizedComplainant.age);
+      if (Object.keys(incidentErrs).length > 0) {
+        setStepErrors(incidentErrs);
+        setStep(2);
+        return;
+      }
+
       setSubmissionError(null);
       if ((evidence.files || []).length > MAX_EVIDENCE_FILES) {
         setSubmissionError(`You can upload up to ${MAX_EVIDENCE_FILES} evidence files per report.`);
@@ -2519,16 +2802,16 @@ export default function CreateReport({
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
         const formData = new FormData();
-        formData.append('complainant', JSON.stringify(complainant));
+        formData.append('complainant', JSON.stringify(sanitizedComplainant));
         formData.append(
           'incident',
           JSON.stringify({
-            ...incident,
-            date: buildIncidentDate(incident),
-            incident_year: incident.incidentYear ? Number.parseInt(incident.incidentYear, 10) : null,
-            incident_month: incident.incidentMonth ? Number.parseInt(incident.incidentMonth, 10) : null,
-            incident_day: incident.incidentDay ? Number.parseInt(incident.incidentDay, 10) : null,
-            outcome: formatOutcomeSelection(incident.outcome),
+            ...nextIncident,
+            date: buildIncidentDate(nextIncident),
+            incident_year: nextIncident.incidentYear ? Number.parseInt(nextIncident.incidentYear, 10) : null,
+            incident_month: nextIncident.incidentMonth ? Number.parseInt(nextIncident.incidentMonth, 10) : null,
+            incident_day: nextIncident.incidentDay ? Number.parseInt(nextIncident.incidentDay, 10) : null,
+            outcome: formatOutcomeSelection(nextIncident.outcome),
           })
         );
         formData.append('evidence', JSON.stringify({ anonymous: evidence.anonymous }));
@@ -2667,6 +2950,7 @@ export default function CreateReport({
                     onChange={setComplainant}
                     errors={stepErrors}
                     clearError={clearError}
+                    setFieldError={setFieldError}
                     getCurrentUser={getCurrentUser}
                   />
                 )}
@@ -2677,6 +2961,7 @@ export default function CreateReport({
                     onChange={setIncident}
                     errors={stepErrors}
                     clearError={clearError}
+                    setFieldError={setFieldError}
                   />
                 )}
                 {step === 3 && (

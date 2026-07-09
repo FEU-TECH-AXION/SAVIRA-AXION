@@ -66,12 +66,12 @@ const createContactMessage = async (req, res) => {
       message_id: randomUUID(),
       source: 'contact',
       status: 'open',
-      first_name: clean(req.body.firstName),
-      last_name: clean(req.body.lastName),
-      email: clean(req.body.email).toLowerCase(),
-      phone: clean(req.body.phone),
-      subject: clean(req.body.subject),
-      message: clean(req.body.message),
+      first_name: req.body.firstName || clean(req.body.firstName),
+      last_name: req.body.lastName || clean(req.body.lastName),
+      email: req.body.email || clean(req.body.email).toLowerCase(),
+      phone: req.body.phone || clean(req.body.phone),
+      subject: req.body.subject || clean(req.body.subject),
+      message: req.body.message || clean(req.body.message),
     };
 
     if (!payload.email || !payload.message) {

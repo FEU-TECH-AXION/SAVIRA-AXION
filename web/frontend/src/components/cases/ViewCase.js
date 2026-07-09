@@ -15,6 +15,7 @@ import {
   FiEdit2,
   FiTrash2,
   FiPlus,
+  FiHelpCircle,
 } from "react-icons/fi";
 import { MdAlert } from  "react-icons/md";
 import { IoIosArrowBack, IoIosWarning, IoIosAlert } from "react-icons/io";
@@ -42,6 +43,8 @@ import {
 } from "@/lib/caseWithdrawal";
 import { useAuth, authFetch } from "@/lib/AuthContext";
 import { API_URL } from "@/lib/config";
+import StatusGuide from "./StatusGuide";
+import { STATUS_COLORS } from "./caseStatusConstants";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -98,6 +101,7 @@ const mapCaseReportToViewData = (data) => {
     reporterId:           data.complainant_user_id,
     region:               data.incident_province || data.incident_city || "Not provided",
     status:               STATUS_STEP[data.case_status_id] || "For Verification",
+    caseStatusId:         Number(data.case_status_id) || null,
     assignedOfficer:      data.assigned_officer || null,
     dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH", {
       day: "numeric",
@@ -186,8 +190,39 @@ const ENDORSEMENT_BODIES = [
   "PNP Women and Children Protection Desk",
   "BSP/GSP Mechanism",
   "School/Workplace CODI",
-  "Court (with lawyer)",
 ];
+
+const REFERRAL_ALLOWED_FROM_STATUS_INDEX = 2;
+const CASE_WORKFLOW_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Verified - False",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
+  "Perpetrator Convicted",
+  "Resolved",
+  "Withdrawn",
+];
+
+function canFlagPreliminaryReferral(caseItem) {
+  const statusId = Number(caseItem?.caseStatusId ?? caseItem?.case_status_id);
+  if (Number.isFinite(statusId) && statusId > 0) return statusId >= 3;
+
+  const normalizedStatus = String(caseItem?.status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+  const index = CASE_WORKFLOW_STATUSES.findIndex(
+    (status) => status.toLowerCase() === normalizedStatus
+  );
+  return index >= REFERRAL_ALLOWED_FROM_STATUS_INDEX;
+}
 
 const VIOLENCE_TYPES = [
   "Sexual harassment",
@@ -222,22 +257,6 @@ const CASE_CATEGORY_DESCRIPTIONS = {
 const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
-
-const STATUS_COLORS = {
-  "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
-  "For Verification":      { bg: "#dbeafe", color: "#1e40af" }, // Blue
-  "Undergoing Review":     { bg: "#fef9c3", color: "#854d0e" }, // Yellow
-  "Verified - True":       { bg: "#dcfce7", color: "#166534" }, // Green
-  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" }, // Red
-  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" }, // Purple
-  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" }, // Orange
-  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" }, // Cyan
-  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" }, // Pink
-  "Dismissed":             { bg: "#f1f5f9", color: "#475569" }, // Slate/Gray
-  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" }, // Emerald Green
-  "Resolved":              { bg: "#ccfbf1", color: "#115e59" }, // Teal
-  "Withdrawn":             { bg: "#fef3c7", color: "#92400e" }, // Amber/Muted Brown
-};
 
 function StatusBadge({ status }) {
   const { bg, color } = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
@@ -274,9 +293,17 @@ function StatusHistorySection({ caseData }) {
                 )}
               </div>
               <div style={{ paddingTop: 2 }}>
-                <StatusBadge status={h.status} />
+                <div className={styles.historyStatusLine}>
+                  <StatusBadge status={h.status} />
+                  {h.isOverride && <span className={styles.overrideBadge}>Override</span>}
+                </div>
                 <p className={styles.historyMeta}>{h.date} - {h.by}</p>
                 {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
+                {h.isOverride && h.overrideReason && (
+                  <p className={styles.overrideReason}>
+                    <strong>Override reason:</strong> {h.overrideReason}
+                  </p>
+                )}
               </div>
             </div>
           ))}
@@ -878,8 +905,54 @@ function CaseManagementTab({
     }
   }
 
+  async function submitOverride(proposedStatus, overrideReason) {
+    try {
+      const res = await authFetch(`${API_URL}/api/case_status_history/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          case_report_id: caseData.id,
+          proposed_status: proposedStatus,
+          override_reason: overrideReason,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to override status.");
+
+      const historyId = payload.historyRow?.history_id;
+      setCaseData((prev) => ({
+        ...prev,
+        status: proposedStatus,
+        pendingApproval: null,
+        statusHistory: [
+          ...(prev.statusHistory || []),
+          {
+            historyId,
+            status: proposedStatus,
+            date: new Date().toLocaleDateString("en-PH"),
+            by: actorName,
+            notes: payload.historyRow?.notes || `Admin override to ${proposedStatus}.`,
+            formData: payload.historyRow?.form_data || {
+              override_from_status: prev.status,
+              override_to_status: proposedStatus,
+            },
+            approvalStatus: "approved",
+            isOverride: true,
+            overrideReason,
+          },
+        ],
+      }));
+      showToast(payload.message || `Status override recorded to "${proposedStatus}".`);
+      setModal(null);
+    } catch (err) {
+      showToast(err.message, "error");
+      throw err;
+    }
+  }
+
   const transitions = getAvailableTransitionsLocal();
   const canOpenStatusModal = transitions.length > 0 || !!STATUS_MODAL_MAP[caseData.status];
+  const canFlagReferral = canFlagPreliminaryReferral(caseData);
   const [caseTypeVal, setCaseTypeVal] = useState(Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []);
   const [caseCatVal, setCaseCatVal] = useState(caseData.caseCategory || "");
   const [alsoCatVal, setAlsoCatVal] = useState(Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []);
@@ -1126,7 +1199,7 @@ function CaseManagementTab({
           <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>Set Case Type</button>
           <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
           {/* {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>} */}
-          <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
+          {canFlagReferral && <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>}
         </div>
       </section>
 
@@ -1250,6 +1323,7 @@ function CaseManagementTab({
         isLegal={isLegal}
         viewCaseMode
         includeCurrentStatus
+        onOverrideSubmit={submitOverride}
         onOpenDuplicateCheck={() => {
           setModal(null);
           onOpenDuplicateCheck?.();
@@ -1578,6 +1652,7 @@ export default function ViewCase() {
   const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
   const [interviewsChecked, setInterviewsChecked] = useState(false);
   const [toast, setToast]       = useState(null);
+  const [statusGuideOpen, setStatusGuideOpen] = useState(false);
   
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
@@ -1869,6 +1944,14 @@ export default function ViewCase() {
             </div>
             <div className={styles.headerActions}>
               <StatusBadge status={caseData.status} />
+              <button
+                type="button"
+                className={styles.statusGuideBtn}
+                onClick={() => setStatusGuideOpen(true)}
+              >
+                <FiHelpCircle />
+                Guide
+              </button>
               <FollowUpBadge summary={caseData.followUpSummary} />
               {isStaff && caseData.possibleDuplicates?.length > 0 && (
                 <button
@@ -2076,6 +2159,7 @@ export default function ViewCase() {
         />
 
       </div>
+      <StatusGuide open={statusGuideOpen} onClose={() => setStatusGuideOpen(false)} />
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { authFetch, useAuth } from "@/lib/AuthContext";
 import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
-import { buildConfirmedInterviewDeadlines, getActorName } from "@/lib/dashboardDeadlines";
 
 // TODO: Nav links for Case Officer are temporary — update with correct pages later
 // TODO: Overview counts are placeholder — connect to real API when ready
@@ -29,8 +28,7 @@ function OverviewCard({ category, label, count, showView = false }) {
 
 export default function CaseOfficerDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
-  const [cases, setCases] = useState([]);
-  const [interviews, setInterviews] = useState([]);
+  const [summary, setSummary] = useState(null);
 
   const user = authUser
     ? {
@@ -45,18 +43,10 @@ export default function CaseOfficerDashboard() {
     async function fetchDashboardData() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const interviewQuery = authUser?.user_id ? `&interviewer_user_id=${authUser.user_id}` : "";
-        const [caseRes, interviewsRes] = await Promise.all([
-          authFetch(`${API_URL}/api/case_reports/all`, { cache: 'no-store' }),
-          authFetch(`${API_URL}/api/interviews?type=case_report${interviewQuery}`, { cache: 'no-store' }),
-        ]);
-        if (caseRes.ok) {
-          const json = await caseRes.json();
-          setCases(Array.isArray(json) ? json : json?.data || []);
-        }
-        if (interviewsRes.ok) {
-          const json = await interviewsRes.json();
-          setInterviews(Array.isArray(json) ? json : json?.data || []);
+        const summaryRes = await authFetch(`${API_URL}/api/dashboard/case-officer-summary`, { cache: 'no-store' });
+        if (summaryRes.ok) {
+          const json = await summaryRes.json().catch(() => ({}));
+          setSummary(json.data || {});
         }
       } catch (err) {
         console.error("Failed to fetch CaseOfficerDashboard data:", err);
@@ -65,34 +55,27 @@ export default function CaseOfficerDashboard() {
     fetchDashboardData();
   }, [authLoading, authUser?.user_id]);
 
-  const actorName = getActorName(user);
-
-  const assignedCases = useMemo(() => cases, [cases]);
-
   const stats = useMemo(() => {
-    const forVerification = assignedCases.filter(c => Number(c.case_status_id) === 2).length;
-    const totalAssigned = assignedCases.length;
+    const forVerification = summary?.counts?.forVerification || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { num: forVerification, label: "For Verification",    hasNew: forVerification > 0 },
       { num: totalAssigned,    label: "Total Assigned Cases", hasNew: totalAssigned > 0 },
     ];
-  }, [assignedCases]);
+  }, [summary]);
 
   const overviewCards = useMemo(() => {
-    const forVerification = assignedCases.filter(c => Number(c.case_status_id) === 2).length;
-    const totalAssigned = assignedCases.length;
+    const forVerification = summary?.counts?.forVerification || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
       { category: "Case",    label: "For Verification",             count: forVerification, showView: true },
       { category: "Case",    label: "Your total assigned cases are", count: totalAssigned,    showView: true },
     ];
-  }, [assignedCases]);
+  }, [summary]);
 
-  const deadlines = useMemo(() => buildConfirmedInterviewDeadlines(interviews, {
-    userId: authUser?.user_id,
-    actorName,
-  }), [actorName, authUser?.user_id, interviews]);
+  const deadlines = summary?.deadlines || [];
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
 

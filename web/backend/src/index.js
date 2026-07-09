@@ -110,6 +110,9 @@ app.use('/api/projects', projectsRouter)
 const projectTasksRouter = require('./routes/project_tasks.routes')
 app.use('/api/project-tasks', projectTasksRouter)
 
+const dashboardRouter = require('./routes/dashboard.routes')
+app.use('/api/dashboard', dashboardRouter)
+
 
 // Route for chapter building tbls
 const chaptersRouter = require('./routes/chapters.routes')

@@ -66,9 +66,6 @@ const TRANSITION_RULES = {
 }
 
 function getAllowedTransitions(currentStatus, role) {
-  if (role === 'admin') {
-    return Object.keys(CaseStatusHistory.STATUS_ID_MAP).filter((status) => status !== currentStatus)
-  }
   return TRANSITION_RULES[currentStatus]?.[role] || []
 }
 
@@ -91,9 +88,28 @@ const getHistory = async (req, res) => {
       formData:        h.form_data,
       approvalStatus:  h.approval_status,
       rejectionReason: h.rejection_reason,
+      isOverride:      h.is_override || false,
+      overrideReason:  h.override_reason || null,
     }))
 
     res.json({ data: shaped })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+const getBatchApprovedHistory = async (req, res) => {
+  try {
+    const rawIds = Array.isArray(req.query.caseIds)
+      ? req.query.caseIds
+      : String(req.query.caseIds || '').split(',')
+
+    const caseIds = rawIds
+      .map((id) => Number(String(id).trim()))
+      .filter((id) => Number.isFinite(id))
+
+    const data = await CaseStatusHistory.getApprovedByCaseReportIds(caseIds)
+    res.json({ data })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -314,6 +330,83 @@ const submitStatusChange = async (req, res) => {
   }
 }
 
+const submitStatusOverride = async (req, res) => {
+  try {
+    const {
+      case_report_id,
+      proposed_status,
+      override_reason,
+      notes,
+      form_data,
+    } = req.body
+
+    const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
+    if (requesterRole !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can override the case status workflow.' })
+    }
+
+    const actorId = req.user?.id || req.user?.user_id
+    if (!actorId) {
+      return res.status(401).json({ error: 'Authentication required.' })
+    }
+
+    const reason = String(override_reason || '').trim()
+    if (reason.length < 10) {
+      return res.status(400).json({ error: 'An override reason of at least 10 characters is required.' })
+    }
+
+    const caseStatusId = CaseStatusHistory.STATUS_ID_MAP[proposed_status]
+    if (!caseStatusId) {
+      return res.status(400).json({ error: `Unknown status: ${proposed_status}` })
+    }
+
+    const { data: currentCase, error: currentCaseError } = await supabase
+      .from('case_reports')
+      .select('case_report_id, case_status_id')
+      .eq('case_report_id', case_report_id)
+      .maybeSingle()
+    if (currentCaseError) throw currentCaseError
+    if (!currentCase) return res.status(404).json({ error: 'Case report not found.' })
+
+    const currentStatus = getStatusNameById(currentCase.case_status_id)
+    if (currentStatus === proposed_status) {
+      return res.status(400).json({ error: `Case is already in "${proposed_status}".` })
+    }
+
+    const historyRow = await CaseStatusHistory.create({
+      caseReportId:   case_report_id,
+      caseStatusId,
+      changedById:    actorId,
+      changedByRole:  req.user?.role || req.user?.role_name || 'Admin',
+      notes:          notes || `Admin override from "${currentStatus}" to "${proposed_status}".`,
+      formData:       {
+        ...(form_data || {}),
+        override_from_status: currentStatus,
+        override_to_status: proposed_status,
+      },
+      approvalStatus: 'approved',
+      approvedAt:     new Date().toISOString(),
+      approvedById:   null,
+      isOverride:     true,
+      overrideReason: reason,
+    })
+
+    const { error: caseErr } = await supabase
+      .from('case_reports')
+      .update({ case_status_id: caseStatusId })
+      .eq('case_report_id', case_report_id)
+    if (caseErr) throw caseErr
+
+    res.status(201).json({
+      message: 'Case status override recorded.',
+      historyRow,
+    })
+  } catch (err) {
+    console.error('[submitStatusOverride]', err.message)
+    res.status(500).json({ error: err.message })
+  }
+}
+
 const approveStatusChange = async (req, res) => {
   try {
     const { historyId } = req.params
@@ -409,4 +502,11 @@ const rejectStatusChange = async (req, res) => {
   }
 }
 
-module.exports = { getHistory, submitStatusChange, approveStatusChange, rejectStatusChange }
+module.exports = {
+  getHistory,
+  getBatchApprovedHistory,
+  submitStatusChange,
+  submitStatusOverride,
+  approveStatusChange,
+  rejectStatusChange,
+}

@@ -28,7 +28,11 @@ const CASE_LIST_SELECT = `
   incident_description,
   incident_city,
   incident_province,
+  incident_location_type,
+  incident_location,
   incident_date,
+  perpetrator_relationship,
+  perpetrator_occupation,
   case_status_id,
   created_at,
   is_current,
@@ -72,6 +76,24 @@ const ALLOWED_FIELDS = [
   'internal_notes',
   'assigned_officer',
 ]
+
+function mergeAssessmentReferralFields(merged, row) {
+  if (!merged.__hasReferralRequired && row.referral_required !== null && row.referral_required !== undefined) {
+    merged.referral_required = row.referral_required
+    merged.__hasReferralRequired = true
+  }
+  if (!merged.__hasReferralBody && row.referral_body !== undefined) {
+    merged.referral_body = row.referral_body || null
+    merged.__hasReferralBody = true
+  }
+}
+
+function stripAssessmentMergeFlags(merged) {
+  if (!merged) return merged
+  delete merged.__hasReferralRequired
+  delete merged.__hasReferralBody
+  return merged
+}
 
 const getAll = async () => {
   const { data, error } = await supabase.from('case_reports').select('*')
@@ -183,12 +205,11 @@ async function getCaseAssessmentDetails(caseReportId) {
     if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
     if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
     if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
-    if (!merged.referral_required && row.referral_required) merged.referral_required = row.referral_required
-    if (!merged.referral_body && row.referral_body) merged.referral_body = row.referral_body
+    mergeAssessmentReferralFields(merged, row)
     if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
   }
 
-  return { merged, assessmentHistory: assessments || [] }
+  return { merged: stripAssessmentMergeFlags(merged), assessmentHistory: assessments || [] }
 }
 
 async function getCaseAssignmentsForDetail(caseReportId) {
@@ -838,11 +859,11 @@ async function getAssessmentMap(reportIds) {
     if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
     if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
     if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
-    if (!merged.referral_required && row.referral_required) merged.referral_required = row.referral_required
-    if (!merged.referral_body && row.referral_body) merged.referral_body = row.referral_body
+    mergeAssessmentReferralFields(merged, row)
     if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
     assessmentMap[row.case_report_id] = merged
   }
+  Object.values(assessmentMap).forEach(stripAssessmentMergeFlags)
   return assessmentMap
 }
 
@@ -1114,14 +1135,12 @@ async function getAllReports(options = {}) {
         merged.primary_category = row.primary_category
       if (!merged.additional_categories && row.additional_categories?.length > 0)
         merged.additional_categories = row.additional_categories
-      if (!merged.referral_required && row.referral_required)
-        merged.referral_required = row.referral_required
-      if (!merged.referral_body && row.referral_body)
-        merged.referral_body = row.referral_body
+      mergeAssessmentReferralFields(merged, row)
       if (!merged.endorsement && row.endorsement)
         merged.endorsement = row.endorsement
       assessmentMap[row.case_report_id] = merged
     }
+    Object.values(assessmentMap).forEach(stripAssessmentMergeFlags)
   }
 
   // Step 3: Merge officer name and legal names into each report
@@ -1372,11 +1391,11 @@ async function getReportsByAssignedOfficer(userId, options = {}) {
     if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
     if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
     if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
-    if (!merged.referral_required && row.referral_required) merged.referral_required = row.referral_required
-    if (!merged.referral_body && row.referral_body) merged.referral_body = row.referral_body
+    mergeAssessmentReferralFields(merged, row)
     if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
     assessmentMap[row.case_report_id] = merged
   }
+  Object.values(assessmentMap).forEach(stripAssessmentMergeFlags)
 
   const [duplicateMatches, statusHistoryMap] = await Promise.all([
     getDuplicateMatches(reportIds),

@@ -2,7 +2,9 @@ const express = require('express')
 const router  = express.Router()
 const {
   getHistory,
+  getBatchApprovedHistory,
   submitStatusChange,
+  submitStatusOverride,
   approveStatusChange,
   rejectStatusChange,
 } = require('../controllers/case_status_history.controller')
@@ -10,11 +12,16 @@ const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
 
+// Batched approved status timeline for report analytics
+router.get('/batch/approved', verifyToken, authorize('Admin'), getBatchApprovedHistory)
+
 // Get status timeline for a case (staffView=true query param for staff)
 router.get('/:caseReportId', verifyToken, requireCaseReportAccess, getHistory)
 
 // Officer submits a status change — creates history + assessment rows
 router.post('/', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), submitStatusChange)
+
+router.post('/override', verifyToken, authorize('Admin'), submitStatusOverride)
 
 // Admin approves a pending status change
 router.patch('/:historyId/approve', verifyToken, authorize('Admin'), approveStatusChange)
