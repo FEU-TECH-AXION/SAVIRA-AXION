@@ -16,6 +16,103 @@ const ORANGE = '#E96433';
 const BORDER = '#e5e7eb';
 const BG    = '#f5f7f8';
 
+const EMAIL_MAX_LENGTH = 254;
+const NAME_MAX_LENGTH = 50;
+const SUBJECT_MAX_LENGTH = 150;
+const MESSAGE_MIN_LENGTH = 10;
+const MESSAGE_MAX_LENGTH = 2000;
+const EMAIL_REGEX = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
+const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
+const UNSAFE_TEXT_CHARS_REGEX = /[<>/\\`]/g;
+const SCRIPT_LIKE_TEXT_REGEX = /\bjavascript:|on\w+\s*=/gi;
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalisePhone(raw) {
+  let digits = String(raw || '').replace(/[^\d]/g, '');
+  if (digits.startsWith('63')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  digits = digits.slice(0, 10);
+  return digits ? `+63${digits}` : '';
+}
+
+function sanitizeTextInput(value) {
+  return String(value || '')
+    .replace(UNSAFE_TEXT_CHARS_REGEX, '')
+    .replace(SCRIPT_LIKE_TEXT_REGEX, '');
+}
+
+function hasHtmlLikeContent(value) {
+  return /[<>/\\`]|\bjavascript:|on\w+\s*=/i.test(String(value || ''));
+}
+
+function getEmailValidationError(value) {
+  const raw = String(value || '');
+  const normalized = normalizeEmail(raw);
+  const atCount = (normalized.match(/@/g) || []).length;
+  const [localPart = '', domainPart = ''] = normalized.split('@');
+
+  if (!normalized) return 'Email is required.';
+  if (/[\r\n]/.test(raw)) return 'Email cannot contain line breaks.';
+  if (normalized.length > EMAIL_MAX_LENGTH) return `Email must be ${EMAIL_MAX_LENGTH} characters or fewer.`;
+  if (localPart.length > 64) return 'Email local part must be 64 characters or fewer.';
+  if (atCount !== 1) return 'Email must contain exactly one @ symbol.';
+  if (!localPart) return 'Email must include text before @.';
+  if (!domainPart) return 'Email must include a domain after @.';
+  if (!domainPart.includes('.')) return 'Email domain must include a top-level domain.';
+  if (normalized.includes('..')) return 'Email cannot contain consecutive dots.';
+  if (localPart.startsWith('.') || localPart.endsWith('.')) {
+    return 'Email local part cannot start or end with a dot.';
+  }
+  if (!EMAIL_REGEX.test(normalized)) {
+    return 'Enter a valid email address such as john+alerts@mail.company.co.uk.';
+  }
+  return '';
+}
+
+function validateTextField(errors, form, fieldName, label, maxLength, options = {}) {
+  const rawValue = form[fieldName];
+  const value = String(rawValue || '').trim();
+
+  if (!value) {
+    errors[fieldName] = `${label} is required.`;
+  } else if (options.noLineBreaks && /[\r\n]/.test(rawValue)) {
+    errors[fieldName] = `${label} cannot contain line breaks.`;
+  } else if (value.length > maxLength) {
+    errors[fieldName] = `${label} must be ${maxLength} characters or fewer.`;
+  } else if (hasHtmlLikeContent(value)) {
+    errors[fieldName] = `${label} cannot contain HTML tags.`;
+  }
+}
+
+function validateContactForm(form) {
+  const errors = {};
+  const message = String(form.message || '').trim();
+  const phone = String(form.phone || '').trim();
+
+  validateTextField(errors, form, 'firstName', 'First name', NAME_MAX_LENGTH, { noLineBreaks: true });
+  validateTextField(errors, form, 'lastName', 'Last name', NAME_MAX_LENGTH, { noLineBreaks: true });
+  validateTextField(errors, form, 'subject', 'Subject', SUBJECT_MAX_LENGTH);
+  validateTextField(errors, form, 'message', 'Message', MESSAGE_MAX_LENGTH);
+
+  const emailError = getEmailValidationError(form.email);
+  if (emailError) errors.email = emailError;
+  if (phone && !PHONE_REGEX.test(normalisePhone(phone))) {
+    errors.phone = 'Enter a valid Philippine mobile number.';
+  }
+  if (message && message.length < MESSAGE_MIN_LENGTH) {
+    errors.message = `Message must be at least ${MESSAGE_MIN_LENGTH} characters.`;
+  }
+
+  return errors;
+}
+
+function getFieldError(form, key) {
+  return validateContactForm(form)[key] || '';
+}
+
 
 
 
@@ -37,30 +134,40 @@ function Navbar({ onBurger }) {
 }
 
 // ── Field Label ───────────────────────────────────────────────────────────────
-function FieldLabel({ children }) {
-  return <Text style={s.fieldLabel}>{children}</Text>;
+function FieldLabel({ children, required }) {
+  return (
+    <Text style={s.fieldLabel}>
+      {children}{required ? <Text style={s.requiredMark}> *</Text> : null}
+    </Text>
+  );
 }
 
 // ── Styled Input ──────────────────────────────────────────────────────────────
-function StyledInput({ placeholder, value, onChangeText, multiline, numberOfLines, keyboardType }) {
+function StyledInput({ placeholder, value, onChangeText, onBlur, multiline, numberOfLines, keyboardType, maxLength, error }) {
   return (
-    <TextInput
-      style={[
-        s.input,
-        multiline && {
-          height: numberOfLines ? numberOfLines * 26 : 100,
-          textAlignVertical: 'top',
-          paddingTop: 10,
-        },
-      ]}
-      placeholder={placeholder}
-      placeholderTextColor="#bbb"
-      value={value}
-      onChangeText={onChangeText}
-      multiline={multiline}
-      numberOfLines={numberOfLines}
-      keyboardType={keyboardType}
-    />
+    <>
+      <TextInput
+        style={[
+          s.input,
+          error && s.inputError,
+          multiline && {
+            height: numberOfLines ? numberOfLines * 26 : 100,
+            textAlignVertical: 'top',
+            paddingTop: 10,
+          },
+        ]}
+        placeholder={placeholder}
+        placeholderTextColor="#bbb"
+        value={value}
+        onChangeText={onChangeText}
+        onBlur={onBlur}
+        multiline={multiline}
+        numberOfLines={numberOfLines}
+        keyboardType={keyboardType}
+        maxLength={maxLength}
+      />
+      {error ? <Text style={s.fieldError}>{error}</Text> : null}
+    </>
   );
 }
 
@@ -107,6 +214,9 @@ export default function ContactScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const form = { firstName, lastName, email, phone, subject, message };
 
   const resetForm = () => {
     setFirstName('');
@@ -115,20 +225,38 @@ export default function ContactScreen() {
     setPhone('');
     setSubject('');
     setMessage('');
+    setFieldErrors({});
+  };
+
+  const updateTextField = (key, setter, sanitize = false) => (value) => {
+    const nextValue = sanitize ? sanitizeTextInput(value) : value;
+    setter(nextValue);
+    if (fieldErrors[key]) {
+      const nextForm = { ...form, [key]: nextValue };
+      const nextError = getFieldError(nextForm, key);
+      setFieldErrors((currentErrors) => {
+        if (nextError) return { ...currentErrors, [key]: nextError };
+        const { [key]: _removed, ...remainingErrors } = currentErrors;
+        return remainingErrors;
+      });
+    }
+  };
+
+  const validateField = (key) => () => {
+    const nextError = getFieldError(form, key);
+    setFieldErrors((currentErrors) => {
+      if (nextError) return { ...currentErrors, [key]: nextError };
+      const { [key]: _removed, ...remainingErrors } = currentErrors;
+      return remainingErrors;
+    });
   };
 
   const submitContactForm = async () => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanMessage = message.trim();
+    const errors = validateContactForm(form);
     setSubmitted(false);
-
-    if (!cleanEmail || !cleanMessage) {
-      setFormError('Email and message are required.');
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setFormError('Enter a valid email address.');
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setFormError('');
       return;
     }
 
@@ -139,15 +267,19 @@ export default function ContactScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName,
-          lastName,
-          email: cleanEmail,
-          phone,
-          subject,
-          message: cleanMessage,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: normalizeEmail(email),
+          phone: phone.trim(),
+          subject: subject.trim(),
+          message: message.trim(),
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 400 && data.errors) {
+        setFieldErrors(data.errors);
+        throw new Error(data.error || 'Please correct the highlighted fields.');
+      }
       if (!res.ok) throw new Error(data.error || 'Could not send your message.');
 
       resetForm();
@@ -214,54 +346,81 @@ export default function ContactScreen() {
           {/* Name row */}
           <View style={s.twoCol}>
             <View style={{ flex: 1 }}>
-              <FieldLabel>First Name</FieldLabel>
-              <StyledInput placeholder="First Name" value={firstName} onChangeText={setFirstName} />
+              <FieldLabel required>First Name</FieldLabel>
+              <StyledInput
+                placeholder="First Name"
+                value={firstName}
+                onChangeText={updateTextField('firstName', setFirstName, true)}
+                onBlur={validateField('firstName')}
+                maxLength={NAME_MAX_LENGTH}
+                error={fieldErrors.firstName}
+              />
             </View>
             <View style={{ flex: 1 }}>
-              <FieldLabel>Last Name</FieldLabel>
-              <StyledInput placeholder="Last Name" value={lastName} onChangeText={setLastName} />
+              <FieldLabel required>Last Name</FieldLabel>
+              <StyledInput
+                placeholder="Last Name"
+                value={lastName}
+                onChangeText={updateTextField('lastName', setLastName, true)}
+                onBlur={validateField('lastName')}
+                maxLength={NAME_MAX_LENGTH}
+                error={fieldErrors.lastName}
+              />
             </View>
           </View>
 
           {/* Email & Phone row */}
           <View style={s.twoCol}>
             <View style={{ flex: 1 }}>
-              <FieldLabel>E-mail</FieldLabel>
+              <FieldLabel required>E-mail</FieldLabel>
               <StyledInput
                 placeholder="user@gmail.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={updateTextField('email', setEmail)}
+                onBlur={validateField('email')}
                 keyboardType="email-address"
+                maxLength={EMAIL_MAX_LENGTH}
+                error={fieldErrors.email}
               />
             </View>
             <View style={{ flex: 1 }}>
               <FieldLabel>Phone Number</FieldLabel>
               <StyledInput
-                placeholder="Number"
+                placeholder="+639XXXXXXXXX"
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(value) => updateTextField('phone', setPhone)(normalisePhone(value))}
+                onBlur={validateField('phone')}
                 keyboardType="phone-pad"
+                maxLength={13}
+                error={fieldErrors.phone}
               />
             </View>
           </View>
 
           {/* Subject */}
-          <FieldLabel>Subject</FieldLabel>
+          <FieldLabel required>Subject</FieldLabel>
           <StyledInput
             placeholder="Enter subject here..."
             value={subject}
-            onChangeText={setSubject}
+            onChangeText={updateTextField('subject', setSubject, true)}
+            onBlur={validateField('subject')}
+            maxLength={SUBJECT_MAX_LENGTH}
+            error={fieldErrors.subject}
           />
 
           {/* Message */}
-          <FieldLabel>Your Message</FieldLabel>
+          <FieldLabel required>Your Message</FieldLabel>
           <StyledInput
             placeholder="Enter here..."
             value={message}
-            onChangeText={setMessage}
+            onChangeText={updateTextField('message', setMessage, true)}
+            onBlur={validateField('message')}
             multiline
             numberOfLines={5}
+            maxLength={MESSAGE_MAX_LENGTH}
+            error={fieldErrors.message}
           />
+          <Text style={s.charCount}>{message.length}/{MESSAGE_MAX_LENGTH}</Text>
 
           {/* Send Button */}
           <Pressable
@@ -389,10 +548,29 @@ const s = StyleSheet.create({
   errorText: { flex: 1, color: '#b91c1c', fontSize: 13, lineHeight: 18, fontWeight: '700' },
 
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
+  requiredMark: { color: '#b91c1c' },
   input: {
     borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
     paddingHorizontal: 12, height: 42,
     fontSize: 13, color: '#1a1a1a', backgroundColor: '#fafafa',
+  },
+  inputError: {
+    borderColor: '#fca5a5',
+    backgroundColor: '#fff7f7',
+  },
+  fieldError: {
+    color: '#b91c1c',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  charCount: {
+    alignSelf: 'flex-end',
+    color: '#6b7280',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: -6,
   },
 
   sendBtn: {

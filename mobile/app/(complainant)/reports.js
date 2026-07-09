@@ -50,6 +50,18 @@ const INPUT_PLACEHOLDER_COLOR = "#6b7280";
 const CASE_REPORT_DRAFT_KEY = "savira_mobile_case_report_draft";
 const FormInputFocusContext = createContext(() => {});
 const ReportLanguageContext = createContext("en");
+const AGE_MIN = 13;
+const AGE_MAX = 120;
+const SHORT_TEXT_MAX_LENGTH = 150;
+const MEDIUM_TEXT_MAX_LENGTH = 300;
+const LONG_TEXT_FIELD_MAX_LENGTH = 1000;
+const DESCRIPTION_MAX_LENGTH = 5000;
+const TEXT_FIELD_MAX_LENGTH = SHORT_TEXT_MAX_LENGTH;
+const NAME_FIELD_MAX_LENGTH = SHORT_TEXT_MAX_LENGTH;
+const EMAIL_MAX_LENGTH = 254;
+const UNSAFE_TEXT_CHARS_REGEX = /[<>\\`]/g;
+const SCRIPT_LIKE_TEXT_REGEX = /\b(?:javascript|data|vbscript):|on\w+\s*=|<\s*\/?\s*[a-z][^>]*>/gi;
+const STRICT_EMAIL_REGEX = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
 
 function Text({ children, ...props }) {
   const language = useContext(ReportLanguageContext);
@@ -1021,12 +1033,18 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
 }
 
 // ── STEP 1: Complainant Info ──────────────────────────────────────────────────
-function StepComplainantInfo({ data, onChange, errors }) {
-  const set = (key) => (val) => onChange({ ...data, [key]: val });
-  const setContactNumber = (val) => onChange({ ...data, contactNumber: normalisePhone(val) });
+function StepComplainantInfo({ data, onChange, errors, setFieldError }) {
+  const updateField = (key, value, nextData = { ...data, [key]: value }) => {
+    onChange(nextData);
+    setFieldError?.(key, validateStep1(nextData)[key]);
+  };
+  const set = (key) => (val) => updateField(key, val);
+  const setSafeText = (key) => (val) => updateField(key, sanitizeFreeText(val));
+  const setContactNumber = (val) => updateField("contactNumber", normalisePhone(val));
   const isScoutOrg =
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
+  const isIndependent = data.organization === "No Organization / Independent";
   const hasAffiliation =
     data.organizationType &&
     data.organizationType !== "No Organization / Independent";
@@ -1062,15 +1080,17 @@ function StepComplainantInfo({ data, onChange, errors }) {
         <StyledInput
           placeholder="Full name"
           value={data.name}
-          onChangeText={set("name")}
+          onChangeText={setSafeText("name")}
+          maxLength={NAME_FIELD_MAX_LENGTH}
         />
       </Field>
       <Field label="Age" required error={errors.age}>
         <StyledInput
           placeholder="Age"
           value={data.age}
-          onChangeText={set("age")}
+          onChangeText={(value) => set("age")(String(value || "").replace(/\D/g, "").slice(0, 3))}
           keyboardType="numeric"
+          maxLength={3}
           error={errors.age}
         />
       </Field>
@@ -1095,9 +1115,18 @@ function StepComplainantInfo({ data, onChange, errors }) {
           options={[
             "Boy Scouts of the Philippines (BSP)",
             "Girl Scouts of the Philippines (GSP)",
+            "No Organization / Independent",
             "Others",
           ]}
-          onSelect={set("organization")}
+          onSelect={(value) => {
+            updateField("organization", value, {
+              ...data,
+              organization: value,
+              ...(value !== "Others"
+                ? { organizationType: "", orgName: "", orgCity: "" }
+                : {}),
+            });
+          }}
           error={errors.organization}
         />
       </Field>
@@ -1116,7 +1145,8 @@ function StepComplainantInfo({ data, onChange, errors }) {
             <StyledInput
               placeholder="Enter your council"
               value={data.council || ""}
-              onChangeText={set("council")}
+              onChangeText={setSafeText("council")}
+              maxLength={TEXT_FIELD_MAX_LENGTH}
               error={errors.council}
             />
           </Field>
@@ -1144,7 +1174,6 @@ function StepComplainantInfo({ data, onChange, errors }) {
               value={data.organizationType || ""}
               placeholder="Select organization type"
               options={[
-                "No Organization / Independent",
                 "School / University",
                 "Workplace / Company",
                 "Government Agency",
@@ -1170,7 +1199,8 @@ function StepComplainantInfo({ data, onChange, errors }) {
                 <StyledInput
                   placeholder="Organization name"
                   value={data.orgName || ""}
-                  onChangeText={set("orgName")}
+                  onChangeText={setSafeText("orgName")}
+                  maxLength={TEXT_FIELD_MAX_LENGTH}
                   error={errors.orgName}
                 />
               </Field>
@@ -1219,6 +1249,29 @@ function StepComplainantInfo({ data, onChange, errors }) {
         </>
       )}
 
+      {isIndependent && (
+        <>
+          <View style={s.divider} />
+          <Text style={s.subSectionTitle}>Your Location</Text>
+          <Field label="City / Municipality" required error={errors.userCity}>
+            <SelectBox
+              value={data.userCity || ""}
+              placeholder="Select city / municipality"
+              options={NCR_CITIES}
+              onSelect={set("userCity")}
+              error={errors.userCity}
+            />
+          </Field>
+          <Field label="Region">
+            <StyledInput
+              value="National Capital Region (NCR)"
+              editable={false}
+              style={s.inputReadonly}
+            />
+          </Field>
+        </>
+      )}
+
       <View style={s.divider} />
       <Text style={s.subSectionTitle}>Mode of Contact</Text>
       <Field
@@ -1244,8 +1297,9 @@ function StepComplainantInfo({ data, onChange, errors }) {
         <StyledInput
           placeholder="sample@gmail.com"
           value={data.email}
-          onChangeText={set("email")}
+          onChangeText={(value) => set("email")(value.replace(/[\r\n\s]/g, "").slice(0, EMAIL_MAX_LENGTH))}
           keyboardType="email-address"
+          maxLength={EMAIL_MAX_LENGTH}
           focusLift={90}
           error={errors.email}
         />
@@ -1255,12 +1309,17 @@ function StepComplainantInfo({ data, onChange, errors }) {
 }
 
 // ── STEP 2: Incident Details ──────────────────────────────────────────────────
-function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
-  const set = (key) => (val) => onChange({ ...data, [key]: val });
-  const setTxt = (key) => (e) => onChange({ ...data, [key]: e });
+function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldError }) {
+  const updateField = (key, value, nextData = { ...data, [key]: value }) => {
+    onChange(nextData);
+    setFieldError?.(key, validateStep2(nextData, complainantAge)[key]);
+  };
+  const set = (key) => (val) => updateField(key, val);
+  const setSafeText = (key) => (value) => updateField(key, sanitizeFreeText(value));
   const setIncidentPart = (key) => (value) => {
     const next = { ...data, [key]: value };
     onChange({ ...next, date: buildIncidentDate(next) });
+    setFieldError?.(key, validateStep2(next, complainantAge)[key]);
   };
   const setPerpetratorKnown = (value) => {
     onChange({
@@ -1394,7 +1453,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
         <StyledInput
           placeholder="e.g. Barangay hall, online platform, school"
           value={data.incidentVenue || ""}
-          onChangeText={set("incidentVenue")}
+          onChangeText={setSafeText("incidentVenue")}
+          maxLength={MEDIUM_TEXT_MAX_LENGTH}
         />
       </Field>
 
@@ -1409,11 +1469,22 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
         <StyledInput
           placeholder="Describe what happened, including relevant details such as individuals involved and the sequence of events."
           value={data.description}
-          onChangeText={set("description")}
+          onChangeText={setSafeText("description")}
           multiline
           numberOfLines={6}
+          maxLength={DESCRIPTION_MAX_LENGTH}
           error={errors.description}
         />
+        {data.description?.trim() ? (
+          <Text style={[
+            s.fieldHint,
+            data.description.trim().split(/\s+/).filter(Boolean).length < 50 && s.fieldHintWarning,
+          ]}>
+            {data.description.trim().split(/\s+/).filter(Boolean).length < 50
+              ? `At least 50 words is recommended. (${data.description.trim().split(/\s+/).filter(Boolean).length}/50 words)`
+              : `Thank you for sharing these details. (${data.description.trim().split(/\s+/).filter(Boolean).length} words)`}
+          </Text>
+        ) : null}
       </Field>
       <Field
         label="What action or outcome are you seeking?"
@@ -1468,7 +1539,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="Full name"
               value={data.perpetratorName || ""}
-              onChangeText={set("perpetratorName")}
+              onChangeText={setSafeText("perpetratorName")}
+              maxLength={NAME_FIELD_MAX_LENGTH}
               error={errors.perpetratorName}
             />
           </Field>
@@ -1479,7 +1551,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="e.g. teacher, coach, relative, stranger"
               value={data.perpetratorOccupation || ""}
-              onChangeText={set("perpetratorOccupation")}
+              onChangeText={setSafeText("perpetratorOccupation")}
+              maxLength={TEXT_FIELD_MAX_LENGTH}
             />
           </Field>
           <Field
@@ -1489,7 +1562,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="e.g. classmate, supervisor, partner, unknown"
               value={data.perpetratorRelationship || ""}
-              onChangeText={set("perpetratorRelationship")}
+              onChangeText={setSafeText("perpetratorRelationship")}
+              maxLength={TEXT_FIELD_MAX_LENGTH}
             />
           </Field>
           <Field
@@ -1538,9 +1612,10 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="Clothing, approximate age, build, height, voice, marks, or other details you remember"
               value={data.perpetratorUnknownAppearance || ""}
-              onChangeText={set("perpetratorUnknownAppearance")}
+              onChangeText={setSafeText("perpetratorUnknownAppearance")}
               multiline
               numberOfLines={3}
+              maxLength={LONG_TEXT_FIELD_MAX_LENGTH}
             />
           </Field>
         </>
@@ -1566,7 +1641,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="Full name"
               value={data.witnessName || ""}
-              onChangeText={set("witnessName")}
+              onChangeText={setSafeText("witnessName")}
+              maxLength={NAME_FIELD_MAX_LENGTH}
               error={errors.witnessName}
             />
           </Field>
@@ -1578,7 +1654,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="e.g. phone number, email"
               value={data.witnessContact || ""}
-              onChangeText={set("witnessContact")}
+              onChangeText={setSafeText("witnessContact")}
+              maxLength={TEXT_FIELD_MAX_LENGTH}
               error={errors.witnessContact}
             />
           </Field>
@@ -1589,7 +1666,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
             <StyledInput
               placeholder="e.g. classmate, supervisor, partner, unknown"
               value={data.witnessRelationship || ""}
-              onChangeText={set("witnessRelationship")}
+              onChangeText={setSafeText("witnessRelationship")}
+              maxLength={TEXT_FIELD_MAX_LENGTH}
             />
           </Field>
         </>
@@ -1617,7 +1695,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
           <StyledInput
             placeholder="e.g. mother, friend, guidance counselor"
             value={data.toldAnyoneWho || ""}
-            onChangeText={set("toldAnyoneWho")}
+            onChangeText={setSafeText("toldAnyoneWho")}
+            maxLength={TEXT_FIELD_MAX_LENGTH}
           />
         </Field>
       )}
@@ -1641,7 +1720,8 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors }) {
           <StyledInput
             placeholder="e.g. QCPD Station 5"
             value={data.policeStation || ""}
-            onChangeText={set("policeStation")}
+            onChangeText={setSafeText("policeStation")}
+            maxLength={MEDIUM_TEXT_MAX_LENGTH}
           />
         </Field>
       )}
@@ -2071,7 +2151,7 @@ function StepReview({ complainant, incident, evidence }) {
 
 // ── Validation ────────────────────────────────────────────────────────────────
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = STRICT_EMAIL_REGEX;
 
 function normalisePhone(raw) {
   let digits = String(raw || "").replace(/[^\d]/g, "");
@@ -2082,6 +2162,67 @@ function normalisePhone(raw) {
   digits = digits.slice(0, 10);
 
   return digits ? `+63${digits}` : "";
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function sanitizeFreeText(value) {
+  return String(value || "")
+    .replace(UNSAFE_TEXT_CHARS_REGEX, "")
+    .replace(SCRIPT_LIKE_TEXT_REGEX, "");
+}
+
+function hasUnsafeText(value) {
+  return /[<>\\`]|\b(?:javascript|data|vbscript):|on\w+\s*=|<\s*\/?\s*[a-z][^>]*>/i.test(String(value || ""));
+}
+
+function validateSafeText(errors, data, fields) {
+  fields.forEach(({ key, label, max = TEXT_FIELD_MAX_LENGTH, required = false }) => {
+    const value = String(data?.[key] || "");
+    const trimmed = value.trim();
+    if (required && !trimmed) {
+      errors[key] = `${label} is required.`;
+      return;
+    }
+    if (!trimmed) return;
+    if (hasUnsafeText(value)) {
+      errors[key] = `${label} cannot contain HTML tags, scripts, or code-like input.`;
+    } else if (trimmed.length > max) {
+      errors[key] = `${label} must be ${max} characters or fewer.`;
+    }
+  });
+}
+
+function getEmailValidationError(value) {
+  const raw = String(value || "");
+  const normalized = normalizeEmail(raw);
+  const atCount = (normalized.match(/@/g) || []).length;
+  const [localPart = "", domainPart = ""] = normalized.split("@");
+
+  if (!normalized) return "Email is required.";
+  if (/[\r\n]/.test(raw)) return "Email cannot contain line breaks.";
+  if (normalized.length > EMAIL_MAX_LENGTH) return `Email must be ${EMAIL_MAX_LENGTH} characters or fewer.`;
+  if (localPart.length > 64) return "Email local part must be 64 characters or fewer.";
+  if (atCount !== 1) return "Email must contain exactly one @ symbol.";
+  if (!localPart) return "Email must include text before @.";
+  if (!domainPart) return "Email must include a domain after @.";
+  if (!domainPart.includes(".")) return "Email domain must include a top-level domain.";
+  if (normalized.includes("..")) return "Email cannot contain consecutive dots.";
+  if (localPart.startsWith(".") || localPart.endsWith(".")) {
+    return "Email local part cannot start or end with a dot.";
+  }
+  if (!EMAIL_REGEX.test(normalized)) return "Enter a valid email address.";
+  return "";
+}
+
+function deepSanitize(value) {
+  if (Array.isArray(value)) return value.map(deepSanitize);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, deepSanitize(entry)]));
+  }
+  return typeof value === "string" ? sanitizeFreeText(value).trim() : value;
 }
 
 function validateStep0(complainant, consents) {
@@ -2095,20 +2236,31 @@ function validateStep0(complainant, consents) {
 function validateStep1(data) {
   const e = {};
   if (!data.reporteeType) e.reporteeType = "Report type is required.";
-  const age = Number.parseInt(data.age, 10);
-  if (!data.age || Number.isNaN(age) || age < 1 || age > 120) e.age = "A valid age from 1 to 120 is required.";
+  const ageRaw = String(data.age || "").trim();
+  const age = Number.parseInt(ageRaw, 10);
+  if (!/^\d{1,3}$/.test(ageRaw) || Number.isNaN(age) || age < AGE_MIN || age > AGE_MAX) {
+    e.age = `Enter an age from ${AGE_MIN} to ${AGE_MAX}.`;
+  }
   if (!data.gender) e.gender = "Gender identity is required.";
-  if (!data.organization) e.organization = "Organization is required.";
+  const organizationOptions = [
+    "Boy Scouts of the Philippines (BSP)",
+    "Girl Scouts of the Philippines (GSP)",
+    "No Organization / Independent",
+    "Others",
+  ];
+  if (!organizationOptions.includes(data.organization)) e.organization = "Organization is required.";
+  validateSafeText(e, data, [
+    { key: "name", label: "Name", max: NAME_FIELD_MAX_LENGTH },
+    { key: "council", label: "Council", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "orgName", label: "Organization name", max: SHORT_TEXT_MAX_LENGTH },
+  ]);
   if (!data.contactNumber) {
     e.contactNumber = "Contact number is required.";
   } else if (!PHONE_REGEX.test(data.contactNumber)) {
     e.contactNumber = "Enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).";
   }
-  if (!data.email) {
-    e.email = "Email is required.";
-  } else if (!EMAIL_REGEX.test(data.email)) {
-    e.email = "Enter a valid email address.";
-  }
+  const emailError = getEmailValidationError(data.email);
+  if (emailError) e.email = emailError;
   const isScoutOrg =
     data.organization === "Boy Scouts of the Philippines (BSP)" ||
     data.organization === "Girl Scouts of the Philippines (GSP)";
@@ -2136,7 +2288,20 @@ function validateStep2(data, complainantAge) {
   const { year, month, day } = parseIncidentParts(data);
   const currentYear = new Date().getFullYear();
   const age = Number.parseInt(complainantAge, 10);
-  const earliestYear = Number.isNaN(age) ? 1900 : currentYear - age;
+  const earliestYear = Number.isNaN(age) || age < 1 || age > 120 ? currentYear - 120 : currentYear - age;
+  validateSafeText(e, data, [
+    { key: "incidentVenue", label: "Specific place / venue", max: MEDIUM_TEXT_MAX_LENGTH },
+    { key: "description", label: "Description of incident", required: true, max: DESCRIPTION_MAX_LENGTH },
+    { key: "perpetratorName", label: "Perpetrator name", max: NAME_FIELD_MAX_LENGTH },
+    { key: "perpetratorOccupation", label: "Perpetrator occupation", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "perpetratorRelationship", label: "Relationship to perpetrator", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "perpetratorUnknownAppearance", label: "Appearance or identifying details", max: LONG_TEXT_FIELD_MAX_LENGTH },
+    { key: "witnessName", label: "Witness name", max: NAME_FIELD_MAX_LENGTH },
+    { key: "witnessContact", label: "Witness contact information", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "witnessRelationship", label: "Relationship to witness", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "toldAnyoneWho", label: "Who you told", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "policeStation", label: "Police station", max: MEDIUM_TEXT_MAX_LENGTH },
+  ]);
   if (!data.incidentYear) {
     e.incidentYear = "Incident year is required.";
   } else if (Number.isNaN(year) || year < earliestYear || year > currentYear) {
@@ -2166,8 +2331,11 @@ function validateStep2(data, complainantAge) {
   if (!data.locationType) e.locationType = "Please select whether the incident was physical or online.";
   if (data.locationType === "Physical Location" && !NCR_CITIES.includes(data.incidentCity))
     e.incidentCity = "A valid incident city is required.";
-  if (!data.description) {
-    e.description = "Description of incident is required.";
+  if (String(data.description || "").trim()) {
+    const wordCount = String(data.description).trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) {
+      e.description = "We want to make sure we fully understand what you went through. Could you share a little more? At least 50 words is recommended";
+    }
   }
   if (Array.isArray(data.outcome) && data.outcome.some((item) => !OUTCOME_OPTIONS.includes(item)))
     e.outcome = "Please choose a valid requested outcome.";
@@ -2182,6 +2350,16 @@ function validateStep2(data, complainantAge) {
       e.perpetratorName = "Perpetrator name is required.";
     if (!data.perpetratorGender)
       e.perpetratorGender = "Perpetrator gender is required.";
+  }
+  if (data.witnesses === "Yes" && data.witnessContact) {
+    const contact = String(data.witnessContact).trim();
+    const looksLikeEmail = contact.includes("@");
+    if (looksLikeEmail) {
+      const witnessEmailError = getEmailValidationError(contact);
+      if (witnessEmailError) e.witnessContact = "Enter a valid witness email address.";
+    } else if (/^\+?[\d\s()-]+$/.test(contact) && !PHONE_REGEX.test(normalisePhone(contact))) {
+      e.witnessContact = "Enter a valid Philippine mobile number or email for the witness.";
+    }
   }
   return e;
 }
@@ -2794,8 +2972,29 @@ export default function ReportScreen() {
     setStep((s) => Math.max(s - 1, 0));
   };
 
+  const setFieldError = (key, message) => {
+    setErrors((current) => {
+      const next = { ...current };
+      if (message) next[key] = message;
+      else delete next[key];
+      return next;
+    });
+  };
+
   const handleSubmit = async () => {
     setSubmitError(null);
+    const validationSteps = [
+      { stepIndex: 0, errors: validateStep0(complainant, consents) },
+      { stepIndex: 1, errors: validateStep1(complainant) },
+      { stepIndex: 2, errors: validateStep2(incident, complainant.age) },
+    ];
+    const firstInvalidStep = validationSteps.find(({ errors: stepErrors }) => Object.keys(stepErrors).length > 0);
+    if (firstInvalidStep) {
+      setErrors(firstInvalidStep.errors);
+      setStep(firstInvalidStep.stepIndex);
+      setSubmitError(t("Please correct the highlighted fields before submitting."));
+      return;
+    }
     if (!API_URL || API_URL.includes("localhost") || API_URL.includes("127.0.0.1")) {
       setSubmitError(t("The mobile app is not pointed at the online backend. Please rebuild the APK with the public API URL."));
       return;
@@ -2827,11 +3026,17 @@ export default function ReportScreen() {
     try {
       const userToken = await AsyncStorage.getItem("user_token");
       const formData = new FormData();
-      formData.append("complainant", JSON.stringify(complainant));
+      const safeComplainant = {
+        ...deepSanitize(complainant),
+        age: String(complainant.age || "").replace(/\D/g, "").slice(0, 3),
+        contactNumber: normalisePhone(complainant.contactNumber),
+        email: normalizeEmail(complainant.email),
+      };
+      formData.append("complainant", JSON.stringify(safeComplainant));
       const { year, month, day } = parseIncidentParts(incident);
       
       const formattedIncident = {
-        ...incident,
+        ...deepSanitize(incident),
         date: buildIncidentDate(incident),
         time: toTwentyFourHourTime(incident.time),
         incident_year: Number.isNaN(year) ? null : year,
@@ -3066,8 +3271,8 @@ export default function ReportScreen() {
                 <WizardStepper current={step} t={t} />
 
                 {step === 0 && <StepConsent complainant={complainant} onComplainantChange={setComplainant} consents={consents} onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))} errors={errors} onOpenHelplines={() => router.push('/(complainant)/helplines')} />}
-                {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} />}
-                {step === 2 && <StepIncidentDetails data={incident} complainantAge={complainant.age} onChange={setIncident} errors={errors} />}
+                {step === 1 && <StepComplainantInfo data={complainant} onChange={setComplainant} errors={errors} setFieldError={setFieldError} />}
+                {step === 2 && <StepIncidentDetails data={incident} complainantAge={complainant.age} onChange={setIncident} errors={errors} setFieldError={setFieldError} />}
                 {step === 3 && <StepEvidence data={evidence} onChange={setEvidence} t={t} />}
                 {step === 4 && <StepReview complainant={complainant} incident={incident} evidence={evidence} />}
 
@@ -3591,6 +3796,10 @@ const s = StyleSheet.create({
     color: "#9ca3af",
     marginTop: 3,
     fontStyle: "italic",
+  },
+  fieldHintWarning: {
+    color: "#b45309",
+    fontWeight: "800",
   },
   fieldError: { fontSize: 11, color: ERROR, marginTop: 3 },
 
