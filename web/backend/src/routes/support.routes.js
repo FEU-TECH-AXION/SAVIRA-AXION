@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth.middleware');
+const { validateContactMessage } = require('../middleware/contact_validation.middleware');
 const {
   createContactMessage,
   createBugReport,
@@ -16,7 +17,8 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-router.post('/contact', createContactMessage);
+// Follow-up: add IP rate limiting here if a rate-limit middleware becomes available.
+router.post('/contact', validateContactMessage, createContactMessage);
 router.post('/report', verifyToken, upload.single('attachment'), createBugReport);
 router.get('/messages', verifyToken, listMessages);
 router.post('/messages/:id/reply', verifyToken, replyToMessage);

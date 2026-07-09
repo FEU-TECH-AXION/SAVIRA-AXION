@@ -295,11 +295,6 @@ export default function ContactScreen() {
             <Text style={s.infoText}>Contact Number: 0977 319 6087</Text>
           </InfoBlock>
 
-          <InfoBlock title="Open Hours">
-            <Text style={s.infoText}>Monday – Friday: 9:00 AM – 5:00 PM</Text>
-            <Text style={s.infoText}>Saturday: 9:00 AM – 12:00 PM</Text>
-          </InfoBlock>
-
           <InfoBlock title="Stay Connected">
             <View style={s.socialRow}>
               <SocialBtn name="facebook"  onPress={() => Linking.openURL('https://www.facebook.com/PHsasha')} />

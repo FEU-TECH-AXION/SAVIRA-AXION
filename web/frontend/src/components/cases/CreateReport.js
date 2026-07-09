@@ -2346,18 +2346,6 @@ function StepEvidence({ data, onChange }) {
           )}
         </div>
       </div>
-
-      <div className={styles.anonymousRow}>
-        <label className={styles.checkboxLabel}>
-          <input
-            type="checkbox"
-            className={styles.checkbox}
-            checked={Boolean(data.anonymous)}
-            onChange={(e) => onChange({ ...data, anonymous: e.target.checked })}
-          />
-          I would like to submit anonymously
-        </label>
-      </div>
     </div>
   );
 }
