@@ -1,6 +1,14 @@
 const CaseAssessments = require('../models/case_assessments.model')
 const supabase       = require('../config/supabase')
 
+const PRELIMINARY_REFERRAL_BODIES = new Set([
+  'DSWD',
+  'PNP Women and Children Protection Desk',
+  'BSP/GSP Mechanism',
+  'School/Workplace CODI',
+])
+const REFERRAL_ALLOWED_MIN_STATUS_ID = 3 // Undergoing Review
+
 const getItems = async (req, res) => {
   try {
     const data = await CaseAssessments.getAll()
@@ -82,6 +90,29 @@ const recordAssessmentAction  = async (req, res) => {
 
     if (Object.keys(updates).length === 0)
       return res.status(400).json({ error: 'No valid fields to update.' })
+
+    const isReferralUpdate = Object.hasOwn(updates, 'referral_required') || Object.hasOwn(updates, 'referral_body')
+    if (isReferralUpdate) {
+      const { data: report, error: reportError } = await supabase
+        .from('case_reports')
+        .select('case_report_id, case_status_id')
+        .eq('case_report_id', req.params.caseReportId)
+        .maybeSingle()
+
+      if (reportError) throw reportError
+      if (!report) return res.status(404).json({ error: 'Case report not found.' })
+      if (Number(report.case_status_id) < REFERRAL_ALLOWED_MIN_STATUS_ID) {
+        return res.status(400).json({
+          error: 'Case must complete initial verification before referral can be flagged.',
+        })
+      }
+
+      if (updates.referral_body && !PRELIMINARY_REFERRAL_BODIES.has(updates.referral_body)) {
+        return res.status(400).json({
+          error: 'Court referral must be recorded through legal review endorsement.',
+        })
+      }
+    }
 
     // Always insert a new row — every action is a new audit record.
     // We never overwrite existing assessments.

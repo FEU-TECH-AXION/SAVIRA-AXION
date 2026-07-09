@@ -98,6 +98,7 @@ const mapCaseReportToViewData = (data) => {
     reporterId:           data.complainant_user_id,
     region:               data.incident_province || data.incident_city || "Not provided",
     status:               STATUS_STEP[data.case_status_id] || "For Verification",
+    caseStatusId:         Number(data.case_status_id) || null,
     assignedOfficer:      data.assigned_officer || null,
     dateSubmitted: new Date(data.created_at).toLocaleDateString("en-PH", {
       day: "numeric",
@@ -186,8 +187,39 @@ const ENDORSEMENT_BODIES = [
   "PNP Women and Children Protection Desk",
   "BSP/GSP Mechanism",
   "School/Workplace CODI",
-  "Court (with lawyer)",
 ];
+
+const REFERRAL_ALLOWED_FROM_STATUS_INDEX = 2;
+const CASE_WORKFLOW_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Verified - False",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
+  "Perpetrator Convicted",
+  "Resolved",
+  "Withdrawn",
+];
+
+function canFlagPreliminaryReferral(caseItem) {
+  const statusId = Number(caseItem?.caseStatusId ?? caseItem?.case_status_id);
+  if (Number.isFinite(statusId) && statusId > 0) return statusId >= 3;
+
+  const normalizedStatus = String(caseItem?.status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+  const index = CASE_WORKFLOW_STATUSES.findIndex(
+    (status) => status.toLowerCase() === normalizedStatus
+  );
+  return index >= REFERRAL_ALLOWED_FROM_STATUS_INDEX;
+}
 
 const VIOLENCE_TYPES = [
   "Sexual harassment",
@@ -933,6 +965,7 @@ function CaseManagementTab({
 
   const transitions = getAvailableTransitionsLocal();
   const canOpenStatusModal = transitions.length > 0 || !!STATUS_MODAL_MAP[caseData.status];
+  const canFlagReferral = canFlagPreliminaryReferral(caseData);
   const [caseTypeVal, setCaseTypeVal] = useState(Array.isArray(caseData.caseType) ? caseData.caseType : caseData.caseType ? [caseData.caseType] : []);
   const [caseCatVal, setCaseCatVal] = useState(caseData.caseCategory || "");
   const [alsoCatVal, setAlsoCatVal] = useState(Array.isArray(caseData.alsoInvolves) ? caseData.alsoInvolves : []);
@@ -1179,7 +1212,7 @@ function CaseManagementTab({
           <button onClick={() => setModal("setCaseType")} style={btnStyle("#037F81")}>Set Case Type</button>
           <button onClick={() => setModal("setCategory")} style={btnStyle("#037F81")}>Set Category</button>
           {/* {isCaseOfficer && caseData.isWillingForInterview === true && <button onClick={() => setModal("inviteInterview")} style={btnStyle("#037F81")}>Invite to Interview</button>} */}
-          <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>
+          {canFlagReferral && <button onClick={() => setModal("referralEndorse")} style={btnStyle("#037F81")}>Referral / Endorse</button>}
         </div>
       </section>
 
