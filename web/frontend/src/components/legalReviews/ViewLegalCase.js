@@ -644,12 +644,13 @@ function LegalReviewDetailsSection({ caseData }) {
               <p className={styles.detailKey}>Endorsed To</p>
               <p className={styles.detailVal}>{caseData.endorsedTo || "Not endorsed"}</p>
             </div>
-            {Object.entries(caseData.endorsementDetails || {}).map(([k, v]) => v ? (
+            {Object.entries(caseData.endorsementDetails || {}).map(([k, v]) => (
+              v !== null && v !== undefined && v !== "" && (!Array.isArray(v) || v.length > 0) ? (
               <div key={k} className={styles.detailItem}>
-                <p className={styles.detailKey}>{k}</p>
-                <p className={styles.detailVal}>{v}</p>
+                <p className={styles.detailKey}>{k.replace(/_/g, " ")}</p>
+                <p className={styles.detailVal}>{Array.isArray(v) ? v.join(", ") : typeof v === "boolean" ? (v ? "Yes" : "No") : v}</p>
               </div>
-            ) : null)}
+            ) : null))}
           </div>
         </DetailAccordion>
       )}

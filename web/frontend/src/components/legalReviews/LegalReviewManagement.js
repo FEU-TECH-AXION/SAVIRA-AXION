@@ -229,12 +229,13 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {caseData.endorsementDetails && (
         <div className={styles.detailBlock}>
           <h4 className={styles.detailTitle}>Endorsement / Filing Details</h4>
-          {Object.entries(caseData.endorsementDetails).map(([k, v]) => v ? (
+          {Object.entries(caseData.endorsementDetails).map(([k, v]) => (
+            v !== null && v !== undefined && v !== "" && (!Array.isArray(v) || v.length > 0) ? (
             <div key={k} className={styles.viewRow}>
-              <span className={styles.viewKey}>{k}</span>
-              <span className={styles.viewVal}>{v}</span>
+              <span className={styles.viewKey}>{k.replace(/_/g, " ")}</span>
+              <span className={styles.viewVal}>{Array.isArray(v) ? v.join(", ") : typeof v === "boolean" ? (v ? "Yes" : "No") : v}</span>
             </div>
-          ) : null)}
+          ) : null))}
         </div>
       )}
 

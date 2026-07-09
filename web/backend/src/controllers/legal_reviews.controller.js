@@ -133,6 +133,7 @@ function toCalendarPayload(review) {
 const LEGAL_STATUS_ID_VALUES = [4, 6, 7, 8, 9, 10, 11, 12]
 const LEGAL_ACTIVE_STATUS_ID_VALUES = [4, 6, 7, 8, 9]
 const LEGAL_STATUS_IDS = new Set(LEGAL_STATUS_ID_VALUES)
+const ENDORSEMENT_ELIGIBLE_STATUS_IDS = new Set([6, 7, 8, 9, 10, 11, 12])
 const STATUS_NAME_BY_ID = {
   4: 'Verified - True',
   6: 'Under Case Evaluation',
@@ -142,6 +143,92 @@ const STATUS_NAME_BY_ID = {
   10: 'Dismissed',
   11: 'Perpetrator Convicted',
   12: 'Resolved',
+}
+
+const ENDORSEMENT_DETAIL_SCHEMAS = {
+  DSWD: {
+    endorsement_date: 'date',
+    receiving_office: 'text',
+    receiving_person: 'text',
+    referral_reference_no: 'text',
+    next_follow_up_date: 'date',
+    survivor_contacted: 'boolean',
+    services_provided: 'boolean',
+  },
+  'PNP Women and Children Protection Desk': {
+    station_name: 'text',
+    desk_details: 'text',
+    blotter_reference_no: 'text',
+    assigned_investigator: 'text',
+    sworn_statement_taken: 'boolean',
+    medico_legal_advised: 'boolean',
+    forwarded_to_prosecutor: 'boolean',
+  },
+  'BSP/GSP Mechanism': {
+    chapter_council_unit: 'text',
+    receiving_official: 'text',
+    fact_finding_started: 'boolean',
+    interim_safety_measures: 'text',
+    sanctions_or_inaction: 'text',
+    closure_report: 'text',
+  },
+  'School/Workplace CODI': {
+    complaint_receipt_confirmed: 'boolean',
+    codi_focal_person: 'text',
+    hearing_schedule_date: 'date',
+    last_status_update_date: 'date',
+    anti_retaliation_confirmed: 'boolean',
+    final_administrative_decision: 'text',
+  },
+  'Court (with lawyer)': {
+    case_number: 'text',
+    court_branch: 'text',
+    filing_date: 'date',
+    prosecutor_counsel: 'text',
+    hearing_dates: 'array',
+    postponements: 'array',
+    witness_prep_needs: 'text',
+    final_judgment: 'text',
+  },
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function validateDateString(value) {
+  if (typeof value !== 'string' || !value.trim()) return false
+  return !Number.isNaN(Date.parse(value))
+}
+
+function validateEndorsementDetails(endorsedTo, details) {
+  const schema = ENDORSEMENT_DETAIL_SCHEMAS[endorsedTo]
+  if (!schema) return { error: `Unsupported endorsement institution: ${endorsedTo}` }
+  if (!isPlainObject(details)) {
+    return { error: 'endorsement_details must be an object matching the selected endorsement institution.' }
+  }
+
+  const normalized = {}
+  for (const [field, type] of Object.entries(schema)) {
+    const value = details[field]
+    if (type === 'boolean') {
+      if (typeof value !== 'boolean') return { error: `${field} must be true or false.` }
+      normalized[field] = value
+    } else if (type === 'array') {
+      if (!Array.isArray(value) || value.filter(Boolean).length === 0) {
+        return { error: `${field} must include at least one item.` }
+      }
+      normalized[field] = value.map((item) => String(item).trim()).filter(Boolean)
+    } else if (type === 'date') {
+      if (!validateDateString(value)) return { error: `${field} must be a valid date.` }
+      normalized[field] = String(value).trim()
+    } else {
+      if (typeof value !== 'string' || !value.trim()) return { error: `${field} is required.` }
+      normalized[field] = value.trim()
+    }
+  }
+
+  return { value: normalized }
 }
 const LEGAL_MANAGEMENT_SORT_FIELDS = {
   caseId: 'caseId',
@@ -547,6 +634,35 @@ async function updateByCase(req, res) {
     let review = await LegalReviews.getLatestByCase(caseReportId)
     const wasCreated = !review
     const previousReviewStatus = review?.review_status
+    const endorsementTouched = endorsed_to !== undefined || endorsement_details !== undefined
+    let normalizedEndorsementDetails = null
+
+    if (endorsementTouched) {
+      const targetEndorsedTo = endorsed_to !== undefined ? endorsed_to : review?.endorsed_to
+      const targetDetails = endorsement_details !== undefined ? endorsement_details : review?.endorsement_details
+
+      if (targetEndorsedTo) {
+        const { data: report, error: reportError } = await supabase
+          .from('case_reports')
+          .select('case_report_id, case_status_id')
+          .eq('case_report_id', caseReportId)
+          .maybeSingle()
+        if (reportError) throw reportError
+        if (!report) return res.status(404).json({ error: 'Case report not found.' })
+        if (!ENDORSEMENT_ELIGIBLE_STATUS_IDS.has(Number(report.case_status_id))) {
+          return res.status(400).json({
+            error: 'Case must reach Under Case Evaluation before it can be endorsed.',
+          })
+        }
+
+        const validation = validateEndorsementDetails(targetEndorsedTo, targetDetails)
+        if (validation.error) return res.status(400).json({ error: validation.error })
+        normalizedEndorsementDetails = validation.value
+      } else if (endorsement_details !== undefined && endorsement_details !== null) {
+        return res.status(400).json({ error: 'endorsed_to is required when endorsement_details are provided.' })
+      }
+    }
+
     if (!review) {
       const resolvedLegalPersonnelId = await LegalReviews.resolveLegalPersonnelId({
         caseReportId,
@@ -567,8 +683,13 @@ async function updateByCase(req, res) {
     const patch = {}
     if (paralegal_record !== undefined) patch.paralegal_record = paralegal_record
     if (lawyer_record !== undefined) patch.lawyer_record = lawyer_record
-    if (endorsed_to !== undefined) patch.endorsed_to = endorsed_to || null
-    if (endorsement_details !== undefined) patch.endorsement_details = endorsement_details
+    if (endorsed_to !== undefined) {
+      patch.endorsed_to = endorsed_to || null
+      if (!endorsed_to && endorsement_details === undefined) patch.endorsement_details = null
+    }
+    if (endorsement_details !== undefined) {
+      patch.endorsement_details = normalizedEndorsementDetails
+    }
     if (document_repository !== undefined) patch.document_repository = document_repository
     if (review_status !== undefined) patch.review_status = review_status
     if (monitoring_entry) {

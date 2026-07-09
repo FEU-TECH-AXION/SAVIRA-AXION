@@ -323,44 +323,75 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
 
 const DETAIL_FIELDS = {
   DSWD: [
-    ["Date of Endorsement", "date"],
-    ["Receiving Office", "text"],
-    ["Reference No.", "text"],
-    ["Follow-up Date", "date"],
-    ["Services Provided", "textarea"],
+    { key: "endorsement_date", label: "Endorsement Date", type: "date" },
+    { key: "receiving_office", label: "Receiving Office", type: "text" },
+    { key: "receiving_person", label: "Receiving Person", type: "text" },
+    { key: "referral_reference_no", label: "Referral Reference No.", type: "text" },
+    { key: "next_follow_up_date", label: "Next Follow-up Date", type: "date" },
+    { key: "survivor_contacted", label: "Survivor Contacted", type: "boolean" },
+    { key: "services_provided", label: "Services Provided", type: "boolean" },
   ],
   "PNP Women and Children Protection Desk": [
-    ["Date of Endorsement", "date"],
-    ["Station", "text"],
-    ["Blotter No.", "text"],
-    ["Investigator", "text"],
-    ["Forwarded to Prosecutor", "text"],
+    { key: "station_name", label: "Station Name", type: "text" },
+    { key: "desk_details", label: "Desk Details", type: "textarea" },
+    { key: "blotter_reference_no", label: "Blotter Reference No.", type: "text" },
+    { key: "assigned_investigator", label: "Assigned Investigator", type: "text" },
+    { key: "sworn_statement_taken", label: "Sworn Statement Taken", type: "boolean" },
+    { key: "medico_legal_advised", label: "Medico-legal Advised", type: "boolean" },
+    { key: "forwarded_to_prosecutor", label: "Forwarded to Prosecutor", type: "boolean" },
   ],
   "BSP/GSP Mechanism": [
-    ["Date of Endorsement", "date"],
-    ["Chapter/Unit", "text"],
-    ["Receiving Official", "text"],
-    ["Fact-Finding Started", "text"],
-    ["Sanctions/Inaction", "textarea"],
+    { key: "chapter_council_unit", label: "Chapter / Council / Unit", type: "text" },
+    { key: "receiving_official", label: "Receiving Official", type: "text" },
+    { key: "fact_finding_started", label: "Fact-finding Started", type: "boolean" },
+    { key: "interim_safety_measures", label: "Interim Safety Measures", type: "textarea" },
+    { key: "sanctions_or_inaction", label: "Sanctions or Inaction", type: "textarea" },
+    { key: "closure_report", label: "Closure Report", type: "textarea" },
   ],
   "School/Workplace CODI": [
-    ["Date of Endorsement", "date"],
-    ["Institution", "text"],
-    ["CODI Focal Person", "text"],
-    ["Investigation Schedule", "text"],
-    ["Status Updates", "textarea"],
-    ["Final Decision", "textarea"],
+    { key: "complaint_receipt_confirmed", label: "Complaint Receipt Confirmed", type: "boolean" },
+    { key: "codi_focal_person", label: "CODI Focal Person", type: "text" },
+    { key: "hearing_schedule_date", label: "Hearing Schedule Date", type: "date" },
+    { key: "last_status_update_date", label: "Last Status Update Date", type: "date" },
+    { key: "anti_retaliation_confirmed", label: "Anti-retaliation Confirmed", type: "boolean" },
+    { key: "final_administrative_decision", label: "Final Administrative Decision", type: "textarea" },
   ],
   "Court (with lawyer)": [
-    ["Case No.", "text"],
-    ["Filing Date", "date"],
-    ["Counsel", "text"],
-    ["Hearing Dates", "textarea"],
-    ["Postponements", "textarea"],
-    ["Witness Preparation", "textarea"],
-    ["Judgment", "textarea"],
+    { key: "case_number", label: "Case Number", type: "text" },
+    { key: "court_branch", label: "Court Branch", type: "text" },
+    { key: "filing_date", label: "Filing Date", type: "date" },
+    { key: "prosecutor_counsel", label: "Prosecutor / Counsel", type: "text" },
+    { key: "hearing_dates", label: "Hearing Dates", type: "array" },
+    { key: "postponements", label: "Postponements", type: "array" },
+    { key: "witness_prep_needs", label: "Witness Prep Needs", type: "textarea" },
+    { key: "final_judgment", label: "Final Judgment", type: "textarea" },
   ],
 };
+
+function detailValueForInput(value, type) {
+  if (type === "array") return Array.isArray(value) ? value.join("\n") : "";
+  return value ?? "";
+}
+
+function valueFromInput(value, type) {
+  if (type === "array") {
+    if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+    return String(value || "")
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return value;
+}
+
+function buildStructuredEndorsementDetails(body, details) {
+  return (DETAIL_FIELDS[body] || []).reduce((payload, field) => {
+    payload[field.key] = field.type === "boolean"
+      ? Boolean(details[field.key])
+      : valueFromInput(details[field.key], field.type);
+    return payload;
+  }, {});
+}
 
 export function EndorseModal({ open, onClose, caseData, onSave }) {
   const [body, setBody] = useState("");
@@ -380,17 +411,14 @@ export function EndorseModal({ open, onClose, caseData, onSave }) {
     : [];
 
   async function handleSave() {
+    const endorsementDetails = buildStructuredEndorsementDetails(body, details);
     await onSave({
       ...caseData,
       endorsedTo: body,
       referralBody: body,
       referralRequired: true,
       endorsementStatus: `Endorsed to ${body}`,
-      endorsementDetails: {
-        ...details,
-        "Lawyer Recommendation": caseData.lawyerRecord?.recommendation || "",
-        "Recommendation Alignment": recommendedBodies.length === 0 || recommendedBodies.includes(body) ? "Aligned" : "Different path selected",
-      },
+      endorsementDetails,
       is_public: publicUpdate.isPublic,
       public_message: publicUpdate.publicMessage,
     });
@@ -410,11 +438,30 @@ export function EndorseModal({ open, onClose, caseData, onSave }) {
           </FSelect>
         </FormGroup>
         {body && <div className={styles.sectionDivider}>{body} details</div>}
-        {(DETAIL_FIELDS[body] || []).map(([label, type]) => (
-          <FormGroup key={label} label={label}>
-            {type === "textarea"
-              ? <FTextarea value={details[label] || ""} onChange={(event) => setDetails((previous) => ({ ...previous, [label]: event.target.value }))} />
-              : <FInput type={type} value={details[label] || ""} onChange={(event) => setDetails((previous) => ({ ...previous, [label]: event.target.value }))} />}
+        {(DETAIL_FIELDS[body] || []).map((field) => (
+          <FormGroup key={field.key} label={field.label} required={field.type !== "boolean"} hint={field.type === "array" ? "Enter one item per line." : undefined}>
+            {field.type === "boolean" ? (
+              <label className={styles.checkLabel}>
+                <input
+                  className={styles.checkInput}
+                  type="checkbox"
+                  checked={Boolean(details[field.key])}
+                  onChange={(event) => setDetails((previous) => ({ ...previous, [field.key]: event.target.checked }))}
+                />
+                Yes
+              </label>
+            ) : field.type === "textarea" || field.type === "array" ? (
+              <FTextarea
+                value={detailValueForInput(details[field.key], field.type)}
+                onChange={(event) => setDetails((previous) => ({ ...previous, [field.key]: event.target.value }))}
+              />
+            ) : (
+              <FInput
+                type={field.type}
+                value={details[field.key] || ""}
+                onChange={(event) => setDetails((previous) => ({ ...previous, [field.key]: event.target.value }))}
+              />
+            )}
           </FormGroup>
         ))}
         <PublicMessageField
