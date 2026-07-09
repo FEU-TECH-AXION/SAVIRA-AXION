@@ -366,16 +366,6 @@ export default function ContactPage() {
 
             <div className={styles.infoBlock}>
               <span className={styles.infoBar} />
-              <h4 className={styles.infoTitle}>Open Hours</h4>
-              <p className={styles.infoText}>
-                Monday - Friday: 9:00 AM - 5:00 PM
-                <br />
-                Saturday: 9:00 AM - 12:00 PM
-              </p>
-            </div>
-
-            <div className={styles.infoBlock}>
-              <span className={styles.infoBar} />
               <h4 className={styles.infoTitle}>Stay Connected</h4>
               <div className={styles.socials}>
                 <a href="https://www.facebook.com/PHsasha" aria-label="Facebook"><FaFacebook /></a>
