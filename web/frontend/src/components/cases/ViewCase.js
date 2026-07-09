@@ -15,6 +15,7 @@ import {
   FiEdit2,
   FiTrash2,
   FiPlus,
+  FiHelpCircle,
 } from "react-icons/fi";
 import { MdAlert } from  "react-icons/md";
 import { IoIosArrowBack, IoIosWarning, IoIosAlert } from "react-icons/io";
@@ -42,6 +43,8 @@ import {
 } from "@/lib/caseWithdrawal";
 import { useAuth, authFetch } from "@/lib/AuthContext";
 import { API_URL } from "@/lib/config";
+import StatusGuide from "./StatusGuide";
+import { STATUS_COLORS } from "./caseStatusConstants";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -254,22 +257,6 @@ const CASE_CATEGORY_DESCRIPTIONS = {
 const OFFICERS    = ["Alexa Gagan", "Marco Santos", "Ryan Dela Paz", "Ben Mercado", "Camille Torres"];
 
 // ─── Descriptions for complainants (from sasha-explain.md) ───────────────────
-
-const STATUS_COLORS = {
-  "Submitted":             { bg: "#e0f2fe", color: "#0369a1" }, // Light Blue
-  "For Verification":      { bg: "#dbeafe", color: "#1e40af" }, // Blue
-  "Undergoing Review":     { bg: "#fef9c3", color: "#854d0e" }, // Yellow
-  "Verified - True":       { bg: "#dcfce7", color: "#166534" }, // Green
-  "Verified - False":      { bg: "#fee2e2", color: "#991b1b" }, // Red
-  "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" }, // Purple
-  "Case Filed":            { bg: "#ffedd5", color: "#9a3412" }, // Orange
-  "Investigation Ongoing": { bg: "#cffafe", color: "#155e75" }, // Cyan
-  "Hearing Ongoing":       { bg: "#fce7f3", color: "#9d174d" }, // Pink
-  "Dismissed":             { bg: "#f1f5f9", color: "#475569" }, // Slate/Gray
-  "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" }, // Emerald Green
-  "Resolved":              { bg: "#ccfbf1", color: "#115e59" }, // Teal
-  "Withdrawn":             { bg: "#fef3c7", color: "#92400e" }, // Amber/Muted Brown
-};
 
 function StatusBadge({ status }) {
   const { bg, color } = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
@@ -1665,6 +1652,7 @@ export default function ViewCase() {
   const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
   const [interviewsChecked, setInterviewsChecked] = useState(false);
   const [toast, setToast]       = useState(null);
+  const [statusGuideOpen, setStatusGuideOpen] = useState(false);
   
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
@@ -1956,6 +1944,14 @@ export default function ViewCase() {
             </div>
             <div className={styles.headerActions}>
               <StatusBadge status={caseData.status} />
+              <button
+                type="button"
+                className={styles.statusGuideBtn}
+                onClick={() => setStatusGuideOpen(true)}
+              >
+                <FiHelpCircle />
+                Guide
+              </button>
               <FollowUpBadge summary={caseData.followUpSummary} />
               {isStaff && caseData.possibleDuplicates?.length > 0 && (
                 <button
@@ -2163,6 +2159,7 @@ export default function ViewCase() {
         />
 
       </div>
+      <StatusGuide open={statusGuideOpen} onClose={() => setStatusGuideOpen(false)} />
     </div>
   );
 }
