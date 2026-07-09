@@ -2084,7 +2084,7 @@ export default function ReportGenerator() {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>
             <FiBarChart2 className={styles.titleIcon} />
-            Report
+            Reports
           </h1>
           <p className={styles.pageSubtitle}>
             Aggregated report summaries across all system modules.
