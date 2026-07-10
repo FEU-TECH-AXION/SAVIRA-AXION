@@ -63,8 +63,6 @@ export const FOOTER_QUICK_LINKS = {
   ],
   staff: [
     { href: "/dashboard", label: "Home", labelKey: "navHome" },
-    { href: "/projects", label: "Projects", labelKey: "navProjects" },
-    { href: "/projectTasks", label: "Project Tasks", labelKey: "navProjectTasks" },
     { href: "/volunteer", label: "Volunteers", labelKey: "navVolunteers" },
     { href: "/events", label: "Events", labelKey: "navEvents" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
@@ -76,15 +74,10 @@ export const FOOTER_QUICK_LINKS = {
   ],
   admin: [
     { href: "/dashboard", label: "Home", labelKey: "navHome" },
-    { href: "/users", label: "Users", labelKey: "navUsers" },
     { href: "/cases", label: "Cases", labelKey: "navCases" },
     { href: "/legalReviews", label: "Legal Review", labelKey: "navLegalReview" },
-    { href: "/projects", label: "Projects", labelKey: "navProjects" },
-    { href: "/projectTasks/admin", label: "Project Tasks", labelKey: "navProjectTasks" },
-    { href: "/staffAvailability", label: "Staff Availability", labelKey: "navStaffAvailability" },
     { href: "/volunteer", label: "Volunteers", labelKey: "navVolunteers" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
-    { href: "/reportGenerator", label: "Report & Analysis", labelKey: "navReportAnalysis" },
   ],
 };
 
@@ -151,22 +144,12 @@ export const SIDEBAR_LINKS = {
   staff: [
     { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
     {
-      label: "Projects",
-      labelKey: "navProjects",
-      icon: "folder",
-      children: [
-        { href: "/projects", label: "All Projects", labelKey: "navAllProjects" },
-        { href: "/projectTasks", label: "Project Tasks", labelKey: "navProjectTasks" },
-      ],
-    },
-    {
       href: "/volunteer",
       label: "Volunteers",
       labelKey: "navVolunteers",
       icon: "volunteer",
       children: [
         { href: "/volunteer", label: "All Volunteers", labelKey: "navAllVolunteers" },
-        { href: "/volunteerRanking", label: "Applicant Ranking", labelKey: "navApplicantRanking" },
         { href: "/volunteerInterviews", label: "Interviews", labelKey: "navInterviews" },
         { href: "/volunteer/screening-questions", label: "Screening Questions", labelKey: "navScreeningQuestions" },
       ],
@@ -196,16 +179,6 @@ export const SIDEBAR_LINKS = {
   admin: [
     { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
     {
-      href: "/users",
-      label: "Users",
-      labelKey: "navUsers",
-      icon: "people",
-      children: [
-        { href: "/users", label: "All Users", labelKey: "navAllUsers" },
-        { href: "/staffAvailability", label: "Staff Availability", labelKey: "navStaffAvailability" },
-      ],
-    },
-    {
       label: "Cases",
       labelKey: "navCases",
       icon: "folder",
@@ -226,24 +199,12 @@ export const SIDEBAR_LINKS = {
       icon: "volunteer",
       children: [
         { href: "/volunteer", label: "All Volunteers", labelKey: "navAllVolunteers" },
-        { href: "/volunteerRanking", label: "Applicant Ranking", labelKey: "navApplicantRanking" },
         { href: "/volunteerInterviews", label: "Interviews", labelKey: "navInterviews" },
         { href: "/volunteer/screening-questions", label: "Screening Questions", labelKey: "navScreeningQuestions" },
-        { href: "/volunteer/chapters", label: "Chapters", labelKey: "navChapters" },
-      ],
-    },
-    {
-      label: "Projects",
-      labelKey: "navProjects",
-      icon: "folder",
-      children: [
-        { href: "/projects", label: "All Projects", labelKey: "navAllProjects" },
-        { href: "/projectTasks/admin", label: "Project Tasks", labelKey: "navProjectTasks" },
       ],
     },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
     { href: "/support-messages", label: "Support Messages", labelKey: "navSupportMessages", icon: "contact" },
-    { href: "/reportGenerator", label: "Reports & Analysis", labelKey: "navReportsAnalysis", icon: "assessment" },
     {
       label: "Settings",
       labelKey: "navSettings",

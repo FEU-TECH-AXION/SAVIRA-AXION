@@ -12,6 +12,13 @@ export const ROUTE_PERMISSIONS = {
   "/cases": ["case_officer", "admin"],
   "/legal": ["legal", "admin"],
   "/staff": ["staff", "admin"],
+  "/users": ["admin"],
+  "/projects": ["staff", "admin"],
+  "/projectTasks": ["staff", "admin"],
+  "/staffAvailability": ["admin"],
+  "/volunteerRanking": ["staff", "admin"],
+  "/volunteer": ["staff", "admin"],
+  "/reportGenerator": ["admin"],
 };
 
 export function normalizeRole(role) {

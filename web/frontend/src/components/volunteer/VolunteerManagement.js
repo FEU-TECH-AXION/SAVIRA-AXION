@@ -997,14 +997,6 @@ export default function VolunteerManagement() {
               />
             </div> */}
             <div className="col-12 col-sm-6">
-              <ActionCard
-                icon={<img src="VolunteerIconAll.png" alt="" className={styles.actionIconImg} />}
-                title="Applicant Rankings"
-                description="Compare screening, hybrid essay, and interview results across all applicants."
-                onView={() => router.push("/volunteerRanking")}
-              />
-            </div>
-            <div className="col-12 col-sm-6">
                 <Link href="/volunteerInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard
                     icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
@@ -1020,14 +1012,6 @@ export default function VolunteerManagement() {
                 title="Edit Screening Questions"
                 description="Manage the screening questions shown to applicants on the volunteer application form."
                 onView={() => router.push("/volunteer/screening-questions")}
-              />
-            </div>
-            <div className="col-12 col-sm-6">
-              <ActionCard
-                icon={<img src="chapter.png" alt="" className={styles.actionIconImg} />}
-                title="Chapter Formation"
-                description="Manage volunteer chapter formation."
-                onView={() => router.push("/volunteer/chapters")}
               />
             </div>
           </div>

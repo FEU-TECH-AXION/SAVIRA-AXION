@@ -13,9 +13,15 @@ export default function AdminPage() {
       </header>
       <nav className="nav" aria-label="Internal sections">
         <Link href="/admin">Admin</Link>
+        <Link href="/users">Users</Link>
         <Link href="/cases">Cases</Link>
         <Link href="/legal">Legal</Link>
         <Link href="/staff">Staff</Link>
+        <Link href="/projects">Projects</Link>
+        <Link href="/volunteer/chapters">Chapters</Link>
+        <Link href="/volunteerRanking">Volunteer Rankings</Link>
+        <Link href="/reportGenerator">Reports</Link>
+        <Link href="/staffAvailability">Availability</Link>
       </nav>
       <section className="grid" aria-label="Admin overview">
         <article className="panel">
