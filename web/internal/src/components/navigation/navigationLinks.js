@@ -1,55 +1,151 @@
 export const ROLE_LABELS = {
-  admin: "Admin",
-  staff: "Staff",
-  case_officer: "Case Officer",
-  "case officer": "Case Officer",
-  legal: "Legal Personnel",
-  legal_personnel: "Legal Personnel",
-  "legal personnel": "Legal Personnel",
+  admin: "navAdmin",
+  staff: "navStaff",
+  case_officer: "navCaseOfficer",
+  "case officer": "navCaseOfficer",
+  legal_personnel: "navLegalPersonnel",
+  "legal personnel": "navLegalPersonnel",
 };
 
-export const INTERNAL_LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  {
-    label: "Cases",
-    icon: "folder",
-    children: [
-      { href: "/cases", label: "Case Management" },
-      { href: "/caseInterviews", label: "Case Interviews" },
-    ],
-  },
-  {
-    label: "Legal Reviews",
-    icon: "gavel",
-    children: [
-      { href: "/legalReviews", label: "Review Management" },
-      { href: "/legalReviews/calendar", label: "Legal Calendar" },
-    ],
-  },
-  { href: "/users", label: "Users", icon: "people" },
-  {
-    label: "Projects",
-    icon: "folder",
-    children: [
-      { href: "/projects", label: "Projects" },
-      { href: "/projectTasks", label: "Project Tasks" },
-      { href: "/projectTasks/admin", label: "Task Admin" },
-    ],
-  },
-  { href: "/staffAvailability", label: "Staff Availability", icon: "calendar" },
-  { href: "/volunteerRanking", label: "Volunteer Ranking", icon: "volunteer" },
-  { href: "/volunteer/chapters", label: "Volunteer Chapters", icon: "handsHelping" },
-  { href: "/reportGenerator", label: "Report Generator", icon: "assessment" },
+export const SUPPORT_RESOURCE_LINKS = [
+  { href: "/hospital", label: "Nearby Hospitals", labelKey: "navNearbyHospitals" },
+  { href: "/police-station", label: "Nearby Police Stations", labelKey: "navNearbyPoliceStations" },
+  { href: "/helplines", label: "Helplines", labelKey: "navHelplines" },
 ];
 
-export const FOOTER_QUICK_LINKS = INTERNAL_LINKS.flatMap((item) => (
-  item.children ? item.children : [item]
-));
+export const SETTINGS_LINKS = [
+  { href: "/settings?tab=lock", label: "Account & Privacy", labelKey: "settingsAccountPrivacy" },
+  { href: "/settings?tab=help", label: "Help Center", labelKey: "settingsHelpCenter" },
+  { href: "/settings?tab=display", label: "Display & Accessibility", labelKey: "settingsDisplayAccessibility" },
+  { href: "/settings?tab=report", label: "Report a Problem", labelKey: "settingsReportProblem" },
+];
 
-export function getSidebarLinks() {
-  return INTERNAL_LINKS;
+export const FOOTER_QUICK_LINKS = {
+  case_officer: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
+  ],
+  staff: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome" },
+    { href: "/volunteer", label: "Volunteers", labelKey: "navVolunteers" },
+    { href: "/events", label: "Events", labelKey: "navEvents" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
+  ],
+  legal_personnel: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
+  ],
+  admin: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome" },
+    { href: "/volunteer", label: "Volunteers", labelKey: "navVolunteers" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
+  ],
+};
+
+export const SIDEBAR_LINKS = {
+  // CASE OFFICER
+  case_officer: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
+    {
+      label: "Settings",
+      labelKey: "navSettings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
+  ],
+  // STAFF
+  staff: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
+    {
+      href: "/volunteer",
+      label: "Volunteers",
+      labelKey: "navVolunteers",
+      icon: "volunteer",
+      children: [
+        { href: "/volunteer", label: "All Volunteers", labelKey: "navAllVolunteers" },
+        { href: "/volunteerInterviews", label: "Interviews", labelKey: "navInterviews" },
+        { href: "/volunteer/screening-questions", label: "Screening Questions", labelKey: "navScreeningQuestions" },
+      ],
+    },
+    { href: "/events", label: "Events", labelKey: "navEvents", icon: "event" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
+    {
+      label: "Settings",
+      labelKey: "navSettings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
+  ],
+  // LEGAL PERSONNEL
+  legal_personnel: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
+    {
+      label: "Settings",
+      labelKey: "navSettings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
+  ],
+  // ADMIN
+  admin: [
+    { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
+    {
+      label: "Volunteers",
+      labelKey: "navVolunteers",
+      icon: "volunteer",
+      children: [
+        { href: "/volunteer", label: "All Volunteers", labelKey: "navAllVolunteers" },
+        { href: "/volunteerInterviews", label: "Interviews", labelKey: "navInterviews" },
+        { href: "/volunteer/screening-questions", label: "Screening Questions", labelKey: "navScreeningQuestions" },
+      ],
+    },
+    { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
+    { href: "/support-messages", label: "Support Messages", labelKey: "navSupportMessages", icon: "contact" },
+    {
+      label: "Settings",
+      labelKey: "navSettings",
+      icon: "settings",
+      children: SETTINGS_LINKS,
+    },
+  ],
+};
+
+// ── Committee access control ──────────────────────────────────────────────────
+const MEMBERSHIP_COMMITTEE_ID = 2;
+
+export function normalizeRole(roleName) {
+  const role = roleName?.toLowerCase();
+  if (role === "case officer") return "case_officer";
+  if (role === "legal personnel") return "legal_personnel";
+  if (role === "user") return "complainant";
+  return role || "public";
 }
 
-export function getFooterQuickLinks() {
-  return FOOTER_QUICK_LINKS;
+export function getSidebarLinks(user) {
+  const role = normalizeRole(user?.role_name);
+
+  if (role === "staff") {
+    const isMembershipCommittee = user?.committee_id === MEMBERSHIP_COMMITTEE_ID;
+    if (!isMembershipCommittee) {
+      return SIDEBAR_LINKS.staff.filter((link) => link.label !== "Volunteers");
+    }
+    return SIDEBAR_LINKS.staff;
+  }
+
+  return SIDEBAR_LINKS[role] || [];
+}
+
+export function getFooterQuickLinks(user) {
+  const role = normalizeRole(user?.role_name);
+
+  if (role === "staff") {
+    const isMembershipCommittee = user?.committee_id === MEMBERSHIP_COMMITTEE_ID;
+    if (!isMembershipCommittee) {
+      return FOOTER_QUICK_LINKS.staff.filter((link) => link.href !== "/volunteer");
+    }
+  }
+
+  return FOOTER_QUICK_LINKS[role] || FOOTER_QUICK_LINKS.public;
 }
