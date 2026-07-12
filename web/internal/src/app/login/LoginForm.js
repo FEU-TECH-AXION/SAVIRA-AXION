@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import styles from "./login.module.css";
 
 export default function LoginForm() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -40,17 +42,52 @@ export default function LoginForm() {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <label>
-        Email
-        <input name="email" type="email" autoComplete="email" required />
-      </label>
-      <label>
-        Password
-        <input name="password" type="password" autoComplete="current-password" required />
-      </label>
       {error ? <p className={styles.error}>{error}</p> : null}
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Signing in..." : "Sign in"}
+
+      <div className={styles.fieldGroup}>
+        <label className={styles.label} htmlFor="internal-email">Email</label>
+        <input
+          id="internal-email"
+          className={styles.input}
+          name="email"
+          type="email"
+          placeholder="Email"
+          autoComplete="email"
+          required
+        />
+      </div>
+
+      <div className={styles.fieldGroupLg}>
+        <label className={styles.label} htmlFor="internal-password">Password</label>
+        <div className={styles.passwordWrap}>
+          <input
+            id="internal-password"
+            className={styles.input}
+            name="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            autoComplete="current-password"
+            required
+          />
+          <button
+            type="button"
+            className={styles.eyeBtn}
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label="Toggle password visibility"
+          >
+            {showPassword ? <FiEye /> : <FiEyeOff />}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.auxiliaryGroup}>
+        <span className={styles.accessNote}>
+          Authorized staff, case officers, legal personnel, and admins only.
+        </span>
+      </div>
+
+      <button className={styles.btn} type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Signing in..." : "Log In"}
       </button>
     </form>
   );

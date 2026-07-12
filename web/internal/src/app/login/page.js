@@ -4,19 +4,21 @@ import styles from "./login.module.css";
 
 export default function LoginPage() {
   return (
-    <main className={styles.page}>
-      <section className={styles.panel}>
-        <div>
-          <p className={styles.kicker}>SAVIRA Internal</p>
-          <h1>Sign in to operations</h1>
-          <p className={styles.copy}>
-            Access is limited to admins, case officers, legal personnel, and staff.
-          </p>
+    <main className={styles.wrapper}>
+      <div className={styles.left}>
+        <img src="/sasha-bg-1.png" alt="SASHA community" />
+        <div className={styles.leftOverlay} />
+      </div>
+
+      <div className={styles.right}>
+        <div className={styles.formBox}>
+          <h1 className={styles.title}>Welcome Back</h1>
+          <p className={styles.loginLink}>Sign in to SAVIRA Internal operations.</p>
+          <Suspense fallback={null}>
+            <LoginForm />
+          </Suspense>
         </div>
-        <Suspense fallback={null}>
-          <LoginForm />
-        </Suspense>
-      </section>
+      </div>
     </main>
   );
 }
