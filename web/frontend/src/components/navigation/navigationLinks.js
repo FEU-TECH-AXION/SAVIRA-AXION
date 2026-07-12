@@ -144,8 +144,6 @@ export const SIDEBAR_LINKS = {
       icon: "volunteer",
       children: [
         { href: "/volunteer", label: "All Volunteers", labelKey: "navAllVolunteers" },
-        { href: "/volunteerInterviews", label: "Interviews", labelKey: "navInterviews" },
-        { href: "/volunteer/screening-questions", label: "Screening Questions", labelKey: "navScreeningQuestions" },
       ],
     },
     { href: "/events", label: "Events", labelKey: "navEvents", icon: "event" },
@@ -177,8 +175,6 @@ export const SIDEBAR_LINKS = {
       icon: "volunteer",
       children: [
         { href: "/volunteer", label: "All Volunteers", labelKey: "navAllVolunteers" },
-        { href: "/volunteerInterviews", label: "Interviews", labelKey: "navInterviews" },
-        { href: "/volunteer/screening-questions", label: "Screening Questions", labelKey: "navScreeningQuestions" },
       ],
     },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },

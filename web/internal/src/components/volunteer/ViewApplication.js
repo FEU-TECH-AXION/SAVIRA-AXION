@@ -6,7 +6,6 @@ import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock } from 
 import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { ConfirmDialog } from "@/components/ui/Dialog";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
 import { useAuth } from "@/lib/AuthContext";
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
@@ -1362,8 +1361,6 @@ export default function ViewApplication() {
   const [toast,       setToast]       = useState(null);
   const [modal,       setModal]       = useState(null);
   const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
-  const [withdrawing, setWithdrawing] = useState(false);
-  const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
 
   const user = {
     id: authUser?.user_id || authUser?.id || null,
