@@ -13,7 +13,7 @@ export default function LoginPage() {
       <div className={styles.right}>
         <div className={styles.formBox}>
           <h1 className={styles.title}>Welcome Back</h1>
-          <p className={styles.loginLink}>Sign in to SAVIRA Internal operations.</p>
+          <p className={styles.loginLink}>Log in authorized staff, case officers, legal personnel, and admins only.</p>
           <Suspense fallback={null}>
             <LoginForm />
           </Suspense>

@@ -83,9 +83,6 @@ export default function LoginForm() {
       </div>
 
       <div className={styles.auxiliaryGroup}>
-        <span className={styles.accessNote}>
-          Authorized staff, case officers, legal personnel, and admins only.
-        </span>
         <a href={`${FRONTEND_URL}/forgotPassword`} className={styles.forgotPassword}>
           Forgot Password?
         </a>
