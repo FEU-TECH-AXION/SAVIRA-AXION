@@ -4,8 +4,6 @@ import { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import styles from "./login.module.css";
 
-const FRONTEND_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
-
 export default function LoginForm() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,7 +81,7 @@ export default function LoginForm() {
       </div>
 
       <div className={styles.auxiliaryGroup}>
-        <a href={`${FRONTEND_URL}/forgotPassword`} className={styles.forgotPassword}>
+        <a href="/forgotPassword" className={styles.forgotPassword}>
           Forgot Password?
         </a>
       </div>

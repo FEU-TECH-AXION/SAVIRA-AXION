@@ -85,6 +85,34 @@ const getFrontendResetBaseUrl = () => {
   return configured || 'https://www.saviraphilippines.org'
 }
 
+const getAllowedResetBaseUrls = () => {
+  const configured = [
+    process.env.FRONTEND_URL,
+    process.env.INTERNAL_FRONTEND_URL,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(','))
+    .map((url) => url.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+
+  return new Set(configured)
+}
+
+const getPasswordResetBaseUrl = (requestedBaseUrl) => {
+  const requested = String(requestedBaseUrl || '').trim().replace(/\/$/, '')
+  if (!requested) return getFrontendResetBaseUrl()
+
+  const allowed = getAllowedResetBaseUrls()
+  if (allowed.has(requested)) return requested
+
+  try {
+    const url = new URL(requested)
+    if (['localhost', '127.0.0.1'].includes(url.hostname)) return requested
+  } catch (_) {}
+
+  return getFrontendResetBaseUrl()
+}
+
 const ensureCanSendPasswordReset = async (email) => {
   const { count, error } = await supabase
     .from('email_verification_codes')
@@ -118,7 +146,7 @@ const recordPasswordResetEmail = async (email, userId) => {
 }
 
 router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body || {}
+  const { email, resetBaseUrl, reset_base_url } = req.body || {}
   let resetEmailSent = false
 
   if (!email || typeof email !== 'string') {
@@ -141,7 +169,7 @@ router.post('/forgot-password', async (req, res) => {
       { expiresIn: `${PASSWORD_RESET_EXPIRY_MINUTES}m` }
     )
 
-    const resetLink = `${getFrontendResetBaseUrl()}/resetPassword?token=${resetToken}`
+    const resetLink = `${getPasswordResetBaseUrl(resetBaseUrl || reset_base_url)}/resetPassword?token=${resetToken}`
     await sendResetPasswordEmail(user.email, resetLink)
     resetEmailSent = true
 

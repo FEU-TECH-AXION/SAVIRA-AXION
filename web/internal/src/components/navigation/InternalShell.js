@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Navbar from "@/components/navbar/navbar";
 import Footer from "@/components/footer/footer";
 
-const SHELLLESS_ROUTES = ["/login", "/not-authorized"];
+const SHELLLESS_ROUTES = ["/login", "/forgotPassword", "/resetPassword", "/not-authorized"];
 
 export default function InternalShell({ children }) {
   const pathname = usePathname();
