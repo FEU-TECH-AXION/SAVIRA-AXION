@@ -160,7 +160,6 @@ export default function DashboardEventsCard() {
               </div>
               {displayedEvents.length === 0 ? (
                 <div className={styles.emptyState}>
-                  <span>{selectedDate ? "🗓️" : "📭"}</span>
                   <p>
                     {selectedDate
                       ? "No event scheduled for this date."

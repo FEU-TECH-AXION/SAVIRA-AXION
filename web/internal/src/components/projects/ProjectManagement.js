@@ -457,21 +457,6 @@ export default function ProjectManagement() {
       )}
 
       <main className={`shell ${styles.pageWrapper}`}>
-        <header className="topbar">
-          <div className="brand">
-            <h1>Project Management</h1>
-            <p>Internal project planning and task coordination</p>
-          </div>
-          <LogoutButton />
-        </header>
-        <nav className="nav" aria-label="Internal sections">
-          <Link href="/users">Users</Link>
-          <Link href="/projects">Projects</Link>
-          <Link href="/volunteer/chapters">Chapters</Link>
-          <Link href="/volunteerRanking">Volunteer Rankings</Link>
-          <Link href="/reportGenerator">Reports</Link>
-          <Link href="/staffAvailability">Availability</Link>
-        </nav>
         {/* ── Hero Banner ── */}
         <section className={styles.heroBanner}>
           <div className={styles.inner}>
