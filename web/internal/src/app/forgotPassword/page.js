@@ -84,6 +84,9 @@ export default function ForgotPassword() {
       </div>
       <div className={styles.right}>
         <div className={styles.formBox}>
+          <a href="/login" className={styles.backtoLogin}>
+            <IoIosArrowBack /> Back to Login
+          </a>
           <h1 className={styles.title}>Forgot Password?</h1>
           <p className={styles.pgdescription}>
             Enter the email used for your account and we'll send you a <br />
@@ -129,11 +132,6 @@ export default function ForgotPassword() {
               </div>
             )}
 
-            <div className={styles.auxiliaryGroup}>
-              <a href="/login" className={styles.backtoLogin}>
-                <IoIosArrowBack /> Back to Login
-              </a>
-            </div>
           </form>
         </div>
       </div>

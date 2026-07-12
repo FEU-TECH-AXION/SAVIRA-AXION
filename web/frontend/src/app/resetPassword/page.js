@@ -123,6 +123,9 @@ function ResetPasswordContent() {
 
       <div className={styles.right}>
         <div className={styles.formBox}>
+          <a href="/login" className={styles.backtoLogin}>
+            <IoIosArrowBack /> Back to Login
+          </a>
           <h1 className={styles.title}>Reset Password</h1>
           <p className={styles.pgdescription}>
             Please kindly set your new password below
@@ -248,11 +251,6 @@ function ResetPasswordContent() {
               </p>
             )}
 
-            <div className={styles.auxiliaryGroup}>
-              <a href="/login" className={styles.backtoLogin}>
-                <IoIosArrowBack /> Back to Login
-              </a>
-            </div>
           </form>
         </div>
       </div>
