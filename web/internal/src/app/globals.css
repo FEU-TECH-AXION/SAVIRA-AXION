@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
 :root {
   color-scheme: light;
   --background: #f8fafc;
@@ -8,10 +10,72 @@
   --accent: #0f766e;
   --accent-strong: #115e59;
   --danger: #b42318;
+  --sasha-teal: #037F81;
+  --sasha-teal-text: #037F81;
+  --sasha-teal-heading: #037F81;
+  --sasha-teal-dark: #025f61;
+  --sasha-orange: #E06030;
+  --sasha-light-orange: #ff8a65;
+  --sasha-orange-dark: #c94e1f;
+  --sasha-white: #ffffff;
+  --sasha-offwhite: #f7f7f7;
+  --sasha-text: #222222;
+  --sasha-muted: #555555;
+  --sasha-surface: #ffffff;
+  --sasha-surface-soft: #f5f7f8;
+  --sasha-surface-inset: #fafafa;
+  --sasha-border: #e5e7eb;
+  --sasha-teal-light: #e1f5f5;
+  --sasha-card-radius: 14px;
+  --navbar-height: 64px;
+  --app-safe-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
+  --app-font-scale: 1;
+
+  --settings-page-bg: #f4f6f8;
+  --settings-card-bg: #ffffff;
+  --settings-card-bg-soft: #fafbfc;
+  --settings-control-bg: #fafafa;
+  --settings-control-bg-focus: #ffffff;
+  --settings-border: #dde3ea;
+  --settings-border-soft: #edf2f7;
+  --settings-row-border: #f0f0f0;
+  --settings-text: #222222;
+  --settings-text-primary: #222222;
+  --settings-text-secondary: #444444;
+  --settings-muted: #666666;
+  --settings-muted-light: #888888;
+  --settings-input-text: #222222;
+  --settings-accent: #037F81;
+  --settings-accent-solid: #037F81;
+  --settings-accent-strong: #025f61;
+  --settings-accent-soft: #e6f9f5;
+  --settings-accent-on-soft: #037F81;
+  --settings-hover-bg: #f0fafa;
+  --settings-hover-bg-strong: #eef6f6;
+  --settings-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  --settings-badge-bg: #f0f0f0;
+  --settings-toggle-bg: #d4d8dd;
+  --settings-toggle-knob: #ffffff;
+  --settings-danger-bg: #fff8f7;
+  --settings-danger-border: #f5c6c2;
+  --settings-danger-text: #b83a2f;
+  --settings-warn-bg: #fff8e8;
+  --settings-warn-border: #f3deac;
+  --settings-warn-text: #8a6d1f;
+  --settings-success-bg: #e6f9f5;
+  --settings-success-border: #a7e9d8;
+  --settings-error-bg: #fff0ef;
+  --settings-error-border: #f5c6c2;
+  --settings-btn-secondary-bg: transparent;
+  --settings-chip-bg: #fafafa;
+  --settings-panel-bg: #fafcfc;
+  --settings-panel-border: #e0e8e7;
 }
 
 * {
   box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
 html,
@@ -20,10 +84,51 @@ body {
   min-height: 100%;
 }
 
+html {
+  font-size: calc(16px * var(--app-font-scale));
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Poppins, Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-font-size="sm"] { --app-font-scale: 0.95; }
+html[data-font-size="lg"] { --app-font-scale: 1.08; }
+html[data-font-size="xl"] { --app-font-scale: 1.16; }
+
+html[data-high-contrast="true"] {
+  --settings-page-bg: #ffffff;
+  --settings-card-bg: #ffffff;
+  --settings-border: #111827;
+  --settings-text: #000000;
+  --settings-text-primary: #000000;
+  --settings-text-secondary: #111827;
+  --settings-muted: #1f2937;
+  --settings-accent: #005f61;
+  --settings-accent-solid: #005f61;
+  --settings-accent-strong: #003f40;
+  --settings-accent-soft: #e6fffb;
+  --settings-accent-on-soft: #005f61;
+  --settings-hover-bg: #e6fffb;
+  --settings-hover-bg-strong: #e6fffb;
+  --settings-shadow: 0 0 0 1px #111827;
+  --settings-panel-bg: #ffffff;
+  --settings-panel-border: #111827;
+  --settings-chip-bg: #ffffff;
+}
+
+html[data-reduced-motion="true"],
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
 }
 
 .internal-shell-content {
@@ -33,6 +138,7 @@ body {
 
 a {
   color: inherit;
+  text-decoration: none;
 }
 
 button,
