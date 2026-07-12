@@ -15,10 +15,10 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog, TextInputDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
-import { authFetch } from "@/lib/AuthContext";
+import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 import styles from "./VersionHistory.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "";
+const API = API_URL;
 
 function headers(extra = {}) {
   return { ...extra };
@@ -142,7 +142,7 @@ export default function ScreeningQuestionHistoryPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await authFetch(`${API}/api/screening_question_set`, {
+      const response = await internalApiFetch(`${API}/api/screening_question_set`, {
         headers: headers(),
       });
       const versions = await readResponse(
@@ -215,7 +215,7 @@ export default function ScreeningQuestionHistoryPage() {
   async function restoreOrCopy(version, endpoint, successMessage) {
     setBusy(true);
     try {
-      const response = await authFetch(
+      const response = await internalApiFetch(
         `${API}/api/screening_question_set/${version.screening_question_set_id}/${endpoint}`,
         {
           method: "POST",
@@ -236,7 +236,7 @@ export default function ScreeningQuestionHistoryPage() {
   async function renameVersion(name) {
     setBusy(true);
     try {
-      const response = await authFetch(
+      const response = await internalApiFetch(
         `${API}/api/screening_question_set/${nameDialog.screening_question_set_id}/name`,
         {
           method: "PUT",

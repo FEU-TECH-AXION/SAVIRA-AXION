@@ -23,10 +23,10 @@ import {
 } from "react-icons/fi";
 import { ConfirmDialog, TextInputDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
-import { authFetch } from "@/lib/AuthContext";
+import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 import styles from "./ScreeningQuestions.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "";
+const API = API_URL;
 const ANSWER_PRESETS = {
   yes_no: ["Yes", "No"],
   in_favor: ["In Favor", "Not in Favor"],
@@ -585,7 +585,7 @@ export default function ScreeningQuestionsPage() {
     setLoading(true);
     setError("");
     try {
-      const questionsResponse = await authFetch(`${API}/api/screening_questions`, {
+      const questionsResponse = await internalApiFetch(`${API}/api/screening_questions`, {
         headers: headers(),
       });
       const current = await readResponse(
@@ -794,7 +794,7 @@ export default function ScreeningQuestionsPage() {
 
     setPublishing(true);
     try {
-      const response = await authFetch(`${API}/api/screening_question_set`, {
+      const response = await internalApiFetch(`${API}/api/screening_question_set`, {
         method: "POST",
         headers: headers({ "Content-Type": "application/json" }),
         body: JSON.stringify({ questions: cleaned }),
@@ -830,7 +830,7 @@ export default function ScreeningQuestionsPage() {
     setConfirmDialog(null);
     setRestoringId(version.screening_question_set_id);
     try {
-      const response = await authFetch(
+      const response = await internalApiFetch(
         `${API}/api/screening_question_set/${version.screening_question_set_id}/restore`,
         {
           method: "POST",

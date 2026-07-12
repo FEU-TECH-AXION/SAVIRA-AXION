@@ -1,7 +1,5 @@
-"use client";
-
 import VolunteerInterviewManagement from "@/components/volunteerInterviews/VolunteerInterviewManagement";
 
-export default function InterviewsPage() {
+export default function VolunteerInterviewsPage() {
   return <VolunteerInterviewManagement />;
 }

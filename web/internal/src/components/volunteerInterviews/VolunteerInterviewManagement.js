@@ -10,6 +10,7 @@ import AddMeetingLinkModal from "./AddMeetingLinkModal";
 import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
 import { MdEdit, MdCancel } from "react-icons/md";
 import { useAuth } from "@/lib/AuthContext";
+import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 
 const PAGE_SIZE = 10;
 
@@ -393,16 +394,15 @@ export default function VolunteerApplicationInterviewManagement() {
     const fetchAll = async () => {
       setLoadingData(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
         const isAdmin = String(user.role_name || user.role || "").toLowerCase() === "admin";
         const userId = user.user_id || user.id;
 
         const [slotsRes, interviewsRes] = await Promise.all([
-          fetch(
+          internalApiFetch(
             `${API_URL}/api/interview_slots?slot_type=volunteer${isAdmin ? "" : `&created_by=${userId}`}`,
             { credentials: "include" }
           ),
-          fetch(
+          internalApiFetch(
             `${API_URL}/api/interviews?type=volunteer${isAdmin ? "" : `&interviewer_user_id=${userId}`}`,
             { credentials: "include" }
           ),
@@ -489,8 +489,7 @@ export default function VolunteerApplicationInterviewManagement() {
 
   const handleCreateSlot = async (formData) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/interview_slots`, {
+      const res = await internalApiFetch(`${API_URL}/api/interview_slots`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -526,8 +525,7 @@ export default function VolunteerApplicationInterviewManagement() {
 
   const handleSaveEditedSlot = async (updatedSlot) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/interview_slots/${updatedSlot.id}`, {
+      const res = await internalApiFetch(`${API_URL}/api/interview_slots/${updatedSlot.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -558,8 +556,7 @@ export default function VolunteerApplicationInterviewManagement() {
 
   const handleConfirmDisableSlot = async (slot) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/interview_slots/${slot.id}`, {
+      const res = await internalApiFetch(`${API_URL}/api/interview_slots/${slot.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -585,10 +582,9 @@ export default function VolunteerApplicationInterviewManagement() {
   const handleSaveMeetingLink = async (interviewIds, meetingLink) => {
     setLoading(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(
         interviewIds.map((id) =>
-          fetch(`${API_URL}/api/interviews/${id}/confirm`, {
+          internalApiFetch(`${API_URL}/api/interviews/${id}/confirm`, {
             method: "PATCH",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -616,10 +612,9 @@ export default function VolunteerApplicationInterviewManagement() {
 
   const handleMarkComplete = async (selectedIds) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(
         selectedIds.map((id) =>
-          fetch(`${API_URL}/api/interviews/${id}/complete`, {
+          internalApiFetch(`${API_URL}/api/interviews/${id}/complete`, {
             method: "PATCH",
             credentials: "include",
           })
@@ -667,9 +662,8 @@ export default function VolunteerApplicationInterviewManagement() {
 
     setRemovingAssigned(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       await Promise.all(ids.map(async (id) => {
-        const res = await fetch(`${API_URL}/api/interviews/${id}/unassign-staff`, {
+        const res = await internalApiFetch(`${API_URL}/api/interviews/${id}/unassign-staff`, {
           method: "PATCH",
           credentials: "include",
         });
