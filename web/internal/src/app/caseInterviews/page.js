@@ -1,7 +1,5 @@
-"use client";
-
 import CaseInterviewManagement from "@/components/cases/interview/CaseInterviewManagement";
 
-export default function InterviewsPage() {
+export default function CaseInterviewsPage() {
   return <CaseInterviewManagement />;
 }

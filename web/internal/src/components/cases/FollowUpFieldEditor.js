@@ -12,7 +12,7 @@ import {
   splitIncidentDate,
   validateStep0,
   validateStep1,
-} from "@/lib/reportFormFields";
+} from "./reportFormFields";
 import styles from "./FollowUpFieldEditor.module.css";
 
 const {

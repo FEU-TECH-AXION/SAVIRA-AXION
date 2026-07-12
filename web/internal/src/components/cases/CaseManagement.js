@@ -1,0 +1,1610 @@
+﻿"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import styles from "./CaseManagement.module.css";
+import { FiSearch, FiX, FiCheck, FiClock, FiHelpCircle } from "react-icons/fi";
+import { IoMdClose } from "react-icons/io";
+import { GoDotFill } from "react-icons/go";
+import CasesTable from "./CasesTable";
+import FilterMenu from "./FilterMenu";
+import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "./UpdateStatusModals";
+import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog";
+import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
+import { useAuth } from "@/lib/AuthContext";
+import StatusGuide from "./StatusGuide";
+import { STATUS_COLORS } from "./caseStatusConstants";
+import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
+
+// -----------------------------------------------------------------------------
+// UTILITY FUNCTIONS
+// -----------------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------------
+// CONSTANTS
+// -----------------------------------------------------------------------------
+
+const ALL_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Verified - False",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
+  "Perpetrator Convicted",
+  "Resolved",
+  "Withdrawn"
+];
+
+const STATUS_STEP = {
+  1:  "Submitted",
+  2:  "For Verification",
+  3:  "Undergoing Review",
+  4:  "Verified - True",
+  5:  "Verified - False",
+  6:  "Under Case Evaluation",
+  7:  "Case Filed",
+  8:  "Investigation Ongoing",
+  9:  "Hearing Ongoing",
+  10: "Dismissed",
+  11: "Perpetrator Convicted",
+  12: "Resolved",
+  13: "Withdrawn"
+};
+
+// Which statuses a Case Officer is responsible for initiating
+const CASE_OFFICER_STATUSES = [
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Verified - False",
+  "Under Case Evaluation",
+];
+
+// Which statuses Legal Personnel is responsible for
+const LEGAL_STATUSES_OWN = [
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+  "Dismissed",
+  "Perpetrator Convicted",
+];
+
+const STATUS_FILTERS = ["All", ...ALL_STATUSES];
+
+const ACTIVE_STATUSES = [
+  "Submitted",
+  "For Verification",
+  "Undergoing Review",
+  "Verified - True",
+  "Under Case Evaluation",
+  "Case Filed",
+  "Investigation Ongoing",
+  "Hearing Ongoing",
+];
+
+const ENDORSEMENT_BODIES = [
+  "DSWD",
+  "PNP Women and Children Protection Desk",
+  "BSP/GSP Mechanism",
+  "School/Workplace CODI",
+  "Court (with lawyer)",
+];
+
+const VIOLENCE_TYPES = [
+  "Child sexual abuse",
+  "Gender-based sexual harassment in institutions",
+  "Non-consensual sharing of intimate images/videos",
+  "Online sexual harassment",
+  "Rape / attempted rape",
+  "Sexual assault / unwanted sexual touching",
+  "Sexual exploitation / trafficking-related sexual abuse",
+  "Stalking with sexual nature or intent",
+  "Sexual harassment",
+];
+
+// Officers are fetched dynamically from the backend — see `officers` state in CaseManagement()
+const PAGE_SIZE = 10;
+
+// -----------------------------------------------------------------------------
+// PLACEHOLDER DATA
+// -----------------------------------------------------------------------------
+
+function makeCase(id) {
+  const statuses = ALL_STATUSES;
+  const month = String((id % 9) + 1).padStart(2, "0");
+  const day   = String((id % 7) + 1).padStart(2, "0");
+  const year  = 2026;
+  const dateISO = `${year}-${month}-${day}T${String(8 + (id % 3)).padStart(2, "0")}:${String((id * 7) % 60).padStart(2, "0")}:00`;
+ 
+  return {
+    id,
+    // Year-based case ID: "2026-011" (year of submission + zero-padded id)
+    caseId: `${year}-` + String(id).padStart(3, "0"),
+    reporterId: String(10000000 + id * 7).slice(0, 8),
+    region: ["NCR", "Region I", "Region III", "Region IV-A"][id % 4],
+    status: statuses[id % statuses.length],
+    assignedOfficer: null,
+    dateSubmitted: dateISO,  // ISO string so CasesTable can format it
+    caseType: [
+      "Child Sexual Abuse",
+      "Gender-Based Sexual Harassment in Institutions",
+      "Non-Consensual Sharing of Intimate Images/Videos",
+      "Online Sexual Harassment",
+      "Rape / Attempted Rape",
+      "Sexual Assault / Unwanted Sexual Touching",
+      "Sexual Exploitation / Trafficking-Related Sexual Abuse",
+      "Sexual Harassment",
+      "Stalking With Sexual Nature or Intent",
+    ][id % 9],
+    violenceType: VIOLENCE_TYPES[id % VIOLENCE_TYPES.length],
+    description: "Complainant reported an incident involving unwanted conduct.",
+    endorsedTo: null,
+    endorsementDetails: null,
+    pendingApproval: null,
+    statusHistory: [
+      { status: "For Verification", date: dateISO, by: "System", notes: "Report received and logged." }
+    ],
+  };
+}
+
+const PLACEHOLDER_CASES = Array.from({ length: 22 }, (_, i) => makeCase(i + 1));
+
+// -----------------------------------------------------------------------------
+// UTILITY COMPONENTS
+// -----------------------------------------------------------------------------
+
+function StatusBadge({ status }) {
+  const s = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.74rem", fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: s.bg, color: s.color, whiteSpace: "nowrap" }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
+      {status}
+    </span>
+  );
+}
+
+function PendingBadge() {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.72rem", fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: "#fef3c7", color: "#92400e", border: "1px dashed #f59e0b" }}>
+      <FiClock size={11} /> Pending Approval
+    </span>
+  );
+}
+
+function Pagination({ current, total, onChange }) {
+  return (
+    <div className={styles.pagination}>
+      <button className={styles.pageArrow} onClick={() => onChange(current - 1)} disabled={current === 1}>?</button>
+      {Array.from({ length: total }, (_, i) => i + 1).map((p) => (
+        <button key={p} className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`} onClick={() => onChange(p)}>{p}</button>
+      ))}
+      <button className={styles.pageArrow} onClick={() => onChange(current + 1)} disabled={current === total}>?</button>
+    </div>
+  );
+}
+
+function ActionCard({ icon, title, description, onView, badge }) {
+  return (
+    <div className={styles.actionCard}>
+      <div className={styles.actionIconWrap}>
+        <span className={styles.actionIcon}>{icon}</span>
+      </div>
+      <div className={styles.actionBody}>
+        <h3 className={styles.actionTitle}>{title}</h3>
+        {badge && <div style={{ marginBottom: "0.25rem" }}>{badge}</div>}
+        <p className={styles.actionDesc}>{description}</p>
+      </div>
+      <div className={styles.ViewRow}>
+        <button className={styles.viewBtn} onClick={onView}>Open ?</button>
+      </div>
+    </div>
+  );
+}
+
+function Modal({ open, onClose, title, children, wide }) {
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div
+        className={styles.modalBox}
+        style={wide ? { maxWidth: 700 } : {}}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>{title}</h2>
+          <button className={styles.modalClose} onClick={onClose}><FiX /></button>
+        </div>
+        <div className={styles.modalBody}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function FormGroup({ label, required, hint, error, children, className }) {
+  return (
+    <div className={styles.formGroup}>
+      <label className={`${styles.formLabel} ${className || ""}`}>
+        {label}{required && <span style={{ color: "#ef4444" }}> *</span>}
+      </label>
+      {children}
+      {hint && !error && <span className={styles.formHint}>{hint}</span>}
+      {error && <span className={styles.errorMsg}>{error}</span>}
+    </div>
+  );
+}
+
+function FInput({ error, ...props }) {
+  return <input className={`${styles.formInput} ${error ? styles.inputError : ""}`} {...props} />;
+}
+
+function FTextarea({ error, ...props }) {
+  return <textarea className={`${styles.formInput} ${error ? styles.inputError : ""}`} rows={3} style={{ resize: "vertical" }} {...props} />;
+}
+
+function FSelect({ error, children, ...props }) {
+  return (
+    <select className={`${styles.formInput} ${error ? styles.inputError : ""}`} {...props}>
+      {children}
+    </select>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// VIEW CASE MODAL — full detail + history
+// -----------------------------------------------------------------------------
+
+function AssignCaseModal({ open, onClose, casesData: casesDataProp, onSave, officers: officersProp = [], showToast }) {
+  const [search,   setSearch]   = useState("");
+  const [assigned, setAssigned] = useState([]); // [{ case_officer_id, first_name, last_name, name }]
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState("");
+  const [duplicateDialog, setDuplicateDialog] = useState(null);
+  const [removalTarget, setRemovalTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
+
+  // Support both single case and array of cases
+  const casesData = Array.isArray(casesDataProp) ? casesDataProp : (casesDataProp ? [casesDataProp] : []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const timer = window.setTimeout(() => {
+      setSearch("");
+      setAssigned([]);
+      setError("");
+      setSaving(false);
+      setDuplicateDialog(null);
+      setRemovalTarget(null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  if (casesData.length === 0) return null;
+
+  const isBulk = casesData.length > 1;
+  const assignedIds = assigned.map(o => String(o.case_officer_id));
+  const unavailableOfficerIds = new Set(
+    officersProp
+      .filter((officer) =>
+        casesData.every((caseData) =>
+          (caseData.assignedOfficerIds || []).map(String).includes(String(officer.case_officer_id))
+        )
+      )
+      .map((officer) => String(officer.case_officer_id))
+  );
+  const availableOfficers = officersProp.filter(
+    (officer) =>
+      !unavailableOfficerIds.has(String(officer.case_officer_id)) &&
+      !["On Leave", "Out of Office"].includes(officer.availability_status)
+  );
+  const noAvailableOfficers = availableOfficers.length === 0;
+
+  // Live-filter: if no query show all not yet added, else filter by name
+  const searchResults = availableOfficers.filter(o => {
+    const fullName = (o.name || `${o.first_name || ""} ${o.last_name || ""}`).toLowerCase();
+    const query    = search.toLowerCase();
+    const notAdded = !assignedIds.includes(String(o.case_officer_id));
+    if (!search.trim()) return notAdded;
+    return notAdded && fullName.includes(query);
+  });
+
+  function addOfficer(officer) {
+    setAssigned(prev => [...prev, officer]);
+    setSearch("");
+    setError("");
+  }
+
+  function removeOfficer(id) {
+    setAssigned(prev => prev.filter(o => String(o.case_officer_id) !== String(id)));
+  }
+
+  async function confirmRemoval() {
+    if (!removalTarget) return;
+    setRemoving(true);
+    setError("");
+    try {
+      const res = await internalApiFetch(
+        `${API_URL}/api/case_assignments/${removalTarget.caseId}/${removalTarget.personId}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to remove case officer.");
+
+      const caseData = casesData.find((item) => String(item.id) === String(removalTarget.caseId));
+      if (caseData) {
+        const names = String(caseData.assignedOfficer || "").split(",").map((name) => name.trim()).filter(Boolean);
+        const ids = (caseData.assignedOfficerIds || []).map(String);
+        onSave({
+          ...caseData,
+          assignedOfficer: names.filter((_, index) => ids[index] !== String(removalTarget.personId)).join(", ") || null,
+          assignedOfficerIds: ids.filter((id) => id !== String(removalTarget.personId)),
+        });
+      }
+      if (showToast) showToast(body.message || "Case officer removed.");
+      setRemovalTarget(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  async function handleAssign() {
+    if (assigned.length === 0) { setError("Please select at least one case officer."); return; }
+    setSaving(true);
+    setError("");
+
+    try {
+      const officerIds = assigned.map(o => o.case_officer_id);
+      const caseIds    = casesData.map(c => c.id);
+
+      const res = await internalApiFetch(`${API_URL}/api/case_assignments/bulk-assign`, {
+        method:      "POST",
+        headers:     { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          case_report_ids:  caseIds,
+          case_officer_ids: officerIds,
+        }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) throw new Error(body.error || "Failed to assign.");
+
+      // Partial failures
+      if (body.failed?.length > 0) {
+        const failMsgs = body.failed.map(f => `Officer #${f.case_officer_id}: ${f.reason}`).join(" · ");
+        setError(`Some assignments failed — ${failMsgs}`);
+        const duplicateFailures = body.failed.filter((failure) =>
+          String(failure.reason || "").toLowerCase().includes("already")
+        );
+        if (duplicateFailures.length > 0) {
+          setDuplicateDialog({
+            count: duplicateFailures.length,
+            detail: duplicateFailures
+              .map((failure) => `Case #${failure.case_report_id} · Officer #${failure.case_officer_id}`)
+              .join(", "),
+          });
+        }
+      }
+
+      // Update local state
+      if (body.data?.length > 0) {
+        casesData.forEach(caseData => {
+          const successfulAssignments = body.data.filter(
+            (assignment) => String(assignment.case_report_id) === String(caseData.id)
+          );
+          if (successfulAssignments.length === 0) return;
+          const existingNames = String(caseData.assignedOfficer || "")
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const successfulNames = successfulAssignments.map((assignment) => assignment.name).filter(Boolean);
+          const successfulIds = successfulAssignments.map((assignment) => assignment.case_officer_id);
+          onSave({
+            ...caseData,
+            assignedOfficer: [...new Set([...existingNames, ...successfulNames])].join(", "),
+            assignedOfficerIds: [...new Set([
+              ...(caseData.assignedOfficerIds || []).map(String),
+              ...successfulIds.map(String),
+            ])],
+          });
+        });
+        if (showToast) showToast(body.message || "Assigned successfully.");
+      }
+
+      if (!body.failed?.length) onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+    <Modal open={open} onClose={onClose} title={isBulk ? `Assign Case Officer — ${casesData.length} Cases` : "Assign Case Officer"} wide>
+      <div className={styles.formGrid}>
+
+        {/* Case ID or bulk list */}
+        {isBulk ? (
+          <FormGroup label="Cases">
+            <div style={{ background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb", padding: "0.5rem 0.75rem", maxHeight: 100, overflowY: "auto" }}>
+              {casesData.map((c, i) => (
+                <div key={i} style={{ fontSize: "0.82rem", padding: "2px 0", color: "#374151" }}>
+                  <strong>{c.caseId}</strong> — {c.status}
+                </div>
+              ))}
+            </div>
+          </FormGroup>
+        ) : (
+          <FormGroup label="Case ID"><FInput value={casesData[0].caseId} disabled /></FormGroup>
+        )}
+
+        {/* Chip display — who will be assigned */}
+        <FormGroup label="Currently Assigned">
+          <div style={{
+            background: "#f9fafb",
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            padding: "0.5rem 0.75rem",
+            maxHeight: isBulk ? 150 : undefined,
+            overflowY: isBulk ? "auto" : undefined,
+          }}>
+            {casesData.map((caseData) => {
+              const currentNames = String(caseData.assignedOfficer || "")
+                .split(",")
+                .map((name) => name.trim())
+                .filter(Boolean);
+              const currentIds = (caseData.assignedOfficerIds || []).map(String);
+
+              return (
+                <div
+                  key={caseData.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.6rem",
+                    padding: "0.3rem 0",
+                    borderBottom: isBulk ? "1px solid #eef2f7" : "none",
+                  }}
+                >
+                  {isBulk && (
+                    <strong style={{ minWidth: 90, fontSize: "0.8rem", color: "#374151" }}>
+                      {caseData.caseId}
+                    </strong>
+                  )}
+                  {currentNames.length === 0 ? (
+                    <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+                      No case officer currently assigned.
+                    </span>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                      {currentNames.map((name, index) => (
+                        <span key={`${caseData.id}-${name}`} style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.35rem",
+                          padding: "0.25rem 0.6rem",
+                          borderRadius: 999,
+                          background: "#d1fae5",
+                          color: "#065f46",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                        }}>
+                          <GoDotFill /> {name}
+                          {currentIds[index] && (
+                            <button
+                              type="button"
+                              onClick={() => setRemovalTarget({
+                                caseId: caseData.id,
+                                personId: currentIds[index],
+                                name,
+                              })}
+                              title={`Remove ${name}`}
+                              style={{ background: "none", border: "none", color: "#065f46", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                            >
+                              <IoMdClose />
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </FormGroup>
+
+        <FormGroup label="Selected Case Officers">
+          <div style={{
+            display:      "flex",
+            flexWrap:     "wrap",
+            gap:          "0.4rem",
+            minHeight:    "2.25rem",
+            padding:      "0.5rem",
+            borderRadius: 8,
+            border:       "1px solid #e5e7eb",
+            background:   "#f9fafb",
+          }}>
+            {assigned.length === 0 ? (
+              <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                No one selected yet — search below to add.
+              </span>
+            ) : (
+              assigned.map(o => {
+                const name = o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim();
+                return (
+                  <span
+                    key={o.case_officer_id}
+                    style={{
+                      display:      "inline-flex",
+                      alignItems:   "center",
+                      gap:          "0.35rem",
+                      padding:      "0.25rem 0.6rem",
+                      borderRadius: 999,
+                      background:   "#e0f2fe",
+                      color:        "#0369a1",
+                      fontSize:     "0.8rem",
+                      fontWeight:   600,
+                    }}
+                  >
+                    {name}
+                    <span style={{ fontSize: "0.7rem", color: "#0284c7", opacity: 0.75 }}>
+                      Case Officer
+                    </span>
+                    <button
+                      onClick={() => removeOfficer(o.case_officer_id)}
+                      style={{
+                        background: "none",
+                        border:     "none",
+                        cursor:     "pointer",
+                        color:      "#0369a1",
+                        padding:    0,
+                        lineHeight: 1,
+                        fontSize:   "0.9rem",
+                        marginLeft: "0.1rem",
+                      }}
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })
+            )}
+          </div>
+        </FormGroup>
+
+        {/* Search input */}
+        <FormGroup
+          label="Search Case Officers"
+          hint="Browse the list or type to filter by name."
+        >
+          <div style={{ position: "relative" }}>
+            <FInput
+              placeholder={officersProp.length === 0
+                ? "No case officers are available."
+                : noAvailableOfficers
+                ? "All case officers are already assigned."
+                : "e.g. Maria, Juan…"}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoComplete="off"
+              disabled={noAvailableOfficers}
+            />
+
+            {/* Dropdown results */}
+            {(search.trim().length > 0 || searchResults.length > 0) && searchResults.length > 0 && (
+              <div style={{
+                position:     "absolute",
+                top:          "calc(100% + 4px)",
+                left:         0,
+                right:        0,
+                background:   "#fff",
+                border:       "1px solid #e5e7eb",
+                borderRadius: 8,
+                boxShadow:    "0 4px 12px rgba(0,0,0,0.08)",
+                zIndex:       100,
+                maxHeight:    "80px",
+                overflowY:    "auto",
+              }}>
+                {searchResults.map(o => {
+                  const name = o.name || `${o.first_name || ""} ${o.last_name || ""}`.trim();
+                  return (
+                    <button
+                      key={o.case_officer_id}
+                      onClick={() => addOfficer(o)}
+                      style={{
+                        display:        "flex",
+                        alignItems:     "center",
+                        justifyContent: "space-between",
+                        width:          "100%",
+                        padding:        "0.6rem 0.85rem",
+                        background:     "none",
+                        border:         "none",
+                        borderBottom:   "1px solid #f3f4f6",
+                        color:          "#292929",
+                        cursor:         "pointer",
+                        textAlign:      "left",
+                        fontSize:       "0.875rem",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
+                      onMouseLeave={e => e.currentTarget.style.background = "none"}
+                    >
+                      <span style={{ fontWeight: 500 }}>{name}</span>
+                      <AvailabilityBadge
+                        compact
+                        status={o.availability_status}
+                        currentLoad={o.active_case_count}
+                        maxLoad={o.max_active_cases}
+                        loadLabel="active cases"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* No results */}
+            {search.trim().length > 0 && searchResults.length === 0 && (
+              <div style={{
+                position:     "absolute",
+                top:          "calc(100% + 4px)",
+                left:         0,
+                right:        0,
+                background:   "#fff",
+                border:       "1px solid #e5e7eb",
+                borderRadius: 8,
+                padding:      "0.75rem",
+                fontSize:     "0.8rem",
+                color:        "#9ca3af",
+                zIndex:       100,
+              }}>
+                No case officers found matching &quot;{search}&quot;.
+              </div>
+            )}
+            {officersProp.length > 0 && noAvailableOfficers && (
+              <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#6b7280" }}>
+                No additional case officers can be assigned to the selected {isBulk ? "cases" : "case"}.
+              </div>
+            )}
+          </div>
+        </FormGroup>
+
+        {error && (
+          <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: 0 }}>{error}</p>
+        )}
+      </div>
+
+      <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem" }}>
+        The same officer cannot be assigned to the same case twice simultaneously.
+      </p>
+
+      <div className={styles.modalFooter}>
+        <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>
+          Cancel
+        </button>
+        <button
+          className={styles.btnPrimary}
+          onClick={handleAssign}
+          disabled={saving || assigned.length === 0}
+        >
+          {saving
+            ? `Assigning ${assigned.length}…`
+            : `Assign${assigned.length > 0 ? ` (${assigned.length})` : ""}`
+          }
+        </button>
+      </div>
+    </Modal>
+    <ConfirmDialog
+      open={Boolean(duplicateDialog)}
+      title="Case Officer Already Assigned"
+      description={`${duplicateDialog?.count || 0} selected assignment(s) already exist and were not added again. Refresh the page to display the latest case assignments.`}
+      detail={duplicateDialog?.detail ? `${duplicateDialog.detail}. Any other valid assignments were still saved.` : "Any other valid assignments were still saved."}
+      confirmLabel="Refresh Page"
+      cancelLabel="Close"
+      onCancel={() => setDuplicateDialog(null)}
+      onConfirm={() => window.location.reload()}
+    />
+    <ConfirmDialog
+      open={Boolean(removalTarget)}
+      title="Remove Case Officer"
+      description={`Remove ${removalTarget?.name || "this case officer"} from this case?`}
+      detail="The officer will immediately lose access through this assignment."
+      confirmLabel="Remove"
+      cancelLabel="Cancel"
+      tone="danger"
+      busy={removing}
+      dismissible={!removing}
+      onCancel={() => { if (!removing) setRemovalTarget(null); }}
+      onConfirm={confirmRemoval}
+    />
+    </>
+  );
+}
+
+
+// -----------------------------------------------------------------------------
+// ADMIN APPROVAL MODAL
+// -----------------------------------------------------------------------------
+
+function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
+  const [rejectReason, setRejectReason] = useState("");
+  const [showReject, setShowReject] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  if (!caseData || !caseData.pendingApproval) return null;
+
+  const pa = caseData.pendingApproval;
+
+  async function approve() {
+    setSaving(true);
+    try {
+      await onApprove(caseData);
+      onClose();
+    } catch {
+      // Parent action shows the toast; keep the modal open for retry.
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reject() {
+    setSaving(true);
+    try {
+      await onReject(caseData, rejectReason);
+      onClose();
+    } catch {
+      // Parent action shows the toast; keep the modal open for retry.
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Review Pending Status Change" wide>
+      <div className={styles.approvalReviewBlock}>
+        <div className={styles.approvalRow}>
+          <span className={styles.approvalKey}>Case ID</span>
+          <span className={styles.approvalVal}>{caseData.caseId}</span>
+        </div>
+        <div className={styles.approvalRow}>
+          <span className={styles.approvalKey}>Current Status</span>
+          <span className={styles.approvalVal}><StatusBadge status={caseData.status} /></span>
+        </div>
+        <div className={styles.approvalRow}>
+          <span className={styles.approvalKey}>Proposed Status</span>
+          <span className={styles.approvalVal}><StatusBadge status={pa.proposedStatus} /></span>
+        </div>
+        <div className={styles.approvalRow}>
+          <span className={styles.approvalKey}>Submitted by</span>
+          <span className={styles.approvalVal}>{pa.submittedBy}</span>
+        </div>
+        <div className={styles.approvalRow}>
+          <span className={styles.approvalKey}>Date Submitted</span>
+          <span className={styles.approvalVal}>{pa.date}</span>
+        </div>
+        <div className={styles.approvalRow}>
+          <span className={styles.approvalKey}>Officer Notes</span>
+          <span className={styles.approvalVal}>{pa.notes}</span>
+        </div>
+      </div>
+
+      {showReject ? (
+        <div className={styles.formGrid} style={{ marginTop: "1rem" }}>
+          <FormGroup label="Reason for rejection" required>
+            <FTextarea placeholder="Explain why this status change is being rejected…" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+          </FormGroup>
+          <div className={styles.modalFooter}>
+            <button className={styles.btnSecondary} onClick={() => setShowReject(false)} disabled={saving}>Back</button>
+            <button className={styles.btnDanger} onClick={reject} disabled={!rejectReason.trim() || saving}>
+              {saving ? "Saving..." : "Confirm Rejection"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.modalFooter}>
+          <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
+          <button className={styles.btnDanger} onClick={() => setShowReject(true)} disabled={saving}>Reject</button>
+          <button className={styles.btnSuccess} onClick={approve} disabled={saving}>
+            <FiCheck size={14} /> {saving ? "Applying..." : "Approve & Apply"}
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// ALL CASES MODAL (quick view)
+// -----------------------------------------------------------------------------
+
+function AllCasesModal({ open, onClose, cases, onView, onAction }) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() =>
+    cases.filter((c) => c.caseId.includes(q) || c.reporterId.includes(q) || c.region.toLowerCase().includes(q.toLowerCase())),
+    [cases, q]
+  );
+  return (
+    <Modal open={open} onClose={onClose} title="All Cases" wide>
+      <div className={styles.searchWrap} style={{ marginBottom: "1rem" }}>
+        <input className={styles.searchInput} placeholder="Search by Case ID, region…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <span className={styles.searchIcon}><FiSearch /></span>
+      </div>
+      <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+        <table className={styles.table}>
+          <thead><tr><th>Case ID</th><th>Region</th><th>Status</th><th>Officer</th><th>Actions</th></tr></thead>
+          <tbody>
+            {filtered.length === 0
+              ? <tr><td colSpan={5} className={styles.emptyState}>No cases found.</td></tr>
+              : filtered.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.caseId}</td>
+                  <td>{c.region}</td>
+                  <td><StatusBadge status={c.status} />{c.pendingApproval && <span style={{ marginLeft: 4 }}><PendingBadge /></span>}</td>
+                  <td>{c.assignedOfficer || "—"}</td>
+                  <td>
+                    <div className={styles.actionBtns}>
+                      <button className={styles.tblBtnView} onClick={() => { onView(c); onClose(); }}>View</button>
+                      {onAction && <button className={styles.tblBtnEdit} onClick={() => { onAction(c); onClose(); }}>Action</button>}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.modalFooter}>
+        <button className={styles.btnPrimary} onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// COOKIES
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// STATUS CHANGE ROUTER — decides which modal to show based on target status
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// MAIN PAGE
+// -----------------------------------------------------------------------------
+
+function mergeStatusHistory(caseData, history = []) {
+  const statusHistory = history.length > 0 ? history : caseData.statusHistory || [];
+  const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
+
+  return {
+    ...caseData,
+    pendingApproval: pending ? {
+      historyId: pending.historyId,
+      proposedStatus: pending.status,
+      submittedBy: pending.by,
+      date: pending.date,
+      notes: pending.notes,
+      formData: pending.formData,
+    } : null,
+    statusHistory,
+  };
+}
+
+export default function CaseManagement() {
+  const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const user = authLoading ? null : {
+    id: authUser?.user_id || authUser?.id || null,
+    role: authUser?.role_name || authUser?.role || "",
+    firstName: authUser?.first_name || "",
+    lastName: authUser?.last_name || "",
+  };
+
+  const actorName     = `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Officer";
+  const normalizedRole = user?.role?.toLowerCase();
+  const isAdmin       = normalizedRole === "admin";
+  const isCaseOfficer = normalizedRole === "case officer" || normalizedRole === "case_officer";
+  const isLegal       = normalizedRole === "legal personnel" || normalizedRole === "legal_personnel";
+  
+  const [cases, setCases] = useState([]);
+  const [casesLoading, setCasesLoading] = useState(true);
+  const [caseStats, setCaseStats] = useState(null);
+
+  // Dynamic officers list (try backend, fallback to deriving from cases)
+  const [officers, setOfficers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [statusGuideOpen, setStatusGuideOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    status: "",
+    assignedOfficer: "",
+    caseType: "",
+    dateSubmitted: "",
+    primaryCategory: "",
+    incident_city: "",
+  });
+  const [sortField, setSortField] = useState("dateSubmitted");
+  const [sortDir, setSortDir]     = useState("desc");
+
+useEffect(() => {
+  if (authLoading) return;
+
+  const fetchCaseStats = async () => {
+    try {
+      const res = await internalApiFetch(`${API_URL}/api/case_reports/stats`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const payload = await res.json().catch(() => ({}));
+      setCaseStats(payload.data || null);
+    } catch (err) {
+      console.error("[CaseManagement] stats fetch error:", err);
+    }
+  };
+
+  fetchCaseStats();
+}, [authLoading, authUser?.user_id, authUser?.id, authUser?.role_name, authUser?.role]);
+
+useEffect(() => {
+  if (authLoading) return; // wait for cookie to load
+
+  const fetchCases = async () => {
+    try {
+      setCasesLoading(true);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+        sortBy: sortField,
+        sortDir,
+      });
+      if (search.trim()) params.set("search", search.trim());
+      Object.entries(advancedFilters).forEach(([key, value]) => {
+        if (value && value !== "All") params.set(key, value);
+      });
+
+      const res = await internalApiFetch(`${API_URL}/api/case_reports/all?${params.toString()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[CaseManagement] API error:', res.status, errorText);
+        throw new Error(`Failed to fetch cases: ${res.status} ${errorText}`);
+      }
+      const payload = await res.json();
+      const data = payload.data || [];
+      setTotalRecords(payload.total || 0);
+
+      const mapped = data.map((r) => {
+        const year = new Date(r.created_at).getFullYear();
+        const initialHistory = [
+          {
+            status: STATUS_STEP[r.case_status_id] || "For Verification",
+            date: new Date(r.created_at).toLocaleDateString("en-PH"),
+            by: r.assigned_officer || "System",
+            notes: "Report received and logged.",
+          },
+        ];
+        const history = Array.isArray(r.status_history) && r.status_history.length > 0
+          ? r.status_history
+          : initialHistory;
+
+        return mergeStatusHistory({
+          id:              r.case_report_id,
+          caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
+          reporterId:      String(r.complainant_id),
+          region:          r.incident_province || r.incident_city || "—",
+          incident_city:   r.incident_city || "",
+          city:            r.incident_city || "",
+          status:          STATUS_STEP[r.case_status_id] || "For Verification",
+          assignedOfficer: r.assigned_officer || null,
+          assignedOfficerIds: r.assigned_officer_id ? [r.assigned_officer_id] : [],
+          dateSubmitted:   r.created_at || "",
+          caseType:        r.case_type || null,
+          caseCategory:    r.primary_category || null,
+          alsoInvolves:    r.additional_categories || [],
+          referralRequired: r.referral_required || false,
+          referralBody:    r.referral_body || null,
+          endorsementStatus: r.endorsement?.endorsed_to
+            ? `Endorsed to ${r.endorsement.endorsed_to}`
+            : null,
+          violenceType:    "—",
+          description:     r.incident_description || "—",
+          endorsedTo:      null,
+          endorsementDetails: null,
+          pendingApproval: null,
+          possibleDuplicates: r.possible_duplicates || [],
+          statusHistory: history,
+        });
+      });
+
+      setCases(mapped);
+    } catch (err) {
+      console.error('[CaseManagement] fetch error:', err);
+    } finally {
+      setCasesLoading(false);
+    }
+  };
+
+  fetchCases();
+}, [
+  authLoading,
+  authUser?.user_id,
+  authUser?.id,
+  authUser?.role_name,
+  authUser?.role,
+  page,
+  search,
+  advancedFilters,
+  sortField,
+  sortDir,
+]);
+
+// Fetch case officers from database
+useEffect(() => {
+  const loadOfficers = async () => {
+    try {
+      const res = await internalApiFetch(`${API_URL}/api/case_officers`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        // Expect data = [{ case_officer_id, name, user_id, is_available, ... }]
+        setOfficers(Array.isArray(data) ? data : data.data || []);
+      }
+    } catch (e) {
+      console.error('[CaseManagement] Failed to fetch case officers:', e);
+      setOfficers([]);
+    }
+  };
+
+  loadOfficers();
+}, []);
+  // Modal state
+  const [modal, setModal] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [removeAssignedDialog, setRemoveAssignedDialog] = useState(null);
+  const [removingAssigned, setRemovingAssigned] = useState(false);
+
+  function showToast(msg, type = "success") {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  function closeModal() { setModal(null); }
+
+  // -- Stats --
+const stats = useMemo(() => {
+  const pending = cases.filter((c) => c.pendingApproval).length;
+  const fastStats = caseStats || null;
+
+  return [
+    {
+      num: fastStats?.awaiting_verification ?? cases.filter((c) => c.status === "For Verification").length,
+      label: "Awaiting Verification",
+    },
+    {
+      num: fastStats?.active_cases ?? cases.filter((c) => ACTIVE_STATUSES.includes(c.status)).length,
+      label: "Active Cases",
+    },
+    {
+      num: fastStats?.total_cases ?? cases.length,
+      label: "Total Cases",
+    },
+    ...(isAdmin
+      ? [
+          {
+            num: fastStats?.pending_approvals ?? pending,
+            label: "Pending Approvals",
+            highlight: (fastStats?.pending_approvals ?? pending) > 0,
+          },
+        ]
+      : []),
+  ];
+}, [caseStats, cases, isAdmin]);
+
+
+  // Server-side filtering and pagination
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timer);
+  }, [search, advancedFilters]);
+  const totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+  const paginated = cases;
+
+  // -- Status change — submit for approval --
+  async function submitForApproval(caseData, proposedStatus, changeDetails) {
+    const actorId = authUser?.user_id || authUser?.id || user?.id || null;
+    if (!actorId) {
+      showToast("Your user account could not be identified. Please sign in again.", "danger");
+      return;
+    }
+
+    try {
+      const res = await internalApiFetch(`${API_URL}/api/case_status_history`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          case_report_id: caseData.id,
+          proposed_status: proposedStatus,
+          changed_by_id: actorId,
+          changed_by_role: authUser?.role_name || authUser?.role || user?.role || "Case Officer",
+          notes: changeDetails.notes,
+          form_data: changeDetails.formData || {},
+          assessment_type: proposedStatus,
+          findings: changeDetails.notes,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to submit status change.");
+
+      const historyId = payload.historyRow?.history_id;
+      const historyEntry = {
+        historyId,
+        status: proposedStatus,
+        date: changeDetails.date || new Date().toLocaleDateString("en-PH"),
+        by: changeDetails.submittedBy || actorName,
+        notes: changeDetails.notes,
+        formData: changeDetails.formData,
+        approvalStatus: payload.requiresApproval ? "pending" : "approved",
+      };
+
+      setCases((prev) => prev.map((c) => c.id === caseData.id
+        ? {
+            ...c,
+            status: payload.requiresApproval ? c.status : proposedStatus,
+            pendingApproval: payload.requiresApproval ? {
+              historyId,
+              proposedStatus,
+              ...changeDetails,
+            } : null,
+            statusHistory: [...(c.statusHistory || []), historyEntry],
+          }
+        : c
+      ));
+      showToast(payload.message || `Status change for ${caseData.caseId} submitted for admin approval.`);
+      closeModal();
+    } catch (error) {
+      showToast(error.message, "danger");
+    }
+  }
+
+  // -- Admin: approve --
+  async function approveChange(caseData) {
+    const pa = caseData.pendingApproval;
+    const approverId = authUser?.user_id || authUser?.id || user?.id || null;
+    if (!pa?.historyId || !approverId) {
+      const message = "Unable to approve this status change. Please refresh and try again.";
+      showToast(message, "danger");
+      throw new Error(message);
+    }
+
+    try {
+      const res = await internalApiFetch(`${API_URL}/api/case_status_history/${pa.historyId}/approve`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved_by_id: approverId }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to approve status change.");
+
+      setCases((prev) => prev.map((c) => c.id === caseData.id
+        ? {
+            ...c,
+            status: pa.proposedStatus,
+            pendingApproval: null,
+            statusHistory: (c.statusHistory || []).map((entry) =>
+              entry.historyId === pa.historyId
+                ? { ...entry, approvalStatus: "approved" }
+                : entry
+            ),
+          }
+        : c
+      ));
+      showToast(payload.message || `Case ${caseData.caseId} status updated to "${pa.proposedStatus}".`);
+    } catch (error) {
+      showToast(error.message, "danger");
+      throw error;
+    }
+  }
+
+  // -- Admin: reject --
+  async function rejectChange(caseData, reason) {
+    const pa = caseData.pendingApproval;
+    const approverId = authUser?.user_id || authUser?.id || user?.id || null;
+    if (!pa?.historyId || !approverId) {
+      const message = "Unable to reject this status change. Please refresh and try again.";
+      showToast(message, "danger");
+      throw new Error(message);
+    }
+
+    try {
+      const res = await internalApiFetch(`${API_URL}/api/case_status_history/${pa.historyId}/reject`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approved_by_id: approverId,
+          rejection_reason: reason,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Failed to reject status change.");
+
+      setCases((prev) => prev.map((c) => c.id === caseData.id
+        ? {
+            ...c,
+            pendingApproval: null,
+            statusHistory: (c.statusHistory || []).map((entry) =>
+              entry.historyId === pa.historyId
+                ? { ...entry, approvalStatus: "rejected", rejectionReason: reason }
+                : entry
+            ),
+          }
+        : c
+      ));
+      showToast(payload.message || `Status change for ${caseData.caseId} rejected.`, "danger");
+    } catch (error) {
+      showToast(error.message, "danger");
+      throw error;
+    }
+  }
+
+  // -- Assign officer (admin) — modal handles API, this just updates local state --
+  function assignOfficer(updated) {
+    setCases((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+  }
+
+  function requestRemoveAssignedStaff(selectedCases) {
+    const casesToUpdate = Array.isArray(selectedCases) ? selectedCases : [selectedCases];
+    setRemoveAssignedDialog(casesToUpdate.filter(Boolean));
+  }
+
+  function getRemovableCaseOfficerAssignments(casesToUpdate = []) {
+    return casesToUpdate.flatMap((caseItem) => {
+      const names = String(caseItem.assignedOfficer || "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
+
+      return (caseItem.assignedOfficerIds || []).map((officerId, index) => ({
+        key: `${caseItem.id}:${officerId}`,
+        caseId: caseItem.id,
+        officerId,
+        label: names[index] || `Officer #${officerId}`,
+        context: `Case ${caseItem.caseId || caseItem.id}`,
+      }));
+    });
+  }
+
+  async function confirmRemoveAssignedStaff(selectedAssignments) {
+    const casesToUpdate = removeAssignedDialog || [];
+    const assignments = selectedAssignments || [];
+
+    if (assignments.length === 0) {
+      showToast("Select at least one assigned case officer to remove.", "danger");
+      return;
+    }
+
+    setRemovingAssigned(true);
+    try {
+      await Promise.all(assignments.map(async ({ caseId, officerId }) => {
+        const res = await internalApiFetch(`${API_URL}/api/case_assignments/${caseId}/${officerId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove assigned case officer.");
+      }));
+
+      const removedByCase = assignments.reduce((map, assignment) => {
+        const ids = map.get(assignment.caseId) || new Set();
+        ids.add(String(assignment.officerId));
+        map.set(assignment.caseId, ids);
+        return map;
+      }, new Map());
+      setCases((current) =>
+        current.map((caseItem) => {
+          const removedIds = removedByCase.get(caseItem.id);
+          if (!removedIds) return caseItem;
+          const names = String(caseItem.assignedOfficer || "")
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const remaining = (caseItem.assignedOfficerIds || [])
+            .map((officerId, index) => ({ officerId, name: names[index] }))
+            .filter(({ officerId }) => !removedIds.has(String(officerId)));
+          return {
+            ...caseItem,
+            assignedOfficer: remaining.map(({ name, officerId }) => name || `Officer #${officerId}`).join(", ") || null,
+            assignedOfficerIds: remaining.map(({ officerId }) => officerId),
+          };
+        })
+      );
+      setRemoveAssignedDialog(null);
+      showToast("Selected case officers removed.");
+    } catch (err) {
+      showToast(err.message || "Failed to remove assigned case officers.", "danger");
+    } finally {
+      setRemovingAssigned(false);
+    }
+  }
+
+  // -- Open correct status modal --
+  function openStatusModal(c) {
+    setSelected(c);
+    setModal("statusRouter");
+  }
+
+  // pending cases for admin
+  const pendingCases = useMemo(() => cases.filter((c) => c.pendingApproval), [cases]);
+
+  // Next valid statuses given current status + role
+  function getCaseTransitions(c) {
+    if (!c) return [];
+    if (isAdmin) return ALL_STATUSES.filter((s) => s !== c.status);
+    return getSharedAvailableTransitions(c, { isAdmin, isCaseOfficer, isLegal });
+  }
+
+  // -----------------------------------------------------------------------------
+  // RENDER
+  // -----------------------------------------------------------------------------
+
+  return (
+    <>
+      {toast && <div className={`${styles.toast} ${styles[`toast--${toast.type || "success"}`]}`}>{toast.msg}</div>}
+
+      <main className={styles.pageWrapper}>
+        {/* Hero */}
+        <section className={styles.heroBanner}>
+          <div className={styles.heroShell}>
+            <div className={styles.heroContent}>
+              <h1 className={styles.heroTitle}>Case Management</h1>
+              <button
+                type="button"
+                className={styles.statusGuideBtn}
+                onClick={() => setStatusGuideOpen(true)}
+              >
+                <FiHelpCircle />
+                Status Guide
+              </button>
+              <div className={styles.statGrid}>
+                {stats.map(({ num, label, highlight }) => (
+                  <div key={label} className={styles.statGridItem}>
+                    <div className={`${styles.statCard} ${highlight ? styles.statCardHighlight : ""}`}>
+                      {/* <span className={styles.statDot} /> */}
+                      <p className={styles.statNum}>{num}</p>
+                      <p className={styles.statLabel}>{label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Action Cards */}
+        <div className={styles.contentShell}>
+          <div className={styles.sectionHeading}>
+            <h2 className={styles.sectionTitle}>What would you like to do?</h2>
+            <div className={styles.headingLine} />
+          </div>
+
+          <div className={styles.actionGrid}>
+            {/* View Cases — everyone */}
+            {/* <div className="col-12 col-sm-6 col-lg-3">
+              <ActionCard
+                icon={<img src="CaseIconView.png" alt="" className={styles.actionIconImg} />}
+                title="View All Cases"
+                description="Browse all submitted cases, their current statuses, and status history."
+                onView={() => setModal("viewAll")}
+              />
+            </div> */}
+
+            {/* Manage Interviews — case officers */}
+            {(isCaseOfficer || isAdmin) && (
+              <div className={styles.actionCell}>
+                <Link href="/caseInterviews" style={{ textDecoration: 'none' }}>
+                  <ActionCard
+                    icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
+                    title="Manage Interviews"
+                    description="Create interview schedules, manage invitations, and track interview progress."
+                    onView={() => router.push("/caseInterviews")}
+                  />
+                </Link>
+              </div>
+            )}
+
+            {/* Assign Officer — admin only */}
+            {/* {(isAdmin) && (
+              <div className={styles.actionCell}>
+                <ActionCard
+                  icon={<img src="CaseIconAssign.png" alt="" className={styles.actionIconImg} />}
+                  title="Assign Case Officer"
+                  description="Assign or reassign a case officer to an unhandled case."
+                  onView={() => setModal("viewAll_assign")}
+                />
+              </div>
+            )} */}
+
+            {/* Admin: approve pending changes */}
+            {isAdmin && (
+              <div className="col-12 col-sm-6 col-lg-3">
+                <ActionCard
+                  icon={<img src="CaseIconVerify.png" alt="" className={styles.actionIconImg} />}
+                  title="Approve Status Changes"
+                  description="Review and approve or reject pending status change requests from officers."
+                  badge={pendingCases.length > 0 ? <span className={styles.pendingCount}>{pendingCases.length} pending</span> : null}
+                  onView={() => setModal("viewPending")}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Table Section */}
+        <section className={styles.allList}>
+          <div className={styles.contentShell}>
+            <div className={styles.sectionHeading}>
+              <h2 className={styles.sectionTitle}>All Cases</h2>
+              <div className={styles.headingLine} />
+            </div>
+            <div className={styles.layout}>
+              <div>
+                <div className={styles.tableTopBar}>
+                  <div className={styles.searchWrap} style={{ flex: 1 }}>
+                    <input className={styles.searchInput} type="text" placeholder="Search by Case ID, Reporter ID, or Region…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <span className={styles.searchIcon}><FiSearch /></span>
+                  </div>
+                  <FilterMenu 
+                    activeFilters={advancedFilters} 
+                    onFilterChange={setAdvancedFilters}
+                    onDone={() => {}}
+                    officers={officers}
+                  />
+                </div>
+                <CasesTable
+                  paginated={paginated}
+                  page={page}
+                  totalPages={totalPages}
+                  totalRecords={totalRecords}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                  onRowClick={(c) => router.push(`/cases/view?caseId=${c.id}`)}
+                  onAssign={(cases) => {
+                    // bulk assign: pass all selected cases
+                    setSelected(cases);
+                    setModal("assign");
+                  }}
+                  onRemoveAssignedStaff={requestRemoveAssignedStaff}
+                  onUpdateStatus={(cases) => {
+                    setSelected(cases[0]);
+                    setModal("statusRouter");
+                  }}
+                  isAdmin={isAdmin}
+                  getAvailableTransitions={getCaseTransitions}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={(field) => {
+                    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+                    else { setSortField(field); setSortDir("asc"); }
+                  }}
+                  activeFilters={advancedFilters}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <StatusGuide open={statusGuideOpen} onClose={() => setStatusGuideOpen(false)} />
+
+      {/* -- MODALS -- */}
+
+      {/* Assign (admin) */}
+      <AssignCaseModal open={modal === "assign"} onClose={closeModal} casesData={selected} onSave={assignOfficer} officers={officers} showToast={showToast} />
+
+      <RemoveAssignedStaffDialog
+        key={`remove-case-staff-${(removeAssignedDialog || []).map((caseItem) => caseItem.id).join("-") || "closed"}`}
+        open={Boolean(removeAssignedDialog)}
+        title="Remove Assigned Staff"
+        description={`Choose which assigned case officers to remove from ${removeAssignedDialog?.length || 0} selected case${removeAssignedDialog?.length === 1 ? "" : "s"}.`}
+        detail="Selected case officers will immediately lose access through these case assignments."
+        assignments={getRemovableCaseOfficerAssignments(removeAssignedDialog || [])}
+        busy={removingAssigned}
+        onCancel={() => { if (!removingAssigned) setRemoveAssignedDialog(null); }}
+        onConfirm={confirmRemoveAssignedStaff}
+      />
+
+      {/* Status Router — inline transition picker */}
+      <UpdateStatusModal
+      open={modal === "statusRouter"}
+      onClose={() => { setModal(null); setSelected(null); }}
+      caseData={selected}
+      isAdmin={isAdmin}
+      isCaseOfficer={isCaseOfficer}
+      isLegal={isLegal}
+      actorName={actorName}
+      onSubmit={(caseItem, proposedStatus, changeDetails) =>
+        submitForApproval(caseItem, proposedStatus, changeDetails)
+      }
+      onOpenDuplicateCheck={() => {
+        if (!selected?.id) return;
+        setModal(null);
+        router.push(`/cases/view?caseId=${selected.id}&tab=duplicates`);
+      }}
+      onOpenNlpAnalysis={() => {
+        if (!selected?.id) return;
+        setModal(null);
+        router.push(`/cases/view?caseId=${selected.id}&tab=nlp`);
+      }}
+      onRequestClarification={() => {
+        if (!selected?.id) return;
+        setModal(null);
+        router.push(`/cases/view?caseId=${selected.id}&tab=follow-ups`);
+      }}
+    />
+
+      {/* Admin approval */}
+      <ApprovalModal open={modal === "approval"} onClose={closeModal} caseData={selected} onApprove={approveChange} onReject={rejectChange} />
+
+      {/* All Cases quick browsers */}
+      <AllCasesModal open={modal === "viewAll"}            onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} />
+      <AllCasesModal open={modal === "viewAll_assign"}     onClose={closeModal} cases={cases} onView={(c) => router.push(`/cases/view?caseId=${c.id}`)} onAction={(c) => { setSelected([c]); setModal("assign"); }} />
+
+      {/* Pending approvals list */}
+      {modal === "viewPending" && (
+        <Modal open onClose={closeModal} title="Pending Status Approvals" wide>
+          {pendingCases.length === 0 ? (
+            <p className={styles.emptyState}>No pending status changes.</p>
+          ) : (
+            <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+              <table className={styles.table}>
+                <thead><tr><th>Case ID</th><th>Current</th><th>Proposed</th><th>By</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {pendingCases.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.caseId}</td>
+                      <td><StatusBadge status={c.status} /></td>
+                      <td><StatusBadge status={c.pendingApproval.proposedStatus} /></td>
+                      <td>{c.pendingApproval.submittedBy}</td>
+                      <td>{c.pendingApproval.date}</td>
+                      <td>
+                        <button className={styles.tblBtnApprove} onClick={() => { setSelected(c); setModal("approval"); }}>Review</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className={styles.modalFooter}>
+            <button className={styles.btnPrimary} onClick={closeModal}>Close</button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+

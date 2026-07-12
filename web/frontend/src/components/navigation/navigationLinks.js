@@ -58,7 +58,6 @@ export const FOOTER_QUICK_LINKS = {
   ],
   case_officer: [
     { href: "/dashboard", label: "Home", labelKey: "navHome" },
-    { href: "/cases", label: "Cases", labelKey: "navCases" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
   ],
   staff: [
@@ -69,13 +68,10 @@ export const FOOTER_QUICK_LINKS = {
   ],
   legal_personnel: [
     { href: "/dashboard", label: "Home", labelKey: "navHome" },
-    { href: "/legalReviews", label: "Legal Review", labelKey: "navLegalReview" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
   ],
   admin: [
     { href: "/dashboard", label: "Home", labelKey: "navHome" },
-    { href: "/cases", label: "Cases", labelKey: "navCases" },
-    { href: "/legalReviews", label: "Legal Review", labelKey: "navLegalReview" },
     { href: "/volunteer", label: "Volunteers", labelKey: "navVolunteers" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap" },
   ],
@@ -130,8 +126,6 @@ export const SIDEBAR_LINKS = {
   // CASE OFFICER
   case_officer: [
     { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
-    { href: "/cases", label: "Cases", labelKey: "navCases", icon: "folder" },
-    { href: "/caseInterviews", label: "Interviews", labelKey: "navInterviews", icon: "interpreter" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
     {
       label: "Settings",
@@ -166,7 +160,6 @@ export const SIDEBAR_LINKS = {
   // LEGAL PERSONNEL
   legal_personnel: [
     { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
-    { href: "/legalReviews", label: "Legal Review", labelKey: "navLegalReview", icon: "gavel" },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
     {
       label: "Settings",
@@ -178,21 +171,6 @@ export const SIDEBAR_LINKS = {
   // ADMIN
   admin: [
     { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
-    {
-      label: "Cases",
-      labelKey: "navCases",
-      icon: "folder",
-      children: [
-        { href: "/cases", label: "All Cases", labelKey: "navAllCases" },
-        { href: "/caseInterviews", label: "Interviews", labelKey: "navInterviews" },
-      ],
-    },
-    {
-      label: "Legal",
-      labelKey: "navLegal",
-      icon: "gavel",
-      children: [{ href: "/legalReviews", label: "All Legal Cases", labelKey: "navAllLegalCases" }],
-    },
     {
       label: "Volunteers",
       labelKey: "navVolunteers",

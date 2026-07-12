@@ -13,7 +13,7 @@ import {
 } from "react-icons/fi";
 import { IoIosArrowBack, IoIosInformationCircle, } from "react-icons/io";
 import styles from "./ViewLegalCase.module.css";
-import { NLPAnalysisTab as SharedNLPAnalysisTab } from "../cases/ViewCase";
+import NLPAnalysisTab from "../cases/NLPAnalysisTab";
 import UpdateStatusModal, { getAvailableTransitions as getSharedAvailableTransitions } from "../cases/UpdateStatusModals";
 import StatusDetailsSection from "../cases/StatusDetailsSection";
 import DetailAccordion from "../cases/DetailAccordion";
@@ -32,6 +32,7 @@ import {
 import { getLegalCaseDeadlines } from "./legalReviewCalendar";
 import { useAuth } from "@/lib/AuthContext";
 import LegalGuide from "./LegalGuide";
+import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -174,157 +175,6 @@ function StatusHistorySection({ caseData }) {
 
 
 // ─── Status Change Modals (imported from CaseManagement pattern) ──────────────
-
-function NLPAnalysisTab({ caseReportId, isAdmin }) {
-  return <SharedNLPAnalysisTab caseReportId={caseReportId} isAdmin={isAdmin} />;
-
-  const [nlpData, setNlpData]     = useState(null);
-  const [nlpLoading, setNlpLoading] = useState(false);
-  const [nlpStatus, setNlpStatus]   = useState(null);
-
-  useEffect(() => {
-    if (!caseReportId) return;
-    const fetchNlp = async () => {
-      setNlpLoading(true);
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await authFetch(`${API_URL}/api/case_reports/${caseReportId}/nlp`);
-        if (res.status === 202 || res.status === 404) {
-          setNlpData(null);
-          setNlpStatus("processing");
-          return;
-        }
-        if (!res.ok) {
-          setNlpData(null);
-          setNlpStatus(res.status === 502 ? "failed" : "error");
-          return;
-        }
-        const json = await res.json();
-        setNlpData(json.data || json);
-        setNlpStatus(null);
-      } catch {
-        setNlpData(null);
-        setNlpStatus("error");
-      } finally {
-        setNlpLoading(false);
-      }
-    };
-    fetchNlp();
-  }, [caseReportId]);
-
-  const CategoryBadge = ({ label }) => (
-    <span className={`${styles.nlpBadge} ${styles.nlpBadgeCategory}`}>{label}</span>
-  );
-  const CaseTypeBadge = ({ label }) => (
-    <span className={`${styles.nlpBadge} ${styles.nlpBadgeType}`}>{label}</span>
-  );
-  const getClassificationLabel = (item, field) => {
-    if (!item) return "";
-    if (typeof item === "string") {
-      try {
-        const parsed = JSON.parse(item);
-        return parsed?.[field] || parsed?.category || parsed?.type || item;
-      } catch {
-        return item;
-      }
-    }
-    if (typeof item === "object") return item[field] || item.category || item.type || "";
-    return String(item);
-  };
-
-  return (
-    <div>
-      {/* AI disclaimer */}
-      <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 8, padding: "10px 14px", marginBottom: "1.25rem", fontSize: "0.82rem", color: "#5b21b6", display: "flex", gap: 8, alignItems: "flex-start" }}>
-        <IoIosInformationCircle style={{ fontSize: "1rem", flexShrink: 0 }} />
-        <span>This analysis is <strong>AI-generated</strong> and is intended as a guide only. All decisions remain with the case officer and are subject to admin approval.</span>
-      </div>
-
-      {nlpLoading && <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center", padding: "2rem" }}>Loading analysis...</p>}
-
-      {nlpStatus === "processing" && !nlpLoading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#92400e" }}>
-          <FiClock style={{ flexShrink: 0 }} />
-          NLP analysis is still processing. Refresh in a moment.
-        </div>
-      )}
-
-      {nlpStatus === "error" && !nlpLoading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#991b1b" }}>
-          <FiAlertCircle style={{ flexShrink: 0 }} />
-          Could not load NLP analysis. Make sure the NLP service is running.
-        </div>
-      )}
-
-      {nlpStatus === "failed" && !nlpLoading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", fontSize: "0.875rem", color: "#991b1b" }}>
-          <FiAlertCircle style={{ flexShrink: 0 }} />
-          NLP analysis failed on the server. Check the backend NLP service URL and logs, then rerun analysis for this case.
-        </div>
-      )}
-
-      {nlpData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {nlpData.summary && (
-            <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Incident Summary</h4>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.summary}</p>
-            </div>
-          )}
-
-          <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Classification</h4>
-            <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Primary Categories</p>
-            <div style={{ marginBottom: 12 }}>
-              {nlpData.primary_categories?.length > 0 ? nlpData.primary_categories.map((c, i) => <CategoryBadge key={`${getClassificationLabel(c, "category")}-${i}`} label={getClassificationLabel(c, "category")} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
-            </div>
-            <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Possible Case Types</p>
-            <div style={{ marginBottom: 12 }}>
-              {nlpData.case_types?.length > 0 ? nlpData.case_types.map((t, i) => <CaseTypeBadge key={`${getClassificationLabel(t, "type")}-${i}`} label={getClassificationLabel(t, "type")} />) : <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>None suggested</span>}
-            </div>
-            {nlpData.classification_notes && (
-              <>
-                <p style={{ margin: "0 0 4px", fontSize: "0.78rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Notes</p>
-                <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.classification_notes}</p>
-              </>
-            )}
-          </div>
-
-          <div style={{ background: "#f9fafb", borderRadius: 8, padding: "14px 16px" }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: "0.875rem", fontWeight: 700, color: "#374151" }}>Suggested Next Steps</h4>
-            {nlpData.recommended_steps?.length > 0 ? (
-              <ol style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 6 }}>
-                {nlpData.recommended_steps.map((step, i) => <li key={i} style={{ fontSize: "0.875rem", color: "#4b5563", lineHeight: 1.6 }}>{step}</li>)}
-              </ol>
-            ) : <p style={{ margin: 0, fontSize: "0.82rem", color: "#9ca3af" }}>No steps suggested.</p>}
-          </div>
-
-          <div className={`${styles.nlpResultBox} ${nlpData.referral_suggested ? styles.nlpResultWarning : styles.nlpResultSuccess}`}>
-            <h4 style={{ margin: "0 0 6px", fontSize: "0.875rem", fontWeight: 700 }}>
-              {nlpData.referral_suggested ? "Referral may be appropriate" : "May be resolvable internally"}
-            </h4>
-            {nlpData.referral_notes && <p style={{ margin: 0, fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{nlpData.referral_notes}</p>}
-          </div>
-
-          {isAdmin && (
-            <details style={{ fontSize: "0.78rem", color: "#6b7280" }}>
-              <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>Technical Details</summary>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8, paddingLeft: 8 }}>
-                <span><strong>Model:</strong> {nlpData.model_used}</span>
-                <span><strong>Language detected:</strong> {nlpData.language_detected}</span>
-                <span><strong>PII detected and masked:</strong> {nlpData.detected_pii?.join(", ") || "None"}</span>
-                <span><strong>Anonymized text:</strong></span>
-                <p style={{ margin: "4px 0 0", background: "#f3f4f6", padding: "8px 10px", borderRadius: 6, lineHeight: 1.6 }}>{nlpData.anonymized_text}</p>
-              </div>
-            </details>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Legal Review Tab (staff only) ────────────────────────────────────────────
 
 function mergeLegalReviewData(caseData, review) {
   if (!review) return caseData;
@@ -696,7 +546,6 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
   }
 
   async function saveCase(updated) {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     let body = {
       performed_by_user_id: userId || null,
       action_type: "legal_review_updated",
@@ -739,7 +588,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/legal_reviews/case/${caseData.id}`, {
+      const res = await internalApiFetch(`${API_URL}/api/legal_reviews/case/${caseData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -758,9 +607,7 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
 
   async function submitForApproval(proposedStatus, changeDetails) {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
-
-      const res = await fetch(`${API_URL}/api/case_status_history`, {
+      const res = await internalApiFetch(`${API_URL}/api/case_status_history`, {
         method:      'POST',
         headers:     { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -946,7 +793,7 @@ function btnStyle(bg) {
 
 // ─── Status History section (shared) ─────────────────────────────────────────
 
-export default function ViewCase() {
+export default function ViewLegalCase() {
   const router      = useRouter();
   const searchParams = useSearchParams();
   const { user: authUser, loading: authLoading } = useAuth();
@@ -980,12 +827,8 @@ export default function ViewCase() {
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
 
-  const backRoute = isStaff
-    ? "/legalReviews"
-    : fromParam === "dashboard" ? "/dashboard" : "/cases";
-  const backLabel = isStaff
-    ? "Back to Legal Review"
-    : fromParam === "dashboard" ? "Back to Dashboard" : "Back to My Reports";
+  const backRoute = "/legalReviews";
+  const backLabel = "Back to Legal Review";
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
@@ -1002,20 +845,19 @@ export default function ViewCase() {
     }
     const fetchCase = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const casePromise = fetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" })
+        const casePromise = internalApiFetch(`${API_URL}/api/case_reports/${caseId}`, { credentials: "include" })
           .then(async (response) => {
             const body = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(body.error || "Case not found");
             return body.data;
           });
-        const legalReviewPromise = fetch(`${API_URL}/api/legal_reviews/case/${caseId}`, { credentials: "include" })
+        const legalReviewPromise = internalApiFetch(`${API_URL}/api/legal_reviews/case/${caseId}`, { credentials: "include" })
           .then(async (response) => ({
             ok: response.ok,
             data: response.ok ? (await response.json().catch(() => ({}))).data : null,
           }))
           .catch(() => ({ ok: false, data: null }));
-        const followUpsPromise = fetch(
+        const followUpsPromise = internalApiFetch(
           `${API_URL}/api/case_reports/${caseId}/follow-ups`,
           { credentials: "include", cache: "no-store" }
         )
@@ -1137,7 +979,7 @@ export default function ViewCase() {
         if (legalReviewResult.ok) {
           setCaseData(mergeLegalReviewData(mappedCase, legalReviewResult.data));
         } else {
-          const calendarRes = await fetch(`${API_URL}/api/legal_reviews/case/${caseId}/calendar`, { credentials: "include" });
+          const calendarRes = await internalApiFetch(`${API_URL}/api/legal_reviews/case/${caseId}/calendar`, { credentials: "include" });
           if (calendarRes.ok) {
             const calendarPayload = await calendarRes.json().catch(() => ({}));
             setCaseData({ ...mappedCase, ...(calendarPayload.data || {}) });
@@ -1175,13 +1017,23 @@ export default function ViewCase() {
     );
   }
 
-  // Tab definitions — staff gets 3 tabs, complainant gets 1
+  if (userLoaded && !isStaff) {
+    return (
+      <div className={styles.pageWrapper} style={{ padding: "2rem" }}>
+        <button className={styles.backBtn} onClick={() => router.push("/login")}>
+          <IoIosArrowBack /> Back to Login
+        </button>
+        <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "12px 16px", color: "#991b1b" }}>
+          Unauthorized
+        </div>
+      </div>
+    );
+  }
+
   const tabs = [
     { id: "details", label: "Case Details", tooltip: "View the submitted report and case information.", staffOnly: false },
-    ...(isStaff ? [
-      { id: "management", label: "Legal Review", tooltip: "Manage assignments, endorsements, monitoring, and legal status.", staffOnly: true },
-      ...(canViewNlp ? [{ id: "nlp", label: "AI / NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true }] : []),
-    ] : []),
+    { id: "management", label: "Legal Review", tooltip: "Manage assignments, endorsements, monitoring, and legal status.", staffOnly: true },
+    ...(canViewNlp ? [{ id: "nlp", label: "AI / NLP Analysis", tooltip: "Review automated language and case-structure analysis.", staffOnly: true }] : []),
   ];
 
   const tabStyle = (id) => ({
@@ -1254,7 +1106,7 @@ export default function ViewCase() {
 
           {/* Tab content */}
           {activeTab === "details" && userLoaded && (
-            <CaseDetailsPage caseData={caseData} isStaff={isStaff} />
+            <CaseDetailsPage caseData={caseData} isStaff />
           )}
 
           {activeTab === "management" && isStaff && userLoaded && (
@@ -1274,7 +1126,7 @@ export default function ViewCase() {
           )}
 
           {activeTab === "nlp" && canViewNlp && userLoaded && (
-            <SharedNLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
+            <NLPAnalysisTab caseReportId={caseData.id} isAdmin={isAdmin} />
           )}
 
         </div>
@@ -1283,4 +1135,3 @@ export default function ViewCase() {
     </div>
   );
 }
-

@@ -731,3 +731,34 @@
   .modalOverlay { align-items: flex-end; padding: 0; }
   .actionBtns { flex-direction: column; }
 }
+
+.heroShell,
+.contentShell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.contentShell {
+  padding: 1.5rem 0;
+}
+
+.statGrid,
+.actionGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.statGrid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  justify-content: center;
+}
+
+.actionGrid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.statGridItem,
+.actionCell {
+  min-width: 0;
+}

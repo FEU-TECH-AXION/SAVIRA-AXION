@@ -806,3 +806,8 @@
   border-color: #6b5a30;
   color: #f0d48a;
 }
+
+.contentShell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+}
