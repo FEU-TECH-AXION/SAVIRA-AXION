@@ -15,6 +15,11 @@ const HOP_BY_HOP_HEADERS = new Set([
   "upgrade",
 ]);
 
+const DECODED_BODY_HEADERS = new Set([
+  "content-encoding",
+  "content-length",
+]);
+
 const BACKEND_TIMEOUT_MS = 15000;
 
 function jsonError(message, status, details = {}) {
@@ -129,6 +134,7 @@ async function proxyBackend(request, context) {
   backendResponse.headers.forEach((value, key) => {
     const normalizedKey = key.toLowerCase();
     if (HOP_BY_HOP_HEADERS.has(normalizedKey)) return;
+    if (DECODED_BODY_HEADERS.has(normalizedKey)) return;
     if (normalizedKey === "set-cookie") return;
     responseHeaders.set(key, value);
   });
