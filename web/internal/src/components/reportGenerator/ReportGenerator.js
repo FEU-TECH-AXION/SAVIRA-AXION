@@ -429,10 +429,20 @@ async function fetchApprovedStatusHistoryMap(cases = []) {
 }
 
 function getStatusBucket(status) {
-  const legalStatuses = new Set(["Case Filed", "Investigation Ongoing", "Hearing Ongoing"]);
+  const submittedStatuses = new Set(["Submitted"]);
+  const reviewStatuses = new Set([
+    "For Verification",
+    "Undergoing Review",
+    "Verified - True",
+    "Under Case Evaluation",
+    "Case Filed",
+    "Investigation Ongoing",
+    "Hearing Ongoing",
+  ]);
   const closedStatuses = new Set(["Resolved", "Dismissed", "Withdrawn", "Perpetrator Convicted", "Verified - False"]);
   if (closedStatuses.has(status)) return "Closed";
-  if (legalStatuses.has(status)) return "Undergoing Review";
+  if (reviewStatuses.has(status)) return "Undergoing Review";
+  if (submittedStatuses.has(status)) return "Submitted";
   return "Submitted";
 }
 
