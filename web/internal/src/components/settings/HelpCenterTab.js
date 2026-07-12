@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FiChevronDown, FiMail, FiMessageSquare, FiCheck } from "react-icons/fi";
+import { internalApiFetch } from "@/lib/internalApiFetch";
 import styles from "./HelpCenterTab.module.css";
 
 const FAQ_KEYS = [
@@ -37,12 +38,10 @@ export default function HelpCenterTab({ user, t }) {
     e.preventDefault();
     setSending(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/support/contact", {
+      const res = await internalApiFetch("/api/support/contact", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           user_id: user?.user_id,

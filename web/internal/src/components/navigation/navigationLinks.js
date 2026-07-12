@@ -9,8 +9,10 @@ export const ROLE_LABELS = {
 
 export const SETTINGS_LINKS = [
   { href: "/settings?tab=profile", label: "Profile" },
-  { href: "/settings?tab=lock", label: "Account & Security" },
+  { href: "/settings?tab=lock", label: "Account & Privacy" },
+  { href: "/settings?tab=help", label: "Help Center" },
   { href: "/settings?tab=display", label: "Display & Accessibility" },
+  { href: "/settings?tab=report", label: "Report a Problem" },
 ];
 
 const CASE_LINKS = [

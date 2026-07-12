@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { FiCheck, FiAlertCircle, FiPaperclip, FiX } from "react-icons/fi";
+import { internalApiFetch } from "@/lib/internalApiFetch";
 import styles from "./ReportProblemTab.module.css";
 
 const ISSUE_TYPES = [
@@ -44,7 +45,6 @@ export default function ReportProblemTab({ user, t }) {
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append("user_id", user?.user_id || "");
       formData.append("issue_type", issueType);
@@ -52,9 +52,8 @@ export default function ReportProblemTab({ user, t }) {
       formData.append("page_url", pageUrl || (typeof window !== "undefined" ? window.location.href : ""));
       if (attachment) formData.append("attachment", attachment);
 
-      const res = await fetch("/api/support/report", {
+      const res = await internalApiFetch("/api/support/report", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json().catch(() => ({}));

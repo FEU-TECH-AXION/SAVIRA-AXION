@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiHelpCircle, FiMenu, FiSearch } from "react-icons/fi";
+import { FiBell, FiHelpCircle, FiMenu, FiSearch, FiX } from "react-icons/fi";
 import { useAuth } from "@/lib/AuthContext";
 import Sidebar from "@/components/sidebar/sidebar";
 import { ROLE_LABELS } from "@/components/navigation/navigationLinks";
+import { formatNotificationTime, useNotificationStore } from "@/lib/notificationStore";
+import { useI18n } from "@/lib/i18n";
 import styles from "./navbar.module.css";
 
 function getInitials(user) {
@@ -24,10 +26,16 @@ function getRoleLabel(user) {
 }
 
 export default function Navbar() {
+  const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const navbarRef = useRef(null);
-  const { user, logout } = useAuth();
+  const notifRef = useRef(null);
+  const { user, logout, loading } = useAuth();
   const pathname = usePathname();
+  const { notifications, unreadCount, markAllRead, dismissNotification } = useNotificationStore({
+    enabled: Boolean(user) && !loading,
+  });
 
   useEffect(() => {
     const navbar = navbarRef.current;
@@ -49,7 +57,31 @@ export default function Navbar() {
       resizeObserver.disconnect();
       window.removeEventListener("resize", updateNavbarHeight);
     };
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    if (!notifOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!notifRef.current?.contains(event.target)) {
+        setNotifOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setNotifOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [notifOpen]);
 
   return (
     <>
@@ -75,17 +107,73 @@ export default function Navbar() {
             <input
               type="text"
               className={styles.searchInput}
-              placeholder="Search internal records"
-              aria-label="Search"
+              placeholder={t("navSearchPlaceholder")}
+              aria-label={t("navSearch")}
             />
           </div>
 
           <div className={styles.navRight}>
-            <button className={styles.iconBtn} aria-label="Help">
+            <div className={styles.notifWrapper} ref={notifRef}>
+              <button
+                className={styles.iconBtn}
+                aria-label={t("navNotifications")}
+                aria-expanded={notifOpen}
+                onClick={() => {
+                  setNotifOpen((open) => !open);
+                  markAllRead().catch((err) => {
+                    console.error("[notifications] Failed to mark notifications read:", err.message);
+                  });
+                }}
+              >
+                <FiBell size={20} />
+                {unreadCount > 0 && (
+                  <span className={styles.notifBadge}>{unreadCount}</span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className={styles.notifDropdown}>
+                  <div className={styles.notifHeader}>{t("navNotifications")}</div>
+                  {notifications.length === 0 ? (
+                    <div className={styles.notifEmpty}>{t("navNoNotifications")}</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`${styles.notifItem} ${!notification.read ? styles.notifItemUnread : ""}`}
+                      >
+                        <button
+                          type="button"
+                          className={styles.notifDismissBtn}
+                          aria-label="Dismiss notification"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            dismissNotification(notification.id).catch((err) => {
+                              console.error("[notifications] Failed to dismiss notification:", err.message);
+                            });
+                          }}
+                        >
+                          <FiX size={15} />
+                        </button>
+                        <p className={styles.notifTitle}>{notification.title}</p>
+                        <p className={styles.notifBody}>{notification.body}</p>
+                        {notification.created_at && (
+                          <p className={styles.notifTime}>
+                            {formatNotificationTime(notification.created_at)}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button className={styles.iconBtn} aria-label={t("navHelp")}>
               <FiHelpCircle size={20} />
             </button>
 
-            <UserMenu user={user} logout={logout} />
+            <UserMenu key={pathname} user={user} logout={logout} t={t} />
           </div>
         </div>
       </nav>
@@ -95,7 +183,7 @@ export default function Navbar() {
   );
 }
 
-function UserMenu({ user, logout }) {
+function UserMenu({ user, logout, t }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -128,7 +216,7 @@ function UserMenu({ user, logout }) {
       <button
         className={styles.userAvatar}
         onClick={() => setOpen((current) => !current)}
-        aria-label="My profile"
+        aria-label={t("navMyProfile")}
         aria-expanded={open}
       >
         {user?.profile_img ? (
@@ -150,14 +238,14 @@ function UserMenu({ user, logout }) {
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >
-            My Profile
+            {t("navMyProfile")}
           </Link>
           <Link
             href="/settings?tab=lock"
             className={styles.dropdownItem}
             onClick={() => setOpen(false)}
           >
-            Settings
+            {t("navSettings")}
           </Link>
 
           <hr className={styles.dropdownDivider} />
@@ -169,7 +257,7 @@ function UserMenu({ user, logout }) {
               logout();
             }}
           >
-            Log Out
+            {t("navLogOut")}
           </button>
         </div>
       )}

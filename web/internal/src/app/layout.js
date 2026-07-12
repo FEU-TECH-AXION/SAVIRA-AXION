@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
+import { I18nProvider } from "@/lib/i18n";
 import InternalShell from "@/components/navigation/InternalShell";
 
 export const metadata = {
@@ -12,7 +13,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <AuthProvider>
-          <InternalShell>{children}</InternalShell>
+          <I18nProvider>
+            <InternalShell>{children}</InternalShell>
+          </I18nProvider>
         </AuthProvider>
       </body>
     </html>
