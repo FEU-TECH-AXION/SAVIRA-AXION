@@ -133,6 +133,21 @@
   color: #444;
   font-size: 0.93rem;
   line-height: 1.45;
+  min-width: 0;
+}
+
+.forgotPassword {
+  color: var(--sasha-teal, #037F81);
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.93rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.forgotPassword:hover {
+  color: var(--sasha-teal-dark, #025f60);
+  text-decoration: underline;
 }
 
 .btn {
@@ -190,11 +205,19 @@
   }
 
   .auxiliaryGroup {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
     margin-bottom: 1.25rem;
   }
 
   .accessNote {
     font-size: 0.84rem;
+  }
+
+  .forgotPassword {
+    align-self: flex-end;
+    font-size: 0.86rem;
   }
 }
 
@@ -205,5 +228,9 @@
 
   .accessNote {
     font-size: 0.8rem;
+  }
+
+  .forgotPassword {
+    font-size: 0.82rem;
   }
 }

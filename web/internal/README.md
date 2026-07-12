@@ -21,11 +21,12 @@ Required variables:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
 BACKEND_URL=http://localhost:5000
 INTERNAL_SESSION_MAX_AGE_SECONDS=7200
 ```
 
-The Supabase URL and anon key may be shared with the public app. Do not put `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, database passwords, mail secrets, or any backend-only credential in this app. Anything prefixed with `NEXT_PUBLIC_` is bundled for the browser.
+The Supabase URL and anon key may be shared with the public app. `NEXT_PUBLIC_FRONTEND_URL` should point at the public frontend deployment so internal login can send users to the existing public forgot-password flow. Do not put `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, database passwords, mail secrets, or any backend-only credential in this app. Anything prefixed with `NEXT_PUBLIC_` is bundled for the browser.
 
 ## Deployment
 
