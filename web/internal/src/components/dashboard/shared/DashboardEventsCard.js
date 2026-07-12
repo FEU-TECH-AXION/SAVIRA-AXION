@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { internalApiFetch } from "@/lib/internalApiFetch";
@@ -122,6 +123,9 @@ export default function DashboardEventsCard() {
     <section className={styles.card}>
       <div className={styles.header}>
         <span>Current Events</span>
+        <Link className={styles.headerLink} href="/events">
+          View events
+        </Link>
       </div>
       <div className={styles.body}>
         {loading && <p className={styles.state}>Loading events...</p>}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { internalApiFetch } from "@/lib/internalApiFetch";
@@ -73,6 +74,9 @@ export default function DashboardHeatmapCard() {
     <section className={styles.card}>
       <div className={styles.header}>
         <span>Heatmap Overview</span>
+        <Link className={styles.headerLink} href="/heatmap">
+          View full heatmap
+        </Link>
       </div>
       <div className={styles.mapBody}>
         {loading && <p className={styles.state}>Loading map...</p>}

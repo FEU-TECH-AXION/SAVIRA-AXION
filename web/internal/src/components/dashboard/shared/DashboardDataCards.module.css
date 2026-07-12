@@ -28,6 +28,20 @@
   padding: 3px 14px;
 }
 
+.headerLink {
+  background: var(--sasha-white);
+  border-radius: 999px;
+  color: var(--sasha-teal);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 14px;
+  text-decoration: none;
+}
+
+.headerLink:hover {
+  color: var(--sasha-teal-dark);
+}
+
 .body {
   padding: 1rem;
 }
