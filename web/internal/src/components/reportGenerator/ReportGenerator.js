@@ -119,6 +119,8 @@ const CASE_STATUS_BY_ID = {
   13: "Withdrawn",
 };
 
+const REPORT_TIME_ZONE = "Asia/Manila";
+
 // Distinct color palettes
 const DONUT_COLORS_STATUS   = ["#037F81","#E8663A","#4f46e5","#16a34a","#f59e0b","#ef4444","#8b5cf6","#14b8a6","#f97316","#06b6d4","#ec4899","#a3e635","#64748b"];
 const DONUT_COLORS_LEGAL    = ["#4f46e5","#7c3aed","#a78bfa","#818cf8","#c4b5fd"];
@@ -192,6 +194,38 @@ function recordDate(record, ...fields) {
     if (!Number.isNaN(date.valueOf())) return date;
   }
   return null;
+}
+
+function phDateParts(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: REPORT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  return {
+    year: parts.find((part) => part.type === "year")?.value,
+    month: parts.find((part) => part.type === "month")?.value,
+    day: parts.find((part) => part.type === "day")?.value,
+  };
+}
+
+function phDateKey(date) {
+  const { year, month, day } = phDateParts(date);
+  if (!year || !month || !day) return null;
+  return `${year}-${month}-${day}`;
+}
+
+function phDayEndFromKey(key) {
+  return new Date(`${key}T23:59:59.999+08:00`);
+}
+
+function formatPhDateLabel(key) {
+  return new Date(`${key}T00:00:00+08:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: REPORT_TIME_ZONE,
+  });
 }
 
 function withinDateInputs(record, filters, fields) {
@@ -317,11 +351,17 @@ function applyAdvancedFilters(raw, range, filters) {
   const filteredProjects = filterByDateRange(raw.projects, range, "start_date", "created_at")
     .filter((p) => withinDateInputs(p, filters, ["start_date", "created_at"]));
 
+  const filteredLegalCases = filterByDateRange(raw.legalCases || [], range, "date_filed", "created_at")
+    .filter((c) => withinDateInputs(c, filters, ["date_filed", "created_at"]))
+    .filter((c) => filters.site === "all" || c.site === filters.site || c.region === filters.site || c.city === filters.site)
+    .filter((c) => filters.city === "all" || !filters.city || c.city === filters.city)
+    .filter((c) => filters.caseType === "all" || c.case_type === filters.caseType);
+
   const filteredUsers = filterByDateRange(raw.users, range, "created_at", "createdAt")
     .filter((u) => withinDateInputs(u, filters, ["created_at", "createdAt"]))
     .filter((u) => filters.userRole === "all" || u.role_name === filters.userRole);
 
-  return { cases: filteredCases, volunteers: filteredVolunteers, projects: filteredProjects, users: filteredUsers };
+  return { cases: filteredCases, legalCases: filteredLegalCases, volunteers: filteredVolunteers, projects: filteredProjects, users: filteredUsers };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,14 +373,15 @@ function bucketCasesByDay(cases) {
   for (const c of cases) {
     const date = recordDate(c, "date_filed", "created_at");
     if (!date) continue;
-    const key = date.toISOString().slice(0, 10);
+    const key = phDateKey(date);
+    if (!key) continue;
     counts[key] = (counts[key] || 0) + 1;
   }
   return Object.entries(counts)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-30)
     .map(([date, value]) => ({
-      label: new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      label: formatPhDateLabel(date),
       value,
     }));
 }
@@ -349,12 +390,11 @@ function getLastDayKeys(days = 30) {
   return Array.from({ length: days }, (_, index) => {
     const date = new Date();
     date.setDate(date.getDate() - (days - 1 - index));
-    date.setHours(23, 59, 59, 999);
-    const key = date.toISOString().slice(0, 10);
+    const key = phDateKey(date);
     return {
       key,
-      end: date,
-      label: new Date(`${key}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      end: phDayEndFromKey(key),
+      label: formatPhDateLabel(key),
     };
   });
 }
@@ -367,6 +407,8 @@ function groupStatusHistoryByCase(rows = []) {
     map[caseId].push({
       status: row.status || CASE_STATUS_BY_ID[row.case_status_id] || null,
       created_at: row.created_at,
+      approved_at: row.approved_at,
+      effective_at: row.approved_at || row.created_at,
     });
     return map;
   }, {});
@@ -399,8 +441,13 @@ function getStatusAsOfDay(caseItem, historyRows = [], dayEnd) {
   if (!filedDate || filedDate > dayEnd) return null;
 
   let status = "Submitted";
-  for (const row of historyRows) {
-    const transitionDate = recordDate(row, "created_at");
+  const sortedRows = [...historyRows].sort((a, b) => {
+    const aDate = recordDate(a, "effective_at", "approved_at", "created_at");
+    const bDate = recordDate(b, "effective_at", "approved_at", "created_at");
+    return (aDate?.getTime() || 0) - (bDate?.getTime() || 0);
+  });
+  for (const row of sortedRows) {
+    const transitionDate = recordDate(row, "effective_at", "approved_at", "created_at");
     if (!transitionDate || transitionDate > dayEnd) break;
     if (row.status) status = row.status;
   }
@@ -1902,7 +1949,7 @@ export default function ReportGenerator() {
   const [pdfPreview, setPdfPreview]         = useState(null);
   const [error, setError]                   = useState(null);
   const exportMenuRef                       = useRef(null);
-  const rawRef = useRef({ cases: [], volunteers: [], projects: [], users: [], statusHistoryByCaseId: {} });
+  const rawRef = useRef({ cases: [], legalCases: [], volunteers: [], projects: [], users: [], statusHistoryByCaseId: {} });
   const [filterOptionsSource, setFilterOptionsSource] = useState({ cases: [], volunteers: [], users: [] });
 
   const [caseData,      setCaseData]      = useState(null);
@@ -1928,9 +1975,7 @@ export default function ReportGenerator() {
   }, [pdfPreview]);
 
   const buildSummaries = useCallback((raw, range, filters) => {
-    const legalStatuses = ["Case Filed", "Investigation Ongoing", "Hearing Ongoing", "Dismissed", "Perpetrator Convicted"];
-    const { cases, volunteers, projects, users } = applyAdvancedFilters(raw, range, filters);
-    const legalCases = cases.filter((c) => legalStatuses.includes(c.status));
+    const { cases, legalCases, volunteers, projects, users } = applyAdvancedFilters(raw, range, filters);
 
     setCaseData(buildCaseSummary(cases));
     setLegalData(buildLegalSummary(legalCases));
@@ -1945,11 +1990,12 @@ export default function ReportGenerator() {
     setLoading(true);
     setError(null);
     try {
-      const [casesRes, volunteersRes, projectsRes, usersRes] = await Promise.allSettled([
+      const [casesRes, volunteersRes, projectsRes, usersRes, legalRes] = await Promise.allSettled([
         internalApiFetch(`/api/case_reports/all`,       { credentials: "include" }),
         internalApiFetch(`/api/volunteer_applications`, { credentials: "include" }),
         internalApiFetch(`/api/reports/projects`,       { credentials: "include" }),
         internalApiFetch(`/api/users`,                  { credentials: "include" }),
+        internalApiFetch(`/api/legal_reviews/management`, { credentials: "include" }),
       ]);
 
       const safeJson = async (settled) => {
@@ -1957,15 +2003,18 @@ export default function ReportGenerator() {
         try { return await settled.value.json(); } catch { return null; }
       };
 
-      const [casesRaw, volunteersRaw, projectsRaw, usersRaw] = await Promise.all([
-        safeJson(casesRes), safeJson(volunteersRes), safeJson(projectsRes), safeJson(usersRes),
+      const [casesRaw, volunteersRaw, projectsRaw, usersRaw, legalRaw] = await Promise.all([
+        safeJson(casesRes), safeJson(volunteersRes), safeJson(projectsRes), safeJson(usersRes), safeJson(legalRes),
       ]);
 
       const normalizedCases = toArray(casesRaw).map(normalizeCaseReport);
+      const legalPayload = legalRaw?.data || legalRaw;
+      const normalizedLegalCases = toArray(legalPayload?.cases || legalRaw).map(normalizeCaseReport);
       const statusHistoryByCaseId = await fetchApprovedStatusHistoryMap(normalizedCases);
 
       rawRef.current = {
         cases:      normalizedCases,
+        legalCases: normalizedLegalCases,
         volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
         projects:   toArray(projectsRaw).map(normalizeProject),
         users:      toArray(usersRaw).map(normalizeUser),

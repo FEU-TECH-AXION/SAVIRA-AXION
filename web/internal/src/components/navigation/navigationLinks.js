@@ -146,7 +146,7 @@ export const SIDEBAR_LINKS = {
       children: PROJECT_LINKS,
     },
     { href: "/staffAvailability", label: "Staff Availability", icon: "people" },
-    { href: "/reportGenerator", label: "Report Generator", icon: "assessment" },
+    { href: "/reportGenerator", label: "Reports", icon: "assessment" },
     { href: "/events", label: "Events", icon: "event" },
     { href: "/heatmap", label: "Heatmap", icon: "map" },
     {
