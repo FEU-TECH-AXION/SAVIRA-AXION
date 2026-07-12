@@ -1,0 +1,261 @@
+/* ============================================================
+   HelpCenterTab.module.css
+   Brand: --sasha-teal #037F81 | --sasha-orange #E06030
+   ============================================================ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--settings-card-bg);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 1.75rem 2rem 2rem;
+  box-shadow: var(--settings-shadow);
+}
+
+:global(html[data-theme="dark"]) .card {
+  background: var(--settings-card-bg);
+  box-shadow: var(--settings-shadow);
+}
+
+.wrap > .card:first-child { border-radius: 0 0 14px 14px; }
+
+.cardTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--settings-accent, #037F81);
+  margin-bottom: 1rem;
+}
+
+.cardDesc {
+  font-size: 0.875rem;
+  color: var(--settings-muted, #666);
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+/* ── Search ─────────────────────────────────────────────────── */
+.searchInput {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid var(--settings-border, #dde3ea);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: var(--settings-input-text, #222);
+  background: var(--settings-control-bg, #fafafa);
+  outline: none;
+  margin-bottom: 1.25rem;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.searchInput:focus {
+  border-color: var(--settings-accent, #037F81);
+  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  background: var(--settings-control-bg-focus, #fff);
+}
+
+/* ── FAQ accordion ──────────────────────────────────────────── */
+.faqList { display: flex; flex-direction: column; }
+
+.faqItem { border-bottom: 1px solid var(--settings-row-border, #f0f0f0); }
+.faqItem:last-child { border-bottom: none; }
+
+.faqQuestion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 0;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--settings-text, #222);
+  cursor: pointer;
+}
+
+.faqQuestion:hover { color: var(--settings-accent, #037F81); }
+
+.faqChevron { transition: transform 0.2s; color: var(--settings-muted-light, #888); flex-shrink: 0; }
+.faqChevronOpen { transform: rotate(180deg); color: var(--settings-accent, #037F81); }
+
+.faqAnswer {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--settings-muted, #555);
+  margin: 0 0 1rem;
+  padding-right: 1.5rem;
+}
+
+.emptyNote {
+  font-size: 0.85rem;
+  color: var(--settings-muted-light, #888);
+  padding: 1rem 0;
+}
+
+/* ── Contact form ──────────────────────────────────────────── */
+.contactForm { display: flex; flex-direction: column; gap: 1.1rem; }
+
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
+.fieldLabel { font-size: 0.8rem; font-weight: 600; color: var(--settings-text-secondary, #444); }
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid var(--settings-border, #dde3ea);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--settings-input-text, #222);
+  background: var(--settings-control-bg, #fafafa);
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--settings-accent, #037F81);
+  box-shadow: 0 0 0 3px rgba(3,127,129,0.1);
+  background: var(--settings-control-bg-focus, #fff);
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.emailLink {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--settings-accent, #037F81);
+  text-decoration: none;
+  font-weight: 500;
+}
+.emailLink:hover { text-decoration: underline; }
+
+.btnPrimary {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 1.5rem;
+  background: var(--settings-accent-solid, #037F81);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.btnPrimary:hover:not(:disabled) { background: var(--settings-accent-strong, #025f61); transform: translateY(-1px); }
+.btnPrimary:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.flashSuccess {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0 0 1rem;
+  background: var(--settings-success-bg, #e6f9f5);
+  color: var(--settings-accent-on-soft, #037F81);
+  border: 1px solid var(--settings-success-border, #a7e9d8);
+  animation: slideDown 0.25s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(17, 24, 39, 0.54);
+}
+
+.sentModal {
+  width: min(100%, 420px);
+  border-radius: 8px;
+  background: var(--settings-card-bg, #fff);
+  color: var(--settings-text, #222);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  padding: 2rem;
+  text-align: center;
+}
+
+.modalIcon {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--settings-accent-solid, #037F81);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.sentModal h3 {
+  color: var(--settings-accent, #037F81);
+  font-size: 1.35rem;
+  line-height: 1.25;
+  margin: 0 0 0.55rem;
+}
+
+.sentModal p {
+  color: var(--settings-muted, #666);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0 0 1.4rem;
+}
+
+.modalButton {
+  min-width: 112px;
+  border: none;
+  border-radius: 8px;
+  background: var(--settings-accent-solid, #037F81);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.75rem 1.25rem;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.modalButton:hover {
+  background: var(--settings-accent-strong, #025f61);
+}
+
+.modalButton:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 640px) {
+  .card { padding: 1.25rem 1rem; }
+  .formActions { flex-direction: column; align-items: stretch; }
+  .btnPrimary { justify-content: center; }
+}

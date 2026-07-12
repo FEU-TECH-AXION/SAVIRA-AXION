@@ -1,0 +1,568 @@
+/* ============================================================
+   Profile & Settings — profile.module.css (page shell only)
+   Tab-specific styles now live in their own component .module.css files.
+   Brand: --sasha-teal #037F81 | --sasha-orange #E06030
+   ============================================================ */
+
+/* ── Page shell ─────────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  background: var(--settings-page-bg);
+  padding-bottom: 4rem;
+}
+
+/* ── Hero strip ─────────────────────────────────────────────── */
+.hero {
+  padding: 2.5rem 1rem 3.5rem;
+  position: relative;
+  overflow: hidden;
+  /* 1. Create a new stacking context for the hero element */
+  z-index: 1; 
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/hero-banner.png') center/cover no-repeat;
+  filter: grayscale(100%);
+  /* 2. Keep the image at the lowest layer *inside* the hero */
+  z-index: -2; 
+}
+
+.heroOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #629293 0%, #48a1a3 60%, #148082 100%);
+  opacity: 0.85;
+  z-index: -1; 
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: var(--settings-page-bg);
+  clip-path: ellipse(55% 100% at 50% 100%);
+  z-index: 2;
+}
+
+.heroInner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+/* Avatar */
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255,255,255,0.7);
+}
+
+.avatarInitials {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: 3px solid rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.avatarEdit {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #E06030;
+  border: 2px solid #fff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.avatarEdit:hover {
+  background: #c94e1f;
+}
+
+/* Hero text */
+.heroMeta {
+  flex: 1;
+  min-width: 0;
+  z-index: 1;
+}
+
+.heroName {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.2rem;
+  line-height: 1.2;
+}
+
+.heroSub {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.78);
+  margin: 0 0 0.55rem;
+}
+
+.roleBadge {
+  display: inline-block;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Completion card */
+.completionCard {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.completionHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.completionBar {
+  height: 6px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.55rem;
+}
+
+.completionFill {
+  height: 100%;
+  background: #E06030;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.completionHint {
+  font-size: 0.74rem;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── Body ───────────────────────────────────────────────────── */
+.body {
+  max-width: 900px;
+  margin: -24px auto 0;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+  background: var(--settings-card-bg);
+  border-radius: 12px 12px 0 0;
+  padding: 0.5rem 0.75rem 0;
+  border-bottom: 1px solid var(--settings-border);
+  box-shadow: var(--settings-shadow);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--settings-muted, #666);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--settings-accent, #037F81);
+  background: var(--settings-hover-bg, #f0fafa);
+}
+
+.tabActive {
+  color: var(--settings-accent, #037F81);
+  border-bottom-color: var(--settings-accent, #037F81);
+  font-weight: 600;
+}
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.confirmDialog {
+  width: min(420px, 100%);
+  background: var(--settings-card-bg, #fff);
+  border: 1px solid var(--settings-border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+  padding: 1.25rem;
+}
+
+.confirmPreviewWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.confirmPreview {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--settings-accent, #037F81);
+}
+
+.confirmContent h2 {
+  color: var(--settings-text, #1f2937);
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+  text-align: center;
+}
+
+.confirmContent p {
+  color: var(--settings-muted, #64748b);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+  text-align: center;
+}
+
+.confirmError {
+  margin-top: 0.75rem !important;
+  color: #c0392b !important;
+  font-weight: 600;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.confirmPrimary,
+.confirmSecondary {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: Poppins, sans-serif;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+}
+
+.confirmPrimary {
+  background: var(--settings-accent, #037F81);
+  color: #fff;
+}
+
+.confirmSecondary {
+  background: var(--settings-hover-bg, #eef6f6);
+  color: var(--settings-accent, #037F81);
+}
+
+.confirmPrimary:disabled,
+.confirmSecondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+:global(html[data-theme="dark"]) .hero::after {
+  background: var(--settings-page-bg);
+}
+
+:global(html[data-theme="dark"]) .page select option {
+  background: var(--settings-card-bg);
+  color: var(--settings-input-text);
+}
+
+:global(html[data-theme="dark"]) .tabs {
+  background: var(--settings-card-bg) !important;
+  border-bottom-color: var(--settings-border) !important;
+  box-shadow: var(--settings-shadow) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNav, .policyContent, .policyLink, .sessionRow, .dangerPanel) {
+  background: var(--settings-card-bg-soft) !important;
+  border-color: var(--settings-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="subNav"], [class*="policyContent"], [class*="policyLink"], [class*="sessionRow"], [class*="dangerPanel"]) {
+  background: var(--settings-card-bg-soft) !important;
+  border-color: var(--settings-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, p, label, strong, .sectionTitle, .cardTitle, .policyTitle, .toggleRowLabel, .notifLabel, .privacyLabel, .sessionDevice, .fieldLabel) {
+  color: var(--settings-text);
+}
+
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, p, label, strong, [class*="sectionTitle"], [class*="cardTitle"], [class*="policyTitle"], [class*="toggleRowLabel"], [class*="notifLabel"], [class*="privacyLabel"], [class*="sessionDevice"], [class*="fieldLabel"]) {
+  color: var(--settings-text);
+}
+
+:global(html[data-theme="dark"]) .page :is(.cardDesc, .fieldHint, .policyContent p, .policyContent li, .policyLink span, .toggleRowDesc, .notifDesc, .privacyDesc, .sessionDetail, .placeholderNote, .infoLabel, .faqAnswer) {
+  color: var(--settings-muted) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="cardDesc"], [class*="fieldHint"], [class*="policyContent"] p, [class*="policyContent"] li, [class*="policyLink"] span, [class*="toggleRowDesc"], [class*="notifDesc"], [class*="privacyDesc"], [class*="sessionDetail"], [class*="placeholderNote"], [class*="infoLabel"], [class*="faqAnswer"]) {
+  color: var(--settings-muted) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.sectionTitle, .cardTitle, .policyContent h3, .policyLink strong, .infoItem, .emailLink) {
+  color: var(--settings-accent) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="sectionTitle"], [class*="cardTitle"], [class*="policyContent"] h3, [class*="policyLink"] strong, [class*="infoItem"], [class*="emailLink"]) {
+  color: var(--settings-accent) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, .inlineSelect, .searchInput) {
+  background: var(--settings-control-bg) !important;
+  border-color: #435266 !important;
+  color: var(--settings-input-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, [class*="inlineSelect"], [class*="searchInput"]) {
+  background: var(--settings-control-bg) !important;
+  border-color: #435266 !important;
+  color: var(--settings-input-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, .inlineSelect, .searchInput):focus,
+:global(html[data-theme="dark"]) .page :is(input, select, textarea, [class*="inlineSelect"], [class*="searchInput"]):focus {
+  background: var(--settings-control-bg-focus) !important;
+  border-color: var(--settings-accent) !important;
+  box-shadow: 0 0 0 3px rgba(3, 127, 129, 0.18) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNavItem, .policySubNavItem, [class*="subNavItem"]:not([class*="Active"]), [class*="policySubNavItem"]:not([class*="Active"])) {
+  color: #9aa8b5 !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNavItemActive, .policySubNavItemActive, .sessionBadge, .issueChipActive, .attachmentRow, .flashSuccess) {
+  background: #123f43 !important;
+  border-color: var(--settings-accent-solid) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="subNavItemActive"], [class*="policySubNavItemActive"], [class*="sessionBadge"], [class*="issueChipActive"], [class*="attachmentRow"], [class*="flashSuccess"]) {
+  background: #123f43 !important;
+  border-color: var(--settings-accent-solid) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.subNavItem:hover, .policySubNavItem:hover, .issueChip:hover, .attachBtn:hover) {
+  background: var(--settings-hover-bg) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnPrimary) {
+  background: var(--settings-accent-solid) !important;
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"]) .page :is([class*="btnPrimary"]) {
+  background: var(--settings-accent-solid) !important;
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnPrimary:hover) {
+  background: var(--settings-accent-strong) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnSecondary, [class*="btnSecondary"]) {
+  background: var(--settings-btn-secondary-bg) !important;
+  border-color: var(--settings-accent) !important;
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnSecondary:hover, [class*="btnSecondary"]:hover) {
+  background: var(--settings-hover-bg) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnDanger, [class*="btnDanger"]) {
+  background: var(--settings-danger-bg) !important;
+  border-color: var(--settings-danger-border) !important;
+  color: var(--settings-danger-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.btnDanger:hover, [class*="btnDanger"]:hover) {
+  background: #331818 !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.badge, [class*="badge"]) {
+  background: var(--settings-badge-bg) !important;
+  color: var(--settings-muted-light) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.sectionTitle, [class*="sectionTitle"]) {
+  border-bottom-color: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.issueChip, .attachBtn, [class*="issueChip"], [class*="attachBtn"]) {
+  background: var(--settings-chip-bg) !important;
+  border-color: var(--settings-border) !important;
+  color: var(--settings-muted) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.issueChip:hover, .attachBtn:hover, [class*="issueChip"]:hover, [class*="attachBtn"]:hover) {
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.warnNote, [class*="warnNote"]) {
+  background: var(--settings-warn-bg) !important;
+  border-color: var(--settings-warn-border) !important;
+  color: var(--settings-warn-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.flashError, [class*="flashError"]) {
+  background: var(--settings-error-bg) !important;
+  border-color: var(--settings-error-border) !important;
+  color: #f5a8a0 !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.dangerPanel, [class*="dangerPanel"]) {
+  background: var(--settings-danger-bg) !important;
+  border-color: var(--settings-danger-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.dangerPanelTitle, .dangerTitle, [class*="dangerPanelTitle"], [class*="dangerTitle"]) {
+  color: var(--settings-danger-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.infoGrid, [class*="infoGrid"]) {
+  border-top-color: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.infoValue, [class*="infoValue"]) {
+  color: var(--settings-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.navDivider, [class*="navDivider"]) {
+  background: var(--settings-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.faqItem, .notifRow, .privacyRow, .toggleRow, [class*="faqItem"], [class*="notifRow"], [class*="privacyRow"], [class*="toggleRow"]) {
+  border-color: var(--settings-row-border) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.faqQuestion, [class*="faqQuestion"]) {
+  color: var(--settings-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.faqChevron, [class*="faqChevron"]) {
+  color: var(--settings-muted-light) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.eyeBtn, [class*="eyeBtn"]) {
+  color: var(--settings-muted-light) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.eyeBtn:hover, [class*="eyeBtn"]:hover) {
+  color: var(--settings-accent-on-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.toggle, [class*="toggle"]) {
+  background: var(--settings-toggle-bg) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.toggleKnob, [class*="toggleKnob"]) {
+  background: var(--settings-toggle-knob) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.policyContent hr, [class*="policyContent"] hr) {
+  background: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.policySection, [class*="policySection"]) {
+  border-bottom-color: var(--settings-border-soft) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.policyContent strong, [class*="policyContent"] strong) {
+  color: var(--settings-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.deactivateNavItem, [class*="deactivateNavItem"]) {
+  color: var(--settings-danger-text) !important;
+}
+
+:global(html[data-theme="dark"]) .page :is(.deactivateNavItem:hover, .deactivateNavItemActive, [class*="deactivateNavItem"]:hover, [class*="deactivateNavItemActive"]) {
+  background: var(--settings-danger-bg) !important;
+  color: var(--settings-danger-text) !important;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .heroInner { gap: 1rem; }
+  .completionCard { max-width: 100%; min-width: 100%; }
+  .tabs { overflow-x: auto; }
+  .tab { white-space: nowrap; }
+}
