@@ -15,6 +15,18 @@ const HOP_BY_HOP_HEADERS = new Set([
   "upgrade",
 ]);
 
+const BACKEND_TIMEOUT_MS = 15000;
+
+function jsonError(message, status, details = {}) {
+  return NextResponse.json(
+    {
+      error: message,
+      ...details,
+    },
+    { status }
+  );
+}
+
 function backendUrlFor(request, pathSegments = []) {
   const sourceUrl = new URL(request.url);
   const backendUrl = new URL(`${getBackendUrl()}/api/${pathSegments.join("/")}`);
@@ -37,15 +49,43 @@ function forwardedHeaders(request, token) {
   return headers;
 }
 
-async function proxyBackend(request, context) {
-  const token = await getInternalToken();
+async function fetchBackendWithTimeout(backendUrl, init) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
 
-  if (!token) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  try {
+    return await fetch(backendUrl, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function proxyBackend(request, context) {
+  let token;
+  try {
+    token = await getInternalToken();
+  } catch (error) {
+    console.error("[backend proxy] Failed to read internal session:", error);
+    return jsonError("Unable to read internal session.", 500);
   }
 
-  const params = await context.params;
-  const backendUrl = backendUrlFor(request, params?.path || []);
+  if (!token) {
+    return jsonError("Not authenticated.", 401);
+  }
+
+  let params;
+  let backendUrl;
+  try {
+    params = await context.params;
+    backendUrl = backendUrlFor(request, params?.path || []);
+  } catch (error) {
+    console.error("[backend proxy] Failed to resolve backend URL:", error);
+    return jsonError("Unable to resolve backend route.", 500);
+  }
+
   const method = request.method.toUpperCase();
   const init = {
     method,
@@ -54,11 +94,36 @@ async function proxyBackend(request, context) {
     redirect: "manual",
   };
 
-  if (method !== "GET" && method !== "HEAD") {
-    init.body = await request.arrayBuffer();
+  try {
+    if (method !== "GET" && method !== "HEAD") {
+      init.body = await request.arrayBuffer();
+    }
+  } catch (error) {
+    console.error("[backend proxy] Failed to read request body:", error);
+    return jsonError("Unable to read request body.", 400);
   }
 
-  const backendResponse = await fetch(backendUrl, init);
+  let backendResponse;
+  try {
+    backendResponse = await fetchBackendWithTimeout(backendUrl, init);
+  } catch (error) {
+    const timedOut = error?.name === "AbortError";
+    console.error("[backend proxy] Backend request failed:", {
+      url: backendUrl.toString(),
+      method,
+      timedOut,
+      message: error?.message,
+    });
+    return jsonError(
+      timedOut ? "Backend request timed out." : "Backend request failed.",
+      timedOut ? 504 : 502,
+      {
+        backendPath: backendUrl.pathname,
+        timeoutMs: timedOut ? BACKEND_TIMEOUT_MS : undefined,
+      }
+    );
+  }
+
   const responseHeaders = new Headers();
 
   backendResponse.headers.forEach((value, key) => {
@@ -69,7 +134,11 @@ async function proxyBackend(request, context) {
   });
 
   if (backendResponse.status === 401) {
-    await clearInternalSession();
+    try {
+      await clearInternalSession();
+    } catch (error) {
+      console.error("[backend proxy] Failed to clear internal session:", error);
+    }
   }
 
   return new Response(backendResponse.body, {
