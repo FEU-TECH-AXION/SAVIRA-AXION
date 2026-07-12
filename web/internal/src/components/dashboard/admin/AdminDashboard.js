@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import Navbar from "@/components/navbar/navbar";
 import styles from "./AdminDashboard.module.css";
-import { authFetch, useAuth } from "@/lib/AuthContext";
-import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
-import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import { useAuth } from "@/lib/AuthContext";
+import { internalApiFetch } from "@/lib/internalApiFetch";
+import DashboardEventsCard from "@/components/dashboard/shared/DashboardEventsCard";
+import DashboardHeatmapCard from "@/components/dashboard/shared/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
 
 // ── Overview stat card ───────────────────────────────────────────────────────
@@ -49,8 +49,7 @@ export default function AdminDashboard() {
 
     async function fetchDashboardStats() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const summaryRes = await authFetch(`${API_URL}/api/dashboard/admin-summary`, { cache: "no-store" });
+        const summaryRes = await internalApiFetch("/api/dashboard/admin-summary", { cache: "no-store" });
         const summaryPayload = summaryRes.ok ? await summaryRes.json().catch(() => ({})) : {};
         const summary = summaryPayload.data || {};
 
@@ -117,22 +116,19 @@ export default function AdminDashboard() {
   if (!authUser) return null;
 
   return (
-    <>
-      <Navbar user={user} />
-
-      <main className={styles.pageWrapper}>
+    <main className={styles.pageWrapper}>
 
         {/* ── Hero Banner ── */}
         <section className={styles.heroBanner}>
-          <div className="container-xl">
+          <div className={styles.dashboardContainer}>
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>
                 Welcome, {user.firstName} {user.lastName}!
               </h1>
 
-              <div className="row g-3 justify-content-center">
+              <div className={styles.statGrid}>
                 {stats.map(({ num, label, hasNew }) => (
-                  <div key={label} className="col-12 col-md-4">
+                  <div key={label} className={styles.statGridItem}>
                     <div className={styles.statCard}>
                       {/* {hasNew && <span className={styles.statDot} />} */}
                       <p className={styles.statNum}>{num}</p>
@@ -146,7 +142,7 @@ export default function AdminDashboard() {
         </section>
 
         {/* ── Overview ── */}
-        <div className="container-xl py-4">
+        <div className={styles.dashboardContainer}>
 
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>Overview</h2>
@@ -186,6 +182,5 @@ export default function AdminDashboard() {
 
         </div>
       </main>
-    </>
   );
 }

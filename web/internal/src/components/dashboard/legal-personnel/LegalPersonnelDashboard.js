@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Navbar from "@/components/navbar/navbar";
-import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import { authFetch, useAuth } from "@/lib/AuthContext";
-import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
-import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import styles from "./LegalPersonnelDashboard.module.css";
+import { useAuth } from "@/lib/AuthContext";
+import { internalApiFetch } from "@/lib/internalApiFetch";
+import DashboardEventsCard from "@/components/dashboard/shared/DashboardEventsCard";
+import DashboardHeatmapCard from "@/components/dashboard/shared/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
 
-const MEMBERSHIP_COMMITTEE_ID = 2;
+// TODO: Nav links for Legal Personnel are temporary — update with correct pages later
+// TODO: Overview counts are placeholder — connect to real API when ready
 
 function OverviewCard({ category, label, count, showView = false }) {
   return (
@@ -23,7 +24,9 @@ function OverviewCard({ category, label, count, showView = false }) {
   );
 }
 
-export default function StaffDashboard() {
+// ── Cookies ─────────────────────────────────────────────────────────────────────
+
+export default function LegalPersonnelDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState(null);
 
@@ -36,81 +39,55 @@ export default function StaffDashboard() {
     : { role: "", firstName: "", lastName: "" };
 
   useEffect(() => {
-    if (authLoading || !authUser?.user_id) return;
-    async function fetchDashboardData() {
+    if (authLoading || !authUser) return;
+    async function fetchCases() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-        const summaryRes = await authFetch(`${API_URL}/api/dashboard/staff-summary`, { cache: "no-store" });
+        const summaryRes = await internalApiFetch("/api/dashboard/legal-summary", { cache: "no-store" });
         if (summaryRes.ok) {
           const json = await summaryRes.json().catch(() => ({}));
           setSummary(json.data || {});
         }
       } catch (err) {
-        console.error("Failed to fetch StaffDashboard data:", err);
+        console.error("Failed to fetch cases for LegalPersonnelDashboard:", err);
       }
     }
-    fetchDashboardData();
-  }, [authLoading, authUser?.committee_id, authUser?.user_id]);
-
-  const isMembershipStaff = summary?.staff?.isMembershipStaff ?? Number(authUser?.committee_id) === MEMBERSHIP_COMMITTEE_ID;
+    fetchCases();
+  }, [authLoading, authUser]);
 
   const stats = useMemo(() => {
-    if (!isMembershipStaff) {
-      const activeProjects = summary?.counts?.activeProjects || 0;
-      const openTasks = summary?.counts?.openProjectTasks || 0;
-
-      return [
-        { num: activeProjects, label: "Active Projects", hasNew: activeProjects > 0 },
-        { num: openTasks, label: "Open Project Tasks", hasNew: openTasks > 0 },
-      ];
-    }
-
-    const newToday = summary?.counts?.newApplicationsToday || 0;
-    const review = summary?.counts?.reviewApplications || 0;
+    const pendingReview = summary?.counts?.pendingReview || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
-      { num: newToday, label: "New Applications Today", hasNew: newToday > 0 },
-      { num: review, label: "Review Applications", hasNew: review > 0 },
+      { num: pendingReview, label: "Pending Review",            hasNew: pendingReview > 0 },
+      { num: totalAssigned,  label: "Total Assigned Cases",       hasNew: totalAssigned > 0 },
     ];
-  }, [isMembershipStaff, summary]);
+  }, [summary]);
 
   const overviewCards = useMemo(() => {
-    if (!isMembershipStaff) {
-      const upcomingEvents = summary?.counts?.upcomingEvents || 0;
-      const overdueTasks = summary?.counts?.overdueTasks || 0;
-
-      return [
-        { category: "Events", label: "Upcoming Events", count: upcomingEvents, showView: false },
-        { category: "Projects", label: "Overdue Tasks", count: overdueTasks, showView: true },
-      ];
-    }
-
-    const newToday = summary?.counts?.newApplicationsToday || 0;
-    const review = summary?.counts?.reviewApplications || 0;
+    const pendingReview = summary?.counts?.pendingReview || 0;
+    const totalAssigned = summary?.counts?.totalAssignedCases || 0;
 
     return [
-      { category: "New Applicants", label: "New Applications Today", count: newToday, showView: false },
-      { category: "Volunteer", label: "Review Applications", count: review, showView: true },
+      { category: "Case",    label: "Pending Review",               count: pendingReview, showView: true },
+      { category: "My Case", label: "Your total assigned cases are", count: totalAssigned,  showView: true },
     ];
-  }, [isMembershipStaff, summary]);
+  }, [summary]);
 
   const deadlines = summary?.deadlines || [];
-
   if (authLoading) return <p>Loading...</p>;
   if (!authUser) return null;
 
   return (
-    <>
-      <Navbar user={user} />
-      <main className={styles.pageWrapper}>
+    <main className={styles.pageWrapper}>
 
         <section className={styles.heroBanner}>
-          <div className="container-xl">
+          <div className={styles.dashboardContainer}>
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Welcome, {user.firstName} {user.lastName}!</h1>
-              <div className="row g-3 justify-content-center">
+              <div className={styles.statGrid}>
                 {stats.map(({ num, label, hasNew }) => (
-                  <div key={label} className="col-12 col-md-6">
+                  <div key={label} className={styles.statGridItem}>
                     <div className={styles.statCard}>
                       {/* {hasNew && <span className={styles.statDot} />} */}
                       <p className={styles.statNum}>{num}</p>
@@ -123,7 +100,7 @@ export default function StaffDashboard() {
           </div>
         </section>
 
-        <div className="container-xl py-4">
+        <div className={styles.dashboardContainer}>
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>Overview</h2>
             <div className={styles.headingLine} />
@@ -150,9 +127,7 @@ export default function StaffDashboard() {
               </div>
             </div>
           </div>
-
         </div>
       </main>
-    </>
   );
 }

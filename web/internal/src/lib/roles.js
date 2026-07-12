@@ -1,16 +1,19 @@
 export const INTERNAL_ROLES = ["admin", "case_officer", "legal", "staff"];
 
 export const ROLE_HOME = {
-  admin: "/admin",
-  case_officer: "/cases",
-  legal: "/legal",
-  staff: "/staff",
+  admin: "/dashboard",
+  case_officer: "/dashboard",
+  legal: "/dashboard",
+  staff: "/dashboard",
 };
 
 export const ROUTE_PERMISSIONS = {
+  "/dashboard": ["admin", "case_officer", "legal", "staff"],
   "/admin": ["admin"],
+  "/caseInterviews": ["case_officer", "admin"],
   "/cases": ["case_officer", "admin"],
   "/legal": ["legal", "admin"],
+  "/legalReviews": ["legal", "admin"],
   "/staff": ["staff", "admin"],
   "/users": ["admin"],
   "/projects": ["staff", "admin"],

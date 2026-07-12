@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Navbar from "@/components/navbar/navbar";
-import styles from "@/components/dashboard/admin/AdminDashboard.module.css";
-import { authFetch, useAuth } from "@/lib/AuthContext";
-import DashboardEventsCard from "@/components/dashboard/complainant/DashboardEventsCard";
-import DashboardHeatmapCard from "@/components/dashboard/complainant/DashboardHeatmapCard";
+import styles from "./CaseOfficerDashboard.module.css";
+import { useAuth } from "@/lib/AuthContext";
+import { internalApiFetch } from "@/lib/internalApiFetch";
+import DashboardEventsCard from "@/components/dashboard/shared/DashboardEventsCard";
+import DashboardHeatmapCard from "@/components/dashboard/shared/DashboardHeatmapCard";
 import DeadlineItem from "@/components/dashboard/DeadlineItem";
 
 // TODO: Nav links for Case Officer are temporary — update with correct pages later
@@ -42,8 +42,7 @@ export default function CaseOfficerDashboard() {
     if (authLoading || !authUser?.user_id) return;
     async function fetchDashboardData() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-        const summaryRes = await authFetch(`${API_URL}/api/dashboard/case-officer-summary`, { cache: 'no-store' });
+        const summaryRes = await internalApiFetch("/api/dashboard/case-officer-summary", { cache: "no-store" });
         if (summaryRes.ok) {
           const json = await summaryRes.json().catch(() => ({}));
           setSummary(json.data || {});
@@ -80,17 +79,15 @@ export default function CaseOfficerDashboard() {
   if (!authUser) return null;
 
   return (
-    <>
-      <Navbar user={user} />
-      <main className={styles.pageWrapper}>
+    <main className={styles.pageWrapper}>
 
         <section className={styles.heroBanner}>
-          <div className="container-xl">
+          <div className={styles.dashboardContainer}>
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Welcome, {user.firstName} {user.lastName}!</h1>
-              <div className="row g-3 justify-content-center">
+              <div className={styles.statGrid}>
                 {stats.map(({ num, label, hasNew }) => (
-                  <div key={label} className="col-12 col-md-6">
+                  <div key={label} className={styles.statGridItem}>
                     <div className={styles.statCard}>
                       {/* {hasNew && <span className={styles.statDot} />} */}
                       <p className={styles.statNum}>{num}</p>
@@ -103,7 +100,7 @@ export default function CaseOfficerDashboard() {
           </div>
         </section>
 
-        <div className="container-xl py-4">
+        <div className={styles.dashboardContainer}>
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>Overview</h2>
             <div className={styles.headingLine} />
@@ -133,6 +130,5 @@ export default function CaseOfficerDashboard() {
 
         </div>
       </main>
-    </>
   );
 }

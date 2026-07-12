@@ -24,6 +24,23 @@
   color: var(--sasha-text);
 }
 
+.dashboardContainer {
+  margin: 0 auto;
+  max-width: 1320px;
+  padding: 0 1.5rem;
+}
+
+.statGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  justify-content: center;
+}
+
+.statGridItem {
+  min-width: 0;
+}
+
 /* ════════════════════════════════════════
    HERO BANNER
    ════════════════════════════════════════ */

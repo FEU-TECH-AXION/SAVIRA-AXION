@@ -1,14 +1,9 @@
 "use client";
 
-// TODO: Move role checking to middleware for better security
-
 import { useEffect, useState } from "react";
-import AdminDashboard from "@/components/dashboard/admin/AdminDashboard";
-import StaffDashboard from "@/components/dashboard/staff/StaffDashboard";
-import CaseOfficerDashboard from "@/components/dashboard/caseOfficer/CaseOfficerDashboard";
-import LegalPersonnelDashboard from "@/components/dashboard/legalPersonnel/LegalPersonnelDashboard";
 import ComplainantDashboard from "@/components/dashboard/complainant/ComplainantDashboard";
-import { useAuth, authFetch } from "@/lib/AuthContext";
+import { authFetch, useAuth } from "@/lib/AuthContext";
+
 export default function DashboardPage() {
   const [userReports, setUserReports] = useState([]);
   const [latestApplication, setLatestApplication] = useState(null);
@@ -16,10 +11,10 @@ export default function DashboardPage() {
   const role = user?.role_name?.toLowerCase();
 
   useEffect(() => {
-    if (role !== "user") return;
+    if (role !== "user" && role !== "complainant") return;
 
     async function fetchLatestRecords() {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const [reportsResult, applicationsResult] = await Promise.allSettled([
         authFetch(`${API_URL}/api/case_reports/my-reports`),
         authFetch(`${API_URL}/api/volunteer_applications/my_applications`),
@@ -48,17 +43,12 @@ export default function DashboardPage() {
   }, [role]);
 
   if (loading) return <p>Loading...</p>;
-  if (!role) return <p>Unauthorized</p>;
-  if (role === "admin")           return <AdminDashboard />;
-  if (role === "staff")           return <StaffDashboard />;
-  if (role === "case officer")    return <CaseOfficerDashboard />;
-  if (role === "legal personnel") return <LegalPersonnelDashboard />;
-  if (role === "user")            return (
+  if (role !== "user" && role !== "complainant") return <p>Unauthorized</p>;
+
+  return (
     <ComplainantDashboard
       userReports={userReports}
       applicationData={latestApplication}
     />
   );
-
-  return <p>Unauthorized</p>;
 }

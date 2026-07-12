@@ -1,0 +1,557 @@
+/* ════════════════════════════════════════
+   SASHA Design tokens
+   ════════════════════════════════════════ */
+:root {
+  --sasha-teal:         #037F81;
+  --sasha-teal-dark:    #025f61;
+  --sasha-teal-light:   #e1f5f5;
+  --sasha-orange:       #E8663A;
+  --sasha-orange-dark:  #c44e24;
+  --sasha-white:        #ffffff;
+  --sasha-offwhite:     #f5f7f8;
+  --sasha-text:         #1a1a1a;
+  --sasha-muted:        #6b7280;
+  --sasha-border:       #e5e7eb;
+  --sasha-card-radius:  14px;
+}
+
+/* ════════════════════════════════════════
+   PAGE WRAPPER
+   ════════════════════════════════════════ */
+.pageWrapper {
+  background: var(--sasha-offwhite);
+  min-height: 100vh;
+  color: var(--sasha-text);
+}
+
+.dashboardContainer {
+  margin: 0 auto;
+  max-width: 1320px;
+  padding: 0 1.5rem;
+}
+
+.statGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  justify-content: center;
+}
+
+.statGridItem {
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════
+   HERO BANNER
+   ════════════════════════════════════════ */
+.heroBanner {
+  position: relative;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.heroContent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(3,127,129,0.9) 0%, rgba(3,127,129,0.7) 100%);
+  z-index: -1;
+  border-radius: 1rem;
+}
+
+.heroContent {
+  background-image: url('/sasha-bg-1.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  border-radius: 1rem;
+  padding: 5rem;
+  margin-top: 2rem;
+}
+
+.heroTitle {
+  color: var(--sasha-white);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+}
+
+/* ── Stat Cards ── */
+.statCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  padding: 2rem 1.75rem;
+  backdrop-filter: blur(10px);
+  height: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+/* No-op wrapper — keeps JSX clean, dot is abs on the card */
+.statDotWrap {
+  display: contents;
+}
+
+/* Orange dot: top-right of the card, half-overlapping the top edge */
+.statDot {
+  position: absolute;
+  top: -1.5rem;
+  left: 2rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--sasha-orange);
+  border: 3px solid rgba(255,255,255,0.4);
+  pointer-events: none;
+}
+
+/* Big number on the LEFT */
+.statNum {
+  color: var(--sasha-white);
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Label to the RIGHT of the number */
+.statLabel {
+  color: var(--sasha-white);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0;
+  text-align: left;
+}
+
+/* ════════════════════════════════════════
+   SECTION HEADING
+   ════════════════════════════════════════ */
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.headingLine {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, var(--sasha-orange), transparent);
+  border-radius: 2px;
+}
+
+.dashboardOverviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.dashboardMainColumn,
+.dashboardSideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.moduleOverviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.moduleOverviewItem {
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════
+   OVERVIEW CARDS
+   ════════════════════════════════════════ */
+.overviewCard {
+  background: var(--sasha-surface);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.overviewCardHeader {
+  background: var(--sasha-teal);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+}
+
+.overviewCardBody {
+  position: relative;
+  flex: 1;
+  min-height: 112px;
+  padding: 1rem 1.1rem 1.1rem;
+  background: var(--sasha-surface);
+}
+
+.overviewLabel {
+  font-size: 0.82rem;
+  color: var(--sasha-muted);
+  margin: 0 0 0.2rem;
+}
+
+.overviewCount {
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  line-height: 1;
+  margin: 0;
+}
+
+.viewBtn {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--sasha-orange);
+  color: var(--sasha-white);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 16px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: var(--sasha-orange-dark);
+  color: var(--sasha-white);
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════════════════
+   CALENDAR CARD  (react-calendar)
+   ════════════════════════════════════════ */
+.calendarCard {
+  background: var(--sasha-surface);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  overflow: hidden;
+  height: 100%;
+}
+
+.calendarCardHeader {
+  background: var(--sasha-teal);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--sasha-white);
+}
+
+.calendarBody {
+  padding: 0.75rem;
+}
+
+/* Make react-calendar fill its container and adopt SASHA colours */
+.calendarBody :global(.react-calendar) {
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  font-size: 0.82rem;
+  background: transparent;
+}
+
+.calendarBody :global(.react-calendar__navigation) {
+  margin-bottom: 0.5rem;
+}
+
+.calendarBody :global(.react-calendar__navigation button) {
+  color: var(--sasha-teal);
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 28px;
+  background: none;
+}
+
+.calendarBody :global(.react-calendar__navigation button:enabled:hover),
+.calendarBody :global(.react-calendar__navigation button:enabled:focus) {
+  background: var(--sasha-teal-light);
+  border-radius: 6px;
+}
+
+.calendarBody :global(.react-calendar__month-view__weekdays) {
+  text-align: center;
+}
+
+.calendarBody :global(.react-calendar__month-view__weekdays__weekday) {
+  color: var(--sasha-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 0;
+}
+
+/* Remove the default underline on abbr */
+.calendarBody :global(.react-calendar__month-view__weekdays__weekday abbr) {
+  text-decoration: none !important;
+}
+
+.calendarBody :global(.react-calendar__tile) {
+  border-radius: 50%;
+  padding: 0.45em 0.3em;
+  font-size: 0.78rem;
+  color: var(--sasha-text);
+  transition: background 0.12s;
+}
+
+.calendarBody :global(.react-calendar__tile:enabled:hover),
+.calendarBody :global(.react-calendar__tile:enabled:focus) {
+  background: var(--sasha-teal-light);
+}
+
+.calendarBody :global(.react-calendar__tile--now) {
+  background: var(--sasha-teal) !important;
+  color: var(--sasha-white) !important;
+  font-weight: 700;
+  border-radius: 5%;
+}
+
+.calendarBody :global(.react-calendar__tile--active),
+.calendarBody :global(.react-calendar__tile--active:enabled:hover),
+.calendarBody :global(.react-calendar__tile--active:enabled:focus) {
+  background: var(--sasha-orange) !important;
+  color: var(--sasha-white) !important;
+  border-radius: 5%;
+}
+
+.calendarBody :global(.react-calendar__month-view__days__day--neighboringMonth) {
+  color: #d1d5db;
+}
+
+/* ════════════════════════════════════════
+   HEATMAP CARD
+   ════════════════════════════════════════ */
+.heatmapCard {
+  background: var(--sasha-surface);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  padding: 1.25rem;
+  height: 100%;
+}
+
+.heatmapTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--sasha-text);
+  margin: 0 0 0.9rem;
+}
+
+.heatmapPreview {
+  border-radius: 10px;
+  overflow: hidden;
+  height: 210px;
+  position: relative;
+}
+
+/* ════════════════════════════════════════
+   UPCOMING DEADLINES
+   ════════════════════════════════════════ */
+.deadlinesCard {
+  background: var(--sasha-surface);
+  border-radius: var(--sasha-card-radius);
+  border: 1px solid var(--sasha-border);
+  padding: 1.1rem;
+  height: 100%;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.deadlinesTitle {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--sasha-teal);
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--sasha-border);
+}
+
+.deadlineList {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.deadlineList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.deadlineList::-webkit-scrollbar-thumb {
+  background: #c9dcdd;
+  border-radius: 999px;
+}
+
+.deadlineItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--sasha-border);
+}
+
+.deadlineItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.deadlineThumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--sasha-teal-light);
+  color: var(--sasha-teal);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sasha-border);
+}
+
+.deadlineContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.deadlineTitle {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sasha-text);
+  margin: 0;
+  line-height: 1.35;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.deadlineDate {
+  font-size: 0.76rem;
+  color: var(--sasha-muted);
+  margin: 4px 0 0;
+  line-height: 1.35;
+}
+
+.deadlineEmpty {
+  margin: 0;
+  padding: 0.95rem;
+  border-radius: 10px;
+  background: var(--sasha-surface-soft);
+  border: 1px dashed var(--sasha-border);
+  color: var(--sasha-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* ════════════════════════════════════════
+   FOOTER
+   ════════════════════════════════════════ */
+.footer {
+  background: var(--sasha-teal);
+  margin-top: 3rem;
+}
+
+.footerInner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 2.5rem;
+  padding-top: 2.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.footerBrand { display: flex; flex-direction: column; gap: 0.6rem; }
+.footerLogo  { font-size: 1.25rem; font-weight: 900; color: var(--sasha-white); margin: 0; }
+
+.footerBrandDesc {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.6);
+  max-width: 240px;
+  margin: 0;
+}
+
+.socialRow { display: flex; gap: 8px; margin-top: 0.25rem; }
+
+.socialBtn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.socialBtn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.55); }
+
+.footerCol { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.footerColTitle { font-size: 0.88rem; font-weight: 700; color: var(--sasha-white); margin: 0 0 0.4rem; }
+
+.footerLink { color: rgba(255,255,255,0.65); font-size: 0.82rem; text-decoration: none; transition: color 0.15s; }
+.footerLink:hover { color: var(--sasha-white); }
+
+.footerBottom {
+  border-top: 1px solid rgba(255,255,255,0.15);
+  text-align: center;
+  padding: 1.1rem;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.5);
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════ */
+@media (max-width: 991.98px) {
+  .dashboardOverviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footerInner { grid-template-columns: 1fr 1fr; }
+  .footerBrand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 767.98px) {
+  .heroBanner  { padding: 2rem 0; }
+  .heroTitle   { font-size: 1.5rem; margin-bottom: 1.25rem; }
+  .footerInner { grid-template-columns: 1fr; gap: 1.5rem; }
+  .footerBrand { grid-column: auto; }
+  .overviewCount { font-size: 2.25rem; }
+}
+
+@media (max-width: 575.98px) {
+  .moduleOverviewGrid {
+    grid-template-columns: 1fr;
+  }
+}

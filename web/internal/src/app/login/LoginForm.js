@@ -1,15 +1,9 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import styles from "./login.module.css";
 
 export default function LoginForm() {
-  const searchParams = useSearchParams();
-  const requestedNextPath = searchParams.get("next");
-  const nextPath = requestedNextPath?.startsWith("/") && !requestedNextPath.startsWith("//")
-    ? requestedNextPath
-    : null;
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,7 +35,7 @@ export default function LoginForm() {
       return;
     }
 
-    window.location.assign(nextPath || data.redirectTo || "/admin");
+    window.location.assign(data.redirectTo || "/dashboard");
   }
 
   return (
