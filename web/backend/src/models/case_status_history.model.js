@@ -117,6 +117,18 @@ const create = async ({
   return data[0]
 }
 
+function isApproverIdTypeMismatch(error) {
+  if (!error) return false
+  const message = String(error.message || '').toLowerCase()
+  return (
+    error.code === '22P02' ||
+    (
+      message.includes('approved_by_id') &&
+      (message.includes('integer') || message.includes('bigint') || message.includes('uuid'))
+    )
+  )
+}
+
 // Admin approves: update history row + update case_reports.case_status_id
 const approve = async (historyId, approvedById) => {
   async function updateApproval(approverValue) {
@@ -135,7 +147,7 @@ const approve = async (historyId, approvedById) => {
 
   // 1. Mark the history row as approved
   let { data: historyRow, error: histErr } = await updateApproval(approvedById)
-  if (histErr?.code === '22P02' && String(histErr.message || '').includes('integer')) {
+  if (isApproverIdTypeMismatch(histErr)) {
     ;({ data: historyRow, error: histErr } = await updateApproval(null))
   }
   if (histErr) throw histErr
@@ -169,7 +181,7 @@ const reject = async (historyId, approvedById, rejectionReason) => {
   }
 
   let { data, error } = await updateRejection(approvedById)
-  if (error?.code === '22P02' && String(error.message || '').includes('integer')) {
+  if (isApproverIdTypeMismatch(error)) {
     ;({ data, error } = await updateRejection(null))
   }
   if (error) throw error

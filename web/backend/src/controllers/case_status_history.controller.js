@@ -410,7 +410,7 @@ const submitStatusOverride = async (req, res) => {
 const approveStatusChange = async (req, res) => {
   try {
     const { historyId } = req.params
-    const { approved_by_id } = req.body
+    const { approved_by_id } = req.body || {}
     if (!approved_by_id) {
       return res.status(400).json({ error: 'approved_by_id is required.' })
     }
@@ -450,6 +450,10 @@ const approveStatusChange = async (req, res) => {
     }
     res.json({ message: 'Status change approved and case updated.', historyRow })
   } catch (err) {
+    console.error('[approveStatusChange]', err.stack || err)
+    if (String(err.message || '').includes('Pending status change not found')) {
+      return res.status(409).json({ error: err.message })
+    }
     res.status(500).json({ error: err.message })
   }
 }
@@ -457,7 +461,7 @@ const approveStatusChange = async (req, res) => {
 const rejectStatusChange = async (req, res) => {
   try {
     const { historyId } = req.params
-    const { approved_by_id, rejection_reason } = req.body
+    const { approved_by_id, rejection_reason } = req.body || {}
     if (!approved_by_id || !rejection_reason) {
       return res.status(400).json({ error: 'approved_by_id and rejection_reason are required.' })
     }
@@ -498,6 +502,10 @@ const rejectStatusChange = async (req, res) => {
     }
     res.json({ message: 'Status change rejected.', historyRow })
   } catch (err) {
+    console.error('[rejectStatusChange]', err.stack || err)
+    if (String(err.message || '').includes('Pending status change not found')) {
+      return res.status(409).json({ error: err.message })
+    }
     res.status(500).json({ error: err.message })
   }
 }
