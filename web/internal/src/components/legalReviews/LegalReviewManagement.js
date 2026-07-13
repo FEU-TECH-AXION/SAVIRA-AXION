@@ -23,7 +23,8 @@ import {
   EndorseModal,
   MonitoringModal,
 } from "./LegalReviewModals";
-import LegalGuide from "./LegalGuide";
+import LegalGuide from "./LegalGuide";
+
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -137,7 +138,7 @@ function ActionCard({ icon, title, description, onView, badge }) {
       </div>
       <div className={styles.ViewRow}>
         <Tooltip text={`Open ${title}`}>
-          <button className={styles.viewBtn} onClick={onView}>Open â†’</button>
+          <button className={styles.viewBtn} onClick={onView}>View &rarr;</button>
         </Tooltip>
       </div>
     </div>

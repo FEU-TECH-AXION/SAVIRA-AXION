@@ -15,7 +15,8 @@ import RemoveAssignedStaffDialog from "@/components/ui/RemoveAssignedStaffDialog
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import { useAuth } from "@/lib/AuthContext";
 import StatusGuide from "./StatusGuide";
-import { STATUS_COLORS } from "./caseStatusConstants";
+import { STATUS_COLORS } from "./caseStatusConstants";
+
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 
 // -----------------------------------------------------------------------------
@@ -204,7 +205,7 @@ function ActionCard({ icon, title, description, onView, badge }) {
         <p className={styles.actionDesc}>{description}</p>
       </div>
       <div className={styles.ViewRow}>
-        <button className={styles.viewBtn} onClick={onView}>Open ?</button>
+        <button className={styles.viewBtn} onClick={onView}>View &rarr;</button>
       </div>
     </div>
   );
