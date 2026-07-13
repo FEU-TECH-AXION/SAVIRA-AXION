@@ -982,3 +982,155 @@
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* CaseManagement-aligned page structure */
+.heroShell,
+.contentShell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.contentShell {
+  padding: 1.5rem 0;
+}
+
+.heroContent {
+  padding: 4rem 2rem;
+}
+
+.heroTitle {
+  margin-bottom: 2rem;
+}
+
+.statGrid,
+.actionGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.statGrid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  justify-content: center;
+}
+
+.statCard {
+  border-radius: 24px;
+  min-height: 132px;
+  padding: 2rem 1.75rem;
+}
+
+.statNum {
+  font-size: 3.5rem;
+}
+
+.statLabel {
+  max-width: 12rem;
+}
+
+.actionGrid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.actionCell {
+  min-width: 0;
+}
+
+.actionCell a {
+  color: inherit;
+  display: block;
+  height: 100%;
+}
+
+.actionCard {
+  gap: 0.5rem;
+  margin: 1rem 0;
+  min-height: 190px;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.actionCard:hover {
+  box-shadow: 0 6px 24px rgba(3, 127, 129, 0.1);
+  transform: translateY(-2px);
+}
+
+.actionIconWrap {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  min-height: 60px;
+}
+
+.actionIconImg {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.actionBody {
+  flex: 1;
+  margin-top: 2rem;
+}
+
+.actionTitle {
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem;
+}
+
+.actionDesc {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.layout {
+  grid-template-columns: 1fr;
+}
+
+.tableTopBar {
+  align-items: stretch;
+  border-radius: 10px;
+}
+
+.tableTopBar > * {
+  min-width: 0;
+  width: 100%;
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #991b1b;
+  font-size: 0.86rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+@media (max-width: 767.98px) {
+  .heroContent {
+    padding: 2.5rem 1rem;
+  }
+
+  .statCard {
+    min-height: 108px;
+    padding: 1.4rem 1.2rem;
+  }
+
+  .statNum {
+    font-size: 2.5rem;
+  }
+
+  .statLabel {
+    font-size: 0.95rem;
+  }
+
+  .tableTopBar {
+    padding: 0.85rem;
+  }
+}

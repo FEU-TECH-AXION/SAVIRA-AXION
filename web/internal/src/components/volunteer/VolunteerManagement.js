@@ -938,12 +938,12 @@ export default function VolunteerManagement() {
 
         {/* ── Hero Banner ── */}
         <section className={styles.heroBanner}>
-          <div className="container-xl">
+          <div className={styles.heroShell}>
             <div className={styles.heroContent}>
               <h1 className={styles.heroTitle}>Volunteer Management</h1>
-              <div className="row g-3 justify-content-center">
+              <div className={styles.statGrid}>
                 {stats.map(({ num, label }) => (
-                  <div key={label} className="col-12 col-md-4">
+                  <div key={label} className={styles.statGridItem}>
                     <div className={styles.statCard}>
                       <p className={styles.statNum}>{num}</p>
                       <p className={styles.statLabel}>{label}</p>
@@ -956,12 +956,12 @@ export default function VolunteerManagement() {
         </section>
 
         {/* ── Action Cards ── */}
-        <div className="container-xl py-4">
+        <div className={styles.contentShell}>
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>What would you like to do?</h2>
             <div className={styles.headingLine} />
           </div>
-          <div className="row g-3 mb-4">
+          <div className={styles.actionGrid}>
             {/* <div className="col-12 col-sm-6">
               <ActionCard
                 icon={<img src="VolunteerIconPending.png" alt="" className={styles.actionIconImg} />}
@@ -994,7 +994,7 @@ export default function VolunteerManagement() {
                 onView={() => { setActiveFilters({}); setSearch(""); setPage(1); }}
               />
             </div> */}
-            <div className="col-12 col-sm-6">
+            <div className={styles.actionCell}>
                 <Link href="/volunteerInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard
                     icon={<img src="CaseIconInterview.png" alt="" className={styles.actionIconImg} />}
@@ -1004,7 +1004,7 @@ export default function VolunteerManagement() {
                   />
                 </Link>
               </div>
-            <div className="col-12 col-sm-6">
+            <div className={styles.actionCell}>
               <ActionCard
                 icon={<img src="VolunteerIconScreening.png" alt="" className={styles.actionIconImg} />}
                 title="Edit Screening Questions"
@@ -1017,11 +1017,13 @@ export default function VolunteerManagement() {
 
         {/* ── Applicants Table ── */}
         <section className={styles.allList}>
-          <div className="container-xl">
+          <div className={styles.contentShell}>
             <div className={styles.sectionHeading}>
               <h2 className={styles.sectionTitle}>All Volunteer Applicants</h2>
               <div className={styles.headingLine} />
             </div>
+            <div className={styles.layout}>
+              <div>
 
             {/* ── Top bar: filter + search ── */}
             <div className={styles.tableTopBar}>
@@ -1098,6 +1100,8 @@ export default function VolunteerManagement() {
                 extraColumns={extraColumns}
               />
             )}
+              </div>
+            </div>
           </div>
         </section>
       </main>
