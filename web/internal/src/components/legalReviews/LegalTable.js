@@ -255,18 +255,18 @@ export default function LegalTable({
   }
 
   // Sort indicator
-  function SortIcon({ field }) {
+  function renderSortIcon(field) {
     if (sortField !== field) return <span className={styles.sortNeutral}>↕</span>;
     return <span className={styles.sortActive}>{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
-  function SortableTh({ field, children }) {
+  function renderSortableTh(field, children) {
     return (
       <th
         className={`${styles.th} ${styles.sortableTh}`}
         onClick={() => onSort && onSort(field)}
       >
-        {children} <SortIcon field={field} />
+        {children} {renderSortIcon(field)}
       </th>
     );
   }
@@ -315,16 +315,14 @@ export default function LegalTable({
                   aria-label="Select all"
                 />
               </th>
-              <SortableTh field="id">Case ID</SortableTh>
-              <SortableTh field="status">Status</SortableTh>
+              {renderSortableTh("id", "Case ID")}
+              {renderSortableTh("status", "Status")}
               <th className={styles.th}>Case Type</th>
               {showCaseCategories && <th className={styles.th}>Case Categories</th>}
-              <SortableTh field="reporterId">Reporter ID</SortableTh>
+              <th className={styles.th}>Approval Status</th>
               <th className={styles.th}>Lawyer(s)</th>
               {showParalegal && <th className={styles.th}>Paralegal(s)</th>}
-              <SortableTh field="dateReported">
-                Submission Date
-              </SortableTh>
+              {renderSortableTh("dateReported", "Submission Date")}
               {showEndorsedTo && <th className={styles.th}>Endorsed To</th>}
               {showCity && <th className={styles.th}>City</th>}
               {/* Columns toggle button */}
@@ -382,11 +380,6 @@ export default function LegalTable({
                     {/* Status */}
                     <td className={styles.td}>
                       <StatusBadge status={c.status} />
-                      {c.pendingApproval && (
-                        <div style={{ marginTop: 3 }}>
-                          <PendingBadge />
-                        </div>
-                      )}
                     </td>
 
                     {/* Case Type */}
@@ -400,9 +393,9 @@ export default function LegalTable({
                       </td>
                     )}
 
-                    {/* Reporter ID */}
-                    <td className={`${styles.td} ${styles.reporterIdTd}`}>
-                      <strong>{c.reporterId}</strong>
+                    {/* Approval Status */}
+                    <td className={`${styles.td} ${styles.approvalStatusTd}`}>
+                      {c.pendingApproval ? <PendingBadge /> : <span className={styles.muted}>Approved</span>}
                     </td>
 
                     {/* Assigned lawyers */}

@@ -245,18 +245,18 @@ export default function CasesTable({
   }
 
   // Sort indicator
-  function SortIcon({ field }) {
+  function renderSortIcon(field) {
     if (sortField !== field) return <span className={styles.sortNeutral}>↕</span>;
     return <span className={styles.sortActive}>{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
-  function SortableTh({ field, children }) {
+  function renderSortableTh(field, children) {
     return (
       <th
         className={`${styles.th} ${styles.sortableTh}`}
         onClick={() => onSort && onSort(field)}
       >
-        {children} <SortIcon field={field} />
+        {children} {renderSortIcon(field)}
       </th>
     );
   }
@@ -316,15 +316,13 @@ export default function CasesTable({
                   aria-label="Select all"
                 />
               </th>
-              <SortableTh field="caseId">Case ID</SortableTh>
-              <SortableTh field="status">Case Status</SortableTh>
+              {renderSortableTh("caseId", "Case ID")}
+              {renderSortableTh("status", "Case Status")}
               <th className={styles.th}>Duplicate Check</th>
               <th className={styles.th}>Case Type</th>
-              <SortableTh field="reporterId">Reporter ID</SortableTh>
+              <th className={styles.th}>Approval Status</th>
               <th className={styles.th}>Case Officer</th>
-              <SortableTh field="dateSubmitted">
-                Submission Date
-              </SortableTh>
+              {renderSortableTh("dateSubmitted", "Submission Date")}
               {showPrimaryCategory && <th className={styles.th}>Primary Category</th>}
               {showCity && <th className={styles.th}>City</th>}
               {/* Columns toggle button */}
@@ -382,11 +380,6 @@ export default function CasesTable({
                     {/* Case Status */}
                     <td className={styles.td}>
                       <StatusBadge status={c.status} />
-                      {c.pendingApproval && (
-                        <div style={{ marginTop: 3 }}>
-                          <PendingBadge />
-                        </div>
-                      )}
                     </td>
 
                     <td className={styles.td}>
@@ -409,9 +402,9 @@ export default function CasesTable({
                       {formatCaseType(c.caseType) || <span className={styles.muted}>Unassigned</span>}
                     </td>
 
-                    {/* Reporter ID */}
-                    <td className={`${styles.td} ${styles.reporterIdTd}`}>
-                      <strong>{c.reporterId}</strong>
+                    {/* Approval Status */}
+                    <td className={`${styles.td} ${styles.approvalStatusTd}`}>
+                      {c.pendingApproval ? <PendingBadge /> : <span className={styles.muted}>Approved</span>}
                     </td>
 
                     {/* Case Officer */}

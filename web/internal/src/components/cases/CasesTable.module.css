@@ -231,6 +231,11 @@
   text-align: center;
 }
 
+.approvalStatusTd {
+  text-align: center;
+  white-space: nowrap;
+}
+
 .dateText {
   font-size: 0.81rem;
   color: #4b5563;
