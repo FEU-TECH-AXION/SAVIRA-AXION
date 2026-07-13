@@ -2147,6 +2147,7 @@ export default function ReportGenerator() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.contentShell}>
 
       {/* ── Header ── */}
       <div className={styles.pageHeader} data-no-print>
@@ -2538,6 +2539,7 @@ export default function ReportGenerator() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

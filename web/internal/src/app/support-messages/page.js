@@ -164,7 +164,7 @@ export default function SupportMessagesPage() {
   return (
     <main className={styles.pageWrapper}>
       <section className={styles.heroBanner}>
-        <div className="container-xl">
+        <div className={styles.heroShell}>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>Support Messages</h1>
             <div className={styles.statGrid}>
@@ -180,7 +180,7 @@ export default function SupportMessagesPage() {
       </section>
 
       <section className={styles.allList}>
-        <div className="container-xl">
+        <div className={styles.contentShell}>
           <div className={styles.sectionHeading}>
             <h2 className={styles.sectionTitle}>All Support Concerns</h2>
             <div className={styles.headingLine} />

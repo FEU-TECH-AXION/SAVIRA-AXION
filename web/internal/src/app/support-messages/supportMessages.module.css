@@ -4,6 +4,16 @@
   color: var(--sasha-text);
 }
 
+.heroShell,
+.contentShell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.contentShell {
+  padding: 1.5rem 0;
+}
+
 .heroBanner {
   position: relative;
   margin-bottom: 2rem;
@@ -76,7 +86,7 @@
 }
 
 .allList {
-  padding: 2rem 0 4rem;
+  padding: 0 0 4rem;
 }
 
 .sectionHeading {

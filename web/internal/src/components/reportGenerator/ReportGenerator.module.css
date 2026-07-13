@@ -27,8 +27,13 @@
 .page {
   background: var(--sasha-offwhite);
   min-height: 100vh;
-  padding: 2rem;
+  padding: 2rem 0 4rem;
   color: var(--sasha-text);
+}
+
+.contentShell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
 }
 
 /* ══ HEADER ══ */
@@ -1428,7 +1433,7 @@
 
 @media (max-width: 767.98px) {
   .page {
-    padding: 1rem;
+    padding: 1rem 0 3rem;
   }
 
   .pageHeader {
