@@ -451,6 +451,7 @@ function getStatusAsOfDay(caseItem, historyRows = [], dayEnd) {
   if (!filedDate || filedDate > dayEnd) return null;
 
   let status = "Submitted";
+  let statusDate = filedDate;
   const sortedRows = [...historyRows].sort((a, b) => {
     const aDate = recordDate(a, "effective_at", "approved_at", "created_at");
     const bDate = recordDate(b, "effective_at", "approved_at", "created_at");
@@ -459,8 +460,16 @@ function getStatusAsOfDay(caseItem, historyRows = [], dayEnd) {
   for (const row of sortedRows) {
     const transitionDate = recordDate(row, "effective_at", "approved_at", "created_at");
     if (!transitionDate || transitionDate > dayEnd) break;
-    if (row.status) status = row.status;
+    if (row.status) {
+      status = row.status;
+      statusDate = transitionDate;
+    }
   }
+
+  if (getStatusBucket(status) === "Closed") {
+    return phDateKey(statusDate) === phDateKey(dayEnd) ? status : null;
+  }
+
   return status;
 }
 
