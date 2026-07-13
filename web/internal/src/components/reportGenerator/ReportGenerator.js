@@ -1463,6 +1463,7 @@ function StackedAreaChart({ data, height = 120 }) {
   const series = ["Submitted", "Undergoing Review", "Closed"];
   const colors = { Submitted: "#14b8a6", "Undergoing Review": "#60a5fa", Closed: "#fbbf24" };
   const fillAlpha = { Submitted: "0.55", "Undergoing Review": "0.45", Closed: "0.35" };
+  const gradientIdFor = (name) => `stackGrad_${String(name).replace(/[^A-Za-z0-9_-]+/g, "_")}`;
 
   const maxVal = Math.max(...data.map((d) => (d.Submitted || 0) + (d["Undergoing Review"] || 0) + (d.Closed || 0)), 1);
   const xStep = chartW / Math.max(data.length - 1, 1);
@@ -1487,7 +1488,7 @@ function StackedAreaChart({ data, height = 120 }) {
     <svg viewBox={`0 0 ${W} ${H}`} className={styles.trendSvg}>
       <defs>
         {series.map((s) => (
-          <linearGradient key={s} id={`stackGrad_${s}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient key={s} id={gradientIdFor(s)} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor={colors[s]} stopOpacity={fillAlpha[s]} />
             <stop offset="100%" stopColor={colors[s]} stopOpacity="0.05" />
           </linearGradient>
@@ -1515,7 +1516,7 @@ function StackedAreaChart({ data, height = 120 }) {
 
         return (
           <g key={s}>
-            <path d={d} fill={`url(#stackGrad_${s})`} />
+            <path d={d} fill={`url(#${gradientIdFor(s)})`} />
             <polyline points={line} fill="none" stroke={colors[s]} strokeWidth="1.5" strokeLinejoin="round" />
           </g>
         );
