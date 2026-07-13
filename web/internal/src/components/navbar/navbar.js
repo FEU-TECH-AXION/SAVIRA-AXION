@@ -137,33 +137,47 @@ export default function Navbar() {
                   {notifications.length === 0 ? (
                     <div className={styles.notifEmpty}>{t("navNoNotifications")}</div>
                   ) : (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`${styles.notifItem} ${!notification.read ? styles.notifItemUnread : ""}`}
-                      >
-                        <button
-                          type="button"
-                          className={styles.notifDismissBtn}
-                          aria-label="Dismiss notification"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            dismissNotification(notification.id).catch((err) => {
-                              console.error("[notifications] Failed to dismiss notification:", err.message);
-                            });
-                          }}
+                    notifications.map((notification) => {
+                      const content = (
+                        <>
+                          <p className={styles.notifTitle}>{notification.title}</p>
+                          <p className={styles.notifBody}>{notification.body}</p>
+                          {notification.created_at && (
+                            <p className={styles.notifTime}>
+                              {formatNotificationTime(notification.created_at)}
+                            </p>
+                          )}
+                        </>
+                      );
+
+                      return (
+                        <div
+                          key={notification.id}
+                          className={`${styles.notifItem} ${!notification.read ? styles.notifItemUnread : ""} ${notification.link ? styles.notifItemLinked : ""}`}
                         >
-                          <FiX size={15} />
-                        </button>
-                        <p className={styles.notifTitle}>{notification.title}</p>
-                        <p className={styles.notifBody}>{notification.body}</p>
-                        {notification.created_at && (
-                          <p className={styles.notifTime}>
-                            {formatNotificationTime(notification.created_at)}
-                          </p>
-                        )}
-                      </div>
-                    ))
+                          <button
+                            type="button"
+                            className={styles.notifDismissBtn}
+                            aria-label="Dismiss notification"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              dismissNotification(notification.id).catch((err) => {
+                                console.error("[notifications] Failed to dismiss notification:", err.message);
+                              });
+                            }}
+                          >
+                            <FiX size={15} />
+                          </button>
+                          {notification.link ? (
+                            <Link href={notification.link} className={styles.notifLink} onClick={() => setNotifOpen(false)}>
+                              {content}
+                            </Link>
+                          ) : (
+                            content
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               )}

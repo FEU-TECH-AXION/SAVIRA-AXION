@@ -178,7 +178,6 @@ export const SIDEBAR_LINKS = {
       ],
     },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
-    { href: "/support-messages", label: "Support Messages", labelKey: "navSupportMessages", icon: "contact" },
     {
       label: "Settings",
       labelKey: "navSettings",

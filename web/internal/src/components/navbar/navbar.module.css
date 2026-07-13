@@ -453,11 +453,22 @@
 .notifItem:last-child {
   border-bottom: none;
 }
+.notifItemLinked {
+  cursor: pointer;
+}
+.notifItemLinked:hover {
+  background: #f8fafb;
+}
 .notifItemUnread {
   background: rgba(0, 108, 103, 0.06);
 }
-.notifItemUnread:hover {
+.notifItemUnread.notifItemLinked:hover {
   background: rgba(0, 108, 103, 0.1);
+}
+.notifLink {
+  color: inherit;
+  display: block;
+  text-decoration: none;
 }
 .notifDismissBtn {
   position: absolute;

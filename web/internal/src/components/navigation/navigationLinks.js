@@ -153,7 +153,7 @@ export const SIDEBAR_LINKS = {
     {
       label: "Projects",
       labelKey: "navProjects",
-      icon: "folder",
+      icon: "projects",
       children: [
         { href: "/projects", label: "All Projects", labelKey: "navAllProjects" },
         { href: "/projectTasks", label: "Project Tasks", labelKey: "navProjectTasks" },
@@ -235,14 +235,14 @@ export const SIDEBAR_LINKS = {
     {
       label: "Projects",
       labelKey: "navProjects",
-      icon: "folder",
+      icon: "projects",
       children: [
         { href: "/projects", label: "All Projects", labelKey: "navAllProjects" },
         { href: "/projectTasks/admin", label: "Project Tasks", labelKey: "navProjectTasks" },
       ],
     },
     { href: "/heatmap", label: "Heatmap", labelKey: "navHeatmap", icon: "map" },
-    { href: "/support-messages", label: "Support Messages", labelKey: "navSupportMessages", icon: "contact" },
+    { href: "/support-messages", label: "Support Messages", icon: "contact" },
     { href: "/reportGenerator", label: "Reports & Analysis", labelKey: "navReportsAnalysis", icon: "assessment" },
     {
       label: "Settings",

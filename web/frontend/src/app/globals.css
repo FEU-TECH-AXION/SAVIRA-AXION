@@ -470,33 +470,6 @@ html[data-theme="dark"] .appMain textarea:focus {
 }
 
 html[data-theme="dark"] .appMain :is(
-  [class*="supportMessages"][class*="btnSecondary"],
-  [class*="supportMessages"][class*="listItem"],
-  [class*="supportMessages"][class*="detail"]
-) {
-  background: var(--sasha-surface) !important;
-  border-color: var(--sasha-border) !important;
-  color: var(--sasha-text) !important;
-}
-
-html[data-theme="dark"] .appMain [class*="supportMessages"][class*="listItem"]:hover,
-html[data-theme="dark"] .appMain [class*="supportMessages"][class*="listItemActive"] {
-  background: var(--sasha-surface-soft) !important;
-}
-
-html[data-theme="dark"] .appMain [class*="supportMessages"][class*="btnSecondary"]:hover {
-  background: var(--sasha-surface-soft) !important;
-  border-color: var(--sasha-teal) !important;
-  color: var(--sasha-teal) !important;
-}
-
-html[data-theme="dark"] .appMain [class*="supportMessages"][class*="detail"] [class*="messageBody"] {
-  background: var(--sasha-surface-inset) !important;
-  border-color: var(--sasha-border) !important;
-  color: var(--sasha-text) !important;
-}
-
-html[data-theme="dark"] .appMain :is(
   input[class*="ProjectManagement"][class*="searchInput"],
   input[class*="ProjectFilterMenu"][class*="searchInput"],
   input[class*="TaskFilterMenu"][class*="searchInput"],

@@ -13,9 +13,15 @@ import {
   MdExpandMore,
   MdFolder,
   MdGavel,
+  MdInterpreterMode,
   MdLogout,
+  MdMap,
   MdPeople,
+  MdContactSupport,
+  MdSettings,
   MdVolunteerActivism,
+  MdWork,
+  MdWorkspacePremium,
 } from "react-icons/md";
 import { FaHandsHelping } from "react-icons/fa";
 import { getSidebarLinks } from "@/components/navigation/navigationLinks";
@@ -24,11 +30,19 @@ import styles from "./sidebar.module.css";
 const ICONS = {
   assessment: <MdAssessment />,
   calendar: <MdEvent />,
+  contact: <MdContactSupport />,
   dashboard: <MdDashboard />,
+  event: <MdEvent />,
   folder: <MdFolder />,
   gavel: <MdGavel />,
   handsHelping: <FaHandsHelping />,
+  interpreter: <MdInterpreterMode />,
+  map: <MdMap />,
   people: <MdPeople />,
+  project: <MdWork />,
+  projects: <MdWork />,
+  ribbon: <MdWorkspacePremium />,
+  settings: <MdSettings />,
   volunteer: <MdVolunteerActivism />,
 };
 

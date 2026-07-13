@@ -212,3 +212,30 @@ input {
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
+
+html[data-theme="dark"] :is(
+  [class*="supportMessages"][class*="btnSecondary"],
+  [class*="supportMessages"][class*="listItem"],
+  [class*="supportMessages"][class*="detail"]
+) {
+  background: var(--sasha-surface) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
+
+html[data-theme="dark"] [class*="supportMessages"][class*="listItem"]:hover,
+html[data-theme="dark"] [class*="supportMessages"][class*="listItemActive"] {
+  background: var(--sasha-surface-soft) !important;
+}
+
+html[data-theme="dark"] [class*="supportMessages"][class*="btnSecondary"]:hover {
+  background: var(--sasha-surface-soft) !important;
+  border-color: var(--sasha-teal) !important;
+  color: var(--sasha-teal) !important;
+}
+
+html[data-theme="dark"] [class*="supportMessages"][class*="detail"] [class*="messageBody"] {
+  background: var(--sasha-surface-inset) !important;
+  border-color: var(--sasha-border) !important;
+  color: var(--sasha-text) !important;
+}
