@@ -23,6 +23,17 @@ import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 // UTILITY FUNCTIONS
 // -----------------------------------------------------------------------------
 
+async function parseErrorPayload(response, fallback) {
+  const text = await response.text().catch(() => "");
+  if (!text) return fallback;
+
+  try {
+    const payload = JSON.parse(text);
+    return payload.error || payload.message || fallback;
+  } catch (_) {
+    return `${fallback} (${response.status})${text ? `: ${text.slice(0, 160)}` : ""}`;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // CONSTANTS
@@ -1208,8 +1219,8 @@ const stats = useMemo(() => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved_by_id: approverId }),
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error || "Failed to approve status change.");
+      const payload = res.ok ? await res.json().catch(() => ({})) : {};
+      if (!res.ok) throw new Error(await parseErrorPayload(res, "Failed to approve status change."));
 
       setCases((prev) => prev.map((c) => c.id === caseData.id
         ? {
@@ -1251,8 +1262,8 @@ const stats = useMemo(() => {
           rejection_reason: reason,
         }),
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error || "Failed to reject status change.");
+      const payload = res.ok ? await res.json().catch(() => ({})) : {};
+      if (!res.ok) throw new Error(await parseErrorPayload(res, "Failed to reject status change."));
 
       setCases((prev) => prev.map((c) => c.id === caseData.id
         ? {

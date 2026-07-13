@@ -411,13 +411,14 @@ const approveStatusChange = async (req, res) => {
   try {
     const { historyId } = req.params
     const { approved_by_id } = req.body || {}
-    if (!approved_by_id) {
-      return res.status(400).json({ error: 'approved_by_id is required.' })
+    const approverId = req.user?.id || req.user?.user_id || approved_by_id
+    if (!approverId) {
+      return res.status(400).json({ error: 'Approving user could not be identified.' })
     }
     const { data: approver, error: approverError } = await supabase
       .from('users')
       .select('user_id')
-      .eq('user_id', approved_by_id)
+      .eq('user_id', approverId)
       .maybeSingle()
     if (approverError) throw approverError
     if (!approver) return res.status(400).json({ error: 'Approving user was not found.' })
@@ -462,13 +463,14 @@ const rejectStatusChange = async (req, res) => {
   try {
     const { historyId } = req.params
     const { approved_by_id, rejection_reason } = req.body || {}
-    if (!approved_by_id || !rejection_reason) {
-      return res.status(400).json({ error: 'approved_by_id and rejection_reason are required.' })
+    const approverId = req.user?.id || req.user?.user_id || approved_by_id
+    if (!approverId || !rejection_reason) {
+      return res.status(400).json({ error: 'Approving user and rejection_reason are required.' })
     }
     const { data: approver, error: approverError } = await supabase
       .from('users')
       .select('user_id')
-      .eq('user_id', approved_by_id)
+      .eq('user_id', approverId)
       .maybeSingle()
     if (approverError) throw approverError
     if (!approver) return res.status(400).json({ error: 'Approving user was not found.' })
