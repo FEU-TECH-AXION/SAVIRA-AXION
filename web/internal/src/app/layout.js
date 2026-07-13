@@ -4,8 +4,8 @@ import { I18nProvider } from "@/lib/i18n";
 import InternalShell from "@/components/navigation/InternalShell";
 
 export const metadata = {
-  title: "SAVIRA Internal",
-  description: "Internal SAVIRA operations portal",
+  title: "SASHA",
+  description: "Internal SASHA operations portal",
 };
 
 export default function RootLayout({ children }) {
