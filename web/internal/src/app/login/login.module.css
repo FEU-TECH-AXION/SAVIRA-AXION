@@ -42,21 +42,85 @@
 .languagePicker {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  color: #4b5563;
-  font-size: 0.85rem;
-  font-weight: 600;
+  justify-content: space-between;
+  gap: 0.85rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.4rem;
+  border: 1px solid #d9eeee;
+  border-radius: 12px;
+  background: #f7fbfb;
 }
 
-.languagePicker select {
-  min-width: 120px;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  color: #1f2937;
+.languageLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.45rem;
+  color: #335d5f;
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.languageLabel svg {
+  color: #037F81;
+  font-size: 1rem;
+}
+
+.languageOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  width: min(260px, 100%);
+}
+
+.languageOption {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #425466;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.languageOption:hover {
+  border-color: #b7dddd;
   background: #fff;
+  color: #037F81;
+}
+
+.languageOption:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px #037F8133;
+}
+
+.languageOptionActive {
+  border-color: #037F81;
+  background: #037F81;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(3, 127, 129, 0.18);
+}
+
+.languageOptionActive:hover {
+  border-color: #037F81;
+  background: #037F81;
+  color: #fff;
+}
+
+.languageOption svg {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
 }
 
 .title {
@@ -100,6 +164,32 @@
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
+}
+
+.checkboxLabel {
+  font-size: 0.93rem;
+  color: #444;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.05rem;
+  accent-color: #037F81;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkboxText {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .input {
@@ -224,6 +314,23 @@
     font-size: 1.9rem;
   }
 
+  .languagePicker {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-top: 0.9rem;
+    padding: 0.55rem;
+  }
+
+  .languageLabel {
+    justify-content: flex-start;
+    padding-left: 0.15rem;
+  }
+
+  .languageOptions {
+    width: 100%;
+  }
+
   .auxiliaryGroup {
     flex-direction: column;
     align-items: stretch;
@@ -233,6 +340,18 @@
 
   .accessNote {
     font-size: 0.84rem;
+  }
+
+  .checkboxLabel {
+    width: 100%;
+    gap: 0.5rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
   }
 
   .forgotPassword {
@@ -248,6 +367,15 @@
 
   .accessNote {
     font-size: 0.8rem;
+  }
+
+  .checkboxLabel {
+    font-size: 0.8rem;
+  }
+
+  .checkbox {
+    width: 17px;
+    height: 17px;
   }
 
   .forgotPassword {

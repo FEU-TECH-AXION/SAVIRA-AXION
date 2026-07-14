@@ -10,6 +10,7 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [recognizeDevice, setRecognizeDevice] = useState(true);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -83,6 +84,15 @@ export default function LoginForm() {
       </div>
 
       <div className={styles.auxiliaryGroup}>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={recognizeDevice}
+            onChange={(event) => setRecognizeDevice(event.target.checked)}
+          />
+          <span className={styles.checkboxText}>{t("recognizeDevice")}</span>
+        </label>
         <a href="/forgotPassword" className={styles.forgotPassword}>
           {t("forgotPassword")}
         </a>
