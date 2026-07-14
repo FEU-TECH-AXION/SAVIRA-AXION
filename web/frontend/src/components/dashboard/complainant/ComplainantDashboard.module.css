@@ -58,53 +58,7 @@
   color: var(--sasha-white);
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 800;
-  margin-bottom: 2.5rem;
-}
-
-/* ── Stat Cards ── */
-.statCard {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 24px;
-  padding: 2rem 1.75rem;
-  backdrop-filter: blur(10px);
-  height: 100%;
-  position: relative;
-  overflow: visible;
-}
-
-.statDot {
-  position: absolute;
-  top: -1.5rem;
-  left: 2rem;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--sasha-orange);
-  border: 3px solid rgba(255,255,255,0.4);
-  pointer-events: none;
-}
-
-.statNum {
-  color: var(--sasha-white);
-  font-size: 3.5rem;
-  font-weight: 800;
-  line-height: 1;
   margin: 0;
-  flex-shrink: 0;
-}
-
-.statLabel {
-  color: var(--sasha-white);
-  font-size: 1.05rem;
-  font-weight: 400;
-  line-height: 1.25;
-  margin: 0;
-  text-align: left;
 }
 
 /* ════════════════════════════════════════
@@ -737,13 +691,3 @@
   .cardMetaGrid { grid-template-columns: 1fr; }
 }
 
-/* ── Dark mode: keep hero stat cards as glassmorphism ── */
-:global(html[data-theme="dark"]) .heroBanner .statCard {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-:global(html[data-theme="dark"]) .heroBanner .statNum,
-:global(html[data-theme="dark"]) .heroBanner .statLabel {
-  color: #fff !important;
-}

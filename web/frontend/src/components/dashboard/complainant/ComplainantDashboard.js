@@ -109,15 +109,12 @@ export default function ComplainantDashboard({
   userReports       = [],
   applicationData   = null,
   notifications     = [],
-  totalNotifications = 0,
 }) {
   const router = useRouter();
   const { t } = useI18n();
   const { user: authUser, loading: authLoading } = useAuth();
   const {
-    notifications: storedNotifications,
     importantNotifications,
-    unreadCount,
   } = useNotificationStore({ enabled: Boolean(authUser) && !authLoading });
 
   const user = authUser
@@ -138,8 +135,6 @@ export default function ComplainantDashboard({
     ? notifications
     : importantNotifications.slice(0, 5);
 
-  const resolvedTotalNotif = totalNotifications || unreadCount || storedNotifications.length;
-
   const resolvedApplication = applicationData
     ? normalizeVolunteerApplication(applicationData)
     : null;
@@ -157,16 +152,6 @@ export default function ComplainantDashboard({
               <h1 className={styles.heroTitle}>
                 {t("dashboardWelcome")}, {user.firstName} {user.lastName}!
               </h1>
-
-              <div className="row g-3">
-                <div className="col-12 col-md-4">
-                  <div className={styles.statCard}>
-                    {/* <span className={styles.statDot} /> */}
-                    <p className={styles.statNum}>{resolvedTotalNotif}</p>
-                    <p className={styles.statLabel}>{t("dashboardTotalNotifications")}</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
