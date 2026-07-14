@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import styles from "./login.module.css";
-import { FiEye, FiEyeOff } from "react-icons/fi";
+import { FiCheck, FiEye, FiEyeOff, FiGlobe } from "react-icons/fi";
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@/lib/AuthContext";
 import { LANGUAGE_OPTIONS, getCurrentLanguage, setCurrentLanguage, translate } from "@/lib/i18n";
@@ -21,8 +21,8 @@ export default function Login() {
   const router = useRouter();
   const t = (key) => translate(language, key);
 
-  const handleLanguageChange = (e) => {
-    setLanguage(setCurrentLanguage(e.target.value));
+  const handleLanguageChange = (nextLanguage) => {
+    setLanguage(setCurrentLanguage(nextLanguage));
   };
 
   const handleChange = (e) => {
@@ -70,14 +70,6 @@ export default function Login() {
       {/* ── Right: login form ── */}
       <div className={styles.right}>
         <div className={styles.formBox}>
-          <div className={styles.languagePicker}>
-            <label htmlFor="login-language">{t("language")}</label>
-            <select id="login-language" value={language} onChange={handleLanguageChange}>
-              {LANGUAGE_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>{option.label}</option>
-              ))}
-            </select>
-          </div>
           <h1 className={styles.title}>{t("welcomeBack")}</h1>
           <p className={styles.loginLink}>
             {t("noAccount")}&nbsp;
@@ -163,6 +155,31 @@ export default function Login() {
             <button type="submit" className={styles.btn}>
               {t("logIn")}
             </button>
+
+            <div className={styles.languagePicker} aria-label={t("language")}>
+              <div className={styles.languageLabel}>
+                <FiGlobe aria-hidden="true" />
+                <span>{t("language")}</span>
+              </div>
+              <div className={styles.languageOptions}>
+                {LANGUAGE_OPTIONS.map((option) => {
+                  const isActive = language === option.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`${styles.languageOption} ${isActive ? styles.languageOptionActive : ""}`}
+                      aria-pressed={isActive}
+                      onClick={() => handleLanguageChange(option.id)}
+                    >
+                      <span>{option.label}</span>
+                      {isActive && <FiCheck aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
           </form>
         </div>
