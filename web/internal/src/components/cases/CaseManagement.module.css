@@ -57,11 +57,13 @@
 }
 
 .statusGuideBtn {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  margin-bottom: 2rem;
   border: 1px solid rgba(255,255,255,0.42);
   border-radius: 999px;
   background: rgba(255,255,255,0.16);
@@ -879,6 +881,10 @@
   .sidebar { order: -1; }
   .sectionTitle { font-size: 1.5rem; }
   .heroTitle { font-size: 1.75rem; margin-bottom: 1.25rem; }
+  .statusGuideBtn {
+    position: static;
+    margin: -0.25rem auto 1.5rem;
+  }
 }
 
 @media (max-width: 575.98px) {
