@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CaseManagement.module.css";
+import pendingApprovalStyles from "./PendingStatusApproval.module.css";
 import { FiSearch, FiX, FiCheck, FiClock, FiHelpCircle } from "react-icons/fi";
 import { IoMdClose } from "react-icons/io";
 import { GoDotFill } from "react-icons/go";
@@ -30,10 +31,30 @@ async function parseErrorPayload(response, fallback) {
   try {
     const payload = JSON.parse(text);
     const message = payload.error || payload.message || fallback;
-    return payload.details ? `${message}: ${payload.details}` : message;
+    const details = cleanErrorDetails(payload.details);
+    return shouldShowErrorDetails(message, details) ? `${message}: ${details}` : message;
   } catch (_) {
-    return `${fallback} (${response.status})${text ? `: ${text.slice(0, 160)}` : ""}`;
+    return `${fallback} (${response.status})${text ? `: ${cleanErrorDetails(text)}` : ""}`;
   }
+}
+
+function shouldShowErrorDetails(message, details) {
+  if (!details) return false;
+  const normalizedMessage = String(message || "").replace(/[.\s]+$/g, "").toLowerCase();
+  const normalizedDetails = String(details || "").replace(/[.\s]+$/g, "").toLowerCase();
+  return normalizedDetails && normalizedDetails !== normalizedMessage && normalizedDetails !== "internal server error";
+}
+
+function cleanErrorDetails(value) {
+  return String(value || "")
+    .replace(/<!doctype[^>]*>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^Error\s*/i, "")
+    .trim()
+    .slice(0, 180);
 }
 
 // -----------------------------------------------------------------------------
@@ -763,7 +784,7 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
   const [showReject, setShowReject] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  if (!caseData || !caseData.pendingApproval) return null;
+  if (!open || !caseData || !caseData.pendingApproval) return null;
 
   const pa = caseData.pendingApproval;
 
@@ -792,56 +813,60 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Review Pending Status Change" wide>
-      <div className={styles.approvalReviewBlock}>
-        <div className={styles.approvalRow}>
-          <span className={styles.approvalKey}>Case ID</span>
-          <span className={styles.approvalVal}>{caseData.caseId}</span>
-        </div>
-        <div className={styles.approvalRow}>
-          <span className={styles.approvalKey}>Current Status</span>
-          <span className={styles.approvalVal}><StatusBadge status={caseData.status} /></span>
-        </div>
-        <div className={styles.approvalRow}>
-          <span className={styles.approvalKey}>Proposed Status</span>
-          <span className={styles.approvalVal}><StatusBadge status={pa.proposedStatus} /></span>
-        </div>
-        <div className={styles.approvalRow}>
-          <span className={styles.approvalKey}>Submitted by</span>
-          <span className={styles.approvalVal}>{pa.submittedBy}</span>
-        </div>
-        <div className={styles.approvalRow}>
-          <span className={styles.approvalKey}>Date Submitted</span>
-          <span className={styles.approvalVal}>{pa.date}</span>
-        </div>
-        <div className={styles.approvalRow}>
-          <span className={styles.approvalKey}>Officer Notes</span>
-          <span className={styles.approvalVal}>{pa.notes}</span>
-        </div>
-      </div>
-
-      {showReject ? (
-        <div className={styles.formGrid} style={{ marginTop: "1rem" }}>
-          <FormGroup label="Reason for rejection" required>
-            <FTextarea placeholder="Explain why this status change is being rejected…" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-          </FormGroup>
-          <div className={styles.modalFooter}>
-            <button className={styles.btnSecondary} onClick={() => setShowReject(false)} disabled={saving}>Back</button>
-            <button className={styles.btnDanger} onClick={reject} disabled={!rejectReason.trim() || saving}>
-              {saving ? "Saving..." : "Confirm Rejection"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
-          <button className={styles.btnDanger} onClick={() => setShowReject(true)} disabled={saving}>Reject</button>
-          <button className={styles.btnSuccess} onClick={approve} disabled={saving}>
-            <FiCheck size={14} /> {saving ? "Applying..." : "Approve & Apply"}
+    <div className={pendingApprovalStyles.overlay} onMouseDown={(event) => {
+      if (!saving && event.target === event.currentTarget) onClose();
+    }}>
+      <div className={pendingApprovalStyles.modal} role="dialog" aria-modal="true" aria-labelledby="pending-status-title">
+        <div className={pendingApprovalStyles.header}>
+          <h2 id="pending-status-title">Review Pending Status Change</h2>
+          <button type="button" className={pendingApprovalStyles.closeButton} onClick={onClose} aria-label="Close approval dialog" disabled={saving}>
+            <FiX />
           </button>
         </div>
-      )}
-    </Modal>
+
+        <div className={pendingApprovalStyles.body}>
+          <dl className={pendingApprovalStyles.reviewGrid}>
+            <div><dt>Case ID</dt><dd>{caseData.caseId || caseData.id}</dd></div>
+            <div><dt>Current Status</dt><dd>{caseData.status}</dd></div>
+            <div><dt>Proposed Status</dt><dd>{pa.proposedStatus}</dd></div>
+            <div><dt>Submitted By</dt><dd>{pa.submittedBy || "Unknown"}</dd></div>
+            <div><dt>Date Submitted</dt><dd>{pa.date || "-"}</dd></div>
+            <div className={pendingApprovalStyles.fullRow}><dt>Notes</dt><dd>{pa.notes || "No notes provided."}</dd></div>
+          </dl>
+
+          {showReject && (
+            <label className={pendingApprovalStyles.rejectField}>
+              <span>Reason for rejection</span>
+              <textarea
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="Explain why this status change is being rejected..."
+                rows={4}
+              />
+            </label>
+          )}
+        </div>
+
+        <div className={pendingApprovalStyles.footer}>
+          {showReject ? (
+            <>
+              <button type="button" className={pendingApprovalStyles.secondaryButton} onClick={() => setShowReject(false)} disabled={saving}>Back</button>
+              <button type="button" className={pendingApprovalStyles.dangerButton} onClick={reject} disabled={saving || !rejectReason.trim()}>
+                {saving ? "Rejecting..." : "Confirm Rejection"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className={pendingApprovalStyles.secondaryButton} onClick={onClose} disabled={saving}>Cancel</button>
+              <button type="button" className={pendingApprovalStyles.dangerButton} onClick={() => setShowReject(true)} disabled={saving}>Reject</button>
+              <button type="button" className={pendingApprovalStyles.approveButton} onClick={approve} disabled={saving}>
+                <FiCheck /> {saving ? "Approving..." : "Approve & Apply"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

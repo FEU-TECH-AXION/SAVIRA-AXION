@@ -2,7 +2,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./LegalReviewManagement.module.css";
-import { FiSearch, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiCalendar, FiHelpCircle } from "react-icons/fi";
+import pendingApprovalStyles from "../cases/PendingStatusApproval.module.css";
+import { FiSearch, FiClock, FiCheck, FiChevronDown, FiChevronUp, FiCalendar, FiHelpCircle, FiX } from "react-icons/fi";
 import LegalTable from "./LegalTable";
 import FilterMenu from "./FilterMenu";
 import UpdateStatusModal from "../cases/UpdateStatusModals";
@@ -26,6 +27,39 @@ import {
 import LegalGuide from "./LegalGuide";
 
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
+
+async function parseErrorPayload(response, fallback) {
+  const text = await response.text().catch(() => "");
+  if (!text) return fallback;
+
+  try {
+    const payload = JSON.parse(text);
+    const message = payload.error || payload.message || fallback;
+    const details = cleanErrorDetails(payload.details);
+    return shouldShowErrorDetails(message, details) ? `${message}: ${details}` : message;
+  } catch (_) {
+    return `${fallback} (${response.status})${text ? `: ${cleanErrorDetails(text)}` : ""}`;
+  }
+}
+
+function shouldShowErrorDetails(message, details) {
+  if (!details) return false;
+  const normalizedMessage = String(message || "").replace(/[.\s]+$/g, "").toLowerCase();
+  const normalizedDetails = String(details || "").replace(/[.\s]+$/g, "").toLowerCase();
+  return normalizedDetails && normalizedDetails !== normalizedMessage && normalizedDetails !== "internal server error";
+}
+
+function cleanErrorDetails(value) {
+  return String(value || "")
+    .replace(/<!doctype[^>]*>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^Error\s*/i, "")
+    .trim()
+    .slice(0, 180);
+}
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // CONSTANTS
@@ -584,7 +618,7 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
   const [saving, setSaving] = useState(false);
-  if (!caseData || !caseData.pendingApproval) return null;
+  if (!open || !caseData || !caseData.pendingApproval) return null;
   const pa = caseData.pendingApproval;
 
   async function approve() {
@@ -592,6 +626,8 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
     try {
       await onApprove(caseData);
       onClose();
+    } catch {
+      // Parent action shows the toast; keep the modal open for retry.
     } finally {
       setSaving(false);
     }
@@ -602,47 +638,68 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
     try {
       await onReject(caseData, rejectReason);
       onClose();
+    } catch {
+      // Parent action shows the toast; keep the modal open for retry.
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Review Pending Status Change" wide>
-      <div className={styles.approvalReviewBlock}>
-        {[
-          ["Case ID", caseData.id],
-          ["Current Status", <StatusBadge key="current-status" status={caseData.status} />],
-          ["Proposed Status", <StatusBadge key="proposed-status" status={pa.proposedStatus} />],
-          ["Submitted by", pa.submittedBy],
-          ["Date", pa.date],
-          ["Notes", pa.notes],
-        ].map(([k, v]) => (
-          <div key={k} className={styles.approvalRow}>
-            <span className={styles.approvalKey}>{k}</span>
-            <span className={styles.approvalVal}>{v}</span>
-          </div>
-        ))}
-      </div>
+    <div className={pendingApprovalStyles.overlay} onMouseDown={(event) => {
+      if (!saving && event.target === event.currentTarget) onClose();
+    }}>
+      <div className={pendingApprovalStyles.modal} role="dialog" aria-modal="true" aria-labelledby="pending-status-title">
+        <div className={pendingApprovalStyles.header}>
+          <h2 id="pending-status-title">Review Pending Status Change</h2>
+          <button type="button" className={pendingApprovalStyles.closeButton} onClick={onClose} aria-label="Close approval dialog" disabled={saving}>
+            <FiX />
+          </button>
+        </div>
 
-      {showReject ? (
-        <div className={styles.formGrid} style={{ marginTop: "1rem" }}>
-          <FormGroup label="Reason for rejection" required>
-            <FTextarea placeholder="Explain why this status change is being rejectedâ€¦" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-          </FormGroup>
-          <div className={styles.modalFooter}>
-            <button className={styles.btnSecondary} onClick={() => setShowReject(false)} disabled={saving}>Back</button>
-            <button className={styles.btnDanger} onClick={reject} disabled={!rejectReason.trim() || saving}>{saving ? "Savingâ€¦" : "Confirm Rejection"}</button>
-          </div>
+        <div className={pendingApprovalStyles.body}>
+          <dl className={pendingApprovalStyles.reviewGrid}>
+            <div><dt>Case ID</dt><dd>{caseData.caseId || caseData.id}</dd></div>
+            <div><dt>Current Status</dt><dd>{caseData.status}</dd></div>
+            <div><dt>Proposed Status</dt><dd>{pa.proposedStatus}</dd></div>
+            <div><dt>Submitted By</dt><dd>{pa.submittedBy || "Unknown"}</dd></div>
+            <div><dt>Date Submitted</dt><dd>{pa.date || "-"}</dd></div>
+            <div className={pendingApprovalStyles.fullRow}><dt>Notes</dt><dd>{pa.notes || "No notes provided."}</dd></div>
+          </dl>
+
+          {showReject && (
+            <label className={pendingApprovalStyles.rejectField}>
+              <span>Reason for rejection</span>
+              <textarea
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="Explain why this status change is being rejected..."
+                rows={4}
+              />
+            </label>
+          )}
         </div>
-      ) : (
-        <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={onClose} disabled={saving}>Cancel</button>
-          <button className={styles.btnDanger} onClick={() => setShowReject(true)} disabled={saving}>Reject</button>
-          <button className={styles.btnSuccess} onClick={approve} disabled={saving}><FiCheck size={14} /> {saving ? "Applyingâ€¦" : "Approve & Apply"}</button>
+
+        <div className={pendingApprovalStyles.footer}>
+          {showReject ? (
+            <>
+              <button type="button" className={pendingApprovalStyles.secondaryButton} onClick={() => setShowReject(false)} disabled={saving}>Back</button>
+              <button type="button" className={pendingApprovalStyles.dangerButton} onClick={reject} disabled={saving || !rejectReason.trim()}>
+                {saving ? "Rejecting..." : "Confirm Rejection"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className={pendingApprovalStyles.secondaryButton} onClick={onClose} disabled={saving}>Cancel</button>
+              <button type="button" className={pendingApprovalStyles.dangerButton} onClick={() => setShowReject(true)} disabled={saving}>Reject</button>
+              <button type="button" className={pendingApprovalStyles.approveButton} onClick={approve} disabled={saving}>
+                <FiCheck /> {saving ? "Approving..." : "Approve & Apply"}
+              </button>
+            </>
+          )}
         </div>
-      )}
-    </Modal>
+      </div>
+    </div>
   );
 }
 
@@ -1527,8 +1584,8 @@ export default function LegalReviewManagement() {
         credentials: "include",
         body: JSON.stringify({ approved_by_id: authUser?.user_id || authUser?.id || null }),
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error || "Failed to approve status change.");
+      const payload = res.ok ? await res.json().catch(() => ({})) : {};
+      if (!res.ok) throw new Error(await parseErrorPayload(res, "Failed to approve status change."));
       setCases((previous) => previous.map((item) => item.id === caseData.id ? {
         ...item,
         status: pa.proposedStatus,
@@ -1554,8 +1611,8 @@ export default function LegalReviewManagement() {
           rejection_reason: reason,
         }),
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error || "Failed to reject status change.");
+      const payload = res.ok ? await res.json().catch(() => ({})) : {};
+      if (!res.ok) throw new Error(await parseErrorPayload(res, "Failed to reject status change."));
       setCases((previous) => previous.map((item) => item.id === caseData.id ? {
         ...item,
         pendingApproval: null,
