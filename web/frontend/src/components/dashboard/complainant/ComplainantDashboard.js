@@ -171,7 +171,7 @@ export default function ComplainantDashboard({
                 title={t("dashboardSubmitReportTitle")}
                 description={t("dashboardSubmitReportDesc")}
                 viewLabel={t("dashboardView")}
-                onView={() => router.push("/cases")}
+                onView={() => router.push("/report")}
               />
             </div>
             <div className="col-12 col-sm-6">
@@ -209,7 +209,7 @@ export default function ComplainantDashboard({
                       title={t("dashboardLatestReport")}
                       message={t("dashboardNoReports")}
                       buttonLabel={t("dashboardSubmitReportTitle")}
-                      onAction={() => router.push("/cases")}
+                      onAction={() => router.push("/report")}
                     />
                   )}
                 </div>
