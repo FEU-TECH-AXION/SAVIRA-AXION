@@ -107,22 +107,6 @@ export default function Login() {
       </View>
 
       <View style={styles.card}>
-        <View style={styles.languageRow}>
-          <Text style={styles.languageLabel}>{t('language')}</Text>
-          <View style={styles.languageOptions}>
-            {LANGUAGE_OPTIONS.map((option) => (
-              <Pressable
-                key={option.id}
-                style={[styles.languageOption, language === option.id && styles.languageOptionActive]}
-                onPress={() => handleLanguageChange(option.id)}
-              >
-                <Text style={[styles.languageOptionText, language === option.id && styles.languageOptionTextActive]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
         <Text style={styles.title}>{t('welcomeBack')}</Text>
 
         <View style={styles.signupRow}>
@@ -187,6 +171,29 @@ export default function Login() {
         >
           <Text style={styles.btnText}>{t('logIn')}</Text>
         </Pressable>
+
+        <View style={styles.languageRow}>
+          <View style={styles.languageLabelWrap}>
+            <Ionicons name="language-outline" size={16} color="#037F81" />
+            <Text style={styles.languageLabel}>{t('language')}</Text>
+          </View>
+          <View style={styles.languageOptions}>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <Pressable
+                key={option.id}
+                style={[styles.languageOption, language === option.id && styles.languageOptionActive]}
+                onPress={() => handleLanguageChange(option.id)}
+              >
+                <Text style={[styles.languageOptionText, language === option.id && styles.languageOptionTextActive]}>
+                  {option.label}
+                </Text>
+                {language === option.id && (
+                  <Ionicons name="checkmark" size={13} color="#fff" />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
       </View>
       <AppLoadingOverlay
         visible={loading}
