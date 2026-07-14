@@ -22,7 +22,9 @@ export default function LoginPage() {
 
       <div className={styles.right}>
         <div className={styles.formBox}>
-          <h1 className={styles.title}>{t("welcomeBack")}</h1>
+          <h1 className={`${styles.title} ${language === "tl" ? styles.titleTagalog : ""}`}>
+            {t("welcomeBack")}
+          </h1>
           <p className={styles.loginLink}>{t("internalAccessOnly")}</p>
           <Suspense fallback={null}>
             <LoginForm />
