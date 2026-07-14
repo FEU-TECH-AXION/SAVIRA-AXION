@@ -29,7 +29,8 @@ async function parseErrorPayload(response, fallback) {
 
   try {
     const payload = JSON.parse(text);
-    return payload.error || payload.message || fallback;
+    const message = payload.error || payload.message || fallback;
+    return payload.details ? `${message}: ${payload.details}` : message;
   } catch (_) {
     return `${fallback} (${response.status})${text ? `: ${text.slice(0, 160)}` : ""}`;
   }
