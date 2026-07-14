@@ -20,9 +20,31 @@ function getDisplayName(user) {
   return name || user?.user_name || "Internal User";
 }
 
-function getRoleLabel(user) {
+function normalizeRoleKey(role) {
+  const normalized = String(role || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (normalized === "legal") return "legal_personnel";
+  return normalized;
+}
+
+function prettifyRole(role) {
+  return String(role || "Internal")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getRoleLabel(user, t) {
   const role = user?.role_name || user?.role || "Internal";
-  return ROLE_LABELS[role?.toLowerCase()] || role;
+  const roleKey = normalizeRoleKey(role);
+  const labelKey =
+    ROLE_LABELS[roleKey] ||
+    Object.values(ROLE_LABELS).find((key) => key.toLowerCase() === roleKey);
+
+  return labelKey ? t(labelKey) : prettifyRole(role);
 }
 
 export default function Navbar() {
@@ -243,7 +265,7 @@ function UserMenu({ user, logout, t }) {
       {open && (
         <div className={styles.userDropdown}>
           <p className={styles.dropdownName}>{getDisplayName(user)}</p>
-          <p className={styles.dropdownRole}>{getRoleLabel(user)}</p>
+          <p className={styles.dropdownRole}>{getRoleLabel(user, t)}</p>
 
           <hr className={styles.dropdownDivider} />
 
