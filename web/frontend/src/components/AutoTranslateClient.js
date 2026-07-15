@@ -62,7 +62,10 @@ function translateTextNode(node, language) {
   }
 
   const original = originals.get(node);
-  node.nodeValue = language === "tl" ? translateValue(original) : original;
+  const nextValue = language === "tl" ? translateValue(original) : original;
+  if (node.nodeValue !== nextValue) {
+    node.nodeValue = nextValue;
+  }
 }
 
 function translateElementAttributes(element, language) {
@@ -88,7 +91,10 @@ function translateElementAttributes(element, language) {
       stored[attribute] = current;
     }
 
-    element.setAttribute(attribute, language === "tl" ? translateValue(stored[attribute]) : stored[attribute]);
+    const nextValue = language === "tl" ? translateValue(stored[attribute]) : stored[attribute];
+    if (current !== nextValue) {
+      element.setAttribute(attribute, nextValue);
+    }
   });
 }
 
@@ -136,22 +142,12 @@ export default function AutoTranslateClient() {
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === "childList") {
-          mutation.addedNodes.forEach((node) => translateTree(node, language));
-          if (mutation.target) translateTree(mutation.target, language);
-        } else if (mutation.type === "characterData") {
-          translateTextNode(mutation.target, language);
-        } else if (mutation.type === "attributes") {
-          translateElementAttributes(mutation.target, language);
-        }
+        mutation.addedNodes.forEach((node) => translateTree(node, language));
       });
     });
 
     observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: TRANSLATABLE_ATTRIBUTES,
       childList: true,
-      characterData: true,
       subtree: true,
     });
 
