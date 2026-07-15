@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FiCheck } from "react-icons/fi";
 import { applyDisplayPrefs, readDisplayPrefs, saveDisplayPrefs } from "@/lib/displayPreferences";
-import { LANGUAGE_OPTIONS, normalizeLanguage, translate } from "@/lib/i18n";
+import { LANGUAGE_OPTIONS, normalizeLanguage, setCurrentLanguage, translate } from "@/lib/i18n";
 import styles from "./DisplayAccessibilityTab.module.css";
 
 const FONT_SIZES = [
@@ -21,10 +21,15 @@ export default function DisplayAccessibilityTab({ onLanguageChange }) {
 
   const updatePrefs = (updates) => {
     if (updates.language) {
-      onLanguageChange?.(normalizeLanguage(updates.language));
+      const nextLanguage = setCurrentLanguage(updates.language);
+      onLanguageChange?.(nextLanguage);
     }
     setPrefs((current) => {
-      const next = { ...current, ...updates };
+      const next = {
+        ...current,
+        ...updates,
+        language: updates.language ? normalizeLanguage(updates.language) : current.language,
+      };
       applyDisplayPrefs(next);
       return next;
     });
