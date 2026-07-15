@@ -707,20 +707,20 @@ function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError
         <Field label="Gender Identity" required hint="How do you identify? This helps us serve you better." error={errors.gender}>
           <Select value={data.gender} onChange={(e) => setAndValidate("gender", e.target.value)} error={errors.gender}>
             <option value="">Select gender identity</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>LGBTQIA+ member</option>
-            <option>Prefer not to say</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="LGBTQIA+ member">LGBTQIA+ member</option>
+            <option value="Prefer not to say">Prefer not to say</option>
           </Select>
         </Field>
 
         <Field label="Organization" required error={errors.organization}>
           <Select value={data.organization} onChange={(e) => setAndValidate("organization", e.target.value)} error={errors.organization}>
             <option value="">Select organization</option>
-            <option>Boy Scouts of the Philippines (BSP)</option>
-            <option>Girl Scouts of the Philippines (GSP)</option>
-            <option>No Organization / Independent</option>
-            <option>Others</option>
+            <option value="Boy Scouts of the Philippines (BSP)">Boy Scouts of the Philippines (BSP)</option>
+            <option value="Girl Scouts of the Philippines (GSP)">Girl Scouts of the Philippines (GSP)</option>
+            <option value="No Organization / Independent">No Organization / Independent</option>
+            <option value="Others">Others</option>
           </Select>
         </Field>
       </div>
@@ -1359,9 +1359,9 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
           <Field label="Gender of Perpetrator (as you perceive it)" required hint="What is the gender of the perpetrator?" error={errors.perpetratorGender}>
             <Select value={data.perpetratorGender || ""} onChange={(e) => setAndValidate("perpetratorGender", e.target.value)} error={errors.perpetratorGender}>
               <option value="">Select gender identity</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Unable to tell</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Unable to tell">Unable to tell</option>
             </Select>
           </Field>
         </div>
@@ -1374,9 +1374,9 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
           <Field label="Gender of Perpetrator (as you perceive it)" hint="Optional. Share only what you remember or feel comfortable noting." error={errors.perpetratorUnknownGender}>
             <Select value={data.perpetratorUnknownGender || ""} onChange={(e) => setAndValidate("perpetratorUnknownGender", e.target.value)} error={errors.perpetratorUnknownGender}>
               <option value="">Select if remembered</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Unable to tell</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Unable to tell">Unable to tell</option>
             </Select>
           </Field>
           <Field label="Appearance or identifying details" hint="Optional. Any detail you remember may help, but it is okay to leave this blank." error={errors.perpetratorUnknownAppearance}>

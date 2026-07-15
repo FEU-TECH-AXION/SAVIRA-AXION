@@ -478,10 +478,10 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
         <Field label="Gender Identity" required error={errors.gender}>
           <Select value={data.gender} onChange={set("gender")} error={errors.gender}>
             <option value="">Select gender identity</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>LGBTQIA+ member</option>
-            <option>Prefer not to say</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="LGBTQIA+ member">LGBTQIA+ member</option>
+            <option value="Prefer not to say">Prefer not to say</option>
           </Select>
         </Field>
         <Field label="Pronouns">
@@ -550,11 +550,11 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
                 error={errors.scoutingMembership}
               >
                 <option value="">Select scouting membership category</option>
-                <option>Senior Scouts</option>
-                <option>Senior Girl Scouts</option>
-                <option>Cadet Girl Scouts</option>
-                <option>Rover Scouts</option>
-                <option>Adult in Scouting</option>
+                <option value="Senior Scouts">Senior Scouts</option>
+                <option value="Senior Girl Scouts">Senior Girl Scouts</option>
+                <option value="Cadet Girl Scouts">Cadet Girl Scouts</option>
+                <option value="Rover Scouts">Rover Scouts</option>
+                <option value="Adult in Scouting">Adult in Scouting</option>
               </Select>
             </Field>
           </div>

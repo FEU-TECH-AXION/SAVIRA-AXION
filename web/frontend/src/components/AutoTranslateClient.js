@@ -64,6 +64,14 @@ function translateTextNode(node, language) {
   const original = originals.get(node);
   const nextValue = language === "tl" ? translateValue(original) : original;
   if (node.nodeValue !== nextValue) {
+    const parentOption = node.parentElement?.tagName === "OPTION" ? node.parentElement : null;
+    if (parentOption && !parentOption.hasAttribute("value")) {
+      const optionValue = String(original || "").trim();
+      if (optionValue) {
+        parentOption.setAttribute("value", optionValue);
+      }
+    }
+
     node.nodeValue = nextValue;
   }
 }
