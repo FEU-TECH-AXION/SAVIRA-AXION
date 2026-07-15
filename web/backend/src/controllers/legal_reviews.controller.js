@@ -421,7 +421,8 @@ async function getLegalReviewReports(req, options = null) {
       : getAllReports()
   }
   if (role === 'legal personnel') {
-    return options ? getLegalManagementReports(options) : getReportsForLegal()
+    const userId = getRequesterUserId(req)
+    return options ? getReportsForLegal(userId, options) : getReportsForLegal(userId)
   }
   return []
 }

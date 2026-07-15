@@ -45,13 +45,13 @@ router.post('/:id/follow-ups', verifyToken, upload.single('file'), createFollowU
 router.patch('/:id/fields', verifyToken, upload.single('file'), amendCaseFields);
 router.post('/:id/withdraw', verifyToken, withdrawalUpload.single('affidavit'), withdrawCase);
 router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
-router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, dismissDuplicate);
+router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, requireCaseAccess, requireCaseReportAccess, dismissDuplicate);
 router.get('/:id/public-updates', verifyToken, requireCaseReportAccess, getPublicUpdates);
 router.get('/:id/nlp', verifyToken, requireCaseReportAccess, getNLPAnalysis); 
 router.get('/:id/summary', verifyToken, requireCaseReportAccess, getCaseSummaryById);
 router.get('/:id',     verifyToken, requireCaseReportAccess, getCaseById);
-router.get('/',        verifyToken, requireCaseAccess, getItems);
+router.get('/',        verifyToken, authorize('Admin'), getItems);
 router.post('/',       verifyToken, authorize('Admin'), createItem);
-router.patch('/:id', verifyToken, requireCaseAccess, updateItem)
+router.patch('/:id', verifyToken, requireCaseAccess, requireCaseReportAccess, updateItem)
 
 module.exports = router

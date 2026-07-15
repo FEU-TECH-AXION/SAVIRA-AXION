@@ -203,7 +203,7 @@ async function submitReport(req, res) {
     );
 
     fireAndForget(
-      notifyRoleUsers(['Admin', 'Staff', 'Case Officer'], {
+      notifyRoleUsers(['Admin', 'Case Officer'], {
         title: 'New report submitted',
         body: `A new report #${newReport.case_report_id} is ready for review.`,
         data: {
@@ -297,14 +297,11 @@ async function getCaseStats(req, res) {
         }
       }
     } else if (role === 'Legal Personnel') {
-      const legalVisibleStatusIds = [4, 6, 7, 8, 9, 10, 11, 12];
-      const { data, error } = await supabase
-        .from('case_reports')
-        .select('case_report_id, case_status_id')
-        .eq('is_current', true)
-        .in('case_status_id', legalVisibleStatusIds);
-      if (error) throw error;
-      reports = data || [];
+      const legalReports = await getReportsForLegal(userId);
+      reports = (legalReports || []).map((report) => ({
+        case_report_id: report.case_report_id,
+        case_status_id: report.case_status_id,
+      }));
     } else {
       return res.status(403).json({ error: 'Access denied.' });
     }
@@ -363,7 +360,7 @@ async function getAllCases(req, res) {
       reports = await getReportsByAssignedOfficer(userId, options);
     } else if (role === 'Legal Personnel') {
       // SECURITY: Scoped to Legal Personnel - prevents over-fetching rows
-      reports = await getReportsForLegal(options);
+      reports = await getReportsForLegal(userId, options);
     } else {
       console.warn('[getAllCases] Access denied for role:', role);
       return res.status(403).json({ error: 'Access denied.' });

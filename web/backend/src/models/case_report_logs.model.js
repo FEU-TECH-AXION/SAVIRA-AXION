@@ -49,7 +49,7 @@ const getByCaseReport = async (caseReportId) => {
 const getById = async (id) => {
     const { data, error } = await supabase
         .from('case_report_logs')
-        .select('case_report_log_id, action_type')
+        .select('case_report_log_id, case_report_id, action_type')
         .eq('case_report_log_id', id)
         .maybeSingle()
     if (error) throw error

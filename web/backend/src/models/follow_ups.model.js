@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase')
 const { buildApprovedFieldUpdate, columnForChange } = require('./case_field_changes')
+const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
 
 const ACTIVE_STATUSES = ['open', 'responded']
 
@@ -86,12 +87,22 @@ async function getCaseAccess(caseId, userId) {
   if (!report) return null
 
   const roleName = String(user.roles?.role_name || '').toLowerCase()
-  const isStaff = ['admin', 'case officer', 'case_officer', 'legal personnel', 'legal_personnel', 'staff']
-    .includes(roleName)
-  const canManageFollowUps = ['admin', 'case officer', 'case_officer'].includes(roleName)
+  const normalizedRole = requireCaseReportAccess.normalizeRole(roleName)
+  const access = await requireCaseReportAccess.canAccessCaseReport({
+    caseReportId: caseId,
+    user: {
+      id: userId,
+      user_id: userId,
+      role: user.roles?.role_name,
+      role_name: user.roles?.role_name,
+    },
+  })
+  const hasCaseAccess = access.allowed
+  const isStaff = hasCaseAccess && ['admin', 'case officer', 'legal personnel'].includes(normalizedRole)
+  const canManageFollowUps = hasCaseAccess && ['admin', 'case officer'].includes(normalizedRole)
 
   let isOwner = false
-  if (!isStaff) {
+  if (!isStaff && hasCaseAccess) {
     const { data: complainant, error } = await supabase
       .from('complainants')
       .select('user_id')
@@ -101,7 +112,7 @@ async function getCaseAccess(caseId, userId) {
     isOwner = complainant?.user_id === userId
   }
 
-  return { report, user, roleName, isStaff, isOwner, canManageFollowUps }
+  return { report, user, roleName: normalizedRole, isStaff, isOwner, canManageFollowUps }
 }
 
 async function createRequest(payload) {
