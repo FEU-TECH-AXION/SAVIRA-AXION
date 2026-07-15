@@ -37,15 +37,6 @@ const HISTORY_PAGE_SIZE = 5;
 const MAX_EVIDENCE_FILES = 10;
 const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_EVIDENCE_FILE_SIZE_LABEL = "50 MB";
-const ALLOWED_EVIDENCE_MIME_TYPES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "video/mp4",
-]);
-const ALLOWED_EVIDENCE_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png", "mp4"]);
-const ALLOWED_EVIDENCE_FILE_TYPES_LABEL = "PDF, JPG, JPEG, PNG, and MP4";
 const INPUT_PLACEHOLDER_COLOR = "#6b7280";
 const CASE_REPORT_DRAFT_KEY = "savira_mobile_case_report_draft";
 const FormInputFocusContext = createContext(() => {});
@@ -72,19 +63,6 @@ function Text({ children, ...props }) {
     return child;
   };
   return <RNText {...props}>{translateChild(children)}</RNText>;
-}
-
-function getFileExtension(file) {
-  const name = String(file?.name || file?.fileName || file?.uri || "");
-  const cleanName = name.split("?")[0].split("#")[0];
-  const parts = cleanName.split(".");
-  return parts.length > 1 ? parts.pop().toLowerCase() : "";
-}
-
-function isAllowedEvidenceFileType(file) {
-  const mimeType = String(file?.mimeType || file?.type || "").toLowerCase();
-  if (ALLOWED_EVIDENCE_MIME_TYPES.has(mimeType)) return true;
-  return ALLOWED_EVIDENCE_EXTENSIONS.has(getFileExtension(file));
 }
 
 function formatErrorMessage(error, fallback = "Failed to submit report.") {
@@ -144,9 +122,70 @@ const OUTCOME_OPTIONS = [
   "I am not sure yet",
   "Others",
 ];
+const REPORT_TYPE_OPTIONS = ["Me (Myself)", "Someone else"];
+const ORGANIZATION_OPTIONS = [
+  "Boy Scouts of the Philippines (BSP)",
+  "Girl Scouts of the Philippines (GSP)",
+  "No Organization / Independent",
+  "Others",
+];
+const ORGANIZATION_TYPE_OPTIONS = [
+  "School / University",
+  "Workplace / Company",
+  "Government Agency",
+  "Non-Governmental Organization",
+  "Community / Youth Organization",
+  "Religious Organization",
+  "Online Community / Platform",
+  "Other",
+];
+const LOCATION_TYPE_OPTIONS = ["Physical Location", "Online"];
+const YES_NO_OPTIONS = ["Yes", "No"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
+const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
+
+function normalizeOptionValue(value, options) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeOptionValue(item, options)).filter(Boolean);
+  }
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (options.includes(text)) return text;
+  const lowerText = text.toLowerCase();
+  return (
+    options.find((option) => translateText("tl", option).toLowerCase() === lowerText) ||
+    options.find((option) => option.toLowerCase() === lowerText) ||
+    text
+  );
+}
+
+function normalizeComplainantOptions(data) {
+  return {
+    ...data,
+    reporteeType: normalizeOptionValue(data.reporteeType, REPORT_TYPE_OPTIONS),
+    gender: normalizeOptionValue(data.gender, GENDER_OPTIONS),
+    organization: normalizeOptionValue(data.organization, ORGANIZATION_OPTIONS),
+    organizationType: normalizeOptionValue(data.organizationType, ORGANIZATION_TYPE_OPTIONS),
+  };
+}
+
+function normalizeIncidentOptions(data) {
+  return {
+    ...data,
+    locationType: normalizeOptionValue(data.locationType, LOCATION_TYPE_OPTIONS),
+    outcome: normalizeOptionValue(data.outcome, OUTCOME_OPTIONS),
+    perpetratorKnown: normalizeOptionValue(data.perpetratorKnown, YES_NO_OPTIONS),
+    perpetratorGender: normalizeOptionValue(data.perpetratorGender, PERPETRATOR_GENDER_OPTIONS),
+    perpetratorUnknownGender: normalizeOptionValue(data.perpetratorUnknownGender, UNKNOWN_PERPETRATOR_GENDER_OPTIONS),
+    witnesses: normalizeOptionValue(data.witnesses, YES_NO_OPTIONS),
+    toldAnyone: normalizeOptionValue(data.toldAnyone, YES_NO_OPTIONS),
+    toldPolice: normalizeOptionValue(data.toldPolice, YES_NO_OPTIONS),
+  };
+}
 
 function normalizeOutcome(value) {
-  if (Array.isArray(value)) return value.filter((v) => OUTCOME_OPTIONS.includes(v));
+  if (Array.isArray(value)) return normalizeOptionValue(value, OUTCOME_OPTIONS).filter((v) => OUTCOME_OPTIONS.includes(v));
   return [];
 }
 
@@ -171,12 +210,15 @@ function isPartialIncidentDateInFuture(year, month, day) {
 }
 
 function buildIncidentDate(incident) {
-  if (!incident?.incidentYear) return "";
-  const year = String(incident.incidentYear).padStart(4, "0");
-  if (!incident.incidentMonth) return year;
-  const month = String(incident.incidentMonth).padStart(2, "0");
-  if (!incident.incidentDay) return `${year}-${month}`;
-  const day = String(incident.incidentDay).padStart(2, "0");
+  const yearNumber = Number.parseInt(incident?.incidentYear, 10);
+  const monthNumber = Number.parseInt(incident?.incidentMonth, 10);
+  const dayNumber = Number.parseInt(incident?.incidentDay, 10);
+  if (!yearNumber || !monthNumber || !dayNumber) return "";
+  if (monthNumber < 1 || monthNumber > 12) return "";
+  if (dayNumber < 1 || dayNumber > getDaysInMonth(yearNumber, monthNumber)) return "";
+  const year = String(yearNumber).padStart(4, "0");
+  const month = String(monthNumber).padStart(2, "0");
+  const day = String(dayNumber).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -1249,7 +1291,7 @@ function StepComplainantInfo({ data, onChange, errors, setFieldError }) {
         error={errors.reporteeType}
       >
         <RadioGroup
-          options={["Me (Myself)", "Someone else"]}
+          options={REPORT_TYPE_OPTIONS}
           value={data.reporteeType}
           onChange={set("reporteeType")}
           error={errors.reporteeType}
@@ -1286,7 +1328,7 @@ function StepComplainantInfo({ data, onChange, errors, setFieldError }) {
         <SelectBox
           value={data.gender}
           placeholder="Select gender identity"
-          options={["Male", "Female", "LGBTQIA+ member", "Prefer not to say"]}
+          options={GENDER_OPTIONS}
           onSelect={set("gender")}
           error={errors.gender}
         />
@@ -1295,12 +1337,7 @@ function StepComplainantInfo({ data, onChange, errors, setFieldError }) {
         <SelectBox
           value={data.organization}
           placeholder="Select organization"
-          options={[
-            "Boy Scouts of the Philippines (BSP)",
-            "Girl Scouts of the Philippines (GSP)",
-            "No Organization / Independent",
-            "Others",
-          ]}
+          options={ORGANIZATION_OPTIONS}
           onSelect={(value) => {
             updateField("organization", value, {
               ...data,
@@ -1356,20 +1393,27 @@ function StepComplainantInfo({ data, onChange, errors, setFieldError }) {
             <SelectBox
               value={data.organizationType || ""}
               placeholder="Select organization type"
-              options={[
-                "School / University",
-                "Workplace / Company",
-                "Government Agency",
-                "Non-Governmental Organization",
-                "Community / Youth Organization",
-                "Religious Organization",
-                "Online Community / Platform",
-                "Other",
-              ]}
+              options={ORGANIZATION_TYPE_OPTIONS}
               onSelect={set("organizationType")}
               error={errors.organizationType}
             />
           </Field>
+
+          {data.organizationType === "Other" && (
+            <Field
+              label="Specify Organization Type"
+              hint="Enter the type of organization or affiliation."
+              error={errors.organizationTypeOther}
+            >
+              <StyledInput
+                placeholder="Sports club"
+                value={data.organizationTypeOther || ""}
+                onChangeText={setSafeText("organizationTypeOther")}
+                maxLength={TEXT_FIELD_MAX_LENGTH}
+                error={errors.organizationTypeOther}
+              />
+            </Field>
+          )}
 
           {hasAffiliation && (
             <>
@@ -1760,11 +1804,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldE
             <SelectBox
               value={data.perpetratorGender || ""}
               placeholder="Select gender identity"
-              options={[
-                "Male",
-                "Female",
-                "Unable to tell",
-              ]}
+              options={PERPETRATOR_GENDER_OPTIONS}
               onSelect={set("perpetratorGender")}
               error={errors.perpetratorGender}
             />
@@ -1777,16 +1817,14 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldE
           <Field
             label="Gender of Perpetrator (as you perceive it)"
             hint="Optional. Share only what you remember or feel comfortable noting."
+            error={errors.perpetratorUnknownGender}
           >
             <SelectBox
               value={data.perpetratorUnknownGender || ""}
               placeholder="Select if remembered"
-              options={[
-                "Male",
-                "Female",
-                "Unable to tell",
-              ]}
+              options={UNKNOWN_PERPETRATOR_GENDER_OPTIONS}
               onSelect={set("perpetratorUnknownGender")}
+              error={errors.perpetratorUnknownGender}
             />
           </Field>
           <Field
@@ -1936,19 +1974,10 @@ function StepEvidence({ data, onChange, t }) {
     });
 
   const appendValidFiles = (files) => {
-    const unsupportedFiles = files.filter((file) => !isAllowedEvidenceFileType(file));
-    const typeAllowedFiles = files.filter(isAllowedEvidenceFileType);
-    const oversizedFiles = typeAllowedFiles.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
+    const oversizedFiles = files.filter((file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE);
     const remainingSlots = MAX_EVIDENCE_FILES - (data.files || []).length;
-    const sizeAllowedFiles = typeAllowedFiles.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
+    const sizeAllowedFiles = files.filter((file) => !file.size || file.size <= MAX_EVIDENCE_FILE_SIZE);
     const validFiles = sizeAllowedFiles.slice(0, Math.max(remainingSlots, 0));
-
-    if (unsupportedFiles.length > 0) {
-      Alert.alert(
-        t("File Type Not Allowed"),
-        t("Cannot upload this file type. Available file types are: {types}.", { types: ALLOWED_EVIDENCE_FILE_TYPES_LABEL })
-      );
-    }
 
     if (oversizedFiles.length > 0) {
       Alert.alert(
@@ -2016,7 +2045,7 @@ function StepEvidence({ data, onChange, t }) {
           onPress: async () => {
             try {
               const result = await DocumentPicker.getDocumentAsync({
-                type: ["application/pdf", "image/jpeg", "image/png", "image/jpg", "video/mp4", "video/*", "image/*"],
+                type: "*/*",
                 multiple: true,
                 copyToCacheDirectory: true,
               });
@@ -2082,7 +2111,7 @@ function StepEvidence({ data, onChange, t }) {
       const result = DeviceFilePicker && Platform.OS === "android"
         ? await DeviceFilePicker.openFiles()
         : await DocumentPicker.getDocumentAsync({
-            type: ["application/pdf", "image/jpeg", "image/png", "image/jpg", "video/mp4"],
+            type: "*/*",
             multiple: true,
             copyToCacheDirectory: true,
           });
@@ -2421,25 +2450,21 @@ function validateStep0(complainant, consents) {
 }
 
 function validateStep1(data) {
+  data = normalizeComplainantOptions(data);
   const e = {};
-  if (!data.reporteeType) e.reporteeType = "Report type is required.";
+  if (!REPORT_TYPE_OPTIONS.includes(data.reporteeType)) e.reporteeType = "Report type is required.";
   const ageRaw = String(data.age || "").trim();
   const age = Number.parseInt(ageRaw, 10);
   if (!/^\d{1,3}$/.test(ageRaw) || Number.isNaN(age) || age < AGE_MIN || age > AGE_MAX) {
     e.age = `Enter an age from ${AGE_MIN} to ${AGE_MAX}.`;
   }
-  if (!data.gender) e.gender = "Gender identity is required.";
-  const organizationOptions = [
-    "Boy Scouts of the Philippines (BSP)",
-    "Girl Scouts of the Philippines (GSP)",
-    "No Organization / Independent",
-    "Others",
-  ];
-  if (!organizationOptions.includes(data.organization)) e.organization = "Organization is required.";
+  if (!GENDER_OPTIONS.includes(data.gender)) e.gender = "Gender identity is required.";
+  if (!ORGANIZATION_OPTIONS.includes(data.organization)) e.organization = "Organization is required.";
   validateSafeText(e, data, [
     { key: "name", label: "Name", max: NAME_FIELD_MAX_LENGTH },
     { key: "council", label: "Council", max: SHORT_TEXT_MAX_LENGTH },
     { key: "orgName", label: "Organization name", max: SHORT_TEXT_MAX_LENGTH },
+    { key: "organizationTypeOther", label: "Organization type", max: SHORT_TEXT_MAX_LENGTH },
   ]);
   if (!data.contactNumber) {
     e.contactNumber = "Contact number is required.";
@@ -2456,21 +2481,17 @@ function validateStep1(data) {
     e.userCity = "A valid city/municipality is required for your location.";
   }
   if (data.organization === "Others") {
-    if (!data.organizationType)
+    if (!ORGANIZATION_TYPE_OPTIONS.includes(data.organizationType))
       e.organizationType = "Organization type is required.";
-    const hasAffiliation =
-      data.organizationType &&
-      data.organizationType !== "No Organization / Independent";
-    if (hasAffiliation) {
-      if (!data.orgName) e.orgName = "Organization name is required.";
-      if (!NCR_CITIES.includes(data.orgCity)) e.orgCity = "A valid organization city is required.";
-    }
+    if (!data.orgName) e.orgName = "Organization name is required.";
+    if (!NCR_CITIES.includes(data.orgCity)) e.orgCity = "A valid organization city is required.";
     if (!NCR_CITIES.includes(data.userCity)) e.userCity = "A valid city/municipality is required for your location.";
   }
   return e;
 }
 
 function validateStep2(data, complainantAge) {
+  data = normalizeIncidentOptions(data);
   const e = {};
   const { year, month, day } = parseIncidentParts(data);
   const currentYear = new Date().getFullYear();
@@ -2515,7 +2536,7 @@ function validateStep2(data, complainantAge) {
       e.time = "The incident time cannot be in the future for the selected date.";
     }
   }
-  if (!data.locationType) e.locationType = "Please select whether the incident was physical or online.";
+  if (!LOCATION_TYPE_OPTIONS.includes(data.locationType)) e.locationType = "Please select whether the incident was physical or online.";
   if (data.locationType === "Physical Location" && !NCR_CITIES.includes(data.incidentCity))
     e.incidentCity = "A valid incident city is required.";
   if (String(data.description || "").trim()) {
@@ -2526,17 +2547,22 @@ function validateStep2(data, complainantAge) {
   }
   if (Array.isArray(data.outcome) && data.outcome.some((item) => !OUTCOME_OPTIONS.includes(item)))
     e.outcome = "Please choose a valid requested outcome.";
-  if (!data.perpetratorKnown)
+  if (!YES_NO_OPTIONS.includes(data.perpetratorKnown))
     e.perpetratorKnown = "Please indicate if the perpetrator is known.";
-  if (!data.witnesses) e.witnesses = "Please indicate if there are witnesses.";
-  if (!data.toldAnyone) e.toldAnyone = "Please indicate if you told anyone.";
-  if (!data.toldPolice)
+  if (!YES_NO_OPTIONS.includes(data.witnesses)) e.witnesses = "Please indicate if there are witnesses.";
+  if (!YES_NO_OPTIONS.includes(data.toldAnyone)) e.toldAnyone = "Please indicate if you told anyone.";
+  if (!YES_NO_OPTIONS.includes(data.toldPolice))
     e.toldPolice = "Please indicate if you told the police.";
   if (data.perpetratorKnown === "Yes") {
     if (!data.perpetratorName)
       e.perpetratorName = "Perpetrator name is required.";
     if (!data.perpetratorGender)
       e.perpetratorGender = "Perpetrator gender is required.";
+    else if (!PERPETRATOR_GENDER_OPTIONS.includes(data.perpetratorGender))
+      e.perpetratorGender = "Select a valid perpetrator gender option.";
+  }
+  if (data.perpetratorUnknownGender && !UNKNOWN_PERPETRATOR_GENDER_OPTIONS.includes(data.perpetratorUnknownGender)) {
+    e.perpetratorUnknownGender = "Select a valid gender option.";
   }
   if (data.witnesses === "Yes" && data.witnessContact) {
     const contact = String(data.witnessContact).trim();
@@ -2897,7 +2923,9 @@ export default function ReportScreen() {
         const raw = await AsyncStorage.getItem(CASE_REPORT_DRAFT_KEY);
         if (!active || !raw) return;
         const draft = JSON.parse(raw);
-        if (draft?.complainant) setComplainant((current) => ({ ...current, ...draft.complainant }));
+        if (draft?.complainant) {
+          setComplainant((current) => normalizeComplainantOptions({ ...current, ...draft.complainant }));
+        }
         if (draft?.incident) {
           const draftIncident = { ...draft.incident };
           if (draftIncident.date && !draftIncident.incidentYear) {
@@ -2906,7 +2934,7 @@ export default function ReportScreen() {
             if (parts[1]) draftIncident.incidentMonth = String(Number(parts[1]));
             if (parts[2]) draftIncident.incidentDay = String(Number(parts[2]));
           }
-          setIncident((current) => ({
+          setIncident((current) => normalizeIncidentOptions({
             ...current,
             ...draftIncident,
             date: buildIncidentDate(draftIncident) || draftIncident.date || "",
@@ -3189,16 +3217,6 @@ export default function ReportScreen() {
     const oversizedFiles = (evidence.files || []).filter(
       (file) => (file.size || 0) > MAX_EVIDENCE_FILE_SIZE
     );
-    const unsupportedFiles = (evidence.files || []).filter(
-      (file) => !isAllowedEvidenceFileType(file)
-    );
-    if (unsupportedFiles.length > 0) {
-      setSubmitError(
-        t("Cannot upload this file type. Available file types are: {types}.", { types: ALLOWED_EVIDENCE_FILE_TYPES_LABEL })
-      );
-      setStep(3);
-      return;
-    }
     if (oversizedFiles.length > 0) {
       setSubmitError(t("Each evidence file must be {size} or smaller.", { size: MAX_EVIDENCE_FILE_SIZE_LABEL }));
       setStep(3);
@@ -3213,23 +3231,25 @@ export default function ReportScreen() {
     try {
       const userToken = await AsyncStorage.getItem("user_token");
       const formData = new FormData();
+      const normalizedComplainant = normalizeComplainantOptions(complainant);
+      const normalizedIncident = normalizeIncidentOptions(incident);
       const safeComplainant = {
-        ...deepSanitize(complainant),
-        age: String(complainant.age || "").replace(/\D/g, "").slice(0, 3),
-        contactNumber: normalisePhone(complainant.contactNumber),
-        email: normalizeEmail(complainant.email),
+        ...deepSanitize(normalizedComplainant),
+        age: String(normalizedComplainant.age || "").replace(/\D/g, "").slice(0, 3),
+        contactNumber: normalisePhone(normalizedComplainant.contactNumber),
+        email: normalizeEmail(normalizedComplainant.email),
       };
       formData.append("complainant", JSON.stringify(safeComplainant));
-      const { year, month, day } = parseIncidentParts(incident);
+      const { year, month, day } = parseIncidentParts(normalizedIncident);
       
       const formattedIncident = {
-        ...deepSanitize(incident),
-        date: buildIncidentDate(incident),
-        time: toTwentyFourHourTime(incident.time),
+        ...deepSanitize(normalizedIncident),
+        date: buildIncidentDate(normalizedIncident),
+        time: toTwentyFourHourTime(normalizedIncident.time),
         incident_year: Number.isNaN(year) ? null : year,
         incident_month: Number.isNaN(month) ? null : month,
         incident_day: Number.isNaN(day) ? null : day,
-        outcome: Array.isArray(incident.outcome) ? incident.outcome.join(", ") : incident.outcome
+        outcome: Array.isArray(normalizedIncident.outcome) ? normalizedIncident.outcome.join(", ") : normalizedIncident.outcome
       };
       formData.append("incident", JSON.stringify(formattedIncident));
       
