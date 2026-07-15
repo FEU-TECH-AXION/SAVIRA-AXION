@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { FaCheck } from "react-icons/fa6";
 import { IoIosInformationCircle, IoIosWarning, } from "react-icons/io";
 import { useAuth, authFetch } from "@/lib/AuthContext";
-import { useI18n } from "@/lib/i18n";
+import { translateText, useI18n } from "@/lib/i18n";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -146,6 +146,77 @@ const INITIAL_SCREENING_QUESTIONS = {
 const INITIAL_ESSAY = {
   description: "",
 };
+
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const PRONOUN_OPTIONS = ["he", "she", "they"];
+const ORGANIZATION_OPTIONS = ["BSP", "GSP", "No Organization / Independent", "Other"];
+const ORGANIZATION_LABELS = {
+  BSP: "Boy Scouts of the Philippines (BSP)",
+  GSP: "Girl Scouts of the Philippines (GSP)",
+  "No Organization / Independent": "No Organization / Independent",
+  Other: "Other",
+};
+const ORGANIZATION_TYPE_OPTIONS = [
+  "School / University",
+  "Workplace / Company",
+  "Government Agency",
+  "Non-Governmental Organization",
+  "Community / Youth Organization",
+  "Religious Organization",
+  "Online Community / Platform",
+  "Other",
+];
+const YES_NO_OPTIONS = ["Yes", "No"];
+const SCOUTING_MEMBERSHIP_OPTIONS = [
+  "Senior Scouts",
+  "Senior Girl Scouts",
+  "Cadet Girl Scouts",
+  "Rover Scouts",
+  "Adult in Scouting",
+];
+const EXPERTISE_OPTIONS = [
+  "News Writing", "Creative Writing", "Photography", "Videography",
+  "Graphic Designing", "Layouting", "Video Editing", "Social Media Management", "Content Creation",
+];
+const HOURS_OPTIONS = ["Less than 5 hours", "6-10 hours", "10-15 hours", "More than 15 hours"];
+
+function normalizeOptionValue(value, options, labels = {}) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeOptionValue(item, options, labels)).filter(Boolean);
+  }
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (options.includes(text)) return text;
+  const lowerText = text.toLowerCase();
+  return (
+    options.find((option) => String(labels[option] || "").toLowerCase() === lowerText) ||
+    options.find((option) => translateText("tl", option).toLowerCase() === lowerText) ||
+    options.find((option) => translateText("tl", labels[option] || option).toLowerCase() === lowerText) ||
+    options.find((option) => option.toLowerCase() === lowerText) ||
+    text
+  );
+}
+
+function normalizeApplicantOptions(data) {
+  return {
+    ...data,
+    gender: normalizeOptionValue(data.gender, GENDER_OPTIONS),
+    pronouns: normalizeOptionValue(data.pronouns, PRONOUN_OPTIONS),
+    organization: normalizeOptionValue(data.organization, ORGANIZATION_OPTIONS, ORGANIZATION_LABELS),
+    organizationType: normalizeOptionValue(data.organizationType, ORGANIZATION_TYPE_OPTIONS),
+    scoutingMembership: normalizeOptionValue(data.scoutingMembership, SCOUTING_MEMBERSHIP_OPTIONS),
+    interview: normalizeOptionValue(data.interview, YES_NO_OPTIONS),
+  };
+}
+
+function normalizeScreeningOptions(data) {
+  return {
+    ...data,
+    withBackground: normalizeOptionValue(data.withBackground || [], EXPERTISE_OPTIONS),
+    interestedFields: normalizeOptionValue(data.interestedFields || [], EXPERTISE_OPTIONS),
+    hoursPerWeek: normalizeOptionValue(data.hoursPerWeek, HOURS_OPTIONS),
+  };
+}
 
 // ── Wizard Progress Bar ───────────────────────────────────────────────────────
 function WizardStepper({ current, t }) {
@@ -308,6 +379,7 @@ function birthdayForAge(age) {
 }
 
 function validateStep0(data) {
+  data = normalizeApplicantOptions(data);
   const errors = {};
 
   if (!data.name)   errors.name   = "Name is required.";
@@ -341,7 +413,7 @@ function validateStep0(data) {
     }
   }
 
-  if (!data.gender) errors.gender = "Gender identity is required.";
+  if (!GENDER_OPTIONS.includes(data.gender)) errors.gender = "Gender identity is required.";
 
   if (!data.contactNumber) {
     errors.contactNumber = "Contact number is required.";
@@ -355,8 +427,8 @@ function validateStep0(data) {
     errors.email = "Enter a valid email address (e.g. sample@gmail.com).";
   }
 
-  if (!data.interview) errors.interview = "Consent to interview is required.";
-  if (!data.organization) errors.organization = "Organization is required.";
+  if (!YES_NO_OPTIONS.includes(data.interview)) errors.interview = "Consent to interview is required.";
+  if (!ORGANIZATION_OPTIONS.includes(data.organization)) errors.organization = "Organization is required.";
 
   const isScoutOrg = data.organization === "BSP" || data.organization === "GSP";
   const isIndependent = data.organization === "No Organization / Independent";
@@ -365,11 +437,11 @@ function validateStep0(data) {
     if (!data.council) errors.council = "Council is required.";
     if (!data.tenureInScouting) errors.tenureInScouting = "Tenure in Scouting is required.";
     if (!data.rank) errors.rank = "Rank is required.";
-    if (!data.scoutingMembership) errors.scoutingMembership = "Scouting Membership Category is required.";
+    if (!SCOUTING_MEMBERSHIP_OPTIONS.includes(data.scoutingMembership)) errors.scoutingMembership = "Scouting Membership Category is required.";
   }
 
   if (data.organization === "Other") {
-    if (!data.organizationType) errors.organizationType = "Organization type is required.";
+    if (!ORGANIZATION_TYPE_OPTIONS.includes(data.organizationType)) errors.organizationType = "Organization type is required.";
 
     const hasAffiliation =
       data.organizationType && data.organizationType !== "No Organization / Independent";
@@ -772,13 +844,6 @@ function CheckboxGroup({ name, options, value = [], onChange }) {
     </div>
   );
 }
-
-const EXPERTISE_OPTIONS = [
-  "News Writing", "Creative Writing", "Photography", "Videography",
-  "Graphic Designing", "Layouting", "Video Editing", "Social Media Management", "Content Creation",
-];
-
-const HOURS_OPTIONS = ["Less than 5 hours", "6-10 hours", "10-15 hours", "More than 15 hours"];
 
 // ── Page 2 — Screening Questions ───────────────────────────────────────────────
 function StepScreeningQuestions({
@@ -1420,8 +1485,8 @@ export default function CreateApplication({
         const raw = localStorage.getItem(draftStorageKey);
         if (!raw) return;
         const draft = JSON.parse(raw);
-        if (draft.applicant) setApplicant(draft.applicant);
-        if (draft.screeningQuestions) setScreeningQuestions(draft.screeningQuestions);
+        if (draft.applicant) setApplicant(normalizeApplicantOptions(draft.applicant));
+        if (draft.screeningQuestions) setScreeningQuestions(normalizeScreeningOptions(draft.screeningQuestions));
         if (draft.screeningAnswers) setScreeningAnswers(draft.screeningAnswers);
         if (draft.essay) setEssay(draft.essay);
         setDraftNotice("You have an unfinished volunteer application draft. It has been loaded so you can continue.");
@@ -1447,10 +1512,10 @@ export default function CreateApplication({
       const hasStartedApplication = Object.values(current).some(Boolean);
       if (hasStartedApplication) return current;
       hasHydratedProfile.current = true;
-      return {
+      return normalizeApplicantOptions({
         ...current,
         ...profileFields,
-      };
+      });
     });
   }, [authLoading, authUser, draftChecked]);
 
@@ -1497,8 +1562,14 @@ export default function CreateApplication({
 
   const handleNext = () => {
     let errors = {};
-    if (step === 0) errors = validateStep0(applicant);
+    if (step === 0) {
+      const normalizedApplicant = normalizeApplicantOptions(applicant);
+      setApplicant(normalizedApplicant);
+      errors = validateStep0(normalizedApplicant);
+    }
     if (step === 1) {
+      const normalizedScreening = normalizeScreeningOptions(screeningQuestions);
+      setScreeningQuestions(normalizedScreening);
       if (screeningLoading || screeningLoadError) {
         errors.screening = screeningLoadError || "Please wait for the questions to load.";
       } else {
@@ -1539,13 +1610,17 @@ export default function CreateApplication({
   const handleSubmit = async () => {
       try {
           setSubmitError(null)
+          const normalizedApplicant = normalizeApplicantOptions(applicant);
+          const normalizedScreening = normalizeScreeningOptions(screeningQuestions);
+          setApplicant(normalizedApplicant);
+          setScreeningQuestions(normalizedScreening);
 
           const res = await authFetch(`${API}/api/volunteer_applications/submit`, {
               method:  'POST',
               headers: { 'Content-Type': 'application/json' },
               body:    JSON.stringify({
-                  applicant,
-                  screeningQuestions,
+                  applicant: normalizedApplicant,
+                  screeningQuestions: normalizedScreening,
                   screeningAnswers,
                   screening_question_set_id: screeningQuestionSetId,
                   essay,
