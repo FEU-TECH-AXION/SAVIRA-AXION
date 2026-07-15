@@ -17,7 +17,7 @@ export function normalizeLanguage(language) {
   if (language === 'fil') return 'tl';
   return LANGUAGE_OPTIONS.some((option) => option.id === language) ? language : 'en';
 }
-
+ 
 export function translate(language, key) {
   const lang = normalizeLanguage(language);
   return MESSAGES[lang]?.[key] || MESSAGES.en[key] || key;
