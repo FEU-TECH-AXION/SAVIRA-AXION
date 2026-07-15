@@ -57,13 +57,24 @@ export default function DashboardHeatmapCard() {
     });
     mapRef.current = map;
 
+    const resizeMap = () => map.resize();
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(resizeMap)
+        : null;
+    resizeObserver?.observe(mapNode.current);
+
     map.on("load", () => {
-      removeWaterLayer(map);
-      loadChoropleth(map, locations, "city");
-      setupHoverInteraction(map);
+      requestAnimationFrame(() => {
+        map.resize();
+        removeWaterLayer(map);
+        loadChoropleth(map, locations, "city");
+        setupHoverInteraction(map);
+      });
     });
 
     return () => {
+      resizeObserver?.disconnect();
       if (map._choroplethPopup) map._choroplethPopup.remove();
       map.remove();
       mapRef.current = null;
