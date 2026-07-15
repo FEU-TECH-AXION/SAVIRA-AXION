@@ -173,6 +173,77 @@ function NotificationsCard({ notifications, onView }) {
 const MAPBOX_TOKEN_DASH = MAPBOX_TOKEN;
 const API_URL_DASH = API_URL;
 
+const STATUS_OVERRIDES = ['postponed', 'cancelled'];
+
+function toDateOnly(value) {
+  if (!value) return '';
+  if (value instanceof Date) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  }
+  return String(value).split('T')[0];
+}
+
+function parseDate(value) {
+  const dateOnly = toDateOnly(value);
+  if (!dateOnly) return null;
+  const date = new Date(`${dateOnly}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function computeProjectStatus(project, todayValue = new Date()) {
+  const override = String(project?.status_override || project?.statusOverride || project?.status || project?.project_status || '')
+    .trim()
+    .toLowerCase();
+  if (STATUS_OVERRIDES.includes(override)) return override;
+
+  const startDate = parseDate(project?.start_date || project?.dateStart);
+  const endDate = parseDate(project?.end_date || project?.dateEnd) || startDate;
+  const today = parseDate(todayValue) || new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (!startDate) return 'upcoming';
+  if (endDate && endDate < today) return 'completed';
+  if (startDate > today) return 'upcoming';
+  return 'active';
+}
+
+function normalizeDashboardEvent(project) {
+  const status = computeProjectStatus(project);
+  return {
+    id: project.id ?? project.project_id,
+    title: project.title || project.event_name || 'Untitled Event',
+    date: project.start_date || project.dateStart || '',
+    endDate: project.end_date || project.dateEnd || '',
+    image: project.image || null,
+    status,
+    visibility: project.visibility,
+    approvalStatus: project.approval_status || project.approvalStatus,
+  };
+}
+
+function getUpcomingDashboardEvents(projects) {
+  const now = new Date();
+
+  return projects
+    .map(normalizeDashboardEvent)
+    .filter((event) =>
+      (!event.visibility || event.visibility === 'public') &&
+      (!event.approvalStatus || event.approvalStatus === 'approved')
+    )
+    .filter((event) => !['postponed', 'cancelled', 'completed'].includes(event.status))
+    .filter((event) => {
+      if (['active', 'upcoming', 'ongoing'].includes(event.status)) return true;
+      const relevantDate = event.endDate || event.date;
+      return relevantDate && new Date(`${toDateOnly(relevantDate)}T23:59:59`) >= now;
+    })
+    .sort((a, b) => {
+      const aDate = parseDate(a.date) || now;
+      const bDate = parseDate(b.date) || now;
+      return aDate - bDate;
+    })
+    .slice(0, 3);
+}
+
 const miniMapHtml = `
 <!DOCTYPE html><html><head>
 <meta charset="utf-8">
@@ -395,12 +466,7 @@ export default function ComplainantDashboard() {
       if (eventsRes.ok) {
         const eventsData = await eventsRes.json();
         const raw = Array.isArray(eventsData) ? eventsData : eventsData?.data || [];
-        fetchedEvents = raw.slice(0, 3).map(p => ({
-          id: p.id ?? p.project_id,
-          title: p.title || p.event_name || 'Untitled Event',
-          date: p.start_date || p.dateStart || '',
-          image: p.image || null,
-        }));
+        fetchedEvents = getUpcomingDashboardEvents(raw);
       }
 
       if (reportsRes.ok && reportsData.data) {
