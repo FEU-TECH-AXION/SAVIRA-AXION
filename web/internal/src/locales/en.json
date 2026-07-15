@@ -253,6 +253,7 @@
   "navSearchPlaceholder": "Search...",
   "navNotifications": "Notifications",
   "navNoNotifications": "No notifications yet",
+  "navDismissNotification": "Dismiss notification",
   "navHelp": "Help",
   "navOpenSidebar": "Open sidebar menu",
   "navCloseSidebar": "Close sidebar",

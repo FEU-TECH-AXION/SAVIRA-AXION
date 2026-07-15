@@ -25,6 +25,7 @@ import {
 } from "react-icons/md";
 import { FaHandsHelping } from "react-icons/fa";
 import { getSidebarLinks } from "@/components/navigation/navigationLinks";
+import { useI18n } from "@/lib/i18n";
 import styles from "./sidebar.module.css";
 
 const ICONS = {
@@ -94,7 +95,7 @@ function AccordionItem({ item, pathname, onNavigate }) {
   );
 }
 
-function SidebarFooter({ logout }) {
+function SidebarFooter({ logout, t }) {
   return (
     <div className={styles.sidebarFooter}>
       <hr className={styles.footerDivider} />
@@ -107,7 +108,7 @@ function SidebarFooter({ logout }) {
             <span className={styles.sidebarIcon}>
               <MdLogout />
             </span>
-            <span className={styles.sidebarLabel}>Log Out</span>
+            <span className={styles.sidebarLabel}>{t("navLogOut")}</span>
           </button>
         </li>
       </ul>
@@ -115,7 +116,7 @@ function SidebarFooter({ logout }) {
   );
 }
 
-function SidebarHeader({ user, onClose }) {
+function SidebarHeader({ user, onClose, t }) {
   return (
     <div className={styles.sidebarHeader}>
       <div className={styles.userPill}>
@@ -130,7 +131,7 @@ function SidebarHeader({ user, onClose }) {
           <span className={styles.userRole}>{user?.role_name || "Internal"}</span>
         </div>
       </div>
-      <button className={styles.closeBtn} onClick={onClose} aria-label="Close sidebar">
+      <button className={styles.closeBtn} onClick={onClose} aria-label={t("navCloseSidebar")}>
         <MdClose size={20} />
       </button>
     </div>
@@ -139,9 +140,17 @@ function SidebarHeader({ user, onClose }) {
 
 export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const pathname = usePathname();
   const sidebarRef = useRef(null);
-  const links = withIcons(getSidebarLinks(user));
+  const links = withIcons(getSidebarLinks(user)).map((item) => ({
+    ...item,
+    label: item.labelKey ? t(item.labelKey) : item.label,
+    children: item.children?.map((child) => ({
+      ...child,
+      label: child.labelKey ? t(child.labelKey) : child.label,
+    })),
+  }));
 
   useEffect(() => {
     function handleOutside(event) {
@@ -181,9 +190,9 @@ export default function Sidebar({ isOpen, onClose }) {
       <aside
         ref={sidebarRef}
         className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
-        aria-label="Internal navigation"
+        aria-label={t("navSidebar")}
       >
-        <SidebarHeader user={user} onClose={onClose} />
+        <SidebarHeader user={user} onClose={onClose} t={t} />
 
         <div className={styles.sidebarBody}>
           <hr className={styles.divider} />
@@ -220,7 +229,7 @@ export default function Sidebar({ isOpen, onClose }) {
             </ul>
           </nav>
 
-          <SidebarFooter logout={logout} />
+          <SidebarFooter logout={logout} t={t} />
         </div>
       </aside>
     </>

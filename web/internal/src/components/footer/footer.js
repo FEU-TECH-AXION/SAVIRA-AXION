@@ -4,10 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FaFacebook, FaInstagram } from "react-icons/fa6";
 import { getFooterQuickLinks } from "@/components/navigation/navigationLinks";
+import { useAuth } from "@/lib/AuthContext";
+import { useI18n } from "@/lib/i18n";
 import styles from "./footer.module.css";
 
 export default function Footer() {
-  const quickLinks = getFooterQuickLinks();
+  const { user } = useAuth();
+  const { t } = useI18n();
+  const quickLinks = getFooterQuickLinks(user);
   const pathname = usePathname();
 
   const isActive = (href) =>
@@ -32,15 +36,15 @@ export default function Footer() {
         </div>
 
         <div className={styles.footerCol}>
-          <h4 className={styles.footerColTitle}>Quick Links</h4>
+          <h4 className={styles.footerColTitle}>{t("navQuickLinks")}</h4>
           <ul className={`${styles.footerList} ${styles.quickLinksGrid}`}>
-            {quickLinks.map(({ href, label }) => (
+            {quickLinks.map(({ href, label, labelKey }) => (
               <li key={href}>
                 <Link
                   href={href}
                   className={isActive(href) ? styles.footerLinkActive : styles.footerLink}
                 >
-                  {label}
+                  {labelKey ? t(labelKey) : label}
                 </Link>
               </li>
             ))}
@@ -48,11 +52,11 @@ export default function Footer() {
         </div>
 
         <div className={styles.footerCol}>
-          <h4 className={styles.footerColTitle}>Internal Support</h4>
+          <h4 className={styles.footerColTitle}>{t("navSupportInformation")}</h4>
           <ul className={styles.footerList}>
-            <li><Link href="/dashboard">Dashboard</Link></li>
-            <li><Link href="/reportGenerator">Reports</Link></li>
-            <li><Link href="/staffAvailability">Staff Availability</Link></li>
+            <li><Link href="/dashboard">{t("navHome")}</Link></li>
+            <li><Link href="/reportGenerator">{t("navReportsAnalysis")}</Link></li>
+            <li><Link href="/staffAvailability">{t("navStaffAvailability")}</Link></li>
           </ul>
         </div>
       </div>

@@ -112,7 +112,7 @@ export default function Navbar() {
           <button
             className={styles.hamburgerBtn}
             onClick={() => setSidebarOpen(true)}
-            aria-label="Open sidebar"
+            aria-label={t("navOpenSidebar")}
             aria-expanded={sidebarOpen}
           >
             <FiMenu size={22} />
@@ -180,7 +180,7 @@ export default function Navbar() {
                           <button
                             type="button"
                             className={styles.notifDismissBtn}
-                            aria-label="Dismiss notification"
+                            aria-label={t("navDismissNotification")}
                             onClick={(event) => {
                               event.stopPropagation();
                               dismissNotification(notification.id).catch((err) => {

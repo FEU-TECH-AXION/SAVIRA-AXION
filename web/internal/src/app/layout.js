@@ -2,6 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
 import { I18nProvider } from "@/lib/i18n";
 import InternalShell from "@/components/navigation/InternalShell";
+import AutoTranslateClient from "@/components/AutoTranslateClient";
 
 export const metadata = {
   title: "SASHA",
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <I18nProvider>
+            <AutoTranslateClient />
             <InternalShell>{children}</InternalShell>
           </I18nProvider>
         </AuthProvider>
