@@ -19,7 +19,7 @@ router.get('/batch/approved', verifyToken, authorize('Admin'), getBatchApprovedH
 router.get('/:caseReportId', verifyToken, requireCaseReportAccess, getHistory)
 
 // Officer submits a status change — creates history + assessment rows
-router.post('/', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), submitStatusChange)
+router.post('/', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), requireCaseReportAccess, submitStatusChange)
 
 router.post('/override', verifyToken, authorize('Admin'), submitStatusOverride)
 

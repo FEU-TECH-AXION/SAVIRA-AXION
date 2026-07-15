@@ -1422,15 +1422,36 @@ async function getReportsByAssignedOfficer(userId, options = {}) {
   }, statusHistoryMap))
 }
 
-async function getReportsForLegal(options = {}) {
+async function getAssignedLegalCaseIdsForUser(userId) {
+  const { data: legalPersonnel, error: legalPersonnelError } = await supabase
+    .from('legal_personnels')
+    .select('legal_personnel_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (legalPersonnelError) throw legalPersonnelError
+  if (!legalPersonnel?.legal_personnel_id) return []
+
+  const { data: assignments, error: assignmentError } = await supabase
+    .from('legal_case_assignments')
+    .select('case_report_id')
+    .eq('legal_personnel_id', legalPersonnel.legal_personnel_id)
+    .eq('is_active', true)
+  if (assignmentError) throw assignmentError
+
+  return [...new Set((assignments || []).map((assignment) => assignment.case_report_id).filter(Boolean))]
+}
+
+async function getReportsForLegal(userId, options = {}) {
   const LEGAL_VISIBLE_STATUS_IDS = [4, 6, 7, 8, 9, 10, 11, 12];
   // 4=Verified-True, 6=Under Case Evaluation, 7=Case Filed,
   // 8=Investigation Ongoing, 9=Hearing Ongoing, 10=Dismissed,
   // 11=Perpetrator Convicted, 12=Resolved
 
-  if (arguments.length > 0) {
+  const assignedCaseIds = await getAssignedLegalCaseIdsForUser(userId)
+
+  if (arguments.length > 1) {
     return getPaginatedCaseReports({
-      options,
+      options: { ...options, caseIds: assignedCaseIds },
       scopeQuery: (query) => query.in('case_status_id', LEGAL_VISIBLE_STATUS_IDS),
       includeOfficerMap: false,
       enrichReport: ({ report, legalMap, assessmentMap, duplicateMatches }) => {
@@ -1451,6 +1472,8 @@ async function getReportsForLegal(options = {}) {
       },
     })
   }
+
+  if (assignedCaseIds.length === 0) return []
 
   const { data: reports, error: reportsError } = await supabase
     .from('case_reports')
@@ -1478,6 +1501,7 @@ async function getReportsForLegal(options = {}) {
     `)
     .eq('is_current', true)
     .in('case_status_id', LEGAL_VISIBLE_STATUS_IDS)
+    .in('case_report_id', assignedCaseIds)
     .order('created_at', { ascending: false })
 
   if (reportsError) throw reportsError

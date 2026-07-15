@@ -1,4 +1,5 @@
 const CaseReportLogs = require('../models/case_report_logs.model')
+const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
 const PUBLIC_MESSAGE_MAX_LENGTH = 280
@@ -74,11 +75,16 @@ const updateItem = async (req, res) => {
             return res.status(400).json({ error: 'No valid fields to update.' })
         }
 
-        if (updates.action_type === undefined) {
-            const existing = await CaseReportLogs.getById(req.params.id)
-            if (!existing) return res.status(404).json({ error: 'Log not found.' })
-            updates.action_type = existing.action_type
-        }
+        const existing = await CaseReportLogs.getById(req.params.id)
+        if (!existing) return res.status(404).json({ error: 'Log not found.' })
+
+        const access = await requireCaseReportAccess.canAccessCaseReport({
+            caseReportId: existing.case_report_id,
+            user: req.user,
+        })
+        if (!access.allowed) return res.status(access.status).json({ error: access.error })
+
+        if (updates.action_type === undefined) updates.action_type = existing.action_type
 
         const { payload, error } = normalizePublicFields(updates)
         if (error) return res.status(400).json({ error })

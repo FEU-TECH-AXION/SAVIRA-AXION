@@ -8,7 +8,7 @@ const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.m
 router.get('/management', verifyToken, authorize('Admin', 'Legal Personnel'), getManagement)
 router.get('/deadlines', verifyToken, authorize('Admin', 'Legal Personnel'), getDeadlines)
 router.get('/case/:caseReportId/calendar', verifyToken, requireCaseReportAccess, getCalendarByCase)
-router.get('/case/:caseReportId', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), getByCase)
-router.patch('/case/:caseReportId', verifyToken, authorize('Admin', 'Legal Personnel'), updateByCase)
+router.get('/case/:caseReportId', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), requireCaseReportAccess, getByCase)
+router.patch('/case/:caseReportId', verifyToken, authorize('Admin', 'Legal Personnel'), requireCaseReportAccess, updateByCase)
 
 module.exports = router
