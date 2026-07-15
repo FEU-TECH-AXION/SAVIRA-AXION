@@ -5,17 +5,19 @@ import { useRouter } from "next/navigation";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import styles from "./DashboardDataCards.module.css";
+import { computeProjectStatus } from "@/lib/projectStatus";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 function normalizeProject(project) {
+  const status = computeProjectStatus(project).toLowerCase();
   return {
     id: project.id || project.project_id,
     title: project.title || project.event_name || "Untitled event",
     date: project.dateStart || project.start_date || null,
     endDate: project.dateEnd || project.end_date || null,
     image: project.image || null,
-    status: String(project.status || project.project_status || "").toLowerCase(),
+    status,
     visibility: project.visibility,
     approvalStatus: project.approvalStatus || project.approval_status,
   };
@@ -56,13 +58,18 @@ export default function DashboardEventsCard() {
     loadEvents();
   }, []);
 
-  const eligibleEvents = useMemo(() => {
-    const now = new Date();
+  const calendarEvents = useMemo(() => {
     return events
       .filter((event) =>
         (!event.visibility || event.visibility === "public") &&
         (!event.approvalStatus || event.approvalStatus === "approved")
       )
+      .filter((event) => !["postponed", "cancelled"].includes(event.status));
+  }, [events]);
+
+  const eligibleEvents = useMemo(() => {
+    const now = new Date();
+    return calendarEvents
       .filter((event) => {
         if (["active", "upcoming", "ongoing"].includes(event.status)) return true;
         const relevantDate = event.endDate || event.date;
@@ -73,17 +80,17 @@ export default function DashboardEventsCard() {
         const bDate = b.date ? new Date(b.date) : now;
         return aDate - bDate;
       });
-  }, [events]);
+  }, [calendarEvents]);
 
   const currentEvents = useMemo(() => eligibleEvents.slice(0, 3), [eligibleEvents]);
 
   const selectedEvents = useMemo(
-    () => eligibleEvents.filter((event) => {
+    () => calendarEvents.filter((event) => {
       if (!selectedDate || !event.date) return false;
       const eventDate = new Date(`${event.date}T00:00:00`);
       return eventDate.toDateString() === selectedDate.toDateString();
     }),
-    [eligibleEvents, selectedDate]
+    [calendarEvents, selectedDate]
   );
 
   function handleDateClick(date) {
@@ -115,10 +122,10 @@ export default function DashboardEventsCard() {
     : "Upcoming Event";
 
   const eventDateKeys = useMemo(
-    () => new Set(eligibleEvents
+    () => new Set(calendarEvents
       .filter((event) => event.date)
       .map((event) => new Date(`${event.date}T00:00:00`).toDateString())),
-    [eligibleEvents]
+    [calendarEvents]
   );
 
   return (

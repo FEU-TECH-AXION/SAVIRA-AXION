@@ -39,7 +39,7 @@ const getAll = async () => {
             supabase.from('project_tasks').select('assigned_to, status').in('assigned_to', staffIds)
                 .not('status', 'in', '("Completed","Cancelled")'),
             supabase.from('volunteer_application_assignments').select('assessor_id').in('assessor_id', userIds).eq('is_active', true),
-            supabase.from('projects').select('project_status, project_officers, project_committee_members'),
+            supabase.from('projects').select('project_status, start_date, end_date, project_officers, project_committee_members'),
         ])
         if (taskError) throw taskError
         if (reviewError) throw reviewError
@@ -54,8 +54,24 @@ const getAll = async () => {
             `${row.users?.first_name || ''} ${row.users?.last_name || ''}`.trim().toLowerCase(),
             row.user_id,
         ]))
+        const parseDate = (value) => {
+            if (!value) return null
+            const date = new Date(`${String(value).split('T')[0]}T00:00:00`)
+            return Number.isNaN(date.getTime()) ? null : date
+        }
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const computeProjectStatus = (project) => {
+            if (['Postponed', 'Cancelled'].includes(project.project_status)) return project.project_status
+            const start = parseDate(project.start_date)
+            const end = parseDate(project.end_date) || start
+            if (!start) return 'Upcoming'
+            if (end && end < today) return 'Completed'
+            if (start > today) return 'Upcoming'
+            return 'Active'
+        }
         for (const project of projects || []) {
-            if (!['Upcoming', 'Active'].includes(project.project_status)) continue
+            if (!['Upcoming', 'Active'].includes(computeProjectStatus(project))) continue
             const names = [...(project.project_officers || []), ...(project.project_committee_members || [])]
             for (const name of new Set(names.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean))) {
                 const userId = staffByName.get(name)

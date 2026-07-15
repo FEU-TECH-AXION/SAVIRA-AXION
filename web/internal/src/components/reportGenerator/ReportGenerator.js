@@ -26,6 +26,7 @@ import {
   FiUserCheck,
   FiFlag,
 } from "react-icons/fi";
+import { computeProjectStatus, getProjectStatusOverride } from "@/lib/projectStatus";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -81,7 +82,7 @@ const CITIES = [
 ];
 
 const VOLUNTEER_STATUSES = ["Pending", "Under Review", "Approved", "Rejected", "Waitlisted"];
-const PROJECT_STATUSES = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];
+const PROJECT_STATUSES = ["Upcoming", "Active", "Completed", "Postponed", "Cancelled"];
 const USER_ROLES = ["Admin", "Case Officer", "Legal Personnel", "Staff", "User"];
 
 const DATE_RANGES = [
@@ -320,7 +321,8 @@ function normalizeUser(row) {
 function normalizeProject(row) {
   return {
     id: row.id || row.project_id,
-    status: row.status || row.project_status || row.projectStatus || null,
+    status: computeProjectStatus(row),
+    statusOverride: getProjectStatusOverride(row),
     category: row.category || null,
     visibility: row.visibility || null,
     approval_status: row.approval_status || row.approvalStatus || null,
@@ -636,7 +638,7 @@ function buildProjectSummary(projects = []) {
   const now = new Date();
 
   for (const p of projects) {
-    const s = p.status || p.project_status;
+    const s = computeProjectStatus(p);
     if (s) byStatus[s] = (byStatus[s] || 0) + 1;
     if (s === "Completed") completedOnTime++;
 

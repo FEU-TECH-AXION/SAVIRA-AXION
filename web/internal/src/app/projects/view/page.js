@@ -7,6 +7,7 @@ import CreateEditProject from "@/components/projects/CreateEditProject"
 import TaskPanel from "@/components/projects/TaskPanel"
 import Tooltip from "@/components/ui/Tooltip"
 import { fetchProject, updateProject, uploadProjectImage } from "@/lib/api"
+import { getProjectDisplayStatus } from "@/lib/projectStatus"
 import styles from "@/components/projects/CreateEditProject.module.css"
 import viewStyles from "./viewProject.module.css"
 
@@ -78,7 +79,7 @@ function ProjectView() {
   const statusLine = useMemo(() => {
     if (!project) return ""
     const dates = [formatDate(project.dateStart), formatDate(project.dateEnd)].filter(Boolean).join(" to ")
-    return [project.status, project.visibility, dates || "No event dates"].filter(Boolean).join(" · ")
+    return [getProjectDisplayStatus(project), project.visibility, dates || "No event dates"].filter(Boolean).join(" · ")
   }, [project])
 
   async function handleSave(data) {
@@ -230,7 +231,8 @@ function ProjectView() {
             <Field label="Approval Status" value={project.approvalStatus} />
           </SectionCard>
           <SectionCard title="Status & Schedule">
-            <Field label="Project Status" value={project.status} />
+            <Field label="Project Status" value={getProjectDisplayStatus(project)} />
+            <Field label="Status Override" value={project.statusOverride || "None"} />
             <Field label="Due Date" value={formatDate(project.dueDate)} />
           </SectionCard>
         </aside>

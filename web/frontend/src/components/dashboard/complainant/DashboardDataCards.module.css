@@ -281,6 +281,11 @@
   width: 5px;
 }
 
+.calendar :global(.react-calendar__tile--active) .eventDot {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+
 .selectedEvents {
   border-top: 1px solid var(--sasha-border);
   margin-top: 0.75rem;

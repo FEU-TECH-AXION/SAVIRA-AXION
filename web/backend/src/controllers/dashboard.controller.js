@@ -56,6 +56,18 @@ function isUpcoming(value) {
   return date >= today
 }
 
+function computeProjectStatus(project) {
+  if (['Postponed', 'Cancelled'].includes(project?.project_status)) return project.project_status
+  const start = parseDate(project?.start_date)
+  const end = parseDate(project?.end_date) || start
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (!start) return 'Upcoming'
+  if (end && end < today) return 'Completed'
+  if (start > today) return 'Upcoming'
+  return 'Active'
+}
+
 function formatDeadlineDate(value, time) {
   const date = parseDate(value)
   if (!date) return String(value || '')
@@ -578,11 +590,11 @@ async function getStaffWorkCounts({ userId, actorName, committeeName }) {
   today.setHours(0, 0, 0, 0)
 
   return {
-    activeProjects: scopedProjects.filter((project) => project.project_status === 'Active').length,
+    activeProjects: scopedProjects.filter((project) => computeProjectStatus(project) === 'Active').length,
     upcomingEvents: scopedProjects.filter((project) => {
-      const status = normalizeText(project.project_status)
+      const status = normalizeText(computeProjectStatus(project))
       const date = parseDate(project.start_date || project.due_date || project.end_date)
-      return status !== 'completed' && date && date >= today
+      return !['completed', 'postponed', 'cancelled'].includes(status) && date && date >= today
     }).length,
     openProjectTasks: scopedTasks.filter((task) => !['completed', 'cancelled', 'canceled'].includes(normalizeText(task.status))).length,
     overdueTasks: scopedTasks.filter((task) => {

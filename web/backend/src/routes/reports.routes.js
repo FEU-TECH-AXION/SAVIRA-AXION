@@ -52,6 +52,24 @@ function applyDateFilter(query, rangeStart, dateField = "created_at") {
   return query.gte(dateField, rangeStart.toISOString());
 }
 
+function parseDate(value) {
+  if (!value) return null;
+  const date = new Date(`${String(value).split("T")[0]}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function computeProjectStatus(project) {
+  if (["Postponed", "Cancelled"].includes(project.project_status)) return project.project_status;
+  const start = parseDate(project.start_date);
+  const end = parseDate(project.end_date) || start;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!start) return "Upcoming";
+  if (end && end < today) return "Completed";
+  if (start > today) return "Upcoming";
+  return "Active";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/reports/aggregate?dateRange=thisMonth
 //
@@ -154,7 +172,8 @@ router.get("/aggregate", async (req, res) => {
     const projects = (projectsRaw || []).map((p) => ({
       id: p.project_id,
       project_id: p.project_id,
-      status: p.project_status,
+      status: computeProjectStatus(p),
+      statusOverride: ["Postponed", "Cancelled"].includes(p.project_status) ? p.project_status : "",
       project_status: p.project_status,
       start_date: p.start_date,
       end_date: p.end_date,
@@ -292,7 +311,8 @@ router.get("/projects", async (req, res) => {
     const normalized = (data || []).map((p) => ({
       id: p.project_id,
       project_id: p.project_id,
-      status: p.project_status,
+      status: computeProjectStatus(p),
+      statusOverride: ["Postponed", "Cancelled"].includes(p.project_status) ? p.project_status : "",
       project_status: p.project_status,
       start_date: p.start_date,
       end_date: p.end_date,

@@ -31,6 +31,24 @@ const ALLOWED_FIELDS = [
 const toDateStr = (val) => (val ? String(val).split('T')[0] : null)
 const toTimeStr = (val) => (val ? String(val).slice(0, 5) : '')
 
+const parseDate = (value) => {
+  if (!value) return null
+  const date = new Date(`${String(value).split('T')[0]}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const computeProjectStatus = (row) => {
+  if (['Postponed', 'Cancelled'].includes(row?.project_status)) return row.project_status
+  const start = parseDate(row?.start_date)
+  const end = parseDate(row?.end_date) || start
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (!start) return 'Upcoming'
+  if (end && end < today) return 'Completed'
+  if (start > today) return 'Upcoming'
+  return 'Active'
+}
+
 const toFrontend = (row) => {
   if (!row) return null
   return {
@@ -53,7 +71,8 @@ const toFrontend = (row) => {
     operationalRequirements: row.operational_requirement,
     targetParticipants: row.target_participants,
     partnerOrganizations: row.partner_organization,
-    status: row.project_status,
+    status: computeProjectStatus(row),
+    statusOverride: ['Postponed', 'Cancelled'].includes(row.project_status) ? row.project_status : '',
     visibility: row.visibility,
     approvalStatus: row.approval_status,
     image: row.image || null,
@@ -86,7 +105,9 @@ const toDbPayload = (payload) => {
     operational_requirement: payload.operationalRequirements,
     target_participants: payload.targetParticipants,
     partner_organization: payload.partnerOrganizations,
-    project_status: payload.status,
+    project_status: Object.prototype.hasOwnProperty.call(payload, 'statusOverride')
+      ? (payload.statusOverride || null)
+      : (['Postponed', 'Cancelled'].includes(payload.status) ? payload.status : undefined),
     visibility: payload.visibility,
     approval_status: payload.approvalStatus,
     image: payload.image,
@@ -102,6 +123,7 @@ const toDbPayload = (payload) => {
   // Skip `image` when it's a File/Object (frontend file uploads should be handled via storage).
   const filtered = entries.filter(([key, value]) => {
     if (key === 'image' && value && typeof value !== 'string') return false
+    if (key === 'project_status' && value === null) return true
     // Arrays are valid even if empty
     if (Array.isArray(value)) return true
     return isValidValue(value)
@@ -120,10 +142,6 @@ const sanitize = (payload) => {
 
 const getAll = async (filters = {}) => {
   let query = supabase.from('projects').select('*')
-
-  if (filters.status) {
-    query = query.eq('project_status', filters.status)
-  }
 
   if (filters.search) {
     const q = `%${filters.search}%`
@@ -148,7 +166,12 @@ const getAll = async (filters = {}) => {
 
   const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
-  return (data || []).map(toFrontend)
+  const rows = (data || []).map(toFrontend)
+  if (filters.status) {
+    const target = String(filters.status).trim().toLowerCase()
+    return rows.filter((project) => String(project.status || '').toLowerCase() === target)
+  }
+  return rows
 }
 
 const getById = async (projectId) => {

@@ -21,6 +21,7 @@ import { FaSearch, FaCalendarAlt } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
 import { getBackendUrl } from "@/lib/env";
+import { computeProjectStatus } from "@/lib/projectStatus";
 
 const getServerApiUrl = () => {
   return getBackendUrl();
@@ -42,23 +43,26 @@ const toSlug = (value = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const mapProjectToEvent = (project) => ({
-  id: project.id ?? project.project_id,
-  title: project.title || project.event_name || "Untitled event",
-  description: project.description || project.tagline || project.event_tagline || "",
-  category: project.category || project.project_category || "",
-  activityMode: project.activityMode || project.activity_mode || "",
-  dateStart: project.dateStart || project.start_date || "",
-  dateEnd: project.dateEnd || project.end_date || "",
-  venue: project.venue || "",
-  targetParticipants: project.targetParticipants || project.target_participants || "",
-  tagline: project.tagline || project.event_tagline || "",
-  status: project.status || project.project_status || "",
-  image: project.image || "/event-placeholder.png",
-  visibility: project.visibility,
-  approvalStatus: project.approvalStatus || project.approval_status,
-  slug: project.slug || toSlug(project.title || project.event_name || ""),
-});
+const mapProjectToEvent = (project) => {
+  const title = project.title || project.event_name || "Untitled event";
+  return {
+    id: project.id ?? project.project_id,
+    title,
+    description: project.description || project.tagline || project.event_tagline || "",
+    category: project.category || project.project_category || "",
+    activityMode: project.activityMode || project.activity_mode || "",
+    dateStart: project.dateStart || project.start_date || "",
+    dateEnd: project.dateEnd || project.end_date || "",
+    venue: project.venue || "",
+    targetParticipants: project.targetParticipants || project.target_participants || "",
+    tagline: project.tagline || project.event_tagline || "",
+    status: computeProjectStatus(project),
+    image: project.image || "/event-placeholder.png",
+    visibility: project.visibility,
+    approvalStatus: project.approvalStatus || project.approval_status,
+    slug: project.slug || toSlug(title),
+  };
+};
 
 const formatEventDate = (value) => {
   if (!value) return "";

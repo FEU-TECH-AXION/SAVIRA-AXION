@@ -6,7 +6,7 @@ import styles from "./ProjectFilterMenu.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PROJECT_STATUS_OPTIONS = ["All", "Upcoming", "Active", "Completed"];
+const PROJECT_STATUS_OPTIONS = ["All", "Upcoming", "Active", "Completed", "Postponed", "Cancelled"];
 
 const VISIBILITY_OPTIONS = ["All", "Public", "Private"];
 

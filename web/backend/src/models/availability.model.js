@@ -1,13 +1,29 @@
 const supabase = require('../config/supabase')
 
-const ACTIVE_PROJECT_STATUSES = new Set(['Upcoming', 'Active'])
-
 const increment = (map, key) => {
   if (key === null || key === undefined) return
   map[key] = (map[key] || 0) + 1
 }
 
 const normalizeName = (value) => String(value || '').trim().toLowerCase()
+
+const parseDate = (value) => {
+  if (!value) return null
+  const date = new Date(`${String(value).split('T')[0]}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const computeProjectStatus = (project) => {
+  if (['Postponed', 'Cancelled'].includes(project.project_status)) return project.project_status
+  const start = parseDate(project.start_date)
+  const end = parseDate(project.end_date) || start
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (!start) return 'Upcoming'
+  if (end && end < today) return 'Completed'
+  if (start > today) return 'Upcoming'
+  return 'Active'
+}
 
 const getAll = async () => {
   const { data: users, error: usersError } = await supabase
@@ -54,7 +70,7 @@ const getAll = async () => {
       .gte('ends_at', new Date().toISOString())
       .order('starts_at', { ascending: true }),
     supabase.from('projects')
-      .select('project_id, project_status, project_officers, project_committee_members'),
+      .select('project_id, project_status, start_date, end_date, project_officers, project_committee_members'),
     supabase.from('interviews')
       .select(`
         interview_id,
@@ -119,7 +135,7 @@ const getAll = async () => {
     user.user_id,
   ]))
   for (const project of projectsResult.data || []) {
-    if (!ACTIVE_PROJECT_STATUSES.has(project.project_status)) continue
+    if (!['Upcoming', 'Active'].includes(computeProjectStatus(project))) continue
     const names = [...(project.project_officers || []), ...(project.project_committee_members || [])]
     for (const name of new Set(names.map(normalizeName).filter(Boolean))) {
       const userId = usersByName.get(name)
