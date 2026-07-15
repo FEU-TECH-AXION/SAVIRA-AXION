@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Children, cloneElement, isValidElement, useEffect, useRef, useState } from "react";
+import { getCurrentLanguage, translateText } from "@/lib/i18n";
 
 const NCR_CITIES = [
   "Caloocan",
@@ -251,6 +252,11 @@ const LOCATION_TYPE_OPTIONS = ["Physical Location", "Online"];
 const YES_NO_OPTIONS = ["Yes", "No"];
 const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Unknown"];
 const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Unable to tell"];
+
+function tr(text, replacements) {
+  if (typeof text !== "string") return text;
+  return translateText(getCurrentLanguage(), text, replacements);
+}
 
 function trimString(value) {
   return typeof value === "string" ? value.trim() : value;
@@ -553,12 +559,12 @@ export function createReportFormFields(classes = {}) {
     return (
       <div className={classes.field}>
         <label className={classes.fieldLabel}>
-          {label}
+          {tr(label)}
           {required && <span className={classes.required}>*</span>}
         </label>
         {children}
-        {hint && !error && <p className={classes.fieldHint}>{hint}</p>}
-        {error && <p className={classes.fieldError}>{error}</p>}
+        {hint && !error && <p className={classes.fieldHint}>{tr(hint)}</p>}
+        {error && <p className={classes.fieldError}>{tr(error)}</p>}
       </div>
     );
   }
@@ -569,18 +575,26 @@ export function createReportFormFields(classes = {}) {
         className={`${classes.input || ""} ${error ? classes.inputError || "" : ""}`}
         data-error={error ? "true" : "false"}
         {...props}
+        placeholder={tr(props.placeholder)}
       />
     );
   }
 
   function Select({ children, error, ...props }) {
+    const translatedChildren = Children.map(children, (child) => {
+      if (!isValidElement(child) || child.type !== "option") return child;
+      const optionChildren = child.props.children;
+      if (typeof optionChildren !== "string") return child;
+      return cloneElement(child, {}, tr(optionChildren));
+    });
+
     return (
       <select
         className={`${classes.select || ""} ${error ? classes.inputError || "" : ""}`}
         data-error={error ? "true" : "false"}
         {...props}
       >
-        {children}
+        {translatedChildren}
       </select>
     );
   }
@@ -598,7 +612,7 @@ export function createReportFormFields(classes = {}) {
               onChange={() => onChange(opt)}
               className={classes.radioInput}
             />
-            {opt}
+            {tr(opt)}
           </label>
         ))}
       </div>
@@ -721,7 +735,7 @@ export function createReportFormFields(classes = {}) {
   return (
     <div className={classes.typeahead}>
       <Input
-        placeholder="Search for the police station or precinct"
+        placeholder={tr("Search for the police station or precinct")}
         value={value}
         onChange={(e) => {
           setIsTyping(true);
@@ -758,10 +772,10 @@ export function createReportFormFields(classes = {}) {
           ))}
         </div>
       )}
-      {isTyping && status === "loading" && <p className={classes.fieldHint}>Looking for nearby police station matches...</p>}
-      {isTyping && status === "local" && <p className={classes.fieldHint}>Showing local suggestions. You can still type the exact station name if it is not listed.</p>}
-      {isTyping && status === "empty" && <p className={classes.fieldHint}>No suggestions found yet. You can still type the station name you know.</p>}
-      {isTyping && status === "error" && <p className={classes.fieldHint}>Suggestions are unavailable right now. You can still type the station name.</p>}
+      {isTyping && status === "loading" && <p className={classes.fieldHint}>{tr("Looking for nearby police station matches...")}</p>}
+      {isTyping && status === "local" && <p className={classes.fieldHint}>{tr("Showing local suggestions. You can still type the exact station name if it is not listed.")}</p>}
+      {isTyping && status === "empty" && <p className={classes.fieldHint}>{tr("No suggestions found yet. You can still type the station name you know.")}</p>}
+      {isTyping && status === "error" && <p className={classes.fieldHint}>{tr("Suggestions are unavailable right now. You can still type the station name.")}</p>}
     </div>
   );
 }
@@ -857,7 +871,7 @@ export function createReportFormFields(classes = {}) {
   return (
     <div className={classes.typeahead}>
       <Input
-        placeholder="Barangay hall, school, park, landmark, or address"
+        placeholder={tr("Barangay hall, school, park, landmark, or address")}
         value={value}
         onChange={(event) => {
           setIsTyping(true);
@@ -898,13 +912,13 @@ export function createReportFormFields(classes = {}) {
         </div>
       )}
       {isTyping && status === "loading" && (
-        <p className={classes.fieldHint}>Finding location suggestions...</p>
+        <p className={classes.fieldHint}>{tr("Finding location suggestions...")}</p>
       )}
       {isTyping && status === "empty" && (
-        <p className={classes.fieldHint}>No suggestions found. You can still enter the location manually.</p>
+        <p className={classes.fieldHint}>{tr("No suggestions found. You can still enter the location manually.")}</p>
       )}
       {isTyping && (status === "error" || status === "missingToken") && (
-        <p className={classes.fieldHint}>Suggestions are unavailable. You can still enter the location manually.</p>
+        <p className={classes.fieldHint}>{tr("Suggestions are unavailable. You can still enter the location manually.")}</p>
       )}
     </div>
   );

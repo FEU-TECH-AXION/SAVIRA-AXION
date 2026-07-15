@@ -7,7 +7,7 @@ import styles from "./CreateReport.module.css";
 import { FaCheck } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
 import { useAuth, authFetch, authHeaders } from "@/lib/AuthContext";
-import { useI18n } from "@/lib/i18n";
+import { translateText, useI18n } from "@/lib/i18n";
 import {
   createReportFormFields,
   INCIDENT_MONTH_OPTIONS,
@@ -29,6 +29,11 @@ const {
   PoliceStationTypeahead,
   IncidentLocationTypeahead,
 } = createReportFormFields(styles);
+
+function useReportTranslator() {
+  const { language } = useI18n();
+  return (text, replacements) => translateText(language, text, replacements);
+}
 
 // ── NCR Data ──────────────────────────────────────────────────────────────────
 const NCR_CITIES = [
@@ -356,18 +361,19 @@ function validateConsentStep(data, consents) {
 
 // ── Consent Modal// ── Consent Modal ─────────────────────────────────────────────────────────────
 function ConsentModal({ title, children, onClose }) {
+  const tt = useReportTranslator();
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h4 className={styles.modalTitle}>{title}</h4>
+          <h4 className={styles.modalTitle}>{tt(title)}</h4>
           <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className={styles.modalBody}>
           {children}
         </div>
         <div className={styles.modalFooter}>
-          <button className={styles.modalCloseBtn} onClick={onClose}>Close</button>
+          <button className={styles.modalCloseBtn} onClick={onClose}>{tt("Close")}</button>
         </div>
       </div>
     </div>
@@ -377,6 +383,7 @@ function ConsentModal({ title, children, onClose }) {
 // ── Page 1 — Complainant's Information ───────────────────────────────────────
 function StepConsent({ complainant, onComplainantChange, consents, onConsentChange, errors, clearError }) {
   const [modal, setModal] = useState(null); // "dataPrivacy" | "caseAnalysis" | null
+  const tt = useReportTranslator();
 
   const setConsent = (key, checked) => {
     clearError(key);
@@ -386,10 +393,10 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Consent, Authorization</span> & Disclaimers
+        <span className={styles.stepTitleAccent}>{tt("Consent, Authorization")}</span> {tt("and Disclaimers")}
       </h2>
       <p className={styles.stepDesc}>
-        Before continuing, please read and confirm the statements below. These steps are here to ensure your rights are protected, your privacy is safeguarded, and your report is handled with the utmost care and responsibility.
+        {tt("Before continuing, please read and confirm the statements below. These steps are here to ensure your rights are protected, your privacy is safeguarded, and your report is handled with the utmost care and responsibility.")}
       </p>
 
       <div className={styles.consentStack}>
@@ -583,6 +590,7 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
 }
 
 function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError, getCurrentUser }) {
+  const tt = useReportTranslator();
   const validateField = (key, nextData = data) => {
     const message = validateStep0(nextData)[key];
     setFieldError(key, message);
@@ -623,10 +631,10 @@ function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Complainant&apos;s</span> Information
+        <span className={styles.stepTitleAccent}>{tt("Complainant's")}</span> {tt("Information")}
       </h2>
       <p className={styles.stepDesc}>
-        Please provide your personal details. All information is kept strictly confidential.
+        {tt("Please provide your personal details. All information is kept strictly confidential.")}
       </p>
 
       <div className={styles.formGrid}>
@@ -1000,7 +1008,6 @@ function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError
           />
         </Field>
       </div>
-
     </div>
   );
 }
@@ -1087,6 +1094,7 @@ function IncidentMonthTypeahead({ value, textValue, onChange, error }) {
 }
 
 function StepIncidentDetails({ data, complainantAge, onChange, errors, clearError, setFieldError }) {
+  const tt = useReportTranslator();
   const validateField = (key, nextData = data) => {
     const message = validateStep1(nextData, complainantAge)[key];
     setFieldError(key, message);
@@ -1144,10 +1152,10 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Incident</span> Details
+        <span className={styles.stepTitleAccent}>{tt("Incident")}</span> {tt("Details")}
       </h2>
       <p className={styles.stepDesc}>
-        Provide as much detail as possible. Accurate information helps us assist you better.
+        {tt("Provide as much detail as possible. Accurate information helps us assist you better.")}
       </p>
 
       {/* ── Date & Time ── */}
@@ -1489,6 +1497,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
 function StepEvidence({ data, onChange }) {
   const fileInputRef = useRef();
   const [dragging, setDragging] = useState(false);
+  const tt = useReportTranslator();
 
   const addFiles = (newFiles) => {
     const arr = Array.from(newFiles);
@@ -1530,10 +1539,10 @@ function StepEvidence({ data, onChange }) {
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Supporting</span> Evidence
+        <span className={styles.stepTitleAccent}>{tt("Supporting")}</span> {tt("Evidence")}
       </h2>
       <p className={styles.stepDesc}>
-        Attach any files, photos, or documents relevant to the incident (optional).
+        {tt("Attach any files, photos, or documents relevant to the incident (optional).")}
       </p>
 
       <div className={styles.evidenceLayout}>
@@ -1545,15 +1554,15 @@ function StepEvidence({ data, onChange }) {
           onDrop={handleDrop}
         >
           <div className={styles.dropIcon}>↑</div>
-          <p className={styles.dropText}>Drag and drop to upload files</p>
+          <p className={styles.dropText}>{tt("Drag and drop to upload files")}</p>
           <button
             type="button"
             className={styles.browseBtn}
             onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
           >
-            Browse
+            {tt("Browse")}
           </button>
-          <p className={styles.dropHint}>Supported files: PDF, JPG, PNG, MP4. Max {MAX_EVIDENCE_FILE_SIZE_LABEL} each, {MAX_EVIDENCE_FILES} files total.</p>
+          <p className={styles.dropHint}>{tt("Supported files: PDF, JPG, PNG, MP4. Max")} {MAX_EVIDENCE_FILE_SIZE_LABEL} {tt("each,")} {MAX_EVIDENCE_FILES} {tt("files total.")}</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -1565,9 +1574,9 @@ function StepEvidence({ data, onChange }) {
         </div>
 
         <div className={styles.fileList}>
-          <h3 className={styles.fileListTitle}>Submitted Files</h3>
+          <h3 className={styles.fileListTitle}>{tt("Submitted Files")}</h3>
           {(!data.files || data.files.length === 0) ? (
-            <p className={styles.noFiles}>No files uploaded yet.</p>
+            <p className={styles.noFiles}>{tt("No files uploaded yet.")}</p>
           ) : (
             data.files.map((f, i) => (
               <div key={i} className={styles.fileItem}>
@@ -1591,15 +1600,18 @@ function StepEvidence({ data, onChange }) {
 
 // ── Page 4 — Review & Submit ──────────────────────────────────────────────────
 function ReviewRow({ label, value }) {
+  const tt = useReportTranslator();
+  const displayValue = typeof value === "string" ? tt(value) : value;
   return (
     <div className={styles.reviewRow}>
-      <span className={styles.reviewLabel}>{label}</span>
-      <span className={styles.reviewValue}>{value || <em className={styles.reviewEmpty}>Not provided</em>}</span>
+      <span className={styles.reviewLabel}>{tt(label)}</span>
+      <span className={styles.reviewValue}>{displayValue || <em className={styles.reviewEmpty}>{tt("Not provided")}</em>}</span>
     </div>
   );
 }
 
 function StepReview({ complainant, incident, evidence }) {
+  const tt = useReportTranslator();
 
   // Reconstruct composed address fields for display
   const orgAddress = [complainant.orgCity, "National Capital Region (NCR)"].filter(Boolean).join(", ");
@@ -1612,14 +1624,14 @@ function StepReview({ complainant, incident, evidence }) {
   return (
     <div>
       <h2 className={styles.stepTitle}>
-        <span className={styles.stepTitleAccent}>Review</span> & Submit
+        <span className={styles.stepTitleAccent}>{tt("Review")}</span> {tt("& Submit")}
       </h2>
       <p className={styles.stepDesc}>
-        Please review all information before submitting. Once submitted, your report will be handled with strict confidentiality.
+        {tt("Please review all information before submitting. Once submitted, your report will be handled with strict confidentiality.")}
       </p>
 
       <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Complainant&apos;s Information</h3>
+        <h3 className={styles.reviewSectionTitle}>{tt("Complainant's Information")}</h3>
         <ReviewRow label="Report Type"               value={complainant.reporteeType} />
         <ReviewRow label="Name"                   value={complainant.name} />
         <ReviewRow label="Age"                    value={complainant.age} />
@@ -1649,7 +1661,7 @@ function StepReview({ complainant, incident, evidence }) {
       </div>
 
       <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Incident Details</h3>
+        <h3 className={styles.reviewSectionTitle}>{tt("Incident Details")}</h3>
         <ReviewRow label="Date"                   value={incidentDateDisplay} />
         <ReviewRow label="Time"                   value={incident.time} />
         <ReviewRow label="Location Type"          value={incident.locationType} />
@@ -1693,7 +1705,7 @@ function StepReview({ complainant, incident, evidence }) {
       </div>
 
       <div className={styles.reviewSection}>
-        <h3 className={styles.reviewSectionTitle}>Supporting Evidence</h3>
+        <h3 className={styles.reviewSectionTitle}>{tt("Supporting Evidence")}</h3>
         {/* <ReviewRow label="Anonymous submission" value={evidence.anonymous ? "Yes" : "No"} /> */}
         <ReviewRow
           label="Files attached"
@@ -2172,46 +2184,46 @@ export default function CreateReport({
               <WizardStepper current={step} t={t} />
 
               <div className={styles.formBody}>
-                {step === 0 && (
-                  <StepConsent
-                    complainant={complainant}
-                    onComplainantChange={setComplainant}
-                    consents={consents}
-                    onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))}
-                    errors={stepErrors}
-                    clearError={clearError}
-                  />
-                )}
-                {step === 1 && (
-                  <StepComplainantInfo
-                    data={complainant}
-                    onChange={setComplainant}
-                    errors={stepErrors}
-                    clearError={clearError}
-                    setFieldError={setFieldError}
-                    getCurrentUser={getCurrentUser}
-                  />
-                )}
-                {step === 2 && (
-                  <StepIncidentDetails
-                    data={incident}
-                    complainantAge={complainant.age}
-                    onChange={setIncident}
-                    errors={stepErrors}
-                    clearError={clearError}
-                    setFieldError={setFieldError}
-                  />
-                )}
-                {step === 3 && (
-                  <StepEvidence data={evidence} onChange={setEvidence} />
-                )}
-                {step === 4 && (
-                  <StepReview
-                    complainant={complainant}
-                    incident={incident}
-                    evidence={evidence}
-                  />
-                )}
+                  {step === 0 && (
+                    <StepConsent
+                      complainant={complainant}
+                      onComplainantChange={setComplainant}
+                      consents={consents}
+                      onConsentChange={(key, val) => setConsents((prev) => ({ ...prev, [key]: val }))}
+                      errors={stepErrors}
+                      clearError={clearError}
+                    />
+                  )}
+                  {step === 1 && (
+                    <StepComplainantInfo
+                      data={complainant}
+                      onChange={setComplainant}
+                      errors={stepErrors}
+                      clearError={clearError}
+                      setFieldError={setFieldError}
+                      getCurrentUser={getCurrentUser}
+                    />
+                  )}
+                  {step === 2 && (
+                    <StepIncidentDetails
+                      data={incident}
+                      complainantAge={complainant.age}
+                      onChange={setIncident}
+                      errors={stepErrors}
+                      clearError={clearError}
+                      setFieldError={setFieldError}
+                    />
+                  )}
+                  {step === 3 && (
+                    <StepEvidence data={evidence} onChange={setEvidence} />
+                  )}
+                  {step === 4 && (
+                    <StepReview
+                      complainant={complainant}
+                      incident={incident}
+                      evidence={evidence}
+                    />
+                  )}
               </div>
 
               {submissionError && (
