@@ -4,7 +4,28 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import {
+  COMPLAINANT_PORTAL_ERROR,
+  isComplainantPortalRole,
+} from "@/lib/roles";
 import styles from "../login/login.module.css";
+
+async function clearIssuedSession(setUser) {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem("token");
+  }
+
+  if (setUser) setUser(null);
+
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (err) {
+    console.warn("Logout request failed:", err);
+  }
+}
 
 function VerifyEmailContent() {
   const params = useSearchParams();
@@ -76,14 +97,21 @@ function VerifyEmailContent() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Verification code is wrong.");
+
+      if (!data.token || !isComplainantPortalRole(data.user?.role_name || data.user?.role || data.user?.roles?.role_name)) {
+        await clearIssuedSession(setUser);
+        throw new Error(COMPLAINANT_PORTAL_ERROR);
+      }
+
       localStorage.setItem("token", data.token);
       if (setUser) setUser(data.user);
       router.push("/dashboard");
     } catch (err) {
       setDigits(Array(6).fill(""));
       inputsRef.current[0]?.focus();
+      const isPortalRoleError = err.message === COMPLAINANT_PORTAL_ERROR;
       setModal({
-        title: "Wrong verification code",
+        title: isPortalRoleError ? "Unauthorized" : "Wrong verification code",
         description: err.message || "The verification code you entered is wrong. Please check the code and try again.",
       });
     } finally {

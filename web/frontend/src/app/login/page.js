@@ -53,7 +53,7 @@ export default function Login() {
       if (Array.isArray(err)) {
         setErrors(err);
       } else {
-        setErrors([{ path: 'general', msg: t('loginFailed') }]);
+        setErrors([{ path: 'general', msg: err?.message || t('loginFailed') }]);
       }
     }
   };

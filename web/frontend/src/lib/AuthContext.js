@@ -6,9 +6,14 @@
 
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { API_URL } from "@/lib/config";
+import {
+  COMPLAINANT_PORTAL_ERROR,
+  isComplainantPortalRole,
+  normalizeRole,
+} from "@/lib/roles";
 
 const AuthContext = createContext(null);
 
@@ -43,10 +48,6 @@ export function authFetch(url, options = {}) {
 const ROLE_REDIRECT = {
   "user":             "/dashboard",
   "complainant":      "/dashboard",
-  "admin":            "/dashboard",
-  "case officer":     "/dashboard",
-  "staff":            "/dashboard",
-  "legal personnel":  "/dashboard",
 };
 
 export function AuthProvider({ children }) {
@@ -54,6 +55,20 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true); // true while we check session
   const router                = useRouter();
   const pathname              = usePathname();
+
+  const clearSession = useCallback(async () => {
+    setUser(null);
+    setStoredToken(null);
+
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.warn("Logout request failed:", err);
+    }
+  }, []);
 
   // ── On mount: verify session with the backend ──
   useEffect(() => {
@@ -64,8 +79,14 @@ export function AuthProvider({ children }) {
       headers: authHeaders(),
     })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
+      .then(async (data) => {
         if (!mounted) return;
+        const role = normalizeRole(data.user?.role_name || data.user?.role || data.user?.roles?.role_name);
+        if (!data.token || !isComplainantPortalRole(role)) {
+          await clearSession();
+          return;
+        }
+
         setUser(data.user);
         if (data.token) setStoredToken(data.token);
       })
@@ -81,7 +102,7 @@ export function AuthProvider({ children }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [clearSession]);
 
   // ── Login ────────────────────────────────────────────────
   const login = async (email, password) => {
@@ -103,11 +124,16 @@ export function AuthProvider({ children }) {
       return data;
     }
 
+    const role = normalizeRole(data.user?.role_name || data.user?.role || data.user?.roles?.role_name);
+    if (!data.token || !isComplainantPortalRole(role)) {
+      await clearSession();
+      throw [{ path: "general", msg: COMPLAINANT_PORTAL_ERROR }];
+    }
+
     setUser(data.user);
     setStoredToken(data.token);
 
     // Redirect based on role
-    const role     = data.user?.role_name?.toLowerCase() ?? "user";
     const redirect = data.user?.must_change_password ? "/change-password" : ROLE_REDIRECT[role] ?? "/dashboard";
     router.push(redirect);
 
@@ -116,19 +142,8 @@ export function AuthProvider({ children }) {
 
   // ── Logout ───────────────────────────────────────────────
   const logout = async () => {
-    try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method:      "POST",
-        headers:     authHeaders(),
-        credentials: "include",
-      });
-    } catch (err) {
-      console.warn("Logout request failed:", err);
-    } finally {
-      setUser(null);
-      setStoredToken(null);
-      router.push("/");
-    }
+    await clearSession();
+    router.push("/");
   };
 
   // ── Enforce Dark Mode Restrictions ───────────────────────
