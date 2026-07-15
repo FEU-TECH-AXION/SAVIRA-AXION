@@ -25,6 +25,7 @@ import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
+import { POLICY_TRANSLATIONS_TL } from '../../lib/policyContentTl';
 import { API_URL } from '../../lib/config';
 import {
   DEFAULT_DISPLAY_PREFS,
@@ -449,6 +450,7 @@ export default function SettingsScreen() {
   const [displayPrefs, setDisplayPrefs] = useState(DEFAULT_DISPLAY_PREFS);
   const displayLanguage = normalizeLanguage(displayPrefs.language);
   const tDisplay = (key) => translate(displayLanguage, key);
+  const policyContent = displayLanguage === 'tl' ? POLICY_TRANSLATIONS_TL[policy] || POLICIES[policy] : POLICIES[policy];
 
   const displayColors = displayPrefs.highContrast
     ? { bg: '#ffffff', card: '#ffffff', text: '#000000', muted: '#111827', border: '#111827', primary: '#005f61' }
@@ -869,8 +871,8 @@ export default function SettingsScreen() {
                    <Pressable onPress={() => setPolicy('terms')} style={[styles.policyTabBtn, policy === 'terms' && styles.policyTabBtnActive]}><Text style={[styles.policyTabText, policy === 'terms' && styles.policyTabTextActive]}>Terms</Text></Pressable>
                    <Pressable onPress={() => setPolicy('privacy')} style={[styles.policyTabBtn, policy === 'privacy' && styles.policyTabBtnActive]}><Text style={[styles.policyTabText, policy === 'privacy' && styles.policyTabTextActive]}>Privacy</Text></Pressable>
                 </View>
-                <Text style={styles.sectionTitle}>{POLICIES[policy].title}</Text>
-                <PolicyMarkdown markdown={POLICIES[policy].markdown} />
+                <Text style={styles.sectionTitle}>{policyContent.title}</Text>
+                <PolicyMarkdown markdown={policyContent.markdown} />
               </View>
             )}
 

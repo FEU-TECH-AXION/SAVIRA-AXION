@@ -1,15 +1,28 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ImageBackground,
+  View, Text as RNText, ScrollView, Pressable, StyleSheet, ImageBackground,
   TextInput, Linking, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../lib/config';
+import { translateText, useI18n } from '../../lib/i18n';
+
+const PageLanguageContext = createContext('en');
+
+function Text({ children, ...props }) {
+  const language = useContext(PageLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === 'string') return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 const TEAL  = '#037F81';
 const ORANGE = '#E96433';
@@ -204,6 +217,7 @@ function SocialBtn({ name, onPress }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function ContactScreen() {
+  const { language, t } = useI18n();
   const [navOpen, setNavOpen] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName]   = useState('');
@@ -292,6 +306,7 @@ export default function ContactScreen() {
   };
 
   return (
+    <PageLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} />
@@ -348,7 +363,7 @@ export default function ContactScreen() {
             <View style={{ flex: 1 }}>
               <FieldLabel required>First Name</FieldLabel>
               <StyledInput
-                placeholder="First Name"
+                placeholder={t('First Name')}
                 value={firstName}
                 onChangeText={updateTextField('firstName', setFirstName, true)}
                 onBlur={validateField('firstName')}
@@ -359,7 +374,7 @@ export default function ContactScreen() {
             <View style={{ flex: 1 }}>
               <FieldLabel required>Last Name</FieldLabel>
               <StyledInput
-                placeholder="Last Name"
+                placeholder={t('Last Name')}
                 value={lastName}
                 onChangeText={updateTextField('lastName', setLastName, true)}
                 onBlur={validateField('lastName')}
@@ -400,7 +415,7 @@ export default function ContactScreen() {
           {/* Subject */}
           <FieldLabel required>Subject</FieldLabel>
           <StyledInput
-            placeholder="Enter subject here..."
+            placeholder={t('Enter subject here...')}
             value={subject}
             onChangeText={updateTextField('subject', setSubject, true)}
             onBlur={validateField('subject')}
@@ -411,7 +426,7 @@ export default function ContactScreen() {
           {/* Message */}
           <FieldLabel required>Your Message</FieldLabel>
           <StyledInput
-            placeholder="Enter here..."
+            placeholder={t('Enter here...')}
             value={message}
             onChangeText={updateTextField('message', setMessage, true)}
             onBlur={validateField('message')}
@@ -465,6 +480,7 @@ export default function ContactScreen() {
 
       </ScrollView>
     </View>
+    </PageLanguageContext.Provider>
   );
 }
 

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import {
   View,
-  Text,
+  Text as RNText,
   ScrollView,
   Pressable,
   Linking,
@@ -13,6 +13,19 @@ import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
+import { translateText, useI18n } from '../../lib/i18n';
+
+const PageLanguageContext = createContext('en');
+
+function Text({ children, ...props }) {
+  const language = useContext(PageLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === 'string') return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 const TEAL = '#037F81';
 const ORANGE = '#E96433';
@@ -256,11 +269,13 @@ function LegalAccordionItem({ entry, open, onPress }) {
 }
 
 export default function HelplinesScreen() {
+  const { language } = useI18n();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
 
   return (
+    <PageLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} />
@@ -349,6 +364,7 @@ export default function HelplinesScreen() {
         </View>
       </ScrollView>
     </View>
+    </PageLanguageContext.Provider>
   );
 }
 

@@ -1,9 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 
 import {
-  View, Text, ScrollView, Pressable, Image,
+  View, Text as RNText, ScrollView, Pressable, Image,
   StyleSheet, TextInput, ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,19 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 import { API_URL } from '../../lib/config';
+import { translateText, useI18n } from '../../lib/i18n';
+
+const PageLanguageContext = createContext('en');
+
+function Text({ children, ...props }) {
+  const language = useContext(PageLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === 'string') return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TEAL  = '#037F81';
@@ -78,6 +91,7 @@ function EventCard({ image, tag, title, description, onPress }) {
 const CATEGORIES = ['All', 'Awareness Campaigns', 'Workshops', 'Summits', 'Community'];
 
 export default function EventsScreen() {
+  const { language, t } = useI18n();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -165,6 +179,7 @@ export default function EventsScreen() {
   }, [totalPages, page]);
 
   return (
+    <PageLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} />
@@ -220,7 +235,7 @@ export default function EventsScreen() {
                 <Feather name="search" size={16} color="#7b8a8c" />
                 <TextInput
                   style={s.searchInput}
-                  placeholder="Search events"
+                  placeholder={t('Search events')}
                   placeholderTextColor="#8a9799"
                   value={search}
                   onChangeText={setSearch}
@@ -288,6 +303,7 @@ export default function EventsScreen() {
 
       </ScrollView>
     </View>
+    </PageLanguageContext.Provider>
   );
 }
 

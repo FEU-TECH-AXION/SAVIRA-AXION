@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import SideNav from '../../components/SideNav';
 import { API_URL, MAPBOX_TOKEN } from '../../lib/config';
+import { useI18n } from '../../lib/i18n';
 
 // Import geojson data as JS objects
 import ncrCities from '../../assets/geojson/ncr-cities';
@@ -293,7 +294,7 @@ const emptyFilters = {
   perpetrator_gender: '',
 };
 
-function FilterModal({ visible, onClose, meta, filters, setFilters }) {
+function FilterModal({ visible, onClose, meta, filters, setFilters, t }) {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [searchQueries, setSearchQueries] = useState({});
   const { regions = [], cities = [], caseTypes = [] } = meta;
@@ -326,13 +327,13 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
 
     return (
     <View style={s.filterGroup}>
-      <Text style={s.filterLabel}>{title}</Text>
+      <Text style={s.filterLabel}>{t(title)}</Text>
         <Pressable
           style={[s.filterDropdownBtn, isOpen && s.filterDropdownBtnOpen]}
           onPress={() => setOpenDropdown(isOpen ? null : filterKey)}
         >
           <Text style={[s.filterDropdownValue, !selected && s.filterDropdownPlaceholder]}>
-            {selected?.label || `All ${title}`}
+            {selected ? t(selected.label) : t('All {title}', { title: t(title) })}
           </Text>
           <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color="#6b7280" />
         </Pressable>
@@ -344,7 +345,7 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
               <TextInput
                 value={searchQuery}
                 onChangeText={(text) => setSearchQueries(prev => ({ ...prev, [filterKey]: text }))}
-                placeholder={`Search ${title.toLowerCase()}`}
+                placeholder={t('Search {title}', { title: t(title).toLowerCase() })}
                 placeholderTextColor="#9ca3af"
                 style={s.filterSearchInput}
               />
@@ -361,7 +362,7 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
                 onPress={() => chooseValue('')}
               >
                 <Text style={[s.filterOptionText, !filters[filterKey] && s.filterOptionTextActive]}>
-                  All {title}
+                  {t('All {title}', { title: t(title) })}
                 </Text>
                 {!filters[filterKey] && <Ionicons name="checkmark" size={16} color={TEAL} />}
               </Pressable>
@@ -374,14 +375,14 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
                     style={[s.filterOption, isActive && s.filterOptionActive]}
                     onPress={() => chooseValue(item.value)}
             >
-                    <Text style={[s.filterOptionText, isActive && s.filterOptionTextActive]}>{item.label}</Text>
+                    <Text style={[s.filterOptionText, isActive && s.filterOptionTextActive]}>{t(item.label)}</Text>
                     {isActive && <Ionicons name="checkmark" size={16} color={TEAL} />}
             </Pressable>
                 );
               })}
 
               {filteredOptions.length === 0 && (
-                <Text style={s.filterEmptyText}>No matches found</Text>
+                <Text style={s.filterEmptyText}>{t('No matches found')}</Text>
               )}
             </ScrollView>
           </View>
@@ -395,7 +396,7 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
       <View style={s.modalOverlay}>
         <View style={s.modalContent}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Filters</Text>
+            <Text style={s.modalTitle}>{t('Filters')}</Text>
             <Pressable onPress={onClose} style={s.closeBtn}>
               <Ionicons name="close" size={24} color="#1a1a1a" />
             </Pressable>
@@ -412,7 +413,7 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
             {renderDropdown('Perpetrator Gender', PERPETRATOR_GENDER_OPTIONS, null, null, 'perpetrator_gender')}
 
             <Pressable style={s.resetFiltersBtn} onPress={() => setFilters(emptyFilters)}>
-              <Text style={s.resetFiltersText}>Reset Filters</Text>
+              <Text style={s.resetFiltersText}>{t('Reset Filters')}</Text>
             </Pressable>
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -423,6 +424,7 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
 }
 
 export default function HeatmapScreen() {
+  const { t } = useI18n();
   const [navOpen, setNavOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [heatmapData, setHeatmapData] = useState([]);
@@ -528,7 +530,7 @@ export default function HeatmapScreen() {
         <Pressable onPress={() => setNavOpen(true)} style={s.burgerBtn}>
           <Ionicons name="menu" size={26} color="#fff" />
         </Pressable>
-        <Text style={s.topTitle}>Heatmap</Text>
+        <Text style={s.topTitle}>{t('Heatmap')}</Text>
         <Pressable onPress={() => setFilterOpen(true)} style={s.filterIconBtn}>
           <Ionicons name="filter" size={22} color="#fff" />
         </Pressable>
@@ -559,9 +561,9 @@ export default function HeatmapScreen() {
         ) : (
           <View style={[s.map, s.mapMissingConfig]}>
             <Ionicons name="map-outline" size={42} color={TEAL} />
-            <Text style={s.mapMissingTitle}>Map is not configured</Text>
+            <Text style={s.mapMissingTitle}>{t('Map is not configured')}</Text>
             <Text style={s.mapMissingText}>
-              Rebuild the APK with EXPO_PUBLIC_MAPBOX_TOKEN set in the build environment.
+              {t('Rebuild the APK with EXPO_PUBLIC_MAPBOX_TOKEN set in the build environment.')}
             </Text>
           </View>
         )}
@@ -569,21 +571,21 @@ export default function HeatmapScreen() {
         {loading && hasMapboxToken && (
           <View style={[s.loadingContainer, StyleSheet.absoluteFill]}>
             <ActivityIndicator size="large" color={TEAL} />
-            <Text style={s.loadingText}>Updating heatmap...</Text>
+            <Text style={s.loadingText}>{t('Updating heatmap...')}</Text>
           </View>
         )}
 
         <View style={s.reportCountBadge}>
-          <Text style={s.reportCountText}>Reports shown: {totalReports}</Text>
+          <Text style={s.reportCountText}>{t('Reports shown: {count}', { count: totalReports })}</Text>
         </View>
 
         <View style={s.legend}>
-          <Text style={s.legendTitle}>Density</Text>
+          <Text style={s.legendTitle}>{t('Density')}</Text>
           {[
-            { color: '#ef4444', label: 'High (≥70%)' },
-            { color: '#f97316', label: 'Medium-High' },
-            { color: '#eab308', label: 'Medium' },
-            { color: '#22c55e', label: 'Low' },
+            { color: '#ef4444', label: t('High (>=70%)') },
+            { color: '#f97316', label: t('Medium-High') },
+            { color: '#eab308', label: t('Medium') },
+            { color: '#22c55e', label: t('Low') },
           ].map(({ color, label }) => (
             <View key={label} style={s.legendRow}>
               <View style={[s.legendColor, { backgroundColor: color }]} />
@@ -599,6 +601,7 @@ export default function HeatmapScreen() {
         meta={meta}
         filters={filters}
         setFilters={setFilters}
+        t={t}
       />
     </View>
   );

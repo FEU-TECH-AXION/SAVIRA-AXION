@@ -1,15 +1,28 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 
 import {
-  View, Text, ScrollView, Pressable, Image,
+  View, Text as RNText, ScrollView, Pressable, Image,
   StyleSheet, ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import { translateText, useI18n } from '../../lib/i18n';
+
+const PageLanguageContext = createContext('en');
+
+function Text({ children, ...props }) {
+  const language = useContext(PageLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === 'string') return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 const TEAL  = '#037F81';
 const ORANGE = '#E96433';
@@ -73,9 +86,11 @@ const CORE_VALUES = [
 ];
 
 export default function AboutScreen() {
+  const { language } = useI18n();
   const [navOpen, setNavOpen] = useState(false);
 
   return (
+    <PageLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} />
@@ -175,6 +190,7 @@ export default function AboutScreen() {
 
       </ScrollView>
     </View>
+    </PageLanguageContext.Provider>
   );
 }
 

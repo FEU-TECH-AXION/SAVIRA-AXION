@@ -3529,7 +3529,7 @@ export default function ReportScreen() {
               <Feather name="search" size={16} color="#9ca3af" style={{ marginRight: 8 }} />
               <TextInput
                 style={s.historySearchInput}
-                placeholder="Search by description, city, ID…"
+                placeholder={t('Search by description, city, ID...')}
                 placeholderTextColor="#aaa"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -3544,7 +3544,7 @@ export default function ReportScreen() {
             <Pressable style={s.filterBtn} onPress={() => setFilterOpen(!filterOpen)}>
               <Ionicons name="filter" size={16} color={filterStatus !== 'All' ? TEAL : '#6b7280'} />
               <Text style={[s.filterBtnText, filterStatus !== 'All' && { color: TEAL }]}>
-                {filterStatus}
+                {t(filterStatus)}
               </Text>
             </Pressable>
           </View>
@@ -3571,12 +3571,12 @@ export default function ReportScreen() {
               {loadingReports
                 ? 'Loading…'
                 : filteredReports.length
-                  ? `${historyStart}-${historyEnd} of ${filteredReports.length} reports`
-                  : '0 reports found'}
+                  ? t('{start}-{end} of {count} reports', { start: historyStart, end: historyEnd, count: filteredReports.length })
+                  : t('0 reports found')}
             </Text>
             {(searchQuery || filterStatus !== 'All') && (
               <Pressable onPress={() => { setSearchQuery(''); setFilterStatus('All'); }}>
-                <Text style={s.historyClearText}>Clear filters</Text>
+                <Text style={s.historyClearText}>{t('Clear filters')}</Text>
               </Pressable>
             )}
           </View>
@@ -3613,10 +3613,10 @@ export default function ReportScreen() {
                       <View style={s.historyIdentity}>
                         <Text style={s.historyEyebrow}>Report ID</Text>
                         <Text style={s.historyCardId}>{displayId}</Text>
-                        <Text style={s.historyCardDate}>Date submitted: {formatSubmittedDate(r)}</Text>
+                        <Text style={s.historyCardDate}>{t('Date submitted: ')}{formatSubmittedDate(r)}</Text>
                       </View>
                       <View style={[s.historyStatusBadge, { backgroundColor: statusColor.bg }]}>
-                        <Text style={[s.historyStatusText, { color: statusColor.text }]}>{statusName}</Text>
+                        <Text style={[s.historyStatusText, { color: statusColor.text }]}>{t(statusName)}</Text>
                       </View>
                     </View>
                     <View style={s.historyCardDivider} />
@@ -3639,7 +3639,7 @@ export default function ReportScreen() {
                         <View style={s.followBadge}>
                           <View style={s.followBadgeDot} />
                           <Text style={s.followBadgeText}>
-                            {r.follow_up_summary.awaiting_role === 'user' ? 'Action Needed' : 'Follow-up Pending'}
+                            {r.follow_up_summary.awaiting_role === 'user' ? t('Action Needed') : t('Follow-up Pending')}
                           </Text>
                         </View>
                       )}
@@ -3652,7 +3652,7 @@ export default function ReportScreen() {
                         onPress={() => openFollowUp(r)}
                       >
                         <Ionicons name="chatbubble-ellipses-outline" size={15} color={(!followUpAllowed || followUpActive) ? '#9ca3af' : TEAL} />
-                        <Text style={[s.historyActionText, (!followUpAllowed || followUpActive) && s.historyActionTextDisabled]}>Follow Up</Text>
+                        <Text style={[s.historyActionText, (!followUpAllowed || followUpActive) && s.historyActionTextDisabled]}>{t('Follow Up')}</Text>
                       </Pressable>
                       {(WITHDRAWAL_ALLOWED.includes(statusName) || WITHDRAWAL_REQUIRES_APPROVAL.includes(statusName)) && (
                         <Pressable
@@ -3667,7 +3667,7 @@ export default function ReportScreen() {
                         >
                           <Ionicons name="archive-outline" size={15} color={!canWithdraw ? '#9ca3af' : ORANGE} />
                           <Text style={[s.historyActionText, s.withdrawActionText, !canWithdraw && s.historyActionTextDisabled]}>
-                            {r.withdrawal_request?.status === 'pending' ? 'Pending' : withdrawalCopy.buttonLabel}
+                            {r.withdrawal_request?.status === 'pending' ? t('Pending') : t(withdrawalCopy.buttonLabel)}
                           </Text>
                         </Pressable>
                       )}
@@ -3676,7 +3676,7 @@ export default function ReportScreen() {
                         onPress={() => router.push({ pathname: '/(complainant)/report-detail', params: { caseId: r.case_report_id || r.id, displayId, from: 'history' } })}
                       >
                         <Ionicons name="eye-outline" size={15} color="#fff" />
-                        <Text style={s.viewActionText}>View</Text>
+                        <Text style={s.viewActionText}>{t('View')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -3691,15 +3691,15 @@ export default function ReportScreen() {
                   onPress={() => setHistoryPage((page) => Math.max(1, page - 1))}
                 >
                   <Ionicons name="chevron-back" size={16} color={clampedHistoryPage === 1 ? '#9ca3af' : TEAL} />
-                  <Text style={[s.pageButtonText, clampedHistoryPage === 1 && s.pageButtonTextDisabled]}>Previous</Text>
+                  <Text style={[s.pageButtonText, clampedHistoryPage === 1 && s.pageButtonTextDisabled]}>{t('Previous')}</Text>
                 </Pressable>
-                <Text style={s.pageIndicator}>Page {clampedHistoryPage} of {historyTotalPages}</Text>
+                <Text style={s.pageIndicator}>{t('Page ')}{clampedHistoryPage}{t(' of ')}{historyTotalPages}</Text>
                 <Pressable
                   style={[s.pageButton, clampedHistoryPage === historyTotalPages && s.pageButtonDisabled]}
                   disabled={clampedHistoryPage === historyTotalPages}
                   onPress={() => setHistoryPage((page) => Math.min(historyTotalPages, page + 1))}
                 >
-                  <Text style={[s.pageButtonText, clampedHistoryPage === historyTotalPages && s.pageButtonTextDisabled]}>Next</Text>
+                  <Text style={[s.pageButtonText, clampedHistoryPage === historyTotalPages && s.pageButtonTextDisabled]}>{t('Next')}</Text>
                   <Ionicons name="chevron-forward" size={16} color={clampedHistoryPage === historyTotalPages ? '#9ca3af' : TEAL} />
                 </Pressable>
               </View>
@@ -3713,15 +3713,15 @@ export default function ReportScreen() {
           <View style={s.actionModal}>
             <View style={s.actionModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={s.actionModalTitle}>Follow Up</Text>
-                <Text style={s.actionModalSubtitle}>Tell the case team what you need to correct or add.</Text>
+                <Text style={s.actionModalTitle}>{t('Follow Up')}</Text>
+                <Text style={s.actionModalSubtitle}>{t('Tell the case team what you need to correct or add.')}</Text>
               </View>
               <Pressable disabled={followUpSubmitting} onPress={() => setFollowUpReport(null)}>
                 <Ionicons name="close" size={22} color="#374151" />
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
-              <Text style={s.modalLabel}>Reason</Text>
+              <Text style={s.modalLabel}>{t('Reason')}</Text>
               <Pressable style={s.reasonSelect} onPress={() => setFollowUpReasonOpen((open) => !open)}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.reasonTitle}>{FOLLOW_UP_REASON_OPTIONS.find((option) => option.value === followUpReason)?.label}</Text>
@@ -3751,7 +3751,7 @@ export default function ReportScreen() {
               {followUpReason !== 'Other' && (
                 <>
                   <Text style={s.modalLabel}>
-                    {followUpReason === 'Additional info' ? 'What information would you like to add?' : 'Which information would you like to correct?'} <Text style={{ color: ERROR }}>*</Text>
+                    {followUpReason === 'Additional info' ? t('What information would you like to add?') : t('Which information would you like to correct?')} <Text style={{ color: ERROR }}>*</Text>
                   </Text>
                   <View style={s.checkList}>
                     {getFollowUpGroupsForReason(followUpReason).map((field) => {
@@ -3768,7 +3768,7 @@ export default function ReportScreen() {
                   </View>
                 </>
               )}
-              <Text style={s.modalLabel}>We're here to help. Please let us know what changed so we can support you. <Text style={{ color: ERROR }}>*</Text></Text>
+              <Text style={s.modalLabel}>{t("We're here to help. Please let us know what changed so we can support you.")} <Text style={{ color: ERROR }}>*</Text></Text>
               <TextInput
                 style={s.modalTextarea}
                 multiline
@@ -3777,16 +3777,16 @@ export default function ReportScreen() {
                   setActionError('');
                   setFollowUpMessage(text);
                 }}
-                placeholder="Describe the correction or additional information..."
+                placeholder={t('Describe the correction or additional information...')}
                 placeholderTextColor="#9ca3af"
               />
               {actionError ? <Text style={s.modalError}>{actionError}</Text> : null}
               <View style={s.modalActions}>
                 <Pressable style={s.modalCancelBtn} disabled={followUpSubmitting} onPress={() => setFollowUpReport(null)}>
-                  <Text style={s.modalCancelText}>Cancel</Text>
+                  <Text style={s.modalCancelText}>{t('Cancel')}</Text>
                 </Pressable>
                 <Pressable style={[s.modalPrimaryBtn, followUpSubmitting && { opacity: 0.7 }]} disabled={followUpSubmitting} onPress={submitFollowUp}>
-                  {followUpSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>Submit Follow-up</Text>}
+                  {followUpSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={s.modalPrimaryText}>{t('Submit Follow-up')}</Text>}
                 </Pressable>
               </View>
             </ScrollView>
@@ -3799,16 +3799,19 @@ export default function ReportScreen() {
           <View style={s.actionModal}>
             <View style={s.actionModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={s.actionModalTitle}>{withdrawReport ? getWithdrawalCopy(getStatusName(withdrawReport)).title : 'Withdraw Case Report'}</Text>
+                <Text style={s.actionModalTitle}>{withdrawReport ? t(getWithdrawalCopy(getStatusName(withdrawReport)).title) : t('Withdraw Case Report')}</Text>
                 <Text style={s.actionModalSubtitle}>
-                  {withdrawReport ? `${getReportId(withdrawReport)} (report ID): ${getWithdrawalCopy(getStatusName(withdrawReport)).description}` : ''}
+                  {withdrawReport ? t('{reportId} (report ID): {description}', {
+                    reportId: getReportId(withdrawReport),
+                    description: t(getWithdrawalCopy(getStatusName(withdrawReport)).description),
+                  }) : ''}
                 </Text>
               </View>
               <Pressable disabled={withdrawing} onPress={() => setWithdrawReport(null)}>
                 <Ionicons name="close" size={22} color="#374151" />
               </Pressable>
             </View>
-            <Text style={s.modalLabel}>Reason for withdrawal</Text>
+            <Text style={s.modalLabel}>{t('Reason for withdrawal')}</Text>
             <TextInput
               style={s.modalTextarea}
               multiline
@@ -3817,22 +3820,22 @@ export default function ReportScreen() {
                 setActionError('');
                 setWithdrawReason(text);
               }}
-              placeholder="Explain why you want to withdraw this case."
+              placeholder={t('Explain why you want to withdraw this case.')}
               placeholderTextColor="#9ca3af"
             />
             {withdrawReport && getWithdrawalCopy(getStatusName(withdrawReport)).requiresAffidavit && (
               <Pressable style={s.filePickBtn} onPress={pickWithdrawFile}>
                 <Ionicons name="document-attach-outline" size={17} color={TEAL} />
-                <Text style={s.filePickText}>{withdrawFile?.name || 'Attach withdrawal document'}</Text>
+                <Text style={s.filePickText}>{withdrawFile?.name || t('Attach withdrawal document')}</Text>
               </Pressable>
             )}
             {actionError ? <Text style={s.modalError}>{actionError}</Text> : null}
             <View style={s.modalActions}>
               <Pressable style={s.modalCancelBtn} disabled={withdrawing} onPress={() => setWithdrawReport(null)}>
-                <Text style={s.modalCancelText}>Cancel</Text>
+                <Text style={s.modalCancelText}>{t('Cancel')}</Text>
               </Pressable>
               <Pressable style={[s.modalDangerBtn, withdrawing && { opacity: 0.7 }]} disabled={withdrawing} onPress={submitWithdrawal}>
-                {withdrawing ? <ActivityIndicator color="#fff" /> : <Text style={s.modalDangerText}>Confirm Withdrawal</Text>}
+                {withdrawing ? <ActivityIndicator color="#fff" /> : <Text style={s.modalDangerText}>{t('Confirm Withdrawal')}</Text>}
               </Pressable>
             </View>
           </View>

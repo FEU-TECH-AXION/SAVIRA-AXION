@@ -14,6 +14,8 @@ import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
+import { POLICY_TRANSLATIONS_TL } from '../../lib/policyContentTl';
+import { useI18n } from '../../lib/i18n';
 
 const TEAL = '#037F81';
 const TEAL_DARK = '#025f61';
@@ -42,12 +44,13 @@ function Navbar({ onBurger }) {
 }
 
 export default function PrivacyTermsScreen() {
+  const { language, t } = useI18n();
   const router = useRouter();
   const params = useLocalSearchParams();
   const initialPolicy = params.policy === 'privacy' ? 'privacy' : 'terms';
   const [navOpen, setNavOpen] = useState(false);
   const [policy, setPolicy] = useState(initialPolicy);
-  const content = POLICIES[policy];
+  const content = language === 'tl' ? POLICY_TRANSLATIONS_TL[policy] || POLICIES[policy] : POLICIES[policy];
 
   return (
     <View style={s.container}>
@@ -58,17 +61,17 @@ export default function PrivacyTermsScreen() {
         <View style={s.hero}>
           <Pressable style={s.backBtn} onPress={() => router.back()}>
             <Feather name="arrow-left" size={16} color="#fff" />
-            <Text style={s.backText}>Back</Text>
+          <Text style={s.backText}>{t('Back')}</Text>
           </Pressable>
-          <Text style={s.eyebrow}>Savira Policies</Text>
-          <Text style={s.heroTitle}>{content.title}</Text>
+          <Text style={s.eyebrow}>{t('Savira Policies')}</Text>
+          <Text style={s.heroTitle}>{t(content.title)}</Text>
           <Text style={s.heroText}>
-            Review the policies that govern how SAVIRA is used and how your information is protected.
+            {t('Review the policies that govern how SAVIRA is used and how your information is protected.')}
           </Text>
         </View>
 
         <View style={s.policyNav}>
-          <Text style={s.policyNavTitle}>Policies</Text>
+          <Text style={s.policyNavTitle}>{t('Policies')}</Text>
           {POLICY_TABS.map((tab) => {
             const active = policy === tab.key;
             return (
@@ -78,7 +81,7 @@ export default function PrivacyTermsScreen() {
                 onPress={() => setPolicy(tab.key)}
               >
                 <Feather name={tab.icon} size={15} color={active ? TEAL : '#5d6b6b'} />
-                <Text style={[s.policyTabText, active && s.policyTabTextActive]}>{tab.label}</Text>
+                <Text style={[s.policyTabText, active && s.policyTabTextActive]}>{t(tab.label)}</Text>
               </Pressable>
             );
           })}
@@ -90,8 +93,8 @@ export default function PrivacyTermsScreen() {
               <Feather name={policy === 'terms' ? 'file-text' : 'shield'} size={19} color={TEAL} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.contentKicker}>{policy === 'terms' ? 'Platform Use' : 'Data Protection'}</Text>
-              <Text style={s.contentTitle}>{content.title}</Text>
+              <Text style={s.contentKicker}>{policy === 'terms' ? t('Platform Use') : t('Data Protection')}</Text>
+              <Text style={s.contentTitle}>{t(content.title)}</Text>
             </View>
           </View>
           <PolicyMarkdown markdown={content.markdown} />

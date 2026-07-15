@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import styles from './signup.style';
 import PolicyMarkdown from '../../components/PolicyMarkdown';
 import { POLICIES } from '../../lib/policies';
+import { POLICY_TRANSLATIONS_TL } from '../../lib/policyContentTl';
 import { API_URL } from '../../lib/config';
 import { LANGUAGE_OPTIONS, readLanguage, saveLanguage, translate } from '../../lib/i18n';
 
@@ -41,8 +42,8 @@ function getStrength(pw, t = (key) => key) {
 }
 
 // ── Policy Modal ──────────────────────────────────────────────────────────────
-function PolicyModal({ visible, policy, onClose, t }) {
-  const content = POLICIES[policy];
+function PolicyModal({ visible, policy, onClose, t, language }) {
+  const content = language === 'tl' ? POLICY_TRANSLATIONS_TL[policy] || POLICIES[policy] : POLICIES[policy];
   if (!content) return null;
 
   return (
@@ -445,12 +446,14 @@ export default function Signup() {
         visible={openPolicy === 'terms'}
         policy="terms"
         t={t}
+        language={language}
         onClose={() => setOpenPolicy(null)}
       />
       <PolicyModal
         visible={openPolicy === 'privacy'}
         policy="privacy"
         t={t}
+        language={language}
         onClose={() => setOpenPolicy(null)}
       />
     </>

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
-  Text,
+  Text as RNText,
   ScrollView,
   Pressable,
   Image,
@@ -28,6 +28,19 @@ import {
   getUnreadNotificationCount,
 } from '../../lib/notifications';
 import { API_URL, MAPBOX_TOKEN } from '../../lib/config';
+import { translateText, useI18n } from '../../lib/i18n';
+
+const PageLanguageContext = createContext('en');
+
+function Text({ children, ...props }) {
+  const language = useContext(PageLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === 'string') return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 // ── Top Navbar ────────────────────────────────────────────────────────────────
 function Navbar({ onBurger, onNotifications, notifCount, user }) {
@@ -47,7 +60,8 @@ function Navbar({ onBurger, onNotifications, notifCount, user }) {
 }
 
 // ── Hero Banner ───────────────────────────────────────────────────────────────
-function HeroBanner({ firstName, lastName, totalNotifications }) {
+function HeroBanner({ firstName, lastName, totalNotifications, t }) {
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || t('User');
   return (
     <View style={s.heroBannerWrap}>
       <ImageBackground
@@ -56,11 +70,11 @@ function HeroBanner({ firstName, lastName, totalNotifications }) {
         imageStyle={{ borderRadius: 16 }}
       >
         <View style={s.heroOverlay}>
-          <Text style={s.heroTitle}>Welcome, {firstName} {lastName}!</Text>
+          <Text style={s.heroTitle}>{t('Welcome, {name}!', { name: displayName })}</Text>
           <View style={s.statCard}>
             <View style={s.statDot} />
             <Text style={s.statNum}>{totalNotifications}</Text>
-            <Text style={s.statLabel}>New{'\n'}Notifications</Text>
+            <Text style={s.statLabel}>{t('New\nNotifications')}</Text>
           </View>
         </View>
       </ImageBackground>
@@ -80,7 +94,7 @@ function SectionHeading({ title }) {
 }
 
 // ── Action Card ───────────────────────────────────────────────────────────────
-function ActionCard({ iconSource, ionicon, title, description, onPress }) {
+function ActionCard({ iconSource, ionicon, title, description, onPress, t }) {
   return (
     <View style={s.actionCard}>
       <View style={s.actionIconWrap}>
@@ -93,7 +107,7 @@ function ActionCard({ iconSource, ionicon, title, description, onPress }) {
       <Text style={s.actionTitle}>{title}</Text>
       <Text style={s.actionDesc}>{description}</Text>
       <Pressable style={s.viewBtn} onPress={onPress}>
-        <Text style={s.viewBtnText}>View →</Text>
+        <Text style={s.viewBtnText}>{t('View →')}</Text>
       </Pressable>
     </View>
   );
@@ -123,19 +137,19 @@ function StatusStepper({ steps, current }) {
 }
 
 // ── Status Card ───────────────────────────────────────────────────────────────
-function StatusCard({ title, email, contactNumber, dateApplied, steps, currentStep, onView }) {
+function StatusCard({ title, email, contactNumber, dateApplied, steps, currentStep, onView, t }) {
   return (
     <View style={s.statusCard}>
       <View style={s.cardHeader}>
         <Text style={s.cardHeaderText}>{title}</Text>
         <Pressable onPress={onView}>
-          <Text style={s.headerViewBtn}>View →</Text>
+          <Text style={s.headerViewBtn}>{t('View →')}</Text>
         </Pressable>
       </View>
       <View style={s.cardBody}>
-        <Text style={s.statusMeta}>Email: {email}</Text>
-        <Text style={s.statusMeta}>Contact Number: {contactNumber}</Text>
-        <Text style={s.statusMeta}>Date Applied: {dateApplied}</Text>
+        <Text style={s.statusMeta}>{t('Email: ')}{email}</Text>
+        <Text style={s.statusMeta}>{t('Contact Number: ')}{contactNumber}</Text>
+        <Text style={s.statusMeta}>{t('Date Applied: ')}{dateApplied}</Text>
         <StatusStepper steps={steps} current={currentStep} />
       </View>
     </View>
@@ -143,7 +157,7 @@ function StatusCard({ title, email, contactNumber, dateApplied, steps, currentSt
 }
 
 // ── Notifications Card ────────────────────────────────────────────────────────
-function NotificationsCard({ notifications, onView }) {
+function NotificationsCard({ notifications, onView, t }) {
   return (
     <View style={s.statusCard}>
       <View style={s.cardHeader}>
@@ -162,7 +176,7 @@ function NotificationsCard({ notifications, onView }) {
           ))
         )}
         <Pressable style={s.viewBtn} onPress={onView}>
-          <Text style={s.viewBtnText}>View →</Text>
+          <Text style={s.viewBtnText}>{t('View →')}</Text>
         </Pressable>
       </View>
     </View>
@@ -420,6 +434,7 @@ function EventsCard({ events }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ComplainantDashboard() {
+  const { language, t } = useI18n();
   const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
 
@@ -493,6 +508,7 @@ export default function ComplainantDashboard() {
   const importantNotifications = getImportantNotifications(notifications);
 
   return (
+    <PageLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar 
@@ -513,7 +529,7 @@ export default function ComplainantDashboard() {
             style={StyleSheet.absoluteFill}
             onPress={() => setImportantOpen(false)}
             accessibilityRole="button"
-            accessibilityLabel="Close notifications"
+            accessibilityLabel={t('Close notifications')}
           />
           <View style={s.notificationSheet}>
             <View style={s.sheetHandle} />
@@ -521,7 +537,10 @@ export default function ComplainantDashboard() {
               <View>
                 <Text style={s.sheetTitle}>Important Notifications</Text>
                 <Text style={s.sheetSubtitle}>
-                  {importantNotifications.length} update{importantNotifications.length === 1 ? '' : 's'}
+                  {t('{count} {updates}', {
+                    count: importantNotifications.length,
+                    updates: importantNotifications.length === 1 ? t('update') : t('updates'),
+                  })}
                 </Text>
               </View>
               <Pressable style={s.sheetClose} onPress={() => setImportantOpen(false)}>
@@ -563,6 +582,7 @@ export default function ComplainantDashboard() {
           firstName={user?.firstName || user?.first_name || 'User'}
           lastName={user?.lastName || user?.last_name || ''}
           totalNotifications={unreadCount}
+          t={t}
         />
 
         <View style={s.content}>
@@ -578,12 +598,14 @@ export default function ComplainantDashboard() {
             title="Submit a Report"
             description="Report safely and securely."
             onPress={() => router.push('/(complainant)/reports')}
+            t={t}
           />
           <SectionHeading title="Overview" />
 
           <NotificationsCard
             notifications={importantNotifications}
             onView={() => setImportantOpen(true)}
+            t={t}
           />
 
           {/* Render Case Reports Status */}
@@ -604,6 +626,7 @@ export default function ComplainantDashboard() {
                   dateApplied={rep.incident_date ? new Date(rep.incident_date).toLocaleDateString() : 'N/A'}
                   steps={['Submitted', 'Assessed', 'Resolved']}
                   currentStep={currentStep >= 0 && currentStep <= 2 ? currentStep : 0}
+                  t={t}
                   onView={() => router.push({
                     pathname: '/(complainant)/report-detail',
                     params: { caseId: rawReportId, displayId, from: 'dashboard' },
@@ -624,6 +647,7 @@ export default function ComplainantDashboard() {
         </View>
       </ScrollView>
     </View>
+    </PageLanguageContext.Provider>
   );
 }
 
