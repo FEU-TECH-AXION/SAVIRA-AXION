@@ -47,7 +47,7 @@ export const FOOTER_QUICK_LINKS = {
   complainant: [
     { href: "/dashboard", label: "Home", labelKey: "navHome" },
     { href: "/about", label: "About", labelKey: "navAbout" },
-    { href: "/cases", label: "Report", labelKey: "navReport" },
+    { href: "/report", label: "Report", labelKey: "navReport" },
     { href: "/volunteer", label: "Volunteer", labelKey: "navVolunteer" },
     { href: "/contact", label: "Contact", labelKey: "navContact" },
     { href: "/events", label: "Events", labelKey: "navEvents" },
@@ -87,13 +87,13 @@ export const SIDEBAR_LINKS = {
     { href: "/dashboard", label: "Home", labelKey: "navHome", icon: "dashboard" },
     { href: "/about", label: "About", labelKey: "navAbout", icon: "ribbon" },
     {
-      href: "/cases",
+      href: "/report",
       label: "Report",
       labelKey: "navReport",
       icon: "folder",
       children: [
-        { href: "/cases", label: "Report", labelKey: "navReport" },
-        { href: "/cases/history", label: "Report History", labelKey: "navReportHistory" },
+        { href: "/report", label: "Report", labelKey: "navReport" },
+        { href: "/report/history", label: "Report History", labelKey: "navReportHistory" },
       ],
     },
     {

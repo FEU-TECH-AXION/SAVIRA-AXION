@@ -52,6 +52,24 @@ function applyDateFilter(query, rangeStart, dateField = "created_at") {
   return query.gte(dateField, rangeStart.toISOString());
 }
 
+function parseDate(value) {
+  if (!value) return null;
+  const date = new Date(`${String(value).split("T")[0]}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function computeProjectStatus(project) {
+  if (["Postponed", "Cancelled"].includes(project.project_status)) return project.project_status;
+  const start = parseDate(project.start_date);
+  const end = parseDate(project.end_date) || start;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!start) return "Upcoming";
+  if (end && end < today) return "Completed";
+  if (start > today) return "Upcoming";
+  return "Active";
+}
+
 /**
  * Map DB snake_case application_status values → Title Case strings
  * that match the VOLUNTEER_STATUSES constant in ReportGenerator.js.
@@ -136,7 +154,7 @@ async function fetchVolunteers(rangeStart) {
 async function fetchProjects(rangeStart) {
   let query = supabase
     .from("projects")
-    .select("id, status, start_date, end_date, actual_end_date");
+    .select("project_id, project_status, start_date, end_date, actual_end_date");
   query = applyDateFilter(query, rangeStart, "start_date");
 
   const { data, error } = await query;
@@ -144,7 +162,16 @@ async function fetchProjects(rangeStart) {
     console.error("[fetchProjects] Supabase error:", error.message);
     return [];
   }
-  return data || [];
+  return (data || []).map((project) => ({
+    id: project.project_id,
+    project_id: project.project_id,
+    status: computeProjectStatus(project),
+    statusOverride: ["Postponed", "Cancelled"].includes(project.project_status) ? project.project_status : "",
+    project_status: project.project_status,
+    start_date: project.start_date,
+    end_date: project.end_date,
+    actual_end_date: project.actual_end_date,
+  }));
 }
 
 async function fetchUsers(rangeStart) {

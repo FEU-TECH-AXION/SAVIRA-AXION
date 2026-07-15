@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import styles from "./login.module.css";
+import { useI18n } from "@/lib/i18n";
 
 export default function LoginForm() {
+  const { t } = useI18n();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [recognizeDevice, setRecognizeDevice] = useState(true);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -31,7 +34,7 @@ export default function LoginForm() {
     if (!response.ok) {
       const message = Array.isArray(data.errors)
         ? data.errors.map((item) => item.msg).join(" ")
-        : data.error || "Unable to sign in.";
+        : data.error || t("unableToSignIn");
       setError(message);
       setIsSubmitting(false);
       return;
@@ -45,27 +48,27 @@ export default function LoginForm() {
       {error ? <p className={styles.error}>{error}</p> : null}
 
       <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="internal-email">Email</label>
+        <label className={styles.label} htmlFor="internal-email">{t("email")}</label>
         <input
           id="internal-email"
           className={styles.input}
           name="email"
           type="email"
-          placeholder="Email"
+          placeholder={t("email")}
           autoComplete="email"
           required
         />
       </div>
 
       <div className={styles.fieldGroupLg}>
-        <label className={styles.label} htmlFor="internal-password">Password</label>
+        <label className={styles.label} htmlFor="internal-password">{t("password")}</label>
         <div className={styles.passwordWrap}>
           <input
             id="internal-password"
             className={styles.input}
             name="password"
             type={showPassword ? "text" : "password"}
-            placeholder="Password"
+            placeholder={t("password")}
             autoComplete="current-password"
             required
           />
@@ -81,13 +84,22 @@ export default function LoginForm() {
       </div>
 
       <div className={styles.auxiliaryGroup}>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={recognizeDevice}
+            onChange={(event) => setRecognizeDevice(event.target.checked)}
+          />
+          <span className={styles.checkboxText}>{t("recognizeDevice")}</span>
+        </label>
         <a href="/forgotPassword" className={styles.forgotPassword}>
-          Forgot Password?
+          {t("forgotPassword")}
         </a>
       </div>
 
       <button className={styles.btn} type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Signing in..." : "Log In"}
+        {isSubmitting ? t("signingIn") : t("logIn")}
       </button>
     </form>
   );

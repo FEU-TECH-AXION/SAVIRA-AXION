@@ -187,7 +187,7 @@
   "describeProblem": "Describe the problem",
   "describeProblemPlaceholder": "What happened? What did you expect to happen instead?",
   "pageOrScreen": "Page or screen",
-  "pageOrScreenPlaceholder": "e.g. /cases/history or 'Profile page'",
+  "pageOrScreenPlaceholder": "e.g. /report/history or 'Profile page'",
   "attachScreenshot": "Attach a screenshot",
   "chooseFile": "Choose a file",
   "submitReport": "Submit Report",

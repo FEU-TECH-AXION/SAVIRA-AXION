@@ -19,6 +19,7 @@ import { MdPublic, MdPublicOff } from "react-icons/md";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import TaskPanel from "./TaskPanel";
 import { internalApiFetch } from "@/lib/internalApiFetch";
+import { computeProjectStatus } from "@/lib/projectStatus";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -33,7 +34,7 @@ const CATEGORIES = [
   "Community Outreach",
 ];
 
-const STATUS_OPTIONS = ["Upcoming", "Active", "Completed"];
+const STATUS_OVERRIDE_OPTIONS = ["", "Postponed", "Cancelled"];
 
 const ACTIVITY_MODES = ["Face-to-face", "Virtual", "Hybrid"];
 
@@ -78,7 +79,7 @@ const EMPTY_FORM = {
   partnerOrganizations: "",
 
   // ── SASHA internal tracking fields ───────────────────────────
-  status: "Upcoming",
+  statusOverride: "",
   dueDate: "",
 
   logisticalRequirements: "",
@@ -120,6 +121,9 @@ function normalizeInitial(init) {
   // so the banner is visible when opening the edit form.
   if (typeof out.image === "string" && out.image && !out.imagePreview) {
     out.imagePreview = out.image;
+  }
+  if (!out.statusOverride && ["Postponed", "Cancelled"].includes(out.status)) {
+    out.statusOverride = out.status;
   }
   return out;
 }
@@ -381,6 +385,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
   }
 
   const isPublicRequest = form.visibility === "public";
+  const computedStatus = computeProjectStatus(form);
 
   return (
     <>
@@ -698,17 +703,26 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
           {/* Status & Due Date */}
           <SectionCard title="Status & Schedule">
             <FormGroup label="Project Status">
-              <div className={styles.radioGroup}>
-                {STATUS_OPTIONS.map((s) => (
-                  <label key={s} className={styles.radioLabel}>
-                    <input type="radio" name="proj-status" value={s}
-                      checked={form.status === s}
-                      onChange={() => set("status", s)}
-                      className={styles.radioInput} />
-                    {s}
-                  </label>
-                ))}
+              <div className={styles.computedStatusRow}>
+                <span className={styles.computedStatusBadge}>{computedStatus}</span>
+                <p className={styles.formHint}>
+                  Derived from the inclusive start and end dates.
+                </p>
               </div>
+            </FormGroup>
+
+            <FormGroup label="Status Override" hint="Use only for events that are postponed or cancelled.">
+              <select
+                className={styles.formInput}
+                value={form.statusOverride}
+                onChange={(e) => set("statusOverride", e.target.value)}
+              >
+                {STATUS_OVERRIDE_OPTIONS.map((option) => (
+                  <option key={option || "none"} value={option}>
+                    {option || "None"}
+                  </option>
+                ))}
+              </select>
             </FormGroup>
 
             <FormGroup label="Due Date" hint="Internal deadline for project completion.">

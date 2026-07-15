@@ -56,7 +56,7 @@ const updateAssessmentStatus = async (statusHistoryId, assessmentStatus) => {
     .eq('status_history_id', statusHistoryId)
     .select()
   if (error) throw error
-  return data[0]
+  return data?.[0] || null
 }
 
 module.exports = { getAll, getByCaseReport, getByHistoryId, create, updateAssessmentStatus }

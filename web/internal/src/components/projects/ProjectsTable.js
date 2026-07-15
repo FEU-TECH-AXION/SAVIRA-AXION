@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { FiEdit2, FiEye, FiTrash2 } from "react-icons/fi";
 import styles from "./ProjectsTable.module.css";
 import { MdPublic, MdPublicOff } from "react-icons/md";
+import { getProjectDisplayStatus } from "@/lib/projectStatus";
 
 // ─── Badge colors ─────────────────────────────────────────────────────────────
 
@@ -11,6 +12,8 @@ const STATUS_COLORS = {
   "Active":    { bg: "#d1fae5", color: "#065f46" },
   "Upcoming":  { bg: "#dbeafe", color: "#1e40af" },
   "Completed": { bg: "#f3f4f6", color: "#374151" },
+  "Postponed": { bg: "#fef3c7", color: "#92400e" },
+  "Cancelled": { bg: "#fee2e2", color: "#991b1b" },
 };
 
 const APPROVAL_COLORS = {
@@ -312,7 +315,7 @@ export default function ProjectsTable({
                     </td>
 
                     <td className={styles.td}>
-                      <StatusBadge status={p.status} />
+                      <StatusBadge status={getProjectDisplayStatus(p)} />
                     </td>
 
                     <td className={styles.td}>

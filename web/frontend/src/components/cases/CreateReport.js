@@ -1801,7 +1801,7 @@ function ReportStatusCard({ reportData, reportNumber, onView }) {
         <span>Report {reportNumber}</span>
         <button
           className={styles.headerViewBtn}
-          onClick={() => router.push(`/cases/view?caseId=${id}&from=cases`)}
+          onClick={() => router.push(`/report/view?caseId=${id}&from=report`)}
         >
           View →
         </button>
@@ -2268,7 +2268,7 @@ export default function CreateReport({
                   <li>Our team will carefully review your report.</li>
                   <li>
                     You can check its status anytime on your{" "}
-                    <Link href="/cases/history">Report History page</Link>.
+                    <Link href="/report/history">Report History page</Link>.
                   </li>
                   <li>
                     We&apos;ll reach out using the contact details you provided to talk through next
@@ -2323,7 +2323,7 @@ export default function CreateReport({
                         lastUpdated:       report.updated_at ?? report.created_at ?? null,
                         statusName:        STATUS_NAME_MAP[report.case_status?.status_name] ?? 'For Verification',
                       }}
-                      onView={() => router.push(`/cases/view?caseId=${report.case_report_id}&from=cases`)}
+                      onView={() => router.push(`/report/view?caseId=${report.case_report_id}&from=report`)}
                     />
                   </div>
                 ))

@@ -70,7 +70,9 @@ export default function Login() {
       {/* ── Right: login form ── */}
       <div className={styles.right}>
         <div className={styles.formBox}>
-          <h1 className={styles.title}>{t("welcomeBack")}</h1>
+          <h1 className={`${styles.title} ${language === "tl" ? styles.titleTagalog : ""}`}>
+            {t("welcomeBack")}
+          </h1>
           <p className={styles.loginLink}>
             {t("noAccount")}&nbsp;
             <a href="/signup">{t("signUp")}</a>

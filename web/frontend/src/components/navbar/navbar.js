@@ -20,6 +20,33 @@ import { useI18n } from "@/lib/i18n";
 
 // ── Component ──────────────────────────────────────────────
 
+function normalizeRoleKey(role) {
+  const normalized = String(role || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (normalized === "legal") return "legal_personnel";
+  return normalized;
+}
+
+function prettifyRole(role) {
+  return String(role || "User")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getRoleLabel(user, t) {
+  const role = user?.role_name || user?.role || "user";
+  const roleKey = normalizeRoleKey(role);
+  const labelKey =
+    ROLE_LABELS[roleKey] ||
+    Object.values(ROLE_LABELS).find((key) => key.toLowerCase() === roleKey);
+
+  return labelKey ? t(labelKey) : prettifyRole(role);
+}
+
 export default function Navbar() {
   const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -371,7 +398,7 @@ function UserMenu({ user, logout, t }) {
             {user.first_name} {user.last_name}
           </p>
           <p className={styles.dropdownRole}>
-            {ROLE_LABELS[user.role_name?.toLowerCase()] ? t(ROLE_LABELS[user.role_name?.toLowerCase()]) : user.role_name}
+            {getRoleLabel(user, t)}
           </p>
 
           <hr className={styles.dropdownDivider} />

@@ -2,8 +2,42 @@
 
 import { useState } from "react";
 import { FiCheck, FiClock, FiX } from "react-icons/fi";
-import styles from "./PendingStatusApproval.module.css";
+import styles from "./PendingStatusApproval.module.css";
+
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
+
+async function parseErrorPayload(response, fallback) {
+  const text = await response.text().catch(() => "");
+  if (!text) return fallback;
+
+  try {
+    const payload = JSON.parse(text);
+    const message = payload.error || payload.message || fallback;
+    const details = cleanErrorDetails(payload.details);
+    return shouldShowErrorDetails(message, details) ? `${message}: ${details}` : message;
+  } catch (_) {
+    return `${fallback} (${response.status})${text ? `: ${cleanErrorDetails(text)}` : ""}`;
+  }
+}
+
+function shouldShowErrorDetails(message, details) {
+  if (!details) return false;
+  const normalizedMessage = String(message || "").replace(/[.\s]+$/g, "").toLowerCase();
+  const normalizedDetails = String(details || "").replace(/[.\s]+$/g, "").toLowerCase();
+  return normalizedDetails && normalizedDetails !== normalizedMessage && normalizedDetails !== "internal server error";
+}
+
+function cleanErrorDetails(value) {
+  return String(value || "")
+    .replace(/<!doctype[^>]*>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^Error\s*/i, "")
+    .trim()
+    .slice(0, 180);
+}
 
 export default function PendingStatusApproval({
   caseData,
@@ -46,9 +80,9 @@ export default function PendingStatusApproval({
           }),
         }
       );
-      const payload = await response.json().catch(() => ({}));
+      const payload = response.ok ? await response.json().catch(() => ({})) : {};
       if (!response.ok) {
-        throw new Error(payload.error || `Failed to ${action} status change.`);
+        throw new Error(await parseErrorPayload(response, `Failed to ${action} status change.`));
       }
 
       setCaseData((current) => ({
@@ -109,7 +143,7 @@ export default function PendingStatusApproval({
                 <div><dt>Current Status</dt><dd>{caseData.status}</dd></div>
                 <div><dt>Proposed Status</dt><dd>{pending.proposedStatus}</dd></div>
                 <div><dt>Submitted By</dt><dd>{pending.submittedBy || "Unknown"}</dd></div>
-                <div><dt>Date Submitted</dt><dd>{pending.date || "—"}</dd></div>
+                <div><dt>Date Submitted</dt><dd>{pending.date || "-"}</dd></div>
                 <div className={styles.fullRow}><dt>Notes</dt><dd>{pending.notes || "No notes provided."}</dd></div>
               </dl>
 

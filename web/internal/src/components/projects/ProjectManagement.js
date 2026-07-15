@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { uploadProjectImage } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
+import { getProjectDisplayStatus } from "@/lib/projectStatus";
 
 const PAGE_SIZE = 10;
 
@@ -163,7 +164,7 @@ function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defau
                 <tr key={p.id}>
                   <td>#{p.id}</td>
                   <td>{p.title}</td>
-                  <td>{p.status}</td>
+                  <td>{getProjectDisplayStatus(p)}</td>
                   <td>
                     <div className={styles.actionBtns}>
                       {(!defaultAction || defaultAction === "edit") && (
@@ -329,7 +330,7 @@ export default function ProjectManagement() {
   const stats = useMemo(() => {
     const list = projects || [];
     return [
-      { num: list.filter((p) => p?.status === "Active").length, label: "Active Projects" },
+      { num: list.filter((p) => getProjectDisplayStatus(p) === "Active").length, label: "Active Projects" },
       { num: list.filter((p) => p?.visibility === "public" && p?.approvalStatus === "approved").length, label: "Public Events" },
       { num: list.filter((p) => p?.visibility === "public" && p?.approvalStatus === "pending").length, label: "Pending Approval" },
     ];
@@ -351,7 +352,7 @@ export default function ProjectManagement() {
 
     // Status filter
     if (activeFilters.status && activeFilters.status !== "All") {
-      list = list.filter(p => p.status === activeFilters.status);
+      list = list.filter(p => getProjectDisplayStatus(p) === activeFilters.status);
     }
 
     // Visibility filter
@@ -417,8 +418,8 @@ export default function ProjectManagement() {
 
     // Sort
     list.sort((a, b) => {
-      let av = a[sortField] ?? "";
-      let bv = b[sortField] ?? "";
+      let av = sortField === "status" ? getProjectDisplayStatus(a) : a[sortField] ?? "";
+      let bv = sortField === "status" ? getProjectDisplayStatus(b) : b[sortField] ?? "";
       if (sortField === "id") { av = Number(av); bv = Number(bv); }
       if (sortField === "dueDate" || sortField === "dateCreated") {
         av = new Date(av).getTime() || 0;

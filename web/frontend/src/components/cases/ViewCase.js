@@ -190,7 +190,7 @@ export default function ViewCase() {
     id: authUser?.user_id || authUser?.id || null,
   };
   const userLoaded = !authLoading;
-  const backRoute = fromParam === "dashboard" ? "/dashboard" : "/cases/history";
+  const backRoute = fromParam === "dashboard" ? "/dashboard" : "/report/history";
   const backLabel = fromParam === "dashboard" ? "Back to Dashboard" : "Back to Report History";
 
   function showToast(msg, type = "success") {

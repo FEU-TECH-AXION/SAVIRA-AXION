@@ -199,8 +199,16 @@ const sourceLinks = [
     label: "IACVAWC Report Abuse helplines",
   },
   {
-    href: "https://webapp.safecity.in/legal_resources",
-    label: "Safecity legal resources",
+    href: "https://www.officialgazette.gov.ph/2012/09/12/republic-act-no-10175/",
+    label: "Official Gazette legal resources",
+  },
+  {
+    href: "https://lawphil.net/",
+    label: "Lawphil legal resources",
+  },
+  {
+    href: "https://privacy.gov.ph/data-privacy-act/",
+    label: "National Privacy Commission legal resources",
   },
 ];
 

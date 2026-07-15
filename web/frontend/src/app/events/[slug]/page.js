@@ -5,6 +5,7 @@ import { FaLocationDot } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
 import styles from "../events.module.css";
 import detailStyles from "./eventDetail.module.css";
+import { computeProjectStatus } from "@/lib/projectStatus";
 
 const getServerApiUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "http://localhost:5000";
@@ -18,26 +19,29 @@ const toSlug = (value = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const mapProjectToEvent = (project) => ({
-  id: project.id ?? project.project_id,
-  title: project.title || project.event_name || "Untitled event",
-  description: project.description || project.tagline || project.event_tagline || "",
-  category: project.category || project.project_category || "",
-  activityMode: project.activityMode || project.activity_mode || "",
-  dateStart: project.dateStart || project.start_date || "",
-  dateEnd: project.dateEnd || project.end_date || "",
-  venue: project.venue || "",
-  onlinePlatform: project.onlinePlatform || project.online_platform || "",
-  onlineLink: project.onlineLink || project.online_link || "",
-  targetParticipants: project.targetParticipants || project.target_participants || "",
-  partnerOrganizations: project.partnerOrganizations || project.partner_organization || "",
-  tagline: project.tagline || project.event_tagline || "",
-  status: project.status || project.project_status || "",
-  image: project.image || "",
-  visibility: project.visibility,
-  approvalStatus: project.approvalStatus || project.approval_status,
-  slug: project.slug || toSlug(project.title || project.event_name || ""),
-});
+const mapProjectToEvent = (project) => {
+  const title = project.title || project.event_name || "Untitled event";
+  return {
+    id: project.id ?? project.project_id,
+    title,
+    description: project.description || project.tagline || project.event_tagline || "",
+    category: project.category || project.project_category || "",
+    activityMode: project.activityMode || project.activity_mode || "",
+    dateStart: project.dateStart || project.start_date || "",
+    dateEnd: project.dateEnd || project.end_date || "",
+    venue: project.venue || "",
+    onlinePlatform: project.onlinePlatform || project.online_platform || "",
+    onlineLink: project.onlineLink || project.online_link || "",
+    targetParticipants: project.targetParticipants || project.target_participants || "",
+    partnerOrganizations: project.partnerOrganizations || project.partner_organization || "",
+    tagline: project.tagline || project.event_tagline || "",
+    status: computeProjectStatus(project),
+    image: project.image || "",
+    visibility: project.visibility,
+    approvalStatus: project.approvalStatus || project.approval_status,
+    slug: project.slug || toSlug(title),
+  };
+};
 
 const normalizeProjects = (rawProjects) => {
   const projects = Array.isArray(rawProjects) ? rawProjects : rawProjects?.data || [];

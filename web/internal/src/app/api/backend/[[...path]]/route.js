@@ -147,7 +147,22 @@ async function proxyBackend(request, context) {
     }
   }
 
-  return new Response(backendResponse.body, {
+  const responseBody = await backendResponse.arrayBuffer();
+  const contentType = backendResponse.headers.get("content-type") || "";
+
+  if (backendResponse.status >= 500 && contentType.toLowerCase().includes("text/html")) {
+    const html = new TextDecoder().decode(responseBody).replace(/\s+/g, " ").trim();
+    return jsonError(
+      "Backend returned an internal server error.",
+      backendResponse.status,
+      {
+        backendPath: backendUrl.pathname,
+        details: html.slice(0, 240),
+      }
+    );
+  }
+
+  return new Response(responseBody, {
     status: backendResponse.status,
     statusText: backendResponse.statusText,
     headers: responseHeaders,
