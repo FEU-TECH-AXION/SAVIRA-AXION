@@ -671,8 +671,7 @@ export default function FollowUpFieldEditor({
           >
             <Select {...common} onChange={(e) => setValue(path, e.target.value)}>
               <option value="">Select gender identity</option>
-              <option>Male</option><option>Female</option><option>Non-binary</option>
-              <option>Unknown / Prefer not to say</option>
+              <option>Male</option><option>Female</option><option>Unable to tell</option>
             </Select>
           </Field>
         );
@@ -685,8 +684,7 @@ export default function FollowUpFieldEditor({
           >
             <Select {...common} onChange={(e) => setValue(path, e.target.value)}>
               <option value="">Select if remembered</option>
-              <option>Male</option><option>Female</option><option>Non-binary</option>
-              <option>Unable to tell</option><option>Prefer not to say</option>
+              <option>Male</option><option>Female</option><option>Unable to tell</option>
             </Select>
           </Field>
         );

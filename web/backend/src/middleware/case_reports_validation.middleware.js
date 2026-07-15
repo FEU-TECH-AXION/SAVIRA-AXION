@@ -20,7 +20,7 @@ const VALID_ORGS = [
   "No Organization / Independent",
   "Others",
 ];
-const VALID_GENDERS = ["Male", "Female", "Non-binary", "Prefer not to say"];
+const VALID_GENDERS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
 const VALID_ORG_TYPES = [
   "School / University",
   "Workplace / Company",
@@ -33,8 +33,8 @@ const VALID_ORG_TYPES = [
 ];
 const VALID_LOCATION_TYPES = ["Physical Location", "Online"];
 const VALID_YES_NO = ["Yes", "No"];
-const VALID_PERPETRATOR_GENDERS = ["Male", "Female", "Non-binary", "Unknown"];
-const VALID_UNKNOWN_PERPETRATOR_GENDERS = ["Male", "Female", "Non-binary", "Unable to tell"];
+const VALID_PERPETRATOR_GENDERS = ["Male", "Female", "Unable to tell"];
+const VALID_UNKNOWN_PERPETRATOR_GENDERS = ["Male", "Female", "Unable to tell"];
 const VALID_OUTCOMES = [
   "Safety planning and support",
   "Counseling or psychosocial support",

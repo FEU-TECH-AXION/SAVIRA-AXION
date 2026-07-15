@@ -1286,7 +1286,7 @@ function StepComplainantInfo({ data, onChange, errors, setFieldError }) {
         <SelectBox
           value={data.gender}
           placeholder="Select gender identity"
-          options={["Male", "Female", "Non-binary", "Prefer not to say"]}
+          options={["Male", "Female", "LGBTQIA+ member", "Prefer not to say"]}
           onSelect={set("gender")}
           error={errors.gender}
         />
@@ -1763,8 +1763,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldE
               options={[
                 "Male",
                 "Female",
-                "Non-binary",
-                "Unknown / Prefer not to say",
+                "Unable to tell",
               ]}
               onSelect={set("perpetratorGender")}
               error={errors.perpetratorGender}
@@ -1785,7 +1784,6 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, setFieldE
               options={[
                 "Male",
                 "Female",
-                "Non-binary",
                 "Unable to tell",
               ]}
               onSelect={set("perpetratorUnknownGender")}

@@ -194,7 +194,7 @@ const LONG_TEXT_MAX_LENGTH = 1000;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
 const REPORT_TYPE_OPTIONS = ["Me (Myself)", "Someone else"];
-const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
 const ORGANIZATION_OPTIONS = [
   "Boy Scouts of the Philippines (BSP)",
   "Girl Scouts of the Philippines (GSP)",
@@ -213,8 +213,8 @@ const ORGANIZATION_TYPE_OPTIONS = [
 ];
 const LOCATION_TYPE_OPTIONS = ["Physical Location", "Online"];
 const YES_NO_OPTIONS = ["Yes", "No"];
-const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Unknown"];
-const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Unable to tell"];
+const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
+const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
 
 function trimString(value) {
   return typeof value === "string" ? value.trim() : value;
@@ -709,7 +709,7 @@ function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError
             <option value="">Select gender identity</option>
             <option>Male</option>
             <option>Female</option>
-            <option>Non-binary</option>
+            <option>LGBTQIA+ member</option>
             <option>Prefer not to say</option>
           </Select>
         </Field>
@@ -1361,8 +1361,7 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
               <option value="">Select gender identity</option>
               <option>Male</option>
               <option>Female</option>
-              <option>Non-binary</option>
-              <option>Unknown</option>
+              <option>Unable to tell</option>
             </Select>
           </Field>
         </div>
@@ -1377,7 +1376,6 @@ function StepIncidentDetails({ data, complainantAge, onChange, errors, clearErro
               <option value="">Select if remembered</option>
               <option>Male</option>
               <option>Female</option>
-              <option>Non-binary</option>
               <option>Unable to tell</option>
             </Select>
           </Field>

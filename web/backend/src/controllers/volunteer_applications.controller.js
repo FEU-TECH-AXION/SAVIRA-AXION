@@ -89,7 +89,7 @@ function priorityBonus(app = {}) {
     const gender = String(app.gender_identity || '').toLowerCase()
     const pronouns = String(app.pronouns || '').toLowerCase()
     const female = gender.includes('female') || gender.includes('woman') || pronouns.includes('she')
-    const lgbtq = gender.includes('lgbt') || gender.includes('queer') || gender.includes('non-binary') || gender.includes('trans')
+    const lgbtq = gender.includes('lgbtqia+ member') || gender.includes('lgbt') || gender.includes('queer') || gender.includes('non-binary') || gender.includes('trans')
     return (female ? 3 : 0) + (lgbtq ? 3 : 0)
 }
 

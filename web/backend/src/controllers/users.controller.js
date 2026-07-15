@@ -12,7 +12,7 @@ const USER_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 }
 
-const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
+const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'LGBTQIA+ member', 'Prefer not to say']
 const AVATAR_BUCKET = 'avatars'
 const AVATAR_CHANGE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -140,10 +140,28 @@ const updateItem = async (req, res) => {
     if (payload.birthday === '') payload.birthday = null
     if (payload.gender_identity === '') payload.gender_identity = null
 
-    if (payload.gender_identity && !ALLOWED_GENDER_IDENTITIES.includes(payload.gender_identity)) {
-      return res.status(400).json({
-        error: `gender_identity must be one of: ${ALLOWED_GENDER_IDENTITIES.join(', ')}.`,
-      })
+    if (Object.prototype.hasOwnProperty.call(payload, 'gender_identity')) {
+      const { data: existingUser, error: existingError } = await supabase
+        .from('users')
+        .select('gender_identity')
+        .eq('user_id', id)
+        .single()
+
+      if (existingError) throw existingError
+
+      const currentGenderIdentity = existingUser?.gender_identity ?? null
+      const nextGenderIdentity = payload.gender_identity ?? null
+      const genderIdentityChanged = nextGenderIdentity !== currentGenderIdentity
+
+      if (
+        genderIdentityChanged &&
+        nextGenderIdentity &&
+        !ALLOWED_GENDER_IDENTITIES.includes(nextGenderIdentity)
+      ) {
+        return res.status(400).json({
+          error: `gender_identity must be one of: ${ALLOWED_GENDER_IDENTITIES.join(', ')}.`,
+        })
+      }
     }
 
     if (payload.birthday) {

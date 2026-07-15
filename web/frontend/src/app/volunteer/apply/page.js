@@ -480,7 +480,7 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             <option value="">Select gender identity</option>
             <option>Male</option>
             <option>Female</option>
-            <option>Non-binary</option>
+            <option>LGBTQIA+ member</option>
             <option>Prefer not to say</option>
           </Select>
         </Field>

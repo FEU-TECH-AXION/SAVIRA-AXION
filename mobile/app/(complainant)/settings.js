@@ -50,6 +50,17 @@ const COLORS = {
   success: '#38a169',
 };
 
+const GENDER_IDENTITY_OPTIONS = [
+  'Male',
+  'Female',
+  'LGBTQIA+ member',
+  'Prefer not to say',
+];
+
+function isLegacyGenderIdentity(value) {
+  return Boolean(value) && !GENDER_IDENTITY_OPTIONS.includes(value);
+}
+
 // ── Shared Tabs Navigation ──────────────────────────────────────────────────
 function TabNav({ activeTab, onTabChange, t }) {
   const tabs = [
@@ -159,6 +170,7 @@ export default function SettingsScreen() {
     user_name: '', birthday: '', gender_identity: '',
     email: '', contact_number: '', city: '', province: 'National Capital Region (NCR)', profile_img: ''
   });
+  const [genderPickerOpen, setGenderPickerOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [photoSaving, setPhotoSaving] = useState(false);
 
@@ -640,9 +652,41 @@ export default function SettingsScreen() {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Gender Identity (Optional)</Text>
-                <View style={styles.inputWrap}>
-                  <TextInput style={styles.modernInput} placeholder="Male, Female, Non-binary..." value={profileForm.gender_identity} onChangeText={(t) => setProfileForm({...profileForm, gender_identity: t})} />
-                </View>
+                <Pressable style={styles.inputWrap} onPress={() => setGenderPickerOpen((open) => !open)}>
+                  <Text style={[styles.pickerValue, !profileForm.gender_identity && styles.pickerPlaceholder]}>
+                    {profileForm.gender_identity
+                      ? `${profileForm.gender_identity}${isLegacyGenderIdentity(profileForm.gender_identity) ? ' (as recorded)' : ''}`
+                      : 'Select gender identity'}
+                  </Text>
+                  <Ionicons name={genderPickerOpen ? 'chevron-up' : 'chevron-down'} size={18} color="#94a3b8" />
+                </Pressable>
+                {genderPickerOpen && (
+                  <View style={styles.pickerPanel}>
+                    <Pressable
+                      style={styles.pickerOption}
+                      onPress={() => {
+                        setProfileForm({...profileForm, gender_identity: ''});
+                        setGenderPickerOpen(false);
+                      }}
+                    >
+                      <Text style={styles.pickerOptionText}>Select gender identity</Text>
+                    </Pressable>
+                    {GENDER_IDENTITY_OPTIONS.map((option) => (
+                      <Pressable
+                        key={option}
+                        style={styles.pickerOption}
+                        onPress={() => {
+                          setProfileForm({...profileForm, gender_identity: option});
+                          setGenderPickerOpen(false);
+                        }}
+                      >
+                        <Text style={[styles.pickerOptionText, profileForm.gender_identity === option && styles.pickerOptionTextActive]}>
+                          {option}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
 
@@ -1142,6 +1186,12 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: 8 },
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, paddingHorizontal: 14 },
   modernInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: COLORS.text },
+  pickerValue: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: COLORS.text },
+  pickerPlaceholder: { color: '#94a3b8' },
+  pickerPanel: { marginTop: 6, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, backgroundColor: COLORS.card, overflow: 'hidden' },
+  pickerOption: { paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  pickerOptionText: { fontSize: 14, color: COLORS.text },
+  pickerOptionTextActive: { color: COLORS.primary, fontWeight: '800' },
 
   btnPrimary: { backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 22, borderRadius: 16, alignItems: 'center' },
   btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },

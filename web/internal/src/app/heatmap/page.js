@@ -250,7 +250,7 @@ function FilterSection({ filters, onChange, meta }) {
           options: [
             { value: "Male", label: "Male" },
             { value: "Female", label: "Female" },
-            { value: "Non-binary", label: "Non-binary" },
+            { value: "LGBTQIA+ member", label: "LGBTQIA+ member" },
             { value: "Prefer not to say", label: "Prefer not to say" },
           ],
           placeholder: "All",
@@ -261,8 +261,7 @@ function FilterSection({ filters, onChange, meta }) {
           options: [
             { value: "Male", label: "Male" },
             { value: "Female", label: "Female" },
-            { value: "Non-binary", label: "Non-binary" },
-            { value: "Prefer not to say", label: "Prefer not to say" },
+            { value: "Unable to tell", label: "Unable to tell" },
           ],
           placeholder: "All",
         },

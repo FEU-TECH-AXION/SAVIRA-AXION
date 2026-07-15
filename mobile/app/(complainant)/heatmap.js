@@ -273,8 +273,14 @@ const HEATMAP_STATUS_OPTIONS = [
 const GENDER_OPTIONS = [
   'Male',
   'Female',
-  'Non-binary',
+  'LGBTQIA+ member',
   'Prefer not to say',
+];
+
+const PERPETRATOR_GENDER_OPTIONS = [
+  'Male',
+  'Female',
+  'Unable to tell',
 ];
 
 const emptyFilters = {
@@ -403,7 +409,7 @@ function FilterModal({ visible, onClose, meta, filters, setFilters }) {
               { value: 'unverified', label: 'Unverified' },
             ], 'value', 'label', 'verification')}
             {renderDropdown('Victim Gender', GENDER_OPTIONS, null, null, 'victim_gender')}
-            {renderDropdown('Perpetrator Gender', GENDER_OPTIONS, null, null, 'perpetrator_gender')}
+            {renderDropdown('Perpetrator Gender', PERPETRATOR_GENDER_OPTIONS, null, null, 'perpetrator_gender')}
 
             <Pressable style={s.resetFiltersBtn} onPress={() => setFilters(emptyFilters)}>
               <Text style={s.resetFiltersText}>Reset Filters</Text>

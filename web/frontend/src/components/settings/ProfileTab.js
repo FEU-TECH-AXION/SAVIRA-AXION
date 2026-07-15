@@ -15,7 +15,7 @@ const NCR_CITIES = [
 ];
 
 const GENDER_IDENTITIES = [
-  "Male", "Female", "Non-binary", "Prefer not to say",
+  "Male", "Female", "LGBTQIA+ member", "Prefer not to say",
 ];
 
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;
@@ -57,7 +57,11 @@ function birthdayForAge(age) {
   return formatDateInput(date);
 }
 
-function validateProfile(data, t) {
+function isLegacyGenderIdentity(value) {
+  return Boolean(value) && !GENDER_IDENTITIES.includes(value);
+}
+
+function validateProfile(data, t, currentGenderIdentity = "") {
   const errors = {};
   if (!data.first_name?.trim()) errors.first_name = t("firstNameRequired");
   if (!data.last_name?.trim()) errors.last_name = t("lastNameRequired");
@@ -69,7 +73,8 @@ function validateProfile(data, t) {
     const birthdayError = validateBirthday(data.birthday);
     if (birthdayError) errors.birthday = birthdayError;
   }
-  if (data.gender_identity && !GENDER_IDENTITIES.includes(data.gender_identity)) {
+  const genderChanged = (data.gender_identity || "") !== (currentGenderIdentity || "");
+  if (genderChanged && data.gender_identity && !GENDER_IDENTITIES.includes(data.gender_identity)) {
     errors.gender_identity = "Select a valid gender identity.";
   }
   if (!data.contact_number) {
@@ -97,6 +102,8 @@ export default function ProfileTab({ user, setUser, form, setForm, t }) {
   const [error, setError] = useState("");
   const [underageDialogOpen, setUnderageDialogOpen] = useState(false);
   const [validationDialog, setValidationDialog] = useState(null);
+  const currentGenderIdentity = user?.gender_identity || "";
+  const hasLegacyGenderIdentity = isLegacyGenderIdentity(currentGenderIdentity);
 
   const flash = (type, msg) => {
     if (type === "success") { setSuccess(msg); setError(""); }
@@ -131,7 +138,7 @@ export default function ProfileTab({ user, setUser, form, setForm, t }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const errors = validateProfile(form, t);
+    const errors = validateProfile(form, t, currentGenderIdentity);
     if (Object.keys(errors).length) {
       setFormErrors(errors);
       setValidationDialog(errors);
@@ -215,6 +222,11 @@ export default function ProfileTab({ user, setUser, form, setForm, t }) {
         <Field label={t("genderIdentity")} badge={t("optional")} hint={t("genderIdentityHint")} error={formErrors.gender_identity}>
           <select name="gender_identity" value={form.gender_identity} onChange={handleChange}>
             <option value="">{t("select")}</option>
+            {hasLegacyGenderIdentity && (
+              <option value={currentGenderIdentity} disabled>
+                {currentGenderIdentity} (as recorded)
+              </option>
+            )}
             {GENDER_IDENTITIES.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}

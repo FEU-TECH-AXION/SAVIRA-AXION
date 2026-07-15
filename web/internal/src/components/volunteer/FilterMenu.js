@@ -19,9 +19,8 @@ const GENDER_OPTIONS = [
   "All",
   "Male",
   "Female",
-  "Non-binary",
+  "LGBTQIA+ member",
   "Prefer not to say",
-  "Other",
 ];
 
 const DATE_RANGE_OPTIONS = [
