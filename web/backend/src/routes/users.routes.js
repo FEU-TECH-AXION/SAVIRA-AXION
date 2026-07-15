@@ -23,6 +23,9 @@ const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const PASSWORD_RESET_DAILY_LIMIT = 15
 const PASSWORD_RESET_EXPIRY_MINUTES = 15
+const DEFAULT_PUBLIC_FRONTEND_URL = 'https://www.saviraphilippines.org'
+const DEFAULT_PUBLIC_FRONTEND_URL_BARE = 'https://saviraphilippines.org'
+const DEFAULT_INTERNAL_FRONTEND_URL = 'https://sasha.saviraphilippines.org'
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -82,11 +85,14 @@ const getFrontendResetBaseUrl = () => {
     .map((url) => url.trim().replace(/\/$/, ''))
     .filter(Boolean)[0]
 
-  return configured || 'https://www.saviraphilippines.org'
+  return configured || DEFAULT_PUBLIC_FRONTEND_URL
 }
 
 const getAllowedResetBaseUrls = () => {
   const configured = [
+    DEFAULT_PUBLIC_FRONTEND_URL,
+    DEFAULT_PUBLIC_FRONTEND_URL_BARE,
+    DEFAULT_INTERNAL_FRONTEND_URL,
     process.env.FRONTEND_URL,
     process.env.INTERNAL_FRONTEND_URL,
   ]

@@ -39,7 +39,10 @@ export default function ForgotPassword() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          resetBaseUrl: window.location.origin,
+        }),
       });
       const raw = await res.text();
       let data = {};
@@ -89,7 +92,7 @@ export default function ForgotPassword() {
           </a>
           <h1 className={styles.title}>Forgot Password?</h1>
           <p className={styles.pgdescription}>
-            Enter the email used for your account and we'll send you a <br />
+            Enter the email used for your account and we&apos;ll send you a <br />
             link to reset your password
           </p>
 
@@ -119,7 +122,7 @@ export default function ForgotPassword() {
               <div className={styles.sentMessage}>
                 <p>{message}</p>
                 <p>
-                  Didn't receive the email?{" "}
+                  Didn&apos;t receive the email?{" "}
                   <button
                     type="button"
                     className={styles.resendBtn}

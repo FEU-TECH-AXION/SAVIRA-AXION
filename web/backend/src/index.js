@@ -10,7 +10,12 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-  ...(process.env.FRONTEND_URL || '')
+  'https://www.saviraphilippines.org',
+  'https://saviraphilippines.org',
+  'https://sasha.saviraphilippines.org',
+  ...[process.env.FRONTEND_URL, process.env.INTERNAL_FRONTEND_URL]
+    .filter(Boolean)
+    .join(',')
     .split(',')
     .map((origin) => origin.trim().replace(/\/$/, ''))
     .filter(Boolean),
