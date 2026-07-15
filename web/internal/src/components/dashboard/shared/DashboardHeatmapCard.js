@@ -46,37 +46,57 @@ export default function DashboardHeatmapCard() {
   useEffect(() => {
     if (!mapNode.current || !MAPBOX_TOKEN || loading || error || mapRef.current) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const map = new mapboxgl.Map({
-      container: mapNode.current,
-      style: "mapbox://styles/mapbox/light-v11",
-      center: [121.0244, 14.5995],
-      zoom: 9.3,
-      attributionControl: false,
-      interactive: false,
-    });
-    mapRef.current = map;
+    let animationFrame = 0;
+    let resizeObserver = null;
 
-    const resizeMap = () => map.resize();
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(resizeMap)
-        : null;
-    resizeObserver?.observe(mapNode.current);
+    function initializeMap() {
+      const node = mapNode.current;
+      if (!node) return;
 
-    map.on("load", () => {
-      requestAnimationFrame(() => {
+      const { width, height } = node.getBoundingClientRect();
+      if (width < 1 || height < 1) {
+        animationFrame = requestAnimationFrame(initializeMap);
+        return;
+      }
+
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      const map = new mapboxgl.Map({
+        container: node,
+        style: "mapbox://styles/mapbox/light-v11",
+        center: [121.0244, 14.5995],
+        zoom: 9.3,
+        attributionControl: false,
+        interactive: false,
+      });
+      mapRef.current = map;
+
+      const resizeMap = () => map.resize();
+      resizeObserver =
+        typeof ResizeObserver !== "undefined"
+          ? new ResizeObserver(resizeMap)
+          : null;
+      resizeObserver?.observe(node);
+
+      map.on("load", () => {
         map.resize();
         removeWaterLayer(map);
         loadChoropleth(map, locations, "city");
         setupHoverInteraction(map);
       });
-    });
+
+      map.once("idle", () => {
+        map.resize();
+      });
+    }
+
+    animationFrame = requestAnimationFrame(initializeMap);
 
     return () => {
+      cancelAnimationFrame(animationFrame);
       resizeObserver?.disconnect();
-      if (map._choroplethPopup) map._choroplethPopup.remove();
-      map.remove();
+      const map = mapRef.current;
+      if (map?._choroplethPopup) map._choroplethPopup.remove();
+      if (map) map.remove();
       mapRef.current = null;
     };
   }, [error, loading, locations]);
