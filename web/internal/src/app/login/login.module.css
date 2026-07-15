@@ -298,6 +298,20 @@
   margin: 0 0 8px;
 }
 
+@media (max-width: 1014px) {
+  .auxiliaryGroup {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .forgotPassword {
+    align-self: flex-end;
+  }
+}
+
 @media (max-width: 768px) {
   .wrapper {
     flex-direction: column;
@@ -335,13 +349,6 @@
     width: 100%;
   }
 
-  .auxiliaryGroup {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.65rem;
-    margin-bottom: 1.25rem;
-  }
-
   .accessNote {
     font-size: 0.84rem;
   }
@@ -359,7 +366,6 @@
   }
 
   .forgotPassword {
-    align-self: flex-end;
     font-size: 0.86rem;
   }
 }
