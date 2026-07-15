@@ -7,6 +7,7 @@ import NotificationsInit from '@/components/notification/notificationsInit';
 import NavbarClient from '@/components/navbar/NavbarClient';
 import ClientShell from '@/components/ClientShell';
 import DisplayPreferencesClient from '@/components/settings/DisplayPreferencesClient';
+import AutoTranslateClient from '@/components/AutoTranslateClient';
 import { I18nProvider } from '@/lib/i18n';
 
 export const metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <I18nProvider>
             <DisplayPreferencesClient />
+            <AutoTranslateClient />
             <NotificationsInit />
 
             <ClientShell>
