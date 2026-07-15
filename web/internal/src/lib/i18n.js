@@ -44,16 +44,20 @@ const I18nContext = createContext({
 });
 
 export function I18nProvider({ children }) {
-  const [language, setLanguageState] = useState(() => getCurrentLanguage());
+  const [language, setLanguageState] = useState("en");
 
   useEffect(() => {
     const handleLanguageChange = (event) => {
       setLanguageState(normalizeLanguage(event.detail?.language || getCurrentLanguage()));
     };
 
+    const syncTimer = window.setTimeout(() => {
+      setLanguageState(getCurrentLanguage());
+    }, 0);
     window.addEventListener("savira:languagechange", handleLanguageChange);
     window.addEventListener("storage", handleLanguageChange);
     return () => {
+      window.clearTimeout(syncTimer);
       window.removeEventListener("savira:languagechange", handleLanguageChange);
       window.removeEventListener("storage", handleLanguageChange);
     };

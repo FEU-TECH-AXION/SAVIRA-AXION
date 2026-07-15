@@ -9,6 +9,7 @@ const SKIP_SELECTOR = "script, style, noscript, code, pre, textarea, [data-no-au
 const TRANSLATABLE_ATTRIBUTES = ["aria-label", "title", "placeholder", "alt"];
 const originals = new WeakMap();
 const attrOriginals = new WeakMap();
+let isApplyingTranslation = false;
 
 const TEXT_TRANSLATIONS = Object.entries(en).reduce((acc, [key, value]) => {
   if (typeof value === "string" && typeof tl[key] === "string") {
@@ -160,16 +161,38 @@ export default function AutoTranslateClient() {
 
   useEffect(() => {
     document.documentElement.lang = language;
-    translateTree(document.body, language);
+    isApplyingTranslation = true;
+    try {
+      translateTree(document.body, language);
+    } finally {
+      isApplyingTranslation = false;
+    }
 
     const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => translateTree(node, language));
-      });
+      if (isApplyingTranslation) return;
+
+      isApplyingTranslation = true;
+      try {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList") {
+            mutation.addedNodes.forEach((node) => translateTree(node, language));
+            translateTree(mutation.target, language);
+          } else if (mutation.type === "characterData") {
+            translateTree(mutation.target, language);
+          } else if (mutation.type === "attributes") {
+            translateTree(mutation.target, language);
+          }
+        });
+      } finally {
+        isApplyingTranslation = false;
+      }
     });
 
     observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: TRANSLATABLE_ATTRIBUTES,
       childList: true,
+      characterData: true,
       subtree: true,
     });
 

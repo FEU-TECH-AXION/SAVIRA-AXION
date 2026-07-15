@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import styles from "./StaffDashboard.module.css";
 import { useAuth } from "@/lib/AuthContext";
+import { useI18n } from "@/lib/i18n";
 import { internalApiFetch } from "@/lib/internalApiFetch";
 import DashboardEventsCard from "@/components/dashboard/shared/DashboardEventsCard";
 import DashboardHeatmapCard from "@/components/dashboard/shared/DashboardHeatmapCard";
@@ -25,6 +26,7 @@ function OverviewCard({ category, label, count, showView = false }) {
 
 export default function StaffDashboard() {
   const { user: authUser, loading: authLoading } = useAuth();
+  const { t } = useI18n();
   const [summary, setSummary] = useState(null);
 
   const user = authUser
@@ -104,7 +106,7 @@ export default function StaffDashboard() {
         <section className={styles.heroBanner}>
           <div className={styles.dashboardContainer}>
             <div className={styles.heroContent}>
-              <h1 className={styles.heroTitle}>Welcome, {user.firstName} {user.lastName}!</h1>
+              <h1 className={styles.heroTitle}>{t("dashboardWelcome")}, {user.firstName} {user.lastName}!</h1>
               <div className={styles.statGrid}>
                 {stats.map(({ num, label, hasNew }) => (
                   <div key={label} className={styles.statGridItem}>
