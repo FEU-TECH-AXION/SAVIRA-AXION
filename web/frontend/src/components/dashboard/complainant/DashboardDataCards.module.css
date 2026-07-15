@@ -2,6 +2,8 @@
   background: var(--sasha-surface);
   border: 1px solid var(--sasha-border);
   border-radius: var(--sasha-card-radius);
+  display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
@@ -33,13 +35,20 @@
 }
 
 .mapBody {
-  height: 330px;
+  flex: 1;
+  min-height: 330px;
   position: relative;
 }
 
 .compactMap {
   height: 100%;
   width: 100%;
+}
+
+.compactMap :global(.mapboxgl-canvas-container),
+.compactMap :global(.mapboxgl-canvas) {
+  height: 100% !important;
+  width: 100% !important;
 }
 
 .hiddenMap {
