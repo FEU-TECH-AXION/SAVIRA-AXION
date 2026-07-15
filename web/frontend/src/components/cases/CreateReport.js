@@ -124,7 +124,8 @@ function normalizeOutcomeSelection(value) {
   if (Array.isArray(value)) {
     return [
       ...new Set(
-        value.flatMap(normalizeSavedValue).filter((item) => OUTCOME_OPTIONS.includes(item))
+        normalizeOptionValue(value.flatMap(normalizeSavedValue), OUTCOME_OPTIONS)
+          .filter((item) => OUTCOME_OPTIONS.includes(item))
       ),
     ];
   }
@@ -132,9 +133,14 @@ function normalizeOutcomeSelection(value) {
 
   const trimmed = value.trim();
   if (OUTCOME_OPTIONS.includes(trimmed)) return [trimmed];
+  const normalizedTrimmed = normalizeOptionValue(trimmed, OUTCOME_OPTIONS);
+  if (OUTCOME_OPTIONS.includes(normalizedTrimmed)) return [normalizedTrimmed];
   if (trimmed === "Legal advice or legal action") return ["Legal advice"];
 
-  const savedValues = value.split(",").flatMap((item) => normalizeSavedValue(item.trim()));
+  const savedValues = normalizeOptionValue(
+    value.split(",").flatMap((item) => normalizeSavedValue(item.trim())),
+    OUTCOME_OPTIONS
+  );
   return OUTCOME_OPTIONS.filter((option) => savedValues.includes(option));
 }
 
@@ -216,6 +222,46 @@ const YES_NO_OPTIONS = ["Yes", "No"];
 const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
 const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
 
+function normalizeOptionValue(value, options) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeOptionValue(item, options)).filter(Boolean);
+  }
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (options.includes(text)) return text;
+  const lowerText = text.toLowerCase();
+  return (
+    options.find((option) => translateText("tl", option).toLowerCase() === lowerText) ||
+    options.find((option) => option.toLowerCase() === lowerText) ||
+    text
+  );
+}
+
+function normalizeComplainantOptions(data) {
+  return {
+    ...data,
+    reporteeType: normalizeOptionValue(data.reporteeType, REPORT_TYPE_OPTIONS),
+    gender: normalizeOptionValue(data.gender, GENDER_OPTIONS),
+    organization: normalizeOptionValue(data.organization, ORGANIZATION_OPTIONS),
+    organizationType: normalizeOptionValue(data.organizationType, ORGANIZATION_TYPE_OPTIONS),
+    interview: normalizeOptionValue(data.interview, YES_NO_OPTIONS),
+  };
+}
+
+function normalizeIncidentOptions(data) {
+  return {
+    ...data,
+    locationType: normalizeOptionValue(data.locationType, LOCATION_TYPE_OPTIONS),
+    outcome: normalizeOptionValue(data.outcome, OUTCOME_OPTIONS),
+    perpetratorKnown: normalizeOptionValue(data.perpetratorKnown, YES_NO_OPTIONS),
+    perpetratorGender: normalizeOptionValue(data.perpetratorGender, PERPETRATOR_GENDER_OPTIONS),
+    perpetratorUnknownGender: normalizeOptionValue(data.perpetratorUnknownGender, UNKNOWN_PERPETRATOR_GENDER_OPTIONS),
+    witnesses: normalizeOptionValue(data.witnesses, YES_NO_OPTIONS),
+    toldAnyone: normalizeOptionValue(data.toldAnyone, YES_NO_OPTIONS),
+    toldPolice: normalizeOptionValue(data.toldPolice, YES_NO_OPTIONS),
+  };
+}
+
 function trimString(value) {
   return typeof value === "string" ? value.trim() : value;
 }
@@ -263,6 +309,7 @@ function getEmailValidationError(value) {
 }
 
 function sanitizeComplainant(data) {
+  data = normalizeComplainantOptions(data);
   return {
     ...data,
     name: limitString(trimString(data.name) || "", SHORT_TEXT_MAX_LENGTH),
@@ -276,6 +323,7 @@ function sanitizeComplainant(data) {
 }
 
 function sanitizeIncident(data) {
+  data = normalizeIncidentOptions(data);
   return {
     ...data,
     incidentVenue: limitString(trimString(data.incidentVenue) || "", MEDIUM_TEXT_MAX_LENGTH),
@@ -1897,7 +1945,7 @@ export default function CreateReport({
       if (!raw) return;
       const draft = JSON.parse(raw);
       const timer = setTimeout(() => {
-        if (draft.complainant) setComplainant(draft.complainant);
+        if (draft.complainant) setComplainant(normalizeComplainantOptions(draft.complainant));
         if (draft.incident) {
           const draftIncident = { ...draft.incident };
           if (draftIncident.date && !draftIncident.incidentYear) {
@@ -1909,7 +1957,7 @@ export default function CreateReport({
                 (month) => month.value === String(draftIncident.incidentMonth)
               )?.label || "";
           }
-          setIncident((current) => ({
+          setIncident((current) => normalizeIncidentOptions({
             ...current,
             ...draftIncident,
             date: buildIncidentDate(draftIncident),
