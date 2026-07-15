@@ -4,10 +4,13 @@ import { useEffect } from "react";
 import { FiX } from "react-icons/fi";
 import PolicyMarkdown from "./PolicyMarkdown";
 import { POLICIES } from "./policyContent";
+import { POLICY_TRANSLATIONS_TL } from "./policyContentTl";
 import styles from "./PolicyModal.module.css";
+import { useI18n } from "@/lib/i18n";
 
 export default function PolicyModal({ open, policy, onClose }) {
-  const content = POLICIES[policy];
+  const { language, t } = useI18n();
+  const content = language === "tl" ? POLICY_TRANSLATIONS_TL[policy] || POLICIES[policy] : POLICIES[policy];
 
   useEffect(() => {
     if (!open) return undefined;
@@ -31,10 +34,10 @@ export default function PolicyModal({ open, policy, onClose }) {
       >
         <header className={styles.header}>
           <div>
-            <p>Savira Policies</p>
+            <p>{t("policyEyebrow")}</p>
             <h2 id="policy-modal-title">{content.title}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close policy">
+          <button type="button" onClick={onClose} aria-label={t("closePolicy")}>
             <FiX />
           </button>
         </header>
@@ -42,7 +45,7 @@ export default function PolicyModal({ open, policy, onClose }) {
           <PolicyMarkdown markdown={content.markdown} className={styles.markdown} />
         </div>
         <footer className={styles.footer}>
-          <button type="button" onClick={onClose}>Close</button>
+          <button type="button" onClick={onClose}>{t("close")}</button>
         </footer>
       </section>
     </div>

@@ -13,7 +13,10 @@ export const LANGUAGE_OPTIONS = [
 const MESSAGES = { en, tl };
 
 export function normalizeLanguage(language) {
-  return language === "fil" ? "tl" : LANGUAGE_OPTIONS.some((item) => item.id === language) ? language : "en";
+  const value = String(language || "").trim().toLowerCase();
+  if (["tl", "tgl", "tagalog", "fil", "filipino"].includes(value)) return "tl";
+  if (["en", "eng", "english"].includes(value)) return "en";
+  return LANGUAGE_OPTIONS.some((item) => item.id === value) ? value : "en";
 }
 
 export function getCurrentLanguage() {

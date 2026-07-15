@@ -3,12 +3,13 @@
 import Link from "next/link";
 import PolicyMarkdown from "@/components/policies/PolicyMarkdown";
 import { POLICIES } from "@/components/policies/policyContent";
+import { POLICY_TRANSLATIONS_TL } from "@/components/policies/policyContentTl";
 import styles from "./privacy.module.css";
 import { useI18n } from "@/lib/i18n";
 
 export default function PrivacyPage() {
-  const { t } = useI18n();
-  const policy = POLICIES.privacy;
+  const { language, t } = useI18n();
+  const policy = language === "tl" ? POLICY_TRANSLATIONS_TL.privacy : POLICIES.privacy;
 
   return (
     <main className={styles.page}>

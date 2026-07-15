@@ -3,12 +3,13 @@
 import Link from "next/link";
 import PolicyMarkdown from "@/components/policies/PolicyMarkdown";
 import { POLICIES } from "@/components/policies/policyContent";
+import { POLICY_TRANSLATIONS_TL } from "@/components/policies/policyContentTl";
 import styles from "./terms.module.css";
 import { useI18n } from "@/lib/i18n";
 
 export default function TermsPage() {
-  const { t } = useI18n();
-  const policy = POLICIES.terms;
+  const { language, t } = useI18n();
+  const policy = language === "tl" ? POLICY_TRANSLATIONS_TL.terms : POLICIES.terms;
 
   return (
     <main className={styles.page}>

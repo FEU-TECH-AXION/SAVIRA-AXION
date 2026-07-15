@@ -9,12 +9,35 @@ const TRANSLATABLE_ATTRIBUTES = ["aria-label", "title", "placeholder", "alt"];
 const originals = new WeakMap();
 const attrOriginals = new WeakMap();
 
+function normalizeLookupKey(value) {
+  return String(value || "")
+    .replaceAll("&apos;", "'")
+    .replaceAll("&#39;", "'")
+    .replaceAll("&rsquo;", "'")
+    .replaceAll("&lsquo;", "'")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&mdash;", "—")
+    .replaceAll("&ndash;", "–")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function translateValue(value) {
   const text = String(value || "");
-  const trimmed = text.trim();
+  const trimmed = normalizeLookupKey(text);
   if (!trimmed) return value;
 
-  const translated = tl[trimmed];
+  let translated = tl[trimmed];
+  if (!translated) {
+    const prefix = Object.keys(tl)
+      .filter((key) => trimmed.startsWith(`${key} `))
+      .sort((a, b) => b.length - a.length)[0];
+
+    if (prefix) {
+      translated = `${tl[prefix]} ${trimmed.slice(prefix.length).trim()}`;
+    }
+  }
+
   if (!translated || translated === trimmed) return value;
 
   const leading = text.match(/^\s*/)?.[0] || "";
@@ -30,8 +53,12 @@ function shouldSkip(node) {
 function translateTextNode(node, language) {
   if (shouldSkip(node)) return;
 
-  if (!originals.has(node)) {
-    originals.set(node, node.nodeValue);
+  const current = node.nodeValue;
+  const stored = originals.get(node);
+  const translatedStored = stored ? translateValue(stored) : null;
+
+  if (!originals.has(node) || (current !== stored && current !== translatedStored)) {
+    originals.set(node, current);
   }
 
   const original = originals.get(node);
@@ -50,12 +77,18 @@ function translateElementAttributes(element, language) {
       attrOriginals.set(element, stored);
     }
 
-    if (!Object.prototype.hasOwnProperty.call(stored, attribute)) {
-      stored[attribute] = element.getAttribute(attribute);
+    const current = element.getAttribute(attribute);
+    const original = stored[attribute];
+    const translatedOriginal = original ? translateValue(original) : null;
+
+    if (
+      !Object.prototype.hasOwnProperty.call(stored, attribute) ||
+      (current !== original && current !== translatedOriginal)
+    ) {
+      stored[attribute] = current;
     }
 
-    const original = stored[attribute];
-    element.setAttribute(attribute, language === "tl" ? translateValue(original) : original);
+    element.setAttribute(attribute, language === "tl" ? translateValue(stored[attribute]) : stored[attribute]);
   });
 }
 
@@ -98,16 +131,27 @@ export default function AutoTranslateClient() {
   const { language } = useI18n();
 
   useEffect(() => {
+    document.documentElement.lang = language;
     translateTree(document.body, language);
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => translateTree(node, language));
+        if (mutation.type === "childList") {
+          mutation.addedNodes.forEach((node) => translateTree(node, language));
+          if (mutation.target) translateTree(mutation.target, language);
+        } else if (mutation.type === "characterData") {
+          translateTextNode(mutation.target, language);
+        } else if (mutation.type === "attributes") {
+          translateElementAttributes(mutation.target, language);
+        }
       });
     });
 
     observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: TRANSLATABLE_ATTRIBUTES,
       childList: true,
+      characterData: true,
       subtree: true,
     });
 
