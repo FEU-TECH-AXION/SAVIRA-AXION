@@ -423,6 +423,7 @@ function Field({ label, required, children, error, hint }) {
 function StyledInput({ error, multiline, numberOfLines, onFocus, focusLift = 0, ...props }) {
   const inputRef = useRef(null);
   const scrollFocusedInputIntoView = useContext(FormInputFocusContext);
+  const language = useContext(ReportLanguageContext);
 
   return (
     <TextInput
@@ -444,6 +445,7 @@ function StyledInput({ error, multiline, numberOfLines, onFocus, focusLift = 0, 
         scrollFocusedInputIntoView(inputRef.current, focusLift);
       }}
       {...props}
+      placeholder={translateText(language, props.placeholder || "")}
     />
   );
 }

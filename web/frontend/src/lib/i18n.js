@@ -32,6 +32,14 @@ export function translate(language, key) {
   return MESSAGES[lang]?.[key] || MESSAGES.en[key] || key;
 }
 
+export function translateText(language, text, replacements = {}) {
+  const template = translate(language, text);
+  return Object.entries(replacements).reduce(
+    (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
+    template
+  );
+}
+
 const I18nContext = createContext({
   language: "en",
   setLanguage: () => {},
