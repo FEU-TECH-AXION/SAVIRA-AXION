@@ -23,7 +23,9 @@ export function getCurrentLanguage() {
 export function setCurrentLanguage(language) {
   const prefs = readDisplayPrefs();
   const nextLanguage = saveDisplayPrefs({ ...prefs, language: normalizeLanguage(language) }).language;
-  window.dispatchEvent(new CustomEvent("savira:languagechange", { detail: { language: nextLanguage } }));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("savira:languagechange", { detail: { language: nextLanguage } }));
+  }
   return nextLanguage;
 }
 
@@ -54,6 +56,7 @@ export function I18nProvider({ children }) {
       setLanguageState(normalizeLanguage(event.detail?.language || getCurrentLanguage()));
     };
 
+    setLanguageState(getCurrentLanguage());
     window.addEventListener("savira:languagechange", handleLanguageChange);
     window.addEventListener("storage", handleLanguageChange);
     return () => {
