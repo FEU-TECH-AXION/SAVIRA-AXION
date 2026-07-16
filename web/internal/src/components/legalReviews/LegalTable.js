@@ -373,7 +373,7 @@ export default function LegalTable({
 
                     {/* Case ID */}
                     <td className={`${styles.td} ${styles.caseIdTd}`}>
-                      <span className={styles.caseIdText}>{c.id}</span>
+                      <span className={styles.caseIdText}>{c.caseId || c.id}</span>
                     </td>
 
                     {/* Status */}
