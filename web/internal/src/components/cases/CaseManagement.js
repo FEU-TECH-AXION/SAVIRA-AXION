@@ -898,9 +898,9 @@ function AllCasesModal({ open, onClose, cases, onView, onAction }) {
               : filtered.map((c) => (
                 <tr key={c.id}>
                   <td>{c.caseId}</td>
-                  <td>{c.region}</td>
+                  <td className={styles.truncateCell} title={c.region || ""}>{c.region}</td>
                   <td><StatusBadge status={c.status} />{c.pendingApproval && <span style={{ marginLeft: 4 }}><PendingBadge /></span>}</td>
-                  <td>{c.assignedOfficer || "—"}</td>
+                  <td className={styles.truncateCell} title={c.assignedOfficer || "Unassigned"}>{c.assignedOfficer || "—"}</td>
                   <td>
                     <div className={styles.actionBtns}>
                       <button className={styles.tblBtnView} onClick={() => { onView(c); onClose(); }}>View</button>
@@ -1628,7 +1628,7 @@ const stats = useMemo(() => {
                       <td>{c.caseId}</td>
                       <td><StatusBadge status={c.status} /></td>
                       <td><StatusBadge status={c.pendingApproval.proposedStatus} /></td>
-                      <td>{c.pendingApproval.submittedBy}</td>
+                      <td className={styles.truncateCell} title={c.pendingApproval.submittedBy || ""}>{c.pendingApproval.submittedBy}</td>
                       <td>{c.pendingApproval.date}</td>
                       <td>
                         <button className={styles.tblBtnApprove} onClick={() => { setSelected(c); setModal("approval"); }}>Review</button>

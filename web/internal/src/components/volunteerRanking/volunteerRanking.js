@@ -145,7 +145,7 @@ export default function VolunteerRanking() {
                     <tr key={row.application_id} onClick={() => router.push(`/volunteer/view?id=${row.application_id}`)}>
                       <td className={styles.rankCell}>#{row.rank}</td>
                       <td>APP-{String(row.application_id).padStart(4, "0")}</td>
-                      <td>
+                      <td title={[row.name, row.email].filter(Boolean).join(" - ")}>
                         <div className={styles.nameStack}>
                           <strong>{row.name || "—"}</strong>
                           <span>{row.email || "—"}</span>

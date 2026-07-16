@@ -288,21 +288,26 @@
 }
 
 .tableWrap {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .table {
   width: 100%;
+  min-width: 880px;
   border-collapse: collapse;
 }
 
 .table th,
 .table td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid #f3f4f6;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   font-size: 0.86rem;
+  white-space: nowrap;
 }
 
 .table th {
@@ -313,21 +318,29 @@
   text-transform: uppercase;
 }
 
-.table td strong,
-.table td span {
+.truncateText strong,
+.truncateText span {
   display: block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.table td strong {
+.truncateText strong {
   color: #1f2937;
   font-weight: 750;
 }
 
-.table td span {
+.truncateText span {
   margin-top: 0.25rem;
   color: #6b7280;
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.table tbody tr {
+  height: 56px;
 }
 
 .iconBtn {
@@ -471,6 +484,22 @@
   }
 
   .table {
-    min-width: 820px;
+    min-width: 560px;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2),
+  .table th:nth-child(3),
+  .table td:nth-child(3),
+  .table th:nth-child(5),
+  .table td:nth-child(5),
+  .table th:nth-child(6),
+  .table td:nth-child(6) {
+    display: none;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.65rem 0.55rem;
   }
 }

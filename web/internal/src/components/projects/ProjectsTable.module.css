@@ -96,7 +96,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  min-width: 720px;
+  min-width: 820px;
 }
 
 /* ── Header row ── */
@@ -138,9 +138,17 @@
 /* Checkbox column */
 .checkTh,
 .checkTd {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 44px;
   padding-left: 1rem;
   padding-right: 0.5rem;
+}
+
+.checkTh {
+  z-index: 3;
 }
 
 /* Trailing empty column */
@@ -153,6 +161,7 @@
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
   cursor: pointer;
+  height: 56px;
 }
 
 .row:last-child {
@@ -167,14 +176,26 @@
   background: #e1f5f5 !important;
 }
 
+.rowSelected .checkTd {
+  background: #e1f5f5;
+}
+
+.row:hover .checkTd {
+  background: #f0fffe;
+}
+
 /* ── Cells ── */
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .idTd {
+  min-width: 110px;
   white-space: nowrap;
 }
 
@@ -186,24 +207,33 @@
 
 .titleTd {
   min-width: 200px;
+  max-width: 280px;
+  overflow: hidden;
 }
 
 .titleStack {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .titleText {
   font-weight: 600;
   color: #292929;
   font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .taglineText {
   font-size: 0.75rem;
   color: #6b7280;
   font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dateText {
@@ -222,6 +252,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  width: fit-content;
   padding: 0.22rem 0.65rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -349,6 +380,7 @@
 
 /* ── Row action buttons ── */
 .actionsTd {
+  max-width: none;
   width: 80px;
   white-space: nowrap;
 }
@@ -407,4 +439,44 @@
 .taskBtn span {
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .table {
+    min-width: 600px;
+  }
+
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child),
+  .table th:nth-child(7):not(:last-child),
+  .table td:nth-child(7):not(:last-child) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .th,
+  .td {
+    padding: 0.6rem 0.55rem;
+  }
+
+  .titleTd {
+    max-width: 24vw;
+  }
+
+  .rowActions {
+    opacity: 1;
+  }
+
+  .paginationBar {
+    flex-wrap: wrap;
+  }
+
+  .recordCount {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
 }

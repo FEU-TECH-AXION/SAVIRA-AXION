@@ -251,7 +251,7 @@ export default function StaffAvailabilityTable({
                         aria-label={`Select ${person.name}`}
                       />
                     </td>
-                    <td className={`${styles.td} ${styles.nameTd}`}>
+                    <td className={`${styles.td} ${styles.nameTd}`} title={[person.name, person.email].filter(Boolean).join(" - ")}>
                       <div className={styles.personCell}>
                         <div className={styles.avatar}>{initials(person.name)}</div>
                         <div className={styles.nameStack}>
@@ -260,7 +260,7 @@ export default function StaffAvailabilityTable({
                         </div>
                       </div>
                     </td>
-                    <td className={styles.td}>
+                    <td className={`${styles.td} ${styles.textTd}`} title={[person.role || "Staff", person.committee].filter(Boolean).join(" - ")}>
                       <span className={styles.roleText}>{person.role || "Staff"}</span>
                       {person.committee && <span className={styles.committeeText}>{person.committee}</span>}
                     </td>

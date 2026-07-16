@@ -368,11 +368,13 @@
   background: var(--sasha-white);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.88rem;
 }
@@ -392,6 +394,7 @@
 
 .table tbody tr {
   border-bottom: 1px solid var(--sasha-border);
+  height: 56px;
   transition: background 0.12s;
 }
 
@@ -404,9 +407,20 @@
 }
 
 .table tbody td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.65rem 1rem;
   color: var(--sasha-text);
   font-size: 0.84rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .table thead th,
+  .table tbody td {
+    padding: 0.6rem 0.55rem;
+  }
 }
 
 /* ── Status badges ── */

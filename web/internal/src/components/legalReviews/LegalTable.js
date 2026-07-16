@@ -382,13 +382,13 @@ export default function LegalTable({
                     </td>
 
                     {/* Case Type */}
-                    <td className={styles.td}>
-                      {formatCaseTypes(c) || <span className={styles.muted}>Unassigned</span>}
+                    <td className={`${styles.td} ${styles.wideTextTd}`} title={formatCaseTypes(c) || "Unassigned"}>
+                      {formatCaseTypes(c) || <span className={styles.muted}>—</span>}
                     </td>
 
                     {showCaseCategories && (
-                      <td className={styles.td}>
-                        {formatCaseCategories(c) || <span className={styles.muted}>Unassigned</span>}
+                      <td className={`${styles.td} ${styles.wideTextTd}`} title={formatCaseCategories(c) || "Unassigned"}>
+                        {formatCaseCategories(c) || <span className={styles.muted}>—</span>}
                       </td>
                     )}
 
@@ -398,15 +398,15 @@ export default function LegalTable({
                     </td>
 
                     {/* Assigned lawyers */}
-                    <td className={styles.td}>
+                    <td className={`${styles.td} ${styles.textTd}`} title={assignedLawyerNames(c) || "Unassigned"}>
                       {assignedLawyerNames(c) || (
-                        <span className={styles.muted}>Unassigned</span>
+                        <span className={styles.muted}>—</span>
                       )}
                     </td>
 
                     {showParalegal && (
-                      <td className={styles.td}>
-                        {assignedParalegalNames(c) || <span className={styles.muted}>Unassigned</span>}
+                      <td className={`${styles.td} ${styles.textTd}`} title={assignedParalegalNames(c) || "Unassigned"}>
+                        {assignedParalegalNames(c) || <span className={styles.muted}>—</span>}
                       </td>
                     )}
 
@@ -419,14 +419,14 @@ export default function LegalTable({
 
                     {/* Extra: Endorsed To */}
                     {showEndorsedTo && (
-                      <td className={styles.td}>
-                        {c.endorsedTo || <span className={styles.muted}>Unassigned</span>}
+                      <td className={`${styles.td} ${styles.textTd}`} title={c.endorsedTo || "Unassigned"}>
+                        {c.endorsedTo || <span className={styles.muted}>—</span>}
                       </td>
                     )}
 
                     {/* Extra: City */}
                     {showCity && (
-                      <td className={styles.td}>
+                      <td className={`${styles.td} ${styles.narrowTextTd}`} title={c.city || c.region || "Not specified"}>
                         {c.city || c.region || <span className={styles.muted}>Not specified</span>}
                       </td>
                     )}

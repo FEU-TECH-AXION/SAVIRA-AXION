@@ -961,8 +961,8 @@ function ViewAllModal({ open, onClose, users, onEdit, onDelete, onView, defaultA
             ) : (
               filtered.map((u) => (
                 <tr key={u.user_id}>
-                  <td>{u.name}</td>
-                  <td>{u.role}</td>
+                  <td className={styles.truncateCell} title={u.name || ""}>{u.name}</td>
+                  <td className={styles.truncateCell} title={u.role || ""}>{u.role}</td>
                   <td><StatusBadge status={u.status} /></td>
                   <td>
                     <div className={styles.actionBtns}>

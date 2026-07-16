@@ -10,6 +10,9 @@
   border: 1px solid #e5e7eb;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
 }
 
 /* ── Bulk action bar ── */
@@ -72,13 +75,15 @@
   background: #fff7ed;
   border: 1px solid #fed7aa;
   border-radius: 999px;
+  box-sizing: border-box;
   color: #9a3412;
   display: inline-flex;
-  gap: 0.35rem;
-  font-size: 0.74rem;
+  gap: 0.2rem;
+  font-size: 0.66rem;
   font-weight: 800;
   line-height: 1;
-  padding: 0.42rem 0.62rem;
+  max-width: 100%;
+  padding: 0.3rem 0.4rem;
   white-space: nowrap;
 }
 
@@ -86,8 +91,8 @@
   background: #9a3412;
   border-radius: 999px;
   color: #ffffff;
-  font-size: 0.68rem;
-  padding: 0.18rem 0.38rem;
+  font-size: 0.64rem;
+  padding: 0.14rem 0.32rem;
 }
 
 .duplicateCheckDot {
@@ -129,6 +134,7 @@
 
 /* ── Scrollable table area ── */
 .tableScroll {
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -138,7 +144,149 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  min-width: 700px;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.hasCategory,
+.hasCity {
+  min-width: 1220px;
+}
+
+.hasCategory.hasCity {
+  min-width: 1360px;
+}
+
+.selectCol {
+  width: 3%;
+}
+
+.caseIdCol {
+  width: 12%;
+}
+
+.statusCol {
+  width: 15.5%;
+}
+
+.duplicateCol {
+  width: 14%;
+}
+
+.caseTypeCol {
+  width: 10%;
+}
+
+.approvalCol {
+  width: 11%;
+}
+
+.officerCol {
+  width: 11%;
+}
+
+.dateCol {
+  width: 16%;
+}
+
+.categoryCol {
+  width: 0;
+}
+
+.cityCol {
+  width: 0;
+}
+
+.actionCol {
+  width: 7.5%;
+}
+
+.hasCategory .caseIdCol,
+.hasCity .caseIdCol {
+  width: 10.5%;
+}
+
+.hasCategory .statusCol,
+.hasCity .statusCol {
+  width: 14%;
+}
+
+.hasCategory .duplicateCol,
+.hasCity .duplicateCol {
+  width: 12.5%;
+}
+
+.hasCategory .caseTypeCol,
+.hasCity .caseTypeCol {
+  width: 8.5%;
+}
+
+.hasCategory .approvalCol,
+.hasCity .approvalCol {
+  width: 10%;
+}
+
+.hasCategory .officerCol,
+.hasCity .officerCol {
+  width: 9%;
+}
+
+.hasCategory .dateCol,
+.hasCity .dateCol {
+  width: 13%;
+}
+
+.hasCategory .categoryCol {
+  width: 11.5%;
+}
+
+.hasCity .cityCol {
+  width: 11.5%;
+}
+
+.hasCategory .actionCol,
+.hasCity .actionCol {
+  width: 8%;
+}
+
+.hasCategory.hasCity .caseIdCol {
+  width: 9.5%;
+}
+
+.hasCategory.hasCity .statusCol {
+  width: 14%;
+}
+
+.hasCategory.hasCity .duplicateCol {
+  width: 9.5%;
+}
+
+.hasCategory.hasCity .caseTypeCol {
+  width: 7.5%;
+}
+
+.hasCategory.hasCity .approvalCol {
+  width: 10%;
+}
+
+.hasCategory.hasCity .officerCol {
+  width: 8.5%;
+}
+
+.hasCategory.hasCity .categoryCol {
+  width: 10.5%;
+}
+
+.hasCategory.hasCity .cityCol {
+  width: 7%;
+}
+
+.hasCategory.hasCity .dateCol {
+  width: 12%;
+}
+
+.hasCategory.hasCity .actionCol {
+  width: 8.5%;
 }
 
 /* ── Header row ── */
@@ -155,6 +303,20 @@
   color: #374151;
   white-space: nowrap;
   user-select: none;
+}
+
+.hasCategory .th,
+.hasCity .th {
+  overflow: hidden;
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+  text-overflow: ellipsis;
+}
+
+.hasCategory.hasCity .th {
+  font-size: 0.8rem;
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
 }
 
 .sortableTh {
@@ -180,9 +342,9 @@
 /* Checkbox column */
 .checkTh,
 .checkTd {
-  width: 44px;
-  padding-left: 1rem;
-  padding-right: 0.5rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  text-align: center;
 }
 
 /* Columns toggle column */
@@ -197,6 +359,7 @@
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
   cursor: pointer;
+  height: 56px;
 }
 
 .row:last-child {
@@ -213,13 +376,41 @@
 
 /* ── Cells ── */
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.textTd {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wideTextTd {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.narrowTextTd {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.duplicateTd {
+  overflow: hidden;
 }
 
 .actionsTd {
-  text-align: right;
+  max-width: none;
+  padding-left: 0.45rem;
+  padding-right: 0.35rem;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -227,7 +418,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid #d1d5db;
   background: #ffffff;
@@ -293,9 +484,10 @@
 .statusBadge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  width: fit-content;
+  padding: 4px 8px;
   border-radius: 999px;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -444,6 +636,61 @@
 
   .viewBtnLabel {
     display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .table {
+    min-width: 520px;
+  }
+
+  .table.hasCategory,
+  .table.hasCity,
+  .table.hasCategory.hasCity {
+    min-width: 520px;
+  }
+
+  .table th:nth-child(4):not(:last-child),
+  .table td:nth-child(4):not(:last-child),
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child),
+  .table th:nth-child(7):not(:last-child),
+  .table td:nth-child(7):not(:last-child),
+  .table th:nth-child(8):not(:last-child),
+  .table td:nth-child(8):not(:last-child),
+  .table th:nth-child(9):not(:last-child),
+  .table td:nth-child(9):not(:last-child),
+  .table th:nth-child(10):not(:last-child),
+  .table td:nth-child(10):not(:last-child) {
+    display: none;
+  }
+
+  .duplicateCol,
+  .caseTypeCol,
+  .approvalCol,
+  .officerCol,
+  .dateCol,
+  .categoryCol,
+  .cityCol {
+    display: none;
+  }
+
+  .table .selectCol {
+    width: 9%;
+  }
+
+  .table .caseIdCol {
+    width: 27%;
+  }
+
+  .table .statusCol {
+    width: 49%;
+  }
+
+  .table .actionCol {
+    width: 15%;
   }
 }
 

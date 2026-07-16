@@ -246,8 +246,8 @@ useEffect(() => {
                 <td className={styles.colAppId}>
                   <span className={styles.appIdBadge}>{interview.appId}</span>
                 </td>
-                <td className={styles.colInterviewee}>{interview.intervieweeName}</td>
-                <td className={styles.colType}>{interview.interviewType || "Initial"}</td>
+                <td className={styles.colInterviewee} title={interview.intervieweeName || ""}>{interview.intervieweeName}</td>
+                <td className={styles.colType} title={interview.interviewType || "Initial"}>{interview.interviewType || "Initial"}</td>
                 <td className={styles.colDateTime}>
                   {interview.scheduledDate && interview.scheduledTime
                     ? `${new Date(interview.scheduledDate).toLocaleDateString()} ${interview.scheduledTime}`

@@ -1155,9 +1155,9 @@ function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, f
               : list.map((c) => (
                 <tr key={c.id}>
                   <td>{c.id}</td>
-                  <td>{c.region}</td>
+                  <td className={styles.truncateCell} title={c.region || ""}>{c.region}</td>
                   <td><StatusBadge status={c.status} />{c.pendingApproval && <span style={{ marginLeft: 4 }}><PendingBadge /></span>}</td>
-                  <td>{assignedNames(c, "lawyer")}</td>
+                  <td className={styles.truncateCell} title={assignedNames(c, "lawyer") || "Unassigned"}>{assignedNames(c, "lawyer") || "—"}</td>
                   <td><button className={styles.tblBtnEdit} onClick={() => onAction(c)}>{actionLabel}</button></td>
                 </tr>
               ))
@@ -1859,7 +1859,7 @@ export default function LegalReviewManagement() {
                       <td>{c.id}</td>
                       <td><StatusBadge status={c.status} /></td>
                       <td><StatusBadge status={c.pendingApproval.proposedStatus} /></td>
-                      <td>{c.pendingApproval.submittedBy}</td>
+                      <td className={styles.truncateCell} title={c.pendingApproval.submittedBy || ""}>{c.pendingApproval.submittedBy}</td>
                       <td>{c.pendingApproval.date}</td>
                       <td><button className={styles.tblBtnApprove} onClick={() => { setSelectedCase(c); setModal("approval"); }}>Review</button></td>
                     </tr>

@@ -7,8 +7,10 @@
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  -webkit-overflow-scrolling: touch;
 }
 
 .statusGroup {
@@ -53,6 +55,7 @@
 
 .interviewTable {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
@@ -73,14 +76,19 @@
 }
 
 .interviewTable td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.9rem 1.25rem;
   border-bottom: 1px solid #e5e7eb;
   color: #1f2937;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .tableRow {
   transition: background-color 0.12s;
   cursor: pointer;
+  height: 56px;
 }
 
 .tableRow:hover {
@@ -94,32 +102,64 @@
 
 /* ── Column Widths ── */
 .colCheckbox {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 40px;
   text-align: center;
 }
 
 .colCaseId {
-  width: 110px;
+  position: sticky;
+  left: 40px;
+  z-index: 2;
+  background: #ffffff;
+  width: 130px;
+}
+
+thead .colCheckbox,
+thead .colCaseId {
+  z-index: 3;
+}
+
+.tableRowSelected .colCheckbox,
+.tableRowSelected .colCaseId {
+  background-color: rgba(3, 127, 129, 0.1);
+}
+
+.tableRow:hover .colCheckbox,
+.tableRow:hover .colCaseId {
+  background-color: #f0fffe;
 }
 
 .colInterviewee {
-  width: 150px;
+  width: 220px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .colType {
   width: 120px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .colDateTime {
-  width: 160px;
+  width: 170px;
 }
 
 .colStatus {
-  width: 120px;
+  width: 150px;
 }
 
 .caseIdBadge {
   display: inline-block;
+  width: fit-content;
   background: #e1f5f5;
   color: #037F81;
   padding: 0.3rem 0.6rem;
@@ -132,6 +172,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  width: fit-content;
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
   font-weight: 600;
@@ -286,4 +327,25 @@
   font-size: 0.95rem;
   background: #ffffff;
   border-radius: 12px;
+}
+
+@media (max-width: 640px) {
+  .interviewTable {
+    min-width: 520px;
+  }
+
+  .colType,
+  .colDateTime {
+    display: none;
+  }
+
+  .interviewTable th,
+  .interviewTable td {
+    padding: 0.65rem 0.55rem;
+  }
+
+  .bulkActionsBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

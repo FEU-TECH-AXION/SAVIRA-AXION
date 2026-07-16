@@ -305,7 +305,7 @@ export default function ProjectsTable({
                       <span className={styles.idText}>#{p.id}</span>
                     </td>
 
-                    <td className={`${styles.td} ${styles.titleTd}`}>
+                    <td className={`${styles.td} ${styles.titleTd}`} title={[p.title, p.tagline].filter(Boolean).join(" - ")}>
                       <div className={styles.titleStack}>
                         <span className={styles.titleText}>{p.title}</span>
                         {p.tagline && (

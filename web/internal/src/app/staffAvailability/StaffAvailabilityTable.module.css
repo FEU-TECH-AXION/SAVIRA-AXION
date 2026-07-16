@@ -13,7 +13,7 @@
 
 .table {
   width: 100%;
-  min-width: 980px;
+  min-width: 880px;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -124,9 +124,17 @@
 
 .checkTh,
 .checkTd {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 44px;
   padding-right: 0.5rem;
   padding-left: 1rem;
+}
+
+.checkTh {
+  z-index: 3;
 }
 
 .checkbox {
@@ -140,6 +148,7 @@
   position: relative;
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
+  height: 56px;
 }
 
 .row:last-child {
@@ -154,14 +163,33 @@
   background: #e1f5f5 !important;
 }
 
+.rowSelected .checkTd {
+  background: #e1f5f5;
+}
+
+.row:hover .checkTd {
+  background: #f0fffe;
+}
+
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .nameTd {
   min-width: 230px;
+  max-width: 280px;
+  overflow: hidden;
+}
+
+.textTd {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .personCell {
@@ -194,12 +222,18 @@
   color: #292929;
   font-size: 0.875rem;
   font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .emailText,
 .committeeText {
   color: #6b7280;
   font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roleText {
@@ -207,6 +241,9 @@
   color: #374151;
   font-size: 0.84rem;
   font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workloadGrid {
@@ -419,7 +456,54 @@
   white-space: nowrap;
 }
 
+@media (max-width: 900px) {
+  .table {
+    min-width: 620px;
+  }
+
+  .table th:nth-child(3):not(:last-child),
+  .table td:nth-child(3):not(:last-child),
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child) {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
+  .th,
+  .td {
+    padding: 0.6rem 0.5rem;
+  }
+
+  .nameTd {
+    max-width: 24vw;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.68rem;
+  }
+
+  .personCell {
+    gap: 0.45rem;
+  }
+
+  .workloadGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workloadGrid span {
+    padding: 0.35rem;
+  }
+
+  .workloadGrid small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .bulkBar {
     align-items: stretch;
     flex-direction: column;

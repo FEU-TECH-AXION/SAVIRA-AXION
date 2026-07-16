@@ -339,7 +339,7 @@ export default function ApplicationsTable({
                       <span className={styles.appIdText}>{a.id}</span>
                     </td>
 
-                    <td className={`${styles.td} ${styles.nameTd}`}>
+                    <td className={`${styles.td} ${styles.nameTd}`} title={[a.name, a.email].filter(Boolean).join(" - ")}>
                       <div className={styles.nameStack}>
                         <span className={styles.nameText}>{a.name}</span>
                         <span className={styles.emailText}>{a.email}</span>
@@ -350,7 +350,7 @@ export default function ApplicationsTable({
                       <StatusBadge status={a.status} />
                     </td>
 
-                    <td className={styles.td}>
+                    <td className={`${styles.td} ${styles.wideTextTd}`} title={formatAssignees(a)}>
                       <span className={a.assignedEvaluators?.length ? styles.orgText : styles.muted}>
                         {formatAssignees(a)}
                       </span>
@@ -367,11 +367,14 @@ export default function ApplicationsTable({
                       <span className={styles.dateText}>{formatDate(a.dateApplied)}</span>
                     </td>
 
-                    {(extraColumns || []).map(key => (
-                      <td key={key} className={styles.td}>
-                        {EXTRA_COLUMN_DEFS[key]?.render(a)}
-                      </td>
-                    ))}
+                    {(extraColumns || []).map(key => {
+                      const value = EXTRA_COLUMN_DEFS[key]?.render(a);
+                      return (
+                        <td key={key} className={`${styles.td} ${styles.textTd}`} title={value}>
+                          {value}
+                        </td>
+                      );
+                    })}
 
                     <td
                       className={`${styles.td} ${styles.actionsTd}`}

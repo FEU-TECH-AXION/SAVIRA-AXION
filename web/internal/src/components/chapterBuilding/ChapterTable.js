@@ -199,26 +199,26 @@ export default function ChapterTable({
                         aria-label={`Select ${chapter.chapterName}`}
                       />
                     </td>
-                    <td className={`${styles.td} ${styles.nameTd}`}>
+                    <td className={`${styles.td} ${styles.nameTd}`} title={`${chapter.chapterName || "Untitled chapter"} - ${chapter.id}`}>
                       <div className={styles.nameStack}>
                         <span className={styles.nameText}>{chapter.chapterName || "Untitled chapter"}</span>
                         <span className={styles.emailText}>{chapter.id}</span>
                       </div>
                     </td>
-                    <td className={styles.td}>{chapter.formationLevel}</td>
+                    <td className={`${styles.td} ${styles.textTd}`} title={chapter.formationLevel || ""}>{chapter.formationLevel}</td>
                     <td className={styles.td}><StatusBadge status={chapter.status} /></td>
                     <td className={styles.td}>{chapter.memberCount}/40</td>
                     <td className={styles.td}>{chapter.cocCount} COC / {chapter.ogCount} OG</td>
                     <td className={styles.td}>{chapter.officersFilled}/6</td>
                     <td className={styles.td}>{formatDate(chapter.targetLaunchDate)}</td>
                     {extraColumns.includes("location") && (
-                      <td className={styles.td}>{chapter.location || "No location set"}</td>
+                      <td className={`${styles.td} ${styles.textTd}`} title={chapter.location || "No location set"}>{chapter.location || "No location set"}</td>
                     )}
                     {extraColumns.includes("contactPerson") && (
-                      <td className={styles.td}>{chapter.contactPerson || "No contact assigned"}</td>
+                      <td className={`${styles.td} ${styles.textTd}`} title={chapter.contactPerson || "No contact assigned"}>{chapter.contactPerson || "No contact assigned"}</td>
                     )}
                     {extraColumns.includes("mentor") && (
-                      <td className={styles.td}>{chapter.higherStructureRepresentative || "No SASHA guide assigned"}</td>
+                      <td className={`${styles.td} ${styles.textTd}`} title={chapter.higherStructureRepresentative || "No SASHA guide assigned"}>{chapter.higherStructureRepresentative || "No SASHA guide assigned"}</td>
                     )}
                   </tr>
                 );

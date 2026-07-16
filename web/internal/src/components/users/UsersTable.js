@@ -255,7 +255,7 @@ export default function UsersTable({
                     </td>
 
                     {/* Name */}
-                    <td className={styles.td}>{u.name}</td>
+                    <td className={`${styles.td} ${styles.textTd}`} title={u.name || ""}>{u.name}</td>
 
                     {/* Status */}
                     <td className={styles.td}>
@@ -263,11 +263,11 @@ export default function UsersTable({
                     </td>
 
                     {/* Role */}
-                    <td className={styles.td}>{u.role}</td>
+                    <td className={`${styles.td} ${styles.narrowTextTd}`} title={u.role || ""}>{u.role}</td>
 
                     {/* Committee — only if showCommittee */}
                     {showCommittee && (
-                      <td className={styles.td}>
+                      <td className={`${styles.td} ${styles.textTd}`} title={u.role === "Staff" ? (u.committee ?? u.committee_name ?? "Not specified") : "Not specified"}>
                         {u.role === "Staff"
                           ? (u.committee ?? u.committee_name ?? <span className={styles.muted}>—</span>)
                           : <span className={styles.muted}>—</span>

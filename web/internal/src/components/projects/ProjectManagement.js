@@ -163,7 +163,7 @@ function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defau
               filtered.map((p) => (
                 <tr key={p.id}>
                   <td>#{p.id}</td>
-                  <td>{p.title}</td>
+                  <td className={styles.truncateCell} title={p.title || ""}>{p.title}</td>
                   <td>{getProjectDisplayStatus(p)}</td>
                   <td>
                     <div className={styles.actionBtns}>

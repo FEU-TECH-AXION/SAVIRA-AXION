@@ -106,7 +106,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  min-width: 720px;
+  min-width: 940px;
 }
 
 /* ── Header row ── */
@@ -148,9 +148,17 @@
 /* Checkbox column */
 .checkTh,
 .checkTd {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 44px;
   padding-left: 1rem;
   padding-right: 0.5rem;
+}
+
+.checkTh {
+  z-index: 3;
 }
 
 /* Columns toggle column */
@@ -165,6 +173,7 @@
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
   cursor: pointer;
+  height: 56px;
 }
 
 .row:last-child {
@@ -179,11 +188,34 @@
   background: #e1f5f5 !important;
 }
 
+.rowSelected .checkTd {
+  background: #e1f5f5;
+}
+
+.row:hover .checkTd {
+  background: #f0fffe;
+}
+
 /* ── Cells ── */
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.textTd {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wideTextTd {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actionsTd {
@@ -219,6 +251,7 @@
 }
 
 .appIdTd {
+  min-width: 120px;
   white-space: nowrap;
 }
 
@@ -230,28 +263,41 @@
 
 .nameTd {
   min-width: 160px;
+  max-width: 240px;
+  overflow: hidden;
 }
 
 .nameStack {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
 }
 
 .nameText {
   font-weight: 600;
   color: #292929;
   font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .emailText {
   font-size: 0.75rem;
   color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .orgText {
   font-size: 0.82rem;
   color: #374151;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contactText {
@@ -274,6 +320,7 @@
 .statusBadge {
   display: inline-flex;
   align-items: center;
+  width: fit-content;
   padding: 0.22rem 0.65rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -418,5 +465,49 @@
 
   .viewBtnLabel {
     display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .table {
+    min-width: 640px;
+  }
+
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child),
+  .table th:nth-child(7):not(:last-child),
+  .table td:nth-child(7):not(:last-child),
+  .table th:nth-child(8):not(:last-child),
+  .table td:nth-child(8):not(:last-child),
+  .table th:nth-child(9):not(:last-child),
+  .table td:nth-child(9):not(:last-child) {
+    display: none;
+  }
+
+  .appIdTd {
+    min-width: 110px;
+  }
+}
+
+@media (max-width: 640px) {
+  .th,
+  .td {
+    padding: 0.6rem 0.55rem;
+  }
+
+  .nameTd {
+    max-width: 24vw;
+  }
+
+  .paginationBar {
+    flex-wrap: wrap;
+  }
+
+  .recordCount {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
   }
 }
