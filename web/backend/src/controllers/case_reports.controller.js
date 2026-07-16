@@ -6,6 +6,7 @@ const { generateCityHeatmapData, generateRegionHeatmapData, generateCouncilHeatm
 const { randomUUID } = require('crypto');
 const DuplicateCases = require('../services/duplicateCases.service');
 const supabase = require('../config/supabase');
+const { exposeCasePublicIds, getPublicIdByCaseReportId } = require('../utils/casePublicIds');
 const {
   fireAndForget,
   notifyCaseOwner,
@@ -53,7 +54,7 @@ function formatErrorMessage(error, fallback = 'Failed to submit report. Please t
 const getItems = async (req, res) => {
     try {
         const data = await CaseReports.getAll()
-        res.json(data)
+        res.json(exposeCasePublicIds(data))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -62,7 +63,7 @@ const getItems = async (req, res) => {
 const createItem = async (req, res) => {
   try {
     const item = await CaseReports.create(req.body)
-    res.status(201).json(item)
+    res.status(201).json(exposeCasePublicIds(item))
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -74,7 +75,7 @@ async function getCaseById(req, res) {
     const { id } = req.params;
     const report = await fetchCaseById(id);
     if (!report) return res.status(404).json({ error: 'Case not found' });
-    return res.json({ data: report });
+    return res.json({ data: exposeCasePublicIds(report) });
   } catch (err) {
     console.error('[getCaseById]', err);
     return res.status(500).json({
@@ -194,8 +195,8 @@ async function submitReport(req, res) {
         body: 'Your report has been submitted and is now for verification.',
         data: {
           type: 'case_report',
-          case_report_id: newReport.case_report_id,
-          link: `/cases/view?id=${newReport.case_report_id}`,
+          case_report_id: newReport.public_id,
+          link: `/report/view?caseId=${newReport.public_id}`,
           priority: 'normal',
         },
       }),
@@ -208,8 +209,8 @@ async function submitReport(req, res) {
         body: `A new report #${newReport.case_report_id} is ready for review.`,
         data: {
           type: 'case_report',
-          case_report_id: newReport.case_report_id,
-          link: `/cases/view?id=${newReport.case_report_id}`,
+          case_report_id: newReport.public_id,
+          link: `/cases/view?caseId=${newReport.public_id}`,
           priority: 'high',
         },
       }),
@@ -217,7 +218,7 @@ async function submitReport(req, res) {
     );
 
     return res.status(201).json({
-      data: newReport,
+      data: exposeCasePublicIds(newReport),
       files: uploadedFiles,
       ...(fileUploadWarning ? { warning: fileUploadWarning } : {}),
       ...(failedFiles.length > 0 ? { failedFiles } : {}),
@@ -235,7 +236,7 @@ async function getUserReports(req, res) {
 
     const complainantId = await getComplainantId(userId);
     const reports = await getReportsByUserId(complainantId);
-    return res.json({ data: reports });
+    return res.json({ data: exposeCasePublicIds(reports) });
   } catch (err) {
     console.error('[getUserReports]', err.message);
     return res.status(500).json({ error: 'Failed to fetch reports.' });
@@ -247,7 +248,7 @@ async function getCaseSummaryById(req, res) {
     const { id } = req.params;
     const report = await fetchCaseSummaryById(id);
     if (!report) return res.status(404).json({ error: 'Case not found' });
-    return res.json({ data: report });
+    return res.json({ data: exposeCasePublicIds(report) });
   } catch (err) {
     console.error('[getCaseSummaryById]', err);
     return res.status(500).json({
@@ -366,7 +367,7 @@ async function getAllCases(req, res) {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
-    return res.json(reports);
+    return res.json(exposeCasePublicIds(reports));
   } catch (err) {
     console.error('[getAllCases] Error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch cases.', details: err.message });
@@ -415,7 +416,14 @@ async function getNLPAnalysis(req, res) {
       (Array.isArray(completedAnalysis?.recommended_steps) && completedAnalysis.recommended_steps.length > 0)
     );
 
-    if (hasCompletedPayload) return res.json({ data: completedAnalysis });
+    if (hasCompletedPayload) {
+      return res.json({
+        data: {
+          ...completedAnalysis,
+          case_report_id: req.casePublicId || completedAnalysis.case_report_id,
+        },
+      });
+    }
 
     const { data: latestAnalysis, error: latestError } = await supabase
       .from('case_report_analysis')
@@ -551,7 +559,7 @@ const updateItem = async (req, res) => {
   try {
     const { id } = req.params
     const data = await CaseReports.update(id, req.body)
-    res.json({ data })
+    res.json({ data: exposeCasePublicIds(data) })
   } catch (err) {
     // 400 for "No valid fields" since it's a client error,
     // 500 for everything else (DB failures)
@@ -655,6 +663,7 @@ const withdrawCase = async (req, res) => {
 
     const result = Array.isArray(data) ? data[0] : data;
     const pending = result?.action_type === 'REQUIRE_APPROVAL';
+    const publicId = req.casePublicId || await getPublicIdByCaseReportId(id);
     fireAndForget(
       notifyRoleUsers(['Admin'], {
         title: pending ? 'Withdrawal approval needed' : 'Case withdrawn',
@@ -663,8 +672,8 @@ const withdrawCase = async (req, res) => {
           : `Report #${id} was withdrawn by the complainant.`,
         data: {
           type: 'case_withdrawal',
-          case_report_id: id,
-          link: `/cases/view?id=${id}`,
+          case_report_id: publicId,
+          link: `/cases/view?caseId=${publicId}`,
           priority: pending ? 'high' : 'normal',
         },
       }),
@@ -678,8 +687,8 @@ const withdrawCase = async (req, res) => {
           body: 'Your report has been withdrawn.',
           data: {
             type: 'case_report',
-            case_report_id: id,
-            link: `/cases/view?id=${id}`,
+            case_report_id: publicId,
+            link: `/report/view?caseId=${publicId}`,
             priority: 'normal',
           },
         }),
@@ -692,7 +701,7 @@ const withdrawCase = async (req, res) => {
         ? 'Withdrawal request submitted for approval.'
         : 'Case withdrawn successfully.',
       action_type: result?.action_type,
-      data: result?.case_report || result,
+      data: exposeCasePublicIds(result?.case_report || result),
       withdrawal_request: result?.withdrawal_request || null,
     });
   } catch (err) {

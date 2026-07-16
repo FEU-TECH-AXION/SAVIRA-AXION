@@ -333,9 +333,7 @@ function isValidTimeInput(value) {
 function getReportId(report, paramId, caseId) {
   if (paramId) return paramId;
   const raw = report?.case_report_id || report?.id || caseId;
-  const createdAt = report?.created_at || report?.incident_date;
-  const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
-  return `${year}-${String(raw).padStart(3, '0')}`;
+  return raw ? `CASE-${String(raw).slice(0, 8).toUpperCase()}` : 'Case Report';
 }
 
 function getNameFromUser(user, fallback) {

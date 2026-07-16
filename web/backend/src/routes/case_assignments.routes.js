@@ -4,18 +4,19 @@ const { createAssignment, getCaseAssignments, getOfficerAssignments, bulkAssignO
 const { verifyToken } = require('../middleware/auth.middleware');
 const authorize = require('../middleware/authorize.middleware');
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware');
+const { resolveCaseBody, resolveCaseBodyArray, resolveCaseParam } = require('../utils/casePublicIds');
 
 // POST — assign a case to an officer (admin only)
-router.post('/', verifyToken, authorize('Admin'), createAssignment);
+router.post('/', verifyToken, authorize('Admin'), resolveCaseBody('case_report_id'), createAssignment);
 
 // POST — bulk assign cases to officers
-router.post('/bulk-assign', verifyToken, authorize('Admin'), bulkAssignOfficers);
-router.delete('/:caseReportId/:caseOfficerId', verifyToken, authorize('Admin'), removeAssignment);
+router.post('/bulk-assign', verifyToken, authorize('Admin'), resolveCaseBodyArray('case_report_ids'), bulkAssignOfficers);
+router.delete('/:caseReportId/:caseOfficerId', verifyToken, authorize('Admin'), resolveCaseParam('caseReportId'), removeAssignment);
 
 // GET — get all cases assigned to a specific officer
 router.get('/officer/:officerId', verifyToken, authorize('Admin', 'Case Officer'), getOfficerAssignments);
 
 // GET — get assignment history for a specific case
-router.get('/:caseId', verifyToken, authorize('Admin', 'Case Officer', 'Legal Personnel'), requireCaseReportAccess, getCaseAssignments);
+router.get('/:caseId', verifyToken, resolveCaseParam('caseId'), authorize('Admin', 'Case Officer', 'Legal Personnel'), requireCaseReportAccess, getCaseAssignments);
 
 module.exports = router;

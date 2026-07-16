@@ -1837,7 +1837,7 @@ function ReportStatusCard({ reportData, reportNumber, onView }) {
     statusName        = "For Verification",
   } = reportData ?? {};
 
-  const displayId      = caseId ?? `CASE-${String(id).padStart(5, "0")}`;
+  const displayId      = caseId ?? (id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : "CASE");
   const personnelLabel = assignedPersonnel ?? "Unassigned";
   const updatedAgo     = timeAgo(lastUpdated);
 
@@ -2362,6 +2362,7 @@ export default function CreateReport({
                       reportNumber={i + 1}
                       reportData={{
                         id:                report.case_report_id,
+                        caseId:            report.case_code || `CASE-${String(report.case_report_id).slice(0, 8).toUpperCase()}`,
                         dateSubmitted:     report.created_at
                           ? new Date(report.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
                           : '—',

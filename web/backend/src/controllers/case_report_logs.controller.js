@@ -1,5 +1,6 @@
 const CaseReportLogs = require('../models/case_report_logs.model')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
+const { getPublicIdByCaseReportId } = require('../utils/casePublicIds')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
 const PUBLIC_MESSAGE_MAX_LENGTH = 280
@@ -42,7 +43,9 @@ const getItems = async (req, res) => {
 const getItemsByCase = async (req, res) => {
     try {
         const data = await CaseReportLogs.getByCaseReport(req.params.caseReportId)
-        res.json({ data })
+        res.json({
+            data: data.map((item) => ({ ...item, case_report_id: req.casePublicId || item.case_report_id })),
+        })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -58,7 +61,10 @@ const createItem = async (req, res) => {
         const item = await CaseReportLogs.create(payload)
 
         // 201 instead of 200 to explicitly signal a resource was created
-        res.status(201).json(item)
+        res.status(201).json({
+            ...item,
+            case_report_id: await getPublicIdByCaseReportId(item.case_report_id),
+        })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -90,7 +96,9 @@ const updateItem = async (req, res) => {
         if (error) return res.status(400).json({ error })
 
         const item = await CaseReportLogs.update(req.params.id, payload)
-        res.json({ data: item })
+        res.json({
+            data: { ...item, case_report_id: await getPublicIdByCaseReportId(item.case_report_id) },
+        })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }

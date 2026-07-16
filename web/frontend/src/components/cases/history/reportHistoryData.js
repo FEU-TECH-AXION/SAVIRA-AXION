@@ -67,12 +67,11 @@ function getNestedOfficerName(assignments = []) {
 export function normalizeReport(report) {
   const createdAt = report.created_at || report.dateSubmitted || null;
   const id = report.case_report_id || report.id;
-  const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
 
   return {
     reportData: report,
     id,
-    caseId: report.caseId || `${year}-${String(id).padStart(3, "0")}`,
+    caseId: report.caseId || report.case_code || (id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : "CASE"),
     statusName: getStatusName(report),
     assignedPersonnel: getAssignedPersonnel(report),
     createdAt,

@@ -2719,9 +2719,7 @@ function formatSubmittedDate(report) {
 function getReportId(report, fallback = 1) {
   const raw = report.case_report_id || report.id;
   if (!raw) return `#${fallback}`;
-  const createdAt = getSubmittedAt(report);
-  const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
-  return `${year}-${String(raw).padStart(3, '0')}`;
+  return `CASE-${String(raw).slice(0, 8).toUpperCase()}`;
 }
 
 function sortReportsBySubmissionOrder(rows) {
@@ -2729,7 +2727,7 @@ function sortReportsBySubmissionOrder(rows) {
     const dateA = getSubmittedAt(a) ? new Date(getSubmittedAt(a)).getTime() : Number.POSITIVE_INFINITY;
     const dateB = getSubmittedAt(b) ? new Date(getSubmittedAt(b)).getTime() : Number.POSITIVE_INFINITY;
     if (dateA !== dateB) return dateA - dateB;
-    return Number(a.case_report_id || a.id || 0) - Number(b.case_report_id || b.id || 0);
+    return String(a.case_report_id || a.id || '').localeCompare(String(b.case_report_id || b.id || ''));
   });
 }
 

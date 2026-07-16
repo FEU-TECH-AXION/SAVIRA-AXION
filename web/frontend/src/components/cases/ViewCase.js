@@ -36,12 +36,14 @@ const STATUS_STEP = {
   13: "Withdrawn",
 };
 
+const formatPublicCaseId = (id, fallback = "CASE") =>
+  id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : fallback;
+
 function mapCaseReportToViewData(data) {
-  const caseYear = new Date(data.created_at).getFullYear();
   return {
     reportData: data,
     id: data.case_report_id,
-    caseId: String(caseYear) + "-" + String(data.case_report_id).padStart(3, "0"),
+    caseId: data.case_code || formatPublicCaseId(data.case_report_id),
     reporterId: data.complainant_user_id,
     region: data.incident_province || data.incident_city || "Not provided",
     status: STATUS_STEP[data.case_status_id] || "For Verification",

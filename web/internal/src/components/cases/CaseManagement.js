@@ -93,6 +93,9 @@ const STATUS_STEP = {
   13: "Withdrawn"
 };
 
+const formatPublicCaseId = (id, fallback = "CASE") =>
+  id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : fallback;
+
 // Which statuses a Case Officer is responsible for initiating
 const CASE_OFFICER_STATUSES = [
   "For Verification",
@@ -1036,7 +1039,6 @@ useEffect(() => {
       setTotalRecords(payload.total || 0);
 
       const mapped = data.map((r) => {
-        const year = new Date(r.created_at).getFullYear();
         const initialHistory = [
           {
             status: STATUS_STEP[r.case_status_id] || "For Verification",
@@ -1051,7 +1053,7 @@ useEffect(() => {
 
         return mergeStatusHistory({
           id:              r.case_report_id,
-          caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
+          caseId:          r.case_code || formatPublicCaseId(r.case_report_id),
           reporterId:      String(r.complainant_id),
           region:          r.incident_province || r.incident_city || "—",
           incident_city:   r.incident_city || "",

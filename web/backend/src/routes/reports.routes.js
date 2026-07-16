@@ -106,6 +106,7 @@ router.get("/aggregate", async (req, res) => {
       .from("case_reports")
       .select(`
         case_report_id,
+        public_id,
         incident_location_type,
         incident_city,
         date_filed:created_at,
@@ -120,7 +121,7 @@ router.get("/aggregate", async (req, res) => {
 
     // Normalize into the flat shape buildCaseSummary() expects
     const cases = (casesRaw || []).map((r) => ({
-      id:            r.case_report_id,
+      id:            r.public_id,
       status:        r.case_statuses?.case_status_name  || null,
       case_type:     r.case_types?.case_type_name       || null,
       // Frontend reads c.region || c.location_type — supply both
@@ -236,6 +237,7 @@ router.get("/cases", async (req, res) => {
       .from("case_reports")
       .select(`
         case_report_id,
+        public_id,
         incident_location_type,
         date_filed:created_at,
         date_resolved,
@@ -248,7 +250,7 @@ router.get("/cases", async (req, res) => {
     if (error) throw error;
 
     const normalized = (data || []).map((r) => ({
-      id:            r.case_report_id,
+      id:            r.public_id,
       status:        r.case_statuses?.case_status_name || null,
       case_type:     r.case_types?.case_type_name      || null,
       region:        r.incident_location_type           || null,

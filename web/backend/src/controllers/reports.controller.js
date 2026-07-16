@@ -94,6 +94,7 @@ async function fetchCases(rangeStart) {
     .from("case_reports")   // FIX: correct table name (not "cases")
     .select(`
       case_report_id,
+      public_id,
       incident_location_type,
       created_at,
       date_resolved,
@@ -110,7 +111,7 @@ async function fetchCases(rangeStart) {
 
   // Normalise into the flat shape buildCaseSummary() reads
   return (data || []).map((r) => ({
-    id:            r.case_report_id,
+    id:            r.public_id,
     status:        r.case_statuses?.case_status_name  || null,
     case_type:     r.case_types?.case_type_name       || null,
     // frontend reads c.region || c.location_type — expose both

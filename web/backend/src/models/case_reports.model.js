@@ -24,6 +24,7 @@ const STATUS_ID_BY_NAME = Object.fromEntries(
 
 const CASE_LIST_SELECT = `
   case_report_id,
+  public_id,
   complainant_id,
   incident_description,
   incident_city,
@@ -345,6 +346,7 @@ async function getCaseSummaryById(caseReportId) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       complainant_id,
       name,
       email,
@@ -403,6 +405,7 @@ async function getReportsByUserId(complainantId) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       incident_description,
       incident_city,
       incident_date,
@@ -1020,6 +1023,7 @@ async function getAllReports(options = {}) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       complainant_id,
       incident_description,
       incident_city,
@@ -1210,6 +1214,21 @@ async function getDuplicateMatches(caseIds) {
     console.warn('[getDuplicateMatches] duplicate metadata unavailable:', error.message)
     return {}
   }
+  const matchedIds = [
+    ...new Set((data || [])
+      .flatMap((item) => [item.case_report_id, item.matched_case_report_id])
+      .filter(Boolean)),
+  ]
+  let publicById = {}
+  if (matchedIds.length > 0) {
+    const { data: publicRows, error: publicError } = await supabase
+      .from('case_reports')
+      .select('case_report_id, public_id')
+      .in('case_report_id', matchedIds)
+    if (!publicError) {
+      publicById = Object.fromEntries((publicRows || []).map((row) => [row.case_report_id, row.public_id]))
+    }
+  }
   return (data || [])
     .map((item) => ({
       ...item,
@@ -1218,7 +1237,11 @@ async function getDuplicateMatches(caseIds) {
     .filter((item) => item.similarity_score >= 45)
     .reduce((map, item) => {
       if (!map[item.case_report_id]) map[item.case_report_id] = []
-      map[item.case_report_id].push(item)
+      map[item.case_report_id].push({
+        ...item,
+        case_report_id: publicById[item.case_report_id] || item.case_report_id,
+        matched_case_report_id: publicById[item.matched_case_report_id] || item.matched_case_report_id,
+      })
       return map
     }, {})
 }
@@ -1245,6 +1268,7 @@ async function getHeatmapReports() {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       incident_city,
       case_status_id,
       gender_identity,
@@ -1329,6 +1353,7 @@ async function getReportsByAssignedOfficer(userId, options = {}) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       complainant_id,
       incident_description,
       incident_city,
@@ -1479,6 +1504,7 @@ async function getReportsForLegal(userId, options = {}) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       complainant_id,
       incident_description,
       incident_city,
@@ -1592,6 +1618,7 @@ async function getReportsByAssignedLegal(userId) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       complainant_id,
       incident_description,
       incident_city,

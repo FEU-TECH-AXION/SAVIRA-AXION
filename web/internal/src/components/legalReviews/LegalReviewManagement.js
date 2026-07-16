@@ -1212,7 +1212,6 @@ function mergeStatusHistory(caseData, history = []) {
 }
 
 function mapLegalReportToCase(report) {
-  const year = new Date(report.created_at).getFullYear();
   const status = STATUS_STEP[report.case_status_id] || "Verified - True";
   const defaultHistory = [{
     status,
@@ -1223,7 +1222,7 @@ function mapLegalReportToCase(report) {
 
   return {
     id: report.case_report_id,
-    caseId: `${year}-` + String(report.case_report_id).padStart(3, "0"),
+    caseId: report.case_code || `CASE-${String(report.case_report_id).slice(0, 8).toUpperCase()}`,
     reporterId: String(report.complainant_id),
     region: report.incident_province || report.incident_city || "â€”",
     city: report.incident_city || "â€”",

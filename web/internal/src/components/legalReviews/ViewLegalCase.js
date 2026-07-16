@@ -894,10 +894,9 @@ export default function ViewLegalCase() {
         };
         const statusHistory = data.status_history || [];
         const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
-        const caseYear = new Date(data.created_at).getFullYear();
         const mappedCase = {
           id:                   data.case_report_id,
-          caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
+          caseId:               data.case_code || `CASE-${String(data.case_report_id).slice(0, 8).toUpperCase()}`,
           reporterId:           String(data.complainant_id),
           region:               data.incident_province || data.incident_city || "Not provided",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",

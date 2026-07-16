@@ -1,5 +1,6 @@
 const CaseAssessments = require('../models/case_assessments.model')
 const supabase       = require('../config/supabase')
+const { getPublicIdByCaseReportId } = require('../utils/casePublicIds')
 
 const PRELIMINARY_REFERRAL_BODIES = new Set([
   'DSWD',
@@ -25,7 +26,9 @@ const getItems = async (req, res) => {
 const getItemsByCaseReport = async (req, res) => {
   try {
     const data = await CaseAssessments.getByCaseReport(req.params.caseReportId)
-    res.json({ data })
+    res.json({
+      data: data.map((item) => ({ ...item, case_report_id: req.casePublicId || item.case_report_id })),
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -34,7 +37,10 @@ const getItemsByCaseReport = async (req, res) => {
 const createItem = async (req, res) => {
   try {
     const item = await CaseAssessments.create(req.body)
-    res.status(201).json(item)
+    res.status(201).json({
+      ...item,
+      case_report_id: await getPublicIdByCaseReportId(item.case_report_id),
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -128,7 +134,9 @@ const recordAssessmentAction  = async (req, res) => {
 
     if (error) throw error
 
-    res.json({ data })
+    res.json({
+      data: { ...data, case_report_id: req.casePublicId || data.case_report_id },
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
