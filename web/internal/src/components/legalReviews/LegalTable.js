@@ -159,7 +159,7 @@ function ColumnsBtn() {
  *  totalRecords           — total filtered records count
  *  pageSize               — records per page (e.g. 10)
  *  onPageChange(p)        — callback when page changes
- *  onRowDoubleClick(c)    — callback when a row is double-clicked (opens ViewLegalCase)
+ *  onRowDoubleClick(c)    — callback when a row is clicked (opens ViewLegalCase)
  *  onParalegal(cases[])   — bulk paralegal action for selected cases
  *  onEndorse(cases[])     — bulk endorse action for selected cases
  *  onMonitor(cases[])     — bulk monitor action for selected cases
@@ -352,10 +352,9 @@ export default function LegalTable({
                     key={c.id}
                     className={`${styles.row} ${isSelected ? styles.rowSelected : ""}`}
                     style={{ background: rowBg }}
-                    onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(c)}
                     onClick={(e) => {
-                      // Single click only selects via checkbox; don't navigate
                       if (e.target.type === "checkbox") return;
+                      onRowDoubleClick && onRowDoubleClick(c);
                     }}
                   >
                     {/* Checkbox — stop propagation so click doesn't also navigate */}
@@ -432,8 +431,25 @@ export default function LegalTable({
                       </td>
                     )}
 
-                    {/* Empty column under the columns button */}
-                    <td className={styles.td} />
+                    {/* View action under the columns button */}
+                    <td
+                      className={`${styles.td} ${styles.actionsTd}`}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => onRowDoubleClick && onRowDoubleClick(c)}
+                        aria-label={`View case ${c.id}`}
+                        title="View case"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path d="M1.5 8s2.25-4 6.5-4 6.5 4 6.5 4-2.25 4-6.5 4-6.5-4-6.5-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                          <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
+                        </svg>
+                        <span className={styles.viewBtnLabel}>View</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })

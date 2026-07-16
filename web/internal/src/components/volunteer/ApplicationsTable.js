@@ -210,18 +210,18 @@ export default function ApplicationsTable({
     return d.toLocaleString("en-PH", options).replace(",", "");
   }
 
-  function SortIcon({ field }) {
+  function renderSortIcon(field) {
     if (sortField !== field) return <span className={styles.sortNeutral}>↕</span>;
     return <span className={styles.sortActive}>{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
-  function SortableTh({ field, children }) {
+  function renderSortableTh(field, children) {
     return (
       <th
         className={`${styles.th} ${styles.sortableTh}`}
         onClick={() => onSort && onSort(field)}
       >
-        {children} <SortIcon field={field} />
+        {children} {renderSortIcon(field)}
       </th>
     );
   }
@@ -282,12 +282,12 @@ export default function ApplicationsTable({
                   aria-label="Select all"
                 />
               </th>
-              <SortableTh field="id">Application ID</SortableTh>
-              <SortableTh field="name">Applicant Name</SortableTh>
-              <SortableTh field="status">Status</SortableTh>
+              {renderSortableTh("id", "Application ID")}
+              {renderSortableTh("name", "Applicant Name")}
+              {renderSortableTh("status", "Status")}
               <th className={styles.th}>Assigned Evaluators</th>
               <th className={styles.th}>Gender</th>
-              <SortableTh field="dateApplied">Date Applied</SortableTh>
+              {renderSortableTh("dateApplied", "Date Applied")}
               {(extraColumns || []).map(key => (
                 <th key={key} className={styles.th}>{EXTRA_COLUMN_DEFS[key]?.label}</th>
               ))}
@@ -299,7 +299,7 @@ export default function ApplicationsTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={9} className={styles.emptyState}>
+                <td colSpan={8 + (extraColumns || []).length} className={styles.emptyState}>
                   No applicants found.
                 </td>
               </tr>
@@ -373,7 +373,24 @@ export default function ApplicationsTable({
                       </td>
                     ))}
 
-                    <td className={styles.td} />
+                    <td
+                      className={`${styles.td} ${styles.actionsTd}`}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => onRowClick && onRowClick(a)}
+                        aria-label={`View application ${a.id}`}
+                        title="View application"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path d="M1.5 8s2.25-4 6.5-4 6.5 4 6.5 4-2.25 4-6.5 4-6.5-4-6.5-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                          <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
+                        </svg>
+                        <span className={styles.viewBtnLabel}>View</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })

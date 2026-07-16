@@ -1555,50 +1555,54 @@ export default function ViewCase() {
               <p className={styles.caseSubtitle}>Submitted: {caseData.dateSubmitted}</p>
             </div>
             <div className={styles.headerActions}>
-              <StatusBadge status={caseData.status} />
-              <button
-                type="button"
-                className={styles.statusGuideBtn}
-                onClick={() => setStatusGuideOpen(true)}
-              >
-                <FiHelpCircle />
-                Guide
-              </button>
-              <FollowUpBadge summary={caseData.followUpSummary} />
-              {caseData.possibleDuplicates?.length > 0 && (
+              <div className={styles.headerActionsTop}>
                 <button
                   type="button"
-                  className={styles.duplicateHeaderButton}
-                  onClick={goToDuplicateTab}
+                  className={styles.statusGuideBtn}
+                  onClick={() => setStatusGuideOpen(true)}
                 >
-                  Duplicate Check
-                  <span>{caseData.possibleDuplicates.length}</span>
+                  <FiHelpCircle />
+                  Guide
                 </button>
-              )}
-              {canManageFollowUps &&
-                !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
-                <Tooltip text={
-                    caseData.followUpSummary?.type ===
-                      ("officer_clarification_request") &&
-                    ["open", "responded"].includes(caseData.followUpSummary?.status)
-                      ? "A follow-up is already in progress."
-                      : isStaff
-                        ? "Request additional information from the complainant."
-                        : "Request a correction or provide more case information."
-                }>
+              </div>
+              <div className={styles.headerActionsBottom}>
+                <StatusBadge status={caseData.status} />
+                <FollowUpBadge summary={caseData.followUpSummary} />
+                {caseData.possibleDuplicates?.length > 0 && (
                   <button
-                    className={styles.followUpButton}
-                    disabled={
+                    type="button"
+                    className={styles.duplicateHeaderButton}
+                    onClick={goToDuplicateTab}
+                  >
+                    Duplicate Check
+                    <span>{caseData.possibleDuplicates.length}</span>
+                  </button>
+                )}
+                {canManageFollowUps &&
+                  !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
+                  <Tooltip text={
                       caseData.followUpSummary?.type ===
                         ("officer_clarification_request") &&
                       ["open", "responded"].includes(caseData.followUpSummary?.status)
-                    }
-                    onClick={() => setFollowUpComposerOpen(true)}
-                  >
-                    {isStaff ? "Request Clarification" : "Follow Up"}
-                  </button>
-                </Tooltip>
-              )}
+                        ? "A follow-up is already in progress."
+                        : isStaff
+                          ? "Request additional information from the complainant."
+                          : "Request a correction or provide more case information."
+                  }>
+                    <button
+                      className={styles.followUpButton}
+                      disabled={
+                        caseData.followUpSummary?.type ===
+                          ("officer_clarification_request") &&
+                        ["open", "responded"].includes(caseData.followUpSummary?.status)
+                      }
+                      onClick={() => setFollowUpComposerOpen(true)}
+                    >
+                      {isStaff ? "Request Clarification" : "Follow Up"}
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
         </div>

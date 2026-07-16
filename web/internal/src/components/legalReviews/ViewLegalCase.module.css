@@ -104,6 +104,18 @@
   gap: 0.55rem;
 }
 
+.headerActionsTop,
+.headerActionsBottom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.headerActionsBottom {
+  flex-wrap: wrap;
+}
+
 .legalGuideBtn {
   display: inline-flex;
   align-items: center;

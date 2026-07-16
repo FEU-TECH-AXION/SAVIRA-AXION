@@ -435,8 +435,25 @@ export default function CasesTable({
                       </td>
                     )}
 
-                    {/* Empty column under the columns button */}
-                    <td className={styles.td} />
+                    {/* View action under the columns button */}
+                    <td
+                      className={`${styles.td} ${styles.actionsTd}`}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => onRowClick && onRowClick(c)}
+                        aria-label={`View case ${c.caseId}`}
+                        title="View case"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path d="M1.5 8s2.25-4 6.5-4 6.5 4 6.5 4-2.25 4-6.5 4-6.5-4-6.5-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                          <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
+                        </svg>
+                        <span className={styles.viewBtnLabel}>View</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })

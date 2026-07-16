@@ -1071,15 +1071,19 @@ export default function ViewLegalCase() {
               <p className={styles.caseSubtitle}>Submitted: {caseData.dateSubmitted}</p>
             </div>
             <div className={styles.headerActions}>
-              <StatusBadge status={caseData.status} />
-              <button
-                type="button"
-                className={styles.legalGuideBtn}
-                onClick={() => setLegalGuideOpen(true)}
-              >
-                <FiHelpCircle />
-                Guide
-              </button>
+              <div className={styles.headerActionsTop}>
+                <button
+                  type="button"
+                  className={styles.legalGuideBtn}
+                  onClick={() => setLegalGuideOpen(true)}
+                >
+                  <FiHelpCircle />
+                  Guide
+                </button>
+              </div>
+              <div className={styles.headerActionsBottom}>
+                <StatusBadge status={caseData.status} />
+              </div>
             </div>
           </div>
         </div>
