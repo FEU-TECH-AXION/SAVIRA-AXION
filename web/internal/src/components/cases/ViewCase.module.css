@@ -1331,6 +1331,7 @@
 }
 .toast--success { background: var(--sasha-teal); color: var(--sasha-white); }
 .toast--danger  { background: #dc2626; color: var(--sasha-white); }
+.toast--error   { background: #dc2626; color: var(--sasha-white); }
 
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(10px); }

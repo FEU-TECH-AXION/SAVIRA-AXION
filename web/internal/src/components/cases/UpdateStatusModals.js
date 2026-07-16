@@ -194,6 +194,21 @@ export function getAvailableTransitions(caseData, { isAdmin, isCaseOfficer, isLe
   return TRANSITION_RULES[curr]?.[role] || [];
 }
 
+function getSavedCurrentStatusFormData(caseData, status) {
+  if (!caseData || status !== caseData.status) return null;
+  const history = Array.isArray(caseData.statusHistory) ? caseData.statusHistory : [];
+  return [...history].reverse().find((entry) =>
+    entry.status === status &&
+    entry.formData &&
+    entry.approvalStatus !== "rejected"
+  )?.formData || null;
+}
+
+function hydrateCurrentStatusForm(defaults, caseData, status) {
+  // Same-status submissions are follow-up updates, so reuse the current status fields instead of blanking them.
+  return { ...defaults, ...(getSavedCurrentStatusFormData(caseData, status) || {}) };
+}
+
 // ─── Internal UI Primitives ───────────────────────────────────────────────────
 
 function Modal({ open, onClose, title, children, wide }) {
@@ -272,30 +287,59 @@ function StatusBadge({ status }) {
   );
 }
 
-function StatusChangeShell({ open, onClose, title, caseData, onSubmitForApproval, children, canSubmit = true }) {
+function StatusChangeShell({ open, onClose, title, proposedStatus, caseData, onSubmitForApproval, children, canSubmit = true }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
   if (!caseData) return null;
-  const proposedStatus = title.includes(":") ? title.split(":").pop().trim() : "";
-  const requiresApproval = APPROVAL_REQUIRED_STATUSES.has(proposedStatus);
+  const isStatusTransition = proposedStatus && proposedStatus !== caseData.status;
+  const requiresApproval = isStatusTransition && APPROVAL_REQUIRED_STATUSES.has(proposedStatus);
+  const submitLabel = requiresApproval ? "Submit for Approval" : "Save Status Update";
+  const handlePrimarySubmit = () => {
+    if (isStatusTransition) {
+      setConfirmOpen(true);
+      return;
+    }
+    onSubmitForApproval();
+  };
+
   return (
-    <Modal open={open} onClose={onClose} title={title} wide>
-      <div className={styles.approvalNotice}>
-        <FiClock style={{ flexShrink: 0 }} />
-        <span>
-          {requiresApproval ? (
-            <>This consequential change requires <strong>Admin approval</strong> before taking effect.</>
-          ) : (
-            <>This routine progress update will be <strong>saved immediately</strong> and added to the audit history.</>
-          )}
-        </span>
-      </div>
-      {children}
-      <div className={styles.modalFooter}>
-        <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
-        <button className={styles.btnPrimary} onClick={onSubmitForApproval} disabled={!canSubmit}>
-          {requiresApproval ? "Submit for Approval" : "Save Status Update"}
-        </button>
-      </div>
-    </Modal>
+    <>
+      <Modal open={open} onClose={onClose} title={title} wide>
+        <div className={styles.approvalNotice}>
+          <FiClock style={{ flexShrink: 0 }} />
+          <span>
+            {requiresApproval ? (
+              <>This consequential change requires <strong>Admin approval</strong> before taking effect.</>
+            ) : (
+              <>This routine progress update will be <strong>saved immediately</strong> and added to the audit history.</>
+            )}
+          </span>
+        </div>
+        {children}
+        <div className={styles.modalFooter}>
+          <button className={styles.btnSecondary} onClick={onClose}>Cancel</button>
+          <button className={styles.btnPrimary} onClick={handlePrimarySubmit} disabled={!canSubmit}>
+            {submitLabel}
+          </button>
+        </div>
+      </Modal>
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Status Change">
+        <p className={styles.confirmText}>
+          This will be logged in the audit history and may require admin approval. Continue?
+        </p>
+        <div className={styles.modalFooter}>
+          <button className={styles.btnSecondary} onClick={() => setConfirmOpen(false)}>Cancel</button>
+          <button
+            className={styles.btnPrimary}
+            onClick={() => {
+              setConfirmOpen(false);
+              onSubmitForApproval();
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      </Modal>
+    </>
   );
 }
 
@@ -313,9 +357,9 @@ function UndergReviewModal({
   nlpClarification,
   nlpClarificationLoading,
 }) {
-  const [form, setForm] = useState({ duplicateChecked: "", safetyIssues: "", missingInfo: "", survivorContacted: "", notes: "" });
+  const defaultForm = { duplicateChecked: "", safetyIssues: "", missingInfo: "", survivorContacted: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Undergoing Review"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ duplicateChecked: "", safetyIssues: "", missingInfo: "", survivorContacted: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const duplicateCount = caseData?.possibleDuplicates?.length || 0;
   const needsClarification = Boolean(
@@ -349,8 +393,8 @@ function UndergReviewModal({
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Undergoing Review" caseData={caseData} onSubmitForApproval={handleSubmit}>
-      <p className={styles.formDesc}>The intake team will review whether this report is within SASHA's scope. Please fill in the initial screening details.</p>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Undergoing Review" proposedStatus="Undergoing Review" caseData={caseData} onSubmitForApproval={handleSubmit}>
+      <p className={styles.formDesc}>The intake team will review whether this report is within SASHA&apos;s scope. Please fill in the initial screening details.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
 
@@ -441,9 +485,9 @@ function UndergReviewModal({
 }
 
 function VerifiedTrueModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ credibilityBasis: "", scopeConfirmed: "", supportAction: "", notes: "" });
+  const defaultForm = { credibilityBasis: "", scopeConfirmed: "", supportAction: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Verified - True"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ credibilityBasis: "", scopeConfirmed: "", supportAction: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -466,17 +510,17 @@ function VerifiedTrueModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Verify Case: Verified — True" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Verify Case: Verified — True" proposedStatus="Verified - True" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>
         The report has been found sufficiently credible and within scope. This does <strong>not</strong> mean legal guilt
-        has been established — it means the report passed SASHA's verification threshold.
+        has been established — it means the report passed SASHA&apos;s verification threshold.
       </p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
         <FormGroup label="Basis for credibility determination" required error={errors.credibilityBasis}>
           <FTextarea placeholder="e.g. Consistent account, corroborating evidence, complainant identity verified…" value={form.credibilityBasis} onChange={set("credibilityBasis")} error={errors.credibilityBasis} />
         </FormGroup>
-        <FormGroup label="Report confirmed within SASHA's scope?" required error={errors.scopeConfirmed}>
+        <FormGroup label={"Report confirmed within SASHA's scope?"} required error={errors.scopeConfirmed}>
           <FSelect value={form.scopeConfirmed} onChange={set("scopeConfirmed")} error={errors.scopeConfirmed}>
             <option value="">Select...</option>
             <option>Yes — fully within scope</option>
@@ -495,9 +539,9 @@ function VerifiedTrueModal({ open, onClose, caseData, onSubmit, actorName }) {
 }
 
 function VerifiedFalseModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ reason: "", additionalReason: "", recordsHandled: "", notes: "" });
+  const defaultForm = { reason: "", additionalReason: "", recordsHandled: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Verified - False"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ reason: "", additionalReason: "", recordsHandled: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -520,7 +564,7 @@ function VerifiedFalseModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Verify Case: Verified — False" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Verify Case: Verified — False" proposedStatus="Verified - False" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <div className={styles.warningNotice}>
         <FiAlertTriangle />
         <span>
@@ -534,7 +578,7 @@ function VerifiedFalseModal({ open, onClose, caseData, onSubmit, actorName }) {
         <FormGroup label="Primary reason" required error={errors.reason}>
           <FSelect value={form.reason} onChange={set("reason")} error={errors.reason}>
             <option value="">— Select reason —</option>
-            <option>Outside SASHA's scope</option>
+            <option>Outside SASHA&apos;s scope</option>
             <option>Duplicate report (already filed under another case)</option>
             <option>Unverifiable after reasonable effort</option>
             <option>Clearly erroneous or mistaken submission</option>
@@ -568,9 +612,9 @@ function CaseEvaluationModal({ open, onClose, caseData, onSubmit, actorName }) {
     "BSP/GSP mechanism",
     "Prosecutor / Court",
   ];
-  const [form, setForm] = useState({ pathways: [], evidenceGaps: "", survivorInformed: "", legalRisks: "", notes: "" });
+  const defaultForm = { pathways: [], evidenceGaps: "", survivorInformed: "", legalRisks: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Under Case Evaluation"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ pathways: [], evidenceGaps: "", survivorInformed: "", legalRisks: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const togglePathway = (p) => setForm((prev) => ({
     ...prev,
@@ -597,7 +641,7 @@ function CaseEvaluationModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Under Case Evaluation" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Under Case Evaluation" proposedStatus="Under Case Evaluation" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>The full case file is being assessed to determine the best pathway for the survivor.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
@@ -635,9 +679,9 @@ function CaseEvaluationModal({ open, onClose, caseData, onSubmit, actorName }) {
 }
 
 function CaseFiledModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ filedWith: "", filingDate: "", receivingOfficer: "", referenceNumber: "", notes: "" });
+  const defaultForm = { filedWith: "", filingDate: "", receivingOfficer: "", referenceNumber: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Case Filed"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ filedWith: "", filingDate: "", receivingOfficer: "", referenceNumber: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -661,7 +705,7 @@ function CaseFiledModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Case Filed" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Case Filed" proposedStatus="Case Filed" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>A formal complaint has been lodged with the appropriate body. Record all filing details for monitoring purposes.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
@@ -793,9 +837,9 @@ function CaseFiledModal({ open, onClose, caseData, onSubmit, actorName }) {
 }
 
 function InvestigationModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ investigationUpdate: "", survivorSafety: "", proceduralFairness: "", nextFollowUp: "", notes: "" });
+  const defaultForm = { investigationUpdate: "", survivorSafety: "", proceduralFairness: "", nextFollowUp: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Investigation Ongoing"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ investigationUpdate: "", survivorSafety: "", proceduralFairness: "", nextFollowUp: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -818,7 +862,7 @@ function InvestigationModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Investigation Ongoing" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Investigation Ongoing" proposedStatus="Investigation Ongoing" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>The receiving institution is acting on the complaint. SASHA monitors progress, survivor safety, and procedural fairness.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
@@ -853,9 +897,9 @@ function InvestigationModal({ open, onClose, caseData, onSubmit, actorName }) {
 }
 
 function HearingModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ hearingType: "", nextHearingDate: "", attendanceNeeds: "", survivorSupport: "", notes: "" });
+  const defaultForm = { hearingType: "", nextHearingDate: "", attendanceNeeds: "", survivorSupport: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Hearing Ongoing"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ hearingType: "", nextHearingDate: "", attendanceNeeds: "", survivorSupport: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -878,7 +922,7 @@ function HearingModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Hearing Ongoing" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Hearing Ongoing" proposedStatus="Hearing Ongoing" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>The case has reached a formal hearing, conference, or adjudication stage.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
@@ -909,9 +953,9 @@ function HearingModal({ open, onClose, caseData, onSubmit, actorName }) {
 }
 
 function DismissedModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ dismissalReason: "", dismissingBody: "", remainingRemedies: "", survivorNotified: "", notes: "" });
+  const defaultForm = { dismissalReason: "", dismissingBody: "", remainingRemedies: "", survivorNotified: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Dismissed"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ dismissalReason: "", dismissingBody: "", remainingRemedies: "", survivorNotified: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -935,7 +979,7 @@ function DismissedModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Dismissed" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Dismissed" proposedStatus="Dismissed" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>The case has been closed by the receiving body. SASHA documents the reason and assesses whether any other remedy remains available.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
@@ -973,9 +1017,9 @@ function DismissedModal({ open, onClose, caseData, onSubmit, actorName }) {
 }
 
 function ConvictedModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [form, setForm] = useState({ forum: "", outcomeType: "", sanctions: "", survivorSupportNeeds: "", notes: "" });
+  const defaultForm = { forum: "", outcomeType: "", sanctions: "", survivorSupportNeeds: "", notes: "" };
+  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Perpetrator Convicted"));
   const [errors, setErrors] = useState({});
-  useEffect(() => { if (open) setForm({ forum: "", outcomeType: "", sanctions: "", survivorSupportNeeds: "", notes: "" }); }, [open]);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   function validate() {
@@ -998,7 +1042,7 @@ function ConvictedModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Perpetrator Convicted" caseData={caseData} onSubmitForApproval={handleSubmit}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Perpetrator Convicted" proposedStatus="Perpetrator Convicted" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>A final decision has been reached establishing liability. Record the outcome, sanctions, and any continuing survivor support needs.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
@@ -1031,8 +1075,7 @@ function ConvictedModal({ open, onClose, caseData, onSubmit, actorName }) {
 // ─── Sub-modal lookup ─────────────────────────────────────────────────────────
 
 function ResolvedModal({ open, onClose, caseData, onSubmit, actorName }) {
-  const [notes, setNotes] = useState("");
-  useEffect(() => { if (open) setNotes(""); }, [open]);
+  const [notes, setNotes] = useState(() => hydrateCurrentStatusForm({ resolutionNotes: "" }, caseData, "Resolved").resolutionNotes || "");
 
   function handleSubmit() {
     onSubmit("Resolved", {
@@ -1045,7 +1088,7 @@ function ResolvedModal({ open, onClose, caseData, onSubmit, actorName }) {
   }
 
   return (
-    <StatusChangeShell open={open} onClose={onClose} title="Move to: Resolved" caseData={caseData} onSubmitForApproval={handleSubmit} canSubmit={Boolean(notes.trim())}>
+    <StatusChangeShell open={open} onClose={onClose} title="Move to: Resolved" proposedStatus="Resolved" caseData={caseData} onSubmitForApproval={handleSubmit} canSubmit={Boolean(notes.trim())}>
       <p className={styles.formDesc}>Confirm that legal action, survivor support, and required monitoring are complete before closing active monitoring.</p>
       <div className={styles.formGrid}>
         <FormGroup label="Resolution notes" required>
@@ -1119,6 +1162,7 @@ export default function UpdateStatusModal({
   const [nlpClarificationLoading, setNlpClarificationLoading] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) {
       setActiveModal(null);
       setNextStatus("");
@@ -1229,14 +1273,7 @@ export default function UpdateStatusModal({
 
   const routerOpen = open && activeModal === null;
 
-  const subModals = Object.entries(STATUS_MODALS).map(([key, SubModal]) => (
-    <SubModal
-      key={key}
-      open={activeModal === key}
-      onClose={handleSubModalClose}
-      {...subModalProps}
-    />
-  ));
+  const ActiveSubModal = STATUS_MODALS[activeModal] || null;
 
   return (
     <>
@@ -1374,7 +1411,14 @@ export default function UpdateStatusModal({
         </div>
       </Modal>
 
-      {subModals}
+      {ActiveSubModal && (
+        <ActiveSubModal
+          key={`${caseData.id}-${activeModal}`}
+          open
+          onClose={handleSubModalClose}
+          {...subModalProps}
+        />
+      )}
     </>
   );
 }

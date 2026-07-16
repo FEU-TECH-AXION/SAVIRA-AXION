@@ -190,7 +190,9 @@ const submitStatusChange = async (req, res) => {
 
     const currentStatus = getStatusNameById(currentCase.case_status_id)
     const allowedTransitions = getAllowedTransitions(currentStatus, requesterRole)
-    if (!allowedTransitions.includes(proposed_status)) {
+    const isSameStatusUpdate = proposed_status === currentStatus
+    // Same-status submissions are follow-up audit entries, not workflow transitions.
+    if (!isSameStatusUpdate && !allowedTransitions.includes(proposed_status)) {
       return res.status(403).json({
         error: `Your role cannot move this case from "${currentStatus}" to "${proposed_status}".`,
       })
@@ -211,7 +213,7 @@ const submitStatusChange = async (req, res) => {
       }
     }
 
-    const requiresApproval = CaseStatusHistory.APPROVAL_REQUIRED_STATUSES.has(proposed_status)
+    const requiresApproval = !isSameStatusUpdate && CaseStatusHistory.APPROVAL_REQUIRED_STATUSES.has(proposed_status)
     if (requiresApproval) {
       const existingPending = await CaseStatusHistory.getPending(case_report_id)
       if (existingPending) {
