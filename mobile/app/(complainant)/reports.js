@@ -1135,7 +1135,7 @@ function ReportStatusCard({ report, index, onView }) {
                 : "—"}
             </Text>
           </View>
-          <Text style={s.statusId}>ID: {report.case_report_id || "—"}</Text>
+          <Text style={s.statusId}>ID: {getReportId(report)}</Text>
         </View>
         <StatusStepper
           steps={["Submitted", "Under Review", "Resolved"]}
@@ -2717,6 +2717,7 @@ function formatSubmittedDate(report) {
 }
 
 function getReportId(report, fallback = 1) {
+  if (report.case_code) return report.case_code;
   const raw = report.case_report_id || report.id;
   if (!raw) return `#${fallback}`;
   return `CASE-${String(raw).slice(0, 8).toUpperCase()}`;

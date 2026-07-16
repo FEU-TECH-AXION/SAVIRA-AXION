@@ -896,7 +896,7 @@ export default function ViewLegalCase() {
         const pending = [...statusHistory].reverse().find((entry) => entry.approvalStatus === "pending");
         const mappedCase = {
           id:                   data.case_report_id,
-          caseId:               data.case_code || `CASE-${String(data.case_report_id).slice(0, 8).toUpperCase()}`,
+          caseId:               data.case_code || `CASE-${String(data.public_id || data.case_report_id).slice(0, 8).toUpperCase()}`,
           reporterId:           String(data.complainant_id),
           region:               data.incident_province || data.incident_city || "Not provided",
           status:               STATUS_STEP[data.case_status_id] || "For Verification",

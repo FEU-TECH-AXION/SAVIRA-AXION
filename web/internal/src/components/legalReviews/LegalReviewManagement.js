@@ -1222,7 +1222,7 @@ function mapLegalReportToCase(report) {
 
   return {
     id: report.case_report_id,
-    caseId: report.case_code || `CASE-${String(report.case_report_id).slice(0, 8).toUpperCase()}`,
+    caseId: report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
     reporterId: String(report.complainant_id),
     region: report.incident_province || report.incident_city || "â€”",
     city: report.incident_city || "â€”",

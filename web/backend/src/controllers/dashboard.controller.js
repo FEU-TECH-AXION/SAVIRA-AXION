@@ -478,7 +478,7 @@ function legalEventsForCase({ report, review, history }) {
     })
   }
 
-  const caseId = report.public_id ? `CASE-${String(report.public_id).slice(0, 8).toUpperCase()}` : 'Case'
+  const caseId = report.case_code || (report.public_id ? `CASE-${String(report.public_id).slice(0, 8).toUpperCase()}` : 'Case')
   return events.map((event) => makeDeadline({
     icon: event.type || 'legal',
     title: `${event.label}: ${caseId}`,
@@ -494,7 +494,7 @@ async function getLegalDeadlines({ userId = null, limit = 50 } = {}) {
 
   let reportQuery = supabase
     .from('case_reports')
-    .select('case_report_id, public_id, case_status_id, created_at')
+    .select('case_report_id, public_id, case_code, case_status_id, created_at')
     .eq('is_current', true)
     .in('case_status_id', LEGAL_STATUS_IDS)
   if (Array.isArray(scopedCaseIds)) reportQuery = reportQuery.in('case_report_id', scopedCaseIds)

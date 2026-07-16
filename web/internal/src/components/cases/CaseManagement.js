@@ -1053,7 +1053,7 @@ useEffect(() => {
 
         return mergeStatusHistory({
           id:              r.case_report_id,
-          caseId:          r.case_code || formatPublicCaseId(r.case_report_id),
+          caseId:          r.case_code || formatPublicCaseId(r.public_id || r.case_report_id),
           reporterId:      String(r.complainant_id),
           region:          r.incident_province || r.incident_city || "—",
           incident_city:   r.incident_city || "",

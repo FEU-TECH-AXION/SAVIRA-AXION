@@ -66,7 +66,7 @@ function getNestedOfficerName(assignments = []) {
 
 export function normalizeReport(report) {
   const createdAt = report.created_at || report.dateSubmitted || null;
-  const id = report.case_report_id || report.id;
+  const id = report.public_id || report.case_report_id || report.id;
 
   return {
     reportData: report,

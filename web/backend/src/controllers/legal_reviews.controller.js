@@ -310,7 +310,7 @@ function addObjectDateEvents(events, object, { source, prefix = '' } = {}) {
 
 function buildLegalDeadlinesForCase({ report, review, statusHistory = [] }) {
   const events = []
-  const caseId = report.public_id ? `CASE-${String(report.public_id).slice(0, 8).toUpperCase()}` : 'Case'
+  const caseId = report.case_code || (report.public_id ? `CASE-${String(report.public_id).slice(0, 8).toUpperCase()}` : 'Case')
 
   addObjectDateEvents(events, review?.endorsement_details, { source: 'endorsement' })
 
@@ -507,7 +507,7 @@ async function getDeadlines(req, res) {
 
     let reportQuery = supabase
       .from('case_reports')
-        .select('case_report_id, public_id, case_status_id, created_at')
+        .select('case_report_id, public_id, case_code, case_status_id, created_at')
       .eq('is_current', true)
       .in('case_status_id', LEGAL_STATUS_ID_VALUES)
 

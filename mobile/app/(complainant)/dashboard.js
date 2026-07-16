@@ -606,7 +606,7 @@ export default function ComplainantDashboard() {
           {reports.length > 0 ? (
             reports.slice(0, 1).map((rep, idx) => {
               const rawReportId = rep.case_report_id || rep.id;
-              const displayId = rawReportId ? `CASE-${String(rawReportId).slice(0, 8).toUpperCase()}` : `REP-${idx + 1}`;
+              const displayId = rep.case_code || (rawReportId ? `CASE-${String(rawReportId).slice(0, 8).toUpperCase()}` : `REP-${idx + 1}`);
               // map case_status_id (1 -> 0, 2 -> 1, 3 -> 2)
               const currentStep = rep.case_status_id ? rep.case_status_id - 1 : 0;
               return (

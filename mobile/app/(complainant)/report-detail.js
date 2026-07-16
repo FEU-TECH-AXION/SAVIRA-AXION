@@ -332,6 +332,7 @@ function isValidTimeInput(value) {
 
 function getReportId(report, paramId, caseId) {
   if (paramId) return paramId;
+  if (report?.case_code) return report.case_code;
   const raw = report?.case_report_id || report?.id || caseId;
   return raw ? `CASE-${String(raw).slice(0, 8).toUpperCase()}` : 'Case Report';
 }

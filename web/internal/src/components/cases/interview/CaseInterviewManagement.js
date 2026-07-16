@@ -434,7 +434,7 @@ export default function CaseInterviewManagement() {
           (pageData.interviews || []).map((iv) => ({
             ...iv,
             id: iv.interview_id,
-            caseId: iv.case_report_id ? `CASE-${String(iv.case_report_id).slice(0, 8).toUpperCase()}` : "Case interview",
+            caseId: iv.case_code || (iv.case_report_id ? `CASE-${String(iv.case_report_id).slice(0, 8).toUpperCase()}` : "Case interview"),
             casePublicId: iv.case_report_id || null,
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`

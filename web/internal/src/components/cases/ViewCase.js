@@ -95,7 +95,7 @@ const mapCaseReportToViewData = (data) => {
   return {
     reportData:           data,
     id:                   data.case_report_id,
-    caseId:               data.case_code || formatPublicCaseId(data.case_report_id),
+    caseId:               data.case_code || formatPublicCaseId(data.public_id || data.case_report_id),
     reporterId:           data.complainant_user_id,
     region:               data.incident_province || data.incident_city || "Not provided",
     status:               STATUS_STEP[data.case_status_id] || "For Verification",

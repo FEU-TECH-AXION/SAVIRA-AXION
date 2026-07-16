@@ -47,14 +47,15 @@ async function exposeInterviewCasePublicIds(payload) {
 
     const { data, error } = await supabase
         .from('case_reports')
-        .select('case_report_id, public_id')
+        .select('case_report_id, public_id, case_code')
         .in('case_report_id', ids)
     if (error) throw error
 
-    const publicById = Object.fromEntries((data || []).map((row) => [row.case_report_id, row.public_id]))
+    const caseMetaById = Object.fromEntries((data || []).map((row) => [row.case_report_id, row]))
     const shaped = items.map((item) => {
-        if (!item?.case_report_id || !publicById[item.case_report_id]) return item
-        return { ...item, case_report_id: publicById[item.case_report_id] }
+        const meta = caseMetaById[item?.case_report_id]
+        if (!item?.case_report_id || !meta?.public_id) return item
+        return { ...item, case_report_id: meta.public_id, case_code: meta.case_code || item.case_code }
     })
     return Array.isArray(payload) ? shaped : shaped[0]
 }

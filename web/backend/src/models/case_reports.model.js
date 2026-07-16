@@ -25,6 +25,7 @@ const STATUS_ID_BY_NAME = Object.fromEntries(
 const CASE_LIST_SELECT = `
   case_report_id,
   public_id,
+  case_code,
   complainant_id,
   incident_description,
   incident_city,
@@ -347,6 +348,7 @@ async function getCaseSummaryById(caseReportId) {
     .select(`
       case_report_id,
       public_id,
+      case_code,
       complainant_id,
       name,
       email,
@@ -406,6 +408,7 @@ async function getReportsByUserId(complainantId) {
     .select(`
       case_report_id,
       public_id,
+      case_code,
       incident_description,
       incident_city,
       incident_date,
@@ -1024,6 +1027,7 @@ async function getAllReports(options = {}) {
     .select(`
       case_report_id,
       public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,
@@ -1354,6 +1358,7 @@ async function getReportsByAssignedOfficer(userId, options = {}) {
     .select(`
       case_report_id,
       public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,
@@ -1505,6 +1510,7 @@ async function getReportsForLegal(userId, options = {}) {
     .select(`
       case_report_id,
       public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,
@@ -1619,6 +1625,7 @@ async function getReportsByAssignedLegal(userId) {
     .select(`
       case_report_id,
       public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,

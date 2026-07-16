@@ -2362,7 +2362,7 @@ export default function CreateReport({
                       reportNumber={i + 1}
                       reportData={{
                         id:                report.case_report_id,
-                        caseId:            report.case_code || `CASE-${String(report.case_report_id).slice(0, 8).toUpperCase()}`,
+                        caseId:            report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
                         dateSubmitted:     report.created_at
                           ? new Date(report.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
                           : '—',
