@@ -236,8 +236,8 @@
   "navAllLegalCases": "Lahat ng Legal Case",
   "navChapters": "Mga Chapter",
   "navSupportMessages": "Support Messages",
-  "navReportsAnalysis": "Reports at Analysis",
-  "navReportAnalysis": "Report at Analysis",
+  "navReportsAnalysis": "Mga Report",
+  "navReportAnalysis": "Mga Report",
   "navPrivacy": "Privacy",
   "navTerms": "Terms",
   "navLogOut": "Mag-log out",
@@ -939,6 +939,5 @@
   "No data available": "Walang available na data",
   "Actions": "Mga Aksyon",
   "Action": "Aksyon",
-  "Reports": "Mga Report",
-  "Reports & Analysis": "Reports at Analysis"
+  "Reports": "Mga Report"
 }
