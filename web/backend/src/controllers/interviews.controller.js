@@ -430,6 +430,9 @@ const getItems = async (req, res) => {
         // case_report_id, volunteer_application_id
         const filters = { ...req.query }
         filters.type = normalizeInterviewType(filters.type)
+        if (req.resolvedCaseReportId) {
+            filters.case_report_id = String(req.resolvedCaseReportId)
+        }
         if (isVolunteerType(filters.type) && filters.application_id && !filters.volunteer_application_id) {
             filters.volunteer_application_id = filters.application_id
         }

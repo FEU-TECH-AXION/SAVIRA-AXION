@@ -15,6 +15,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import ActorByline from "@/components/ui/ActorByline";
 import Tooltip from "@/components/ui/Tooltip";
 import { authFetch } from "@/lib/AuthContext";
 import FollowUpFieldEditor, {
@@ -520,14 +521,17 @@ export function FollowUpComposer({
   );
 }
 
-function PersonName({ user, fallback }) {
+function getPersonName(user, fallback) {
   const name = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
   return name || fallback;
 }
 
-function getPersonName(user, fallback) {
-  const name = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
-  return name || fallback;
+function getActorName(row, user, fallback) {
+  return row?.actorName || row?.sender_name || row?.initiated_by_name || row?.changed_by_name || user?.actorName || getPersonName(user, fallback);
+}
+
+function getActorRole(row, user) {
+  return row?.actorRole || row?.sender_role || row?.initiated_by_role_name || row?.changed_by_role || user?.actorRole || user?.role_name;
 }
 
 function getRequestTitle(request) {
@@ -711,6 +715,10 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
       id: `request-${request.id}`,
       sender_user_id: request.initiated_by_user_id,
       sender: request.initiator,
+      actorName: request.actorName,
+      actorRole: request.actorRole,
+      sender_name: request.initiated_by_name,
+      sender_role: request.initiated_by_role_name,
       message: request.message,
       attachment_url: request.attachment_url,
       attachment_name: request.attachment_name,
@@ -800,8 +808,13 @@ function Thread({ request, currentUserId, isStaff, onChanged }) {
           return (
             <div key={entry.id} className={`${styles.message} ${mine ? styles.messageMine : ""}`}>
               <div className={styles.messageMeta}>
-                <strong><PersonName user={entry.sender} fallback={mine ? "You" : "Case participant"} /></strong>
-                <time>{new Date(entry.created_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}</time>
+                <ActorByline
+                  actorName={getActorName(entry, entry.sender, mine ? "You" : "Case participant")}
+                  actorRole={getActorRole(entry, entry.sender)}
+                  timestamp={entry.created_at}
+                  fallbackName={mine ? "You" : "Case participant"}
+                  as="span"
+                />
               </div>
               <p>{entry.message}</p>
               {entry.attachment_url && (
@@ -982,10 +995,8 @@ function formatChangeValue(value) {
 }
 
 function HistoryThreadRow({ request, expanded, onToggle, children }) {
-  const initiator = getPersonName(
-    request.initiator,
-    request.type === "officer_clarification_request" ? "Case officer" : "Complainant"
-  );
+  const initiatorFallback = request.type === "officer_clarification_request" ? "Case officer" : "Complainant";
+  const initiator = getActorName(request, request.initiator, initiatorFallback);
   const preview = String(request.message || "No message provided.").replace(/\s+/g, " ").trim();
   const displayStatus = getRequestDisplayStatus(request);
 
@@ -1007,7 +1018,14 @@ function HistoryThreadRow({ request, expanded, onToggle, children }) {
         <span className={styles.historyMain}>
           <span className={styles.historyMeta}>
             <strong>{getRequestTitle(request)}</strong>
-            <span>{initiator}</span>
+            <span>
+              <ActorByline
+                actorName={initiator}
+                actorRole={getActorRole(request, request.initiator)}
+                fallbackName={initiatorFallback}
+                as="span"
+              />
+            </span>
             <span className={styles.historyStatus}>{getRequestStatusLabel(displayStatus)}</span>
           </span>
           <span className={styles.historyPreview}>{preview}</span>
@@ -1078,7 +1096,15 @@ function FieldHistoryGroup({
                     <small>from {formatChangeValue(change.previous_value)}</small>
                   </span>
                   <span>
-                    {getRequestStatusLabel(getRequestDisplayStatus(request))} · {relativeDate(change.changed_at || request.created_at)}
+                    {getRequestStatusLabel(getRequestDisplayStatus(request))}
+                    <span aria-hidden="true">{" \u00b7 "}</span>
+                    <ActorByline
+                      actorName={change.actorName || change.changed_by_name}
+                      actorRole={change.actorRole || change.changed_by_role}
+                      timestamp={change.changed_at || request.created_at}
+                      timestampFormatter={relativeDate}
+                      as="span"
+                    />
                     {expanded ? <FiChevronDown /> : <FiChevronRight />}
                   </span>
                 </button>

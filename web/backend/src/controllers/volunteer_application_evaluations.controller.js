@@ -1,5 +1,6 @@
 const VolunteerApplicationEvaluationsModel = require('../models/volunteer_application_evaluations.model')
 const supabase = require('../config/supabase')
+const { resolveActors, withActor } = require('../utils/actor')
 
 const getItems = async (req, res) => {
     try {
@@ -34,6 +35,19 @@ function aggregateEssay(rows = []) {
         experience: average(rows.map((row) => row.experience).filter((n) => n !== null && n !== undefined)),
         evaluator_count: rows.length,
     }
+}
+
+async function enrichEvaluations(rows = []) {
+    const list = Array.isArray(rows) ? rows : [rows]
+    const actorsById = await resolveActors(list.map((row) => row?.evaluated_by))
+    const shaped = list.map((row) =>
+        withActor(row, actorsById[row?.evaluated_by], {
+            idField: 'evaluated_by',
+            nameField: 'evaluated_by_name',
+            roleField: 'evaluated_by_role',
+        })
+    )
+    return Array.isArray(rows) ? shaped : shaped[0]
 }
 
 const upsertEvaluationByEvaluator = async (id, evaluatorId, payload) => {
@@ -78,15 +92,16 @@ const getEssayEvaluation = async (req, res) => {
             .eq('volunteer_application_id', id)
         if (error) throw error
 
+        const enriched = await enrichEvaluations(data || [])
         const current = evaluatorId
-            ? (data || []).find((row) => row.evaluated_by === evaluatorId)
-            : (data || [])[0]
+            ? enriched.find((row) => row.evaluated_by === evaluatorId)
+            : enriched[0]
 
         res.status(200).json({
             ...(current || {}),
             notes: current?.essay_notes || '',
             aggregate: aggregateEssay(data || []),
-            evaluations: data || [],
+            evaluations: enriched,
         })
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -108,7 +123,7 @@ const saveEssayEvaluation = async (req, res) => {
             essay_notes: notes,
             updated_at: new Date(),
         })
-        res.status(200).json(data)
+        res.status(200).json(await enrichEvaluations(data))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -124,9 +139,10 @@ const getInterviewEvaluation = async (req, res) => {
             .eq('volunteer_application_id', id)
         if (error) throw error
 
+        const enriched = await enrichEvaluations(data || [])
         const current = evaluatorId
-            ? (data || []).find((row) => row.evaluated_by === evaluatorId)
-            : (data || [])[0]
+            ? enriched.find((row) => row.evaluated_by === evaluatorId)
+            : enriched[0]
 
         const scoredRows = (data || []).filter((row) => row.interview_score !== null && row.interview_score !== undefined)
         res.status(200).json({
@@ -136,7 +152,7 @@ const getInterviewEvaluation = async (req, res) => {
                 score: average(scoredRows.map((row) => row.interview_score)),
                 evaluator_count: scoredRows.length,
             },
-            evaluations: data || [],
+            evaluations: enriched,
         })
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -154,7 +170,7 @@ const saveInterviewEvaluation = async (req, res) => {
             interview_notes: notes,
             updated_at: new Date(),
         })
-        res.status(200).json(data)
+        res.status(200).json(await enrichEvaluations(data))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }

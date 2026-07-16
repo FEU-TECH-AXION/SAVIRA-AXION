@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase')
 const { buildApprovedFieldUpdate, columnForChange } = require('./case_field_changes')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
+const { actorToUser, resolveActors, withActor } = require('../utils/actor')
 
 const ACTIVE_STATUSES = ['open', 'responded']
 
@@ -122,7 +123,25 @@ async function createRequest(payload) {
     .select()
     .single()
   if (error) throw error
-  return data
+  return enrichRequestActor(data)
+}
+
+async function enrichRequestActor(request) {
+  if (!request) return request
+  const actorsById = await resolveActors([request.initiated_by_user_id, request.resolved_by_user_id])
+  const initiator = actorsById[request.initiated_by_user_id]
+  const resolver = actorsById[request.resolved_by_user_id]
+  return withActor({
+    ...request,
+    initiator: actorToUser(initiator),
+    resolver: actorToUser(resolver),
+    resolved_by_name: resolver?.actorName || null,
+    resolved_by_role: resolver?.actorRole || null,
+  }, initiator, {
+    idField: 'initiated_by_user_id',
+    nameField: 'initiated_by_name',
+    roleField: 'initiated_by_role_name',
+  })
 }
 
 async function createRequestWithChanges(payload, changes) {
@@ -143,7 +162,7 @@ async function createRequestWithChanges(payload, changes) {
         changes,
         report
       )
-      return request
+      return enrichRequestActor(request)
     } catch (fallbackError) {
       const { error: cleanupError } = await supabase
         .from('follow_up_requests')
@@ -155,7 +174,7 @@ async function createRequestWithChanges(payload, changes) {
       throw fallbackError
     }
   }
-  return Array.isArray(data) ? data[0] : data
+  return enrichRequestActor(Array.isArray(data) ? data[0] : data)
 }
 
 async function applyFieldChanges(requestId, caseId, userId, changes, message) {
@@ -225,18 +244,10 @@ async function listByCase(caseId) {
     }
   }
 
-  let usersById = new Map()
+  let actorsById = {}
   if (userIds.size > 0) {
     try {
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('user_id, first_name, last_name')
-        .in('user_id', [...userIds])
-      if (usersError) {
-        console.warn('[listByCase] Follow-up participant names unavailable:', usersError.message)
-      } else {
-        usersById = new Map((users || []).map((user) => [user.user_id, user]))
-      }
+      actorsById = await resolveActors([...userIds])
     } catch (usersError) {
       console.warn('[listByCase] Follow-up participant names unavailable:', usersError.message)
     }
@@ -245,17 +256,28 @@ async function listByCase(caseId) {
   const messagesByRequest = new Map()
   for (const message of messages) {
     const current = messagesByRequest.get(message.follow_up_request_id) || []
+    const sender = actorsById[message.sender_user_id]
     current.push({
-      ...message,
-      sender: usersById.get(message.sender_user_id) || null,
+      ...withActor(message, sender, {
+        idField: 'sender_user_id',
+        nameField: 'sender_name',
+        roleField: 'sender_role',
+      }),
+      sender: actorToUser(sender),
     })
     messagesByRequest.set(message.follow_up_request_id, current)
   }
 
   const requests = (data || []).map((request) => ({
-    ...request,
-    initiator: usersById.get(request.initiated_by_user_id) || null,
-    resolver: usersById.get(request.resolved_by_user_id) || null,
+    ...withActor(request, actorsById[request.initiated_by_user_id], {
+      idField: 'initiated_by_user_id',
+      nameField: 'initiated_by_name',
+      roleField: 'initiated_by_role_name',
+    }),
+    initiator: actorToUser(actorsById[request.initiated_by_user_id]),
+    resolver: actorToUser(actorsById[request.resolved_by_user_id]),
+    resolved_by_name: actorsById[request.resolved_by_user_id]?.actorName || null,
+    resolved_by_role: actorsById[request.resolved_by_user_id]?.actorRole || null,
     follow_up_messages: messagesByRequest.get(request.id) || [],
     field_changes: [],
   }))
@@ -279,10 +301,16 @@ async function listByCase(caseId) {
     return requests
   }
 
+  const changeActorsById = await resolveActors(changes.map((change) => change.changed_by_user_id))
+
   const changesByRequest = new Map()
   for (const change of changes) {
     const current = changesByRequest.get(change.follow_up_request_id) || []
-    current.push(change)
+    current.push(withActor(change, changeActorsById[change.changed_by_user_id], {
+      idField: 'changed_by_user_id',
+      nameField: 'changed_by_name',
+      roleField: 'changed_by_role',
+    }))
     changesByRequest.set(change.follow_up_request_id, current)
   }
 
@@ -299,7 +327,7 @@ async function getRequest(id) {
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
-  return data
+  return enrichRequestActor(data)
 }
 
 async function getActiveRequest(caseId, type) {
@@ -321,6 +349,8 @@ async function addMessage(payload, awaitingRole) {
     .select()
     .single()
   if (error) throw error
+  const actorsById = await resolveActors([data.sender_user_id])
+  const sender = actorsById[data.sender_user_id]
 
   const { error: updateError } = await supabase
     .from('follow_up_requests')
@@ -332,7 +362,14 @@ async function addMessage(payload, awaitingRole) {
     .eq('id', payload.follow_up_request_id)
     .in('status', ACTIVE_STATUSES)
   if (updateError) throw updateError
-  return data
+  return {
+    ...withActor(data, sender, {
+      idField: 'sender_user_id',
+      nameField: 'sender_name',
+      roleField: 'sender_role',
+    }),
+    sender: actorToUser(sender),
+  }
 }
 
 async function addMessageRecord(payload) {
@@ -342,7 +379,16 @@ async function addMessageRecord(payload) {
     .select()
     .single()
   if (error) throw error
-  return data
+  const actorsById = await resolveActors([data.sender_user_id])
+  const sender = actorsById[data.sender_user_id]
+  return {
+    ...withActor(data, sender, {
+      idField: 'sender_user_id',
+      nameField: 'sender_name',
+      roleField: 'sender_role',
+    }),
+    sender: actorToUser(sender),
+  }
 }
 
 async function updateStatus(id, status, resolvedByUserId) {
@@ -426,7 +472,7 @@ async function updateStatusWithMessage(id, status, resolvedByUserId, message, aw
         .select()
         .single()
       if (error) throw error
-      return data
+      return enrichRequestActor(data)
     }
     if (status === 'resolved') {
       const { data, error } = await supabase.rpc('resolve_follow_up_field_changes', {
@@ -446,7 +492,7 @@ async function updateStatusWithMessage(id, status, resolvedByUserId, message, aw
           reconcileError.message
         )
       }
-      return Array.isArray(data) ? data[0] : data
+      return enrichRequestActor(Array.isArray(data) ? data[0] : data)
     }
     return await updateStatus(id, status, resolvedByUserId)
   } catch (error) {

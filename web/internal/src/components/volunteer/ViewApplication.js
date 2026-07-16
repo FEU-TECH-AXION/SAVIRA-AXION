@@ -6,6 +6,8 @@ import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock } from 
 import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import ActorByline from "@/components/ui/ActorByline";
+import InterviewTab from "../volunteerInterviews/InterviewTab";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
 import { useAuth } from "@/lib/AuthContext";
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
@@ -480,6 +482,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
   const [essaySaved, setEssaySaved] = useState(false);
   const [essayLoaded, setEssayLoaded] = useState(false);
   const [essayAggregate, setEssayAggregate] = useState(null);
+  const [essayActor, setEssayActor] = useState(null);
   const [nlpEssayScore, setNlpEssayScore] = useState(0);
 
   // Interview score
@@ -488,6 +491,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
   const [interviewSaving, setInterviewSaving] = useState(false);
   const [interviewSaved, setInterviewSaved] = useState(false);
   const [interviewLoaded, setInterviewLoaded] = useState(false);
+  const [interviewActor, setInterviewActor] = useState(null);
 
   // ── Fetch quantitative scores ──────────────────────────────────────────────
 
@@ -525,6 +529,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
           });
           setEssayNotes(d.notes || "");
           setEssayAggregate(d.aggregate || null);
+          setEssayActor(d.actorName || d.evaluated_by_name ? d : null);
         }
       } catch (_) {}
       finally { setEssayLoaded(true); }
@@ -558,6 +563,7 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
           const d = json.data || json;
           setInterviewScore(d.score ?? 0);
           setInterviewNotes(d.notes || "");
+          setInterviewActor(d.actorName || d.evaluated_by_name ? d : null);
         }
       } catch (_) {}
       finally { setInterviewLoaded(true); }
@@ -574,11 +580,16 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     }
     setEssaySaving(true);
     try {
-      await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`, {
+      const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...essayScores, notes: essayNotes }),
       });
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        const d = json.data || json;
+        setEssayActor(d.actorName || d.evaluated_by_name ? d : essayActor);
+      }
       setEssaySaved(true);
       setTimeout(() => setEssaySaved(false), 2500);
     } catch (_) {
@@ -595,11 +606,16 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
     }
     setInterviewSaving(true);
     try {
-      await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`, {
+      const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score: interviewScore, notes: interviewNotes }),
       });
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        const d = json.data || json;
+        setInterviewActor(d.actorName || d.evaluated_by_name ? d : interviewActor);
+      }
       setInterviewSaved(true);
       setTimeout(() => setInterviewSaved(false), 2500);
     } catch (_) {
@@ -831,6 +847,12 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
         <h3 className={styles.evalBlockTitle}>
           Qualitative Assessment — Essay Rubric
         </h3>
+        <ActorByline
+          actorName={essayActor?.actorName || essayActor?.evaluated_by_name}
+          actorRole={essayActor?.actorRole || essayActor?.evaluated_by_role}
+          timestamp={essayActor?.updated_at || essayActor?.created_at}
+          fallbackName="Evaluator unavailable"
+        />
         <p className={styles.evalBlockDesc}>
           Rate each criterion from <strong>1 (lowest)</strong> to <strong>10 (highest)</strong>.
           Scores are weighted and automatically compute the essay total.
@@ -921,6 +943,12 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
         <h3 className={styles.evalBlockTitle}>
           Interview Score
         </h3>
+        <ActorByline
+          actorName={interviewActor?.actorName || interviewActor?.evaluated_by_name}
+          actorRole={interviewActor?.actorRole || interviewActor?.evaluated_by_role}
+          timestamp={interviewActor?.updated_at || interviewActor?.created_at}
+          fallbackName="Evaluator unavailable"
+        />
         <p className={styles.evalBlockDesc}>
           If the applicant was interviewed, rate the overall interview performance from <strong>1–10</strong>.
           Leave at 0 if the interview has not yet taken place or is not applicable.
@@ -1125,11 +1153,14 @@ function VolunteerStatusHistorySection({ applicationId, isStaff }) {
                 </div>
                 <div style={{ paddingBottom: "1.25rem" }}>
                   <StatusBadge status={capitalizeStatus(h.status)} />
-                  <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "#6b7280" }}>
-                    {new Date(h.created_at).toLocaleDateString("en-PH", {
+                  <ActorByline
+                    actorName={h.actorName || h.changed_by_name}
+                    actorRole={h.actorRole || h.changed_by_role}
+                    timestamp={h.created_at}
+                    timestampFormatter={(value) => new Date(value).toLocaleDateString("en-PH", {
                       month: "numeric", day: "numeric", year: "numeric",
-                    })} · {h.changed_by_name || "System"}
-                  </p>
+                    })}
+                  />
                   {h.notes && (
                     <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#374151", lineHeight: 1.5 }}>
                       {h.notes}
@@ -1361,6 +1392,7 @@ export default function ViewApplication() {
   const [toast,       setToast]       = useState(null);
   const [modal,       setModal]       = useState(null);
   const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
+  const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
 
   const user = {
     id: authUser?.user_id || authUser?.id || null,
@@ -1387,6 +1419,13 @@ export default function ViewApplication() {
         const data = await res.json();
 
         if (!data) throw new Error("Application not found.");
+
+        const interviewsRes = await internalApiFetch(
+          `${API_URL}/api/interviews?type=volunteer&volunteer_application_id=${data.volunteer_application_id}`
+        );
+        const interviewsJson = interviewsRes.ok ? await interviewsRes.json().catch(() => ({})) : {};
+        const interviews = Array.isArray(interviewsJson?.data) ? interviewsJson.data : [];
+        setHasInterviewRecord(interviews.length > 0);
 
         const computedAge = (() => {
           if (data.age) return String(data.age);
@@ -1516,6 +1555,7 @@ export default function ViewApplication() {
   const isAssignedEvaluator = (appData?.assignedEvaluatorIds || [])
     .some((id) => String(id) === String(user.id));
   const canManageVolunteerApplication = isAdmin || isAssignedEvaluator;
+  const showInterviewTab = appData?.isWillingForInterview && (isStaff || hasInterviewRecord);
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -1546,11 +1586,15 @@ export default function ViewApplication() {
 
   const tabs = [
     { id: "details",    label: " Application Details" },
+    ...(showInterviewTab ? [
+      { id: "interview", label: "Interview" },
+    ] : []),
     ...(isStaff ? [
       { id: "evaluation", label: "Application Evaluation" },
       { id: "nlp",        label: "NLP Analysis" },
     ] : []),
   ];
+  const displayedActiveTab = activeTab === "interview" && !showInterviewTab ? "details" : activeTab;
 
   // tabStyle removed — using CSS classes with active state below
 
@@ -1599,18 +1643,31 @@ export default function ViewApplication() {
           {/* Tab bar */}
           <div className={styles.tabBar}>
             {tabs.map((t) => (
-              <button key={t.id} className={activeTab === t.id ? styles.tabBtnActive : styles.tabBtn} onClick={() => setActiveTab(t.id)}>
+              <button key={t.id} className={displayedActiveTab === t.id ? styles.tabBtnActive : styles.tabBtn} onClick={() => setActiveTab(t.id)}>
                 {t.label}
               </button>
             ))}
           </div>
 
           {/* Tab content */}
-          {activeTab === "details" && userLoaded && (
+          {displayedActiveTab === "details" && userLoaded && (
             <ApplicationDetailsTab appData={appData} isStaff={isStaff} />
           )}
 
-          {activeTab === "evaluation" && isStaff && userLoaded && (
+          {displayedActiveTab === "interview" && showInterviewTab && userLoaded && (
+            <InterviewTab
+              appData={appData}
+              isStaff={isStaff}
+              isApplicationOfficer={isApplicationOfficer}
+              showToast={showToast}
+              userId={user.id}
+              actorName={`${user.firstName || ""} ${user.lastName || ""}`.trim()}
+              userRole={user.role}
+              canManageInterview={canManageVolunteerApplication}
+            />
+          )}
+
+          {displayedActiveTab === "evaluation" && isStaff && userLoaded && (
             <ApplicationEvaluationTab
               appData={appData}
               isAdmin={isAdmin}
@@ -1625,7 +1682,7 @@ export default function ViewApplication() {
             />
           )}
 
-          {activeTab === "nlp" && isStaff && userLoaded && (
+          {displayedActiveTab === "nlp" && isStaff && userLoaded && (
             <NLPEssayTab appId={appData.id} isAdmin={isAdmin} />
           )}
 

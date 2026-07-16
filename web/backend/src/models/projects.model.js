@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase')
+const { resolveActors } = require('../utils/actor')
 
 const ALLOWED_FIELDS = [
   'event_name',
@@ -49,7 +50,7 @@ const computeProjectStatus = (row) => {
   return 'Active'
 }
 
-const toFrontend = (row) => {
+const toFrontend = (row, creatorActor = null) => {
   if (!row) return null
   return {
     id: row.project_id,
@@ -79,9 +80,17 @@ const toFrontend = (row) => {
     slug: row.slug || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    createdById: row.created_by_id || null,
+    createdByName: creatorActor?.actorName || null,
+    createdByRole: row.created_by_role || null,
     projectOfficers: Array.isArray(row.project_officers) ? row.project_officers : (row.project_officers ? [row.project_officers] : ['']),
     projectCommitteeMembers: Array.isArray(row.project_committee_members) ? row.project_committee_members : (row.project_committee_members ? [row.project_committee_members] : ['']),
   }
+}
+
+const toFrontendWithCreators = async (rows = []) => {
+  const actorsById = await resolveActors(rows.map((row) => row.created_by_id))
+  return rows.map((row) => toFrontend(row, actorsById[row.created_by_id]))
 }
 
 const toDbPayload = (payload) => {
@@ -166,7 +175,7 @@ const getAll = async (filters = {}) => {
 
   const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
-  const rows = (data || []).map(toFrontend)
+  const rows = await toFrontendWithCreators(data || [])
   if (filters.status) {
     const target = String(filters.status).trim().toLowerCase()
     return rows.filter((project) => String(project.status || '').toLowerCase() === target)
@@ -182,11 +191,14 @@ const getById = async (projectId) => {
     .maybeSingle()
 
   if (error) throw error
-  return toFrontend(data)
+  const rows = await toFrontendWithCreators(data ? [data] : [])
+  return rows[0] || null
 }
 
 const create = async (payload) => {
   const dataToInsert = toDbPayload(payload)
+  if (payload?.createdById !== undefined) dataToInsert.created_by_id = payload.createdById
+  if (payload?.createdByRole !== undefined) dataToInsert.created_by_role = payload.createdByRole
   if (!dataToInsert || Object.keys(dataToInsert).length === 0) {
     const err = new Error('No valid project fields provided to insert')
     err.status = 400
@@ -201,7 +213,8 @@ const create = async (payload) => {
     console.error('Supabase insert error:', error)
     throw error
   }
-  return toFrontend(data?.[0])
+  const rows = await toFrontendWithCreators(data || [])
+  return rows[0] || null
 }
 
 const updateById = async (projectId, payload) => {
@@ -214,7 +227,8 @@ const updateById = async (projectId, payload) => {
     .single()
 
   if (error) throw error
-  return toFrontend(data)
+  const rows = await toFrontendWithCreators(data ? [data] : [])
+  return rows[0] || null
 }
 
 const deleteById = async (projectId) => {

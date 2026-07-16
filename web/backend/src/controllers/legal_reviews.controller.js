@@ -33,10 +33,12 @@ function getActorUserId(req) {
   return (
     req.user?.user_id ||
     req.user?.id ||
-    req.body?.performed_by_user_id ||
-    req.query?.performed_by_user_id ||
     null
   )
+}
+
+function getActorRole(req) {
+  return req.user?.role || req.user?.role_name || null
 }
 
 async function getLegalPersonnelType(userId) {
@@ -195,6 +197,57 @@ const ENDORSEMENT_DETAIL_SCHEMAS = {
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stampObject(value, fields) {
+  if (!isPlainObject(value)) return value
+  return {
+    ...value,
+    ...fields,
+  }
+}
+
+function documentSignature(document) {
+  if (!isPlainObject(document)) return ''
+  return [
+    document.id,
+    document.documentId,
+    document.path,
+    document.url,
+    document.fileName,
+    document.filename,
+    document.name,
+    document.label,
+    document.addedAt,
+  ]
+    .filter(Boolean)
+    .map(String)
+    .join('|')
+}
+
+function findPreviousDocumentSnapshot(document, previousDocuments, index) {
+  const indexed = previousDocuments[index]
+  if (indexed?.uploadedById || indexed?.uploadedByRole) return indexed
+
+  const signature = documentSignature(document)
+  if (!signature) return null
+  return previousDocuments.find((previous) =>
+    documentSignature(previous) === signature &&
+    (previous.uploadedById || previous.uploadedByRole)
+  ) || null
+}
+
+function stampDocumentRepository(documents, previousDocuments = [], actor) {
+  if (!Array.isArray(documents)) return documents
+  return documents.map((document, index) => {
+    if (!isPlainObject(document)) return document
+    const previous = findPreviousDocumentSnapshot(document, previousDocuments, index)
+    return {
+      ...document,
+      uploadedById: previous?.uploadedById || actor.id,
+      uploadedByRole: previous?.uploadedByRole || actor.role,
+    }
+  })
 }
 
 function validateDateString(value) {
@@ -606,8 +659,10 @@ async function updateByCase(req, res) {
 
     const performedByUserId = getActorUserId(req)
     if (!performedByUserId) {
-      return res.status(400).json({ error: 'performed_by_user_id is required for legal review logs.' })
+      return res.status(400).json({ error: 'Authenticated user is required for legal review logs.' })
     }
+    const performedByRole = getActorRole(req)
+    const actor = { id: performedByUserId, role: performedByRole }
 
     const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
     if (requesterRole === 'legal personnel') {
@@ -679,23 +734,50 @@ async function updateByCase(req, res) {
       review = await LegalReviews.createForCase({
         caseReportId,
         legalPersonnelId: resolvedLegalPersonnelId,
+        createdById: performedByUserId,
+        createdByRole: performedByRole,
       })
     }
 
     const patch = {}
-    if (paralegal_record !== undefined) patch.paralegal_record = paralegal_record
-    if (lawyer_record !== undefined) patch.lawyer_record = lawyer_record
+    if (paralegal_record !== undefined) {
+      patch.paralegal_record = stampObject(paralegal_record, {
+        organizedById: actor.id,
+        organizedByRole: actor.role,
+      })
+    }
+    if (lawyer_record !== undefined) {
+      patch.lawyer_record = stampObject(lawyer_record, {
+        assessedById: actor.id,
+        assessedByRole: actor.role,
+      })
+    }
     if (endorsed_to !== undefined) {
       patch.endorsed_to = endorsed_to || null
       if (!endorsed_to && endorsement_details === undefined) patch.endorsement_details = null
     }
     if (endorsement_details !== undefined) {
-      patch.endorsement_details = normalizedEndorsementDetails
+      patch.endorsement_details = stampObject(normalizedEndorsementDetails, {
+        endorsedById: actor.id,
+        endorsedByRole: actor.role,
+      })
     }
-    if (document_repository !== undefined) patch.document_repository = document_repository
+    if (document_repository !== undefined) {
+      patch.document_repository = stampDocumentRepository(
+        document_repository,
+        review.document_repository || [],
+        actor
+      )
+    }
     if (review_status !== undefined) patch.review_status = review_status
     if (monitoring_entry) {
-      patch.monitoring_log = [...(review.monitoring_log || []), monitoring_entry]
+      patch.monitoring_log = [
+        ...(review.monitoring_log || []),
+        stampObject(monitoring_entry, {
+          byUserId: actor.id,
+          byRole: actor.role,
+        }),
+      ]
     }
 
     if (Object.keys(patch).length > 0) {
@@ -715,6 +797,7 @@ async function updateByCase(req, res) {
       actionType: action_type || 'legal_review_updated',
       remarks,
       performedByUserId,
+      performedByRole,
       isPublic: publicFields.isPublic,
       publicMessage: publicFields.publicMessage,
     })

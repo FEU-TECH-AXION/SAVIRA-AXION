@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase')
+const { resolveActors, withActor } = require('../utils/actor')
 
 const DEFAULT_PAGE = 1
 const DEFAULT_LIMIT = 10
@@ -16,6 +17,32 @@ const normalizePagination = (filters = {}) => {
         from: (page - 1) * limit,
         to: (page - 1) * limit + limit - 1,
     }
+}
+
+async function enrichInterviewActors(payload) {
+    const rows = Array.isArray(payload) ? payload : [payload]
+    const actorsById = await resolveActors(rows.map((row) => row?.interviewer_user_id))
+    const shaped = rows.map((row) => {
+        if (!row) return row
+        const interviewerActor = actorsById[row.interviewer_user_id]
+        return withActor({
+            ...row,
+            interviewer: row.interviewer ? {
+                ...row.interviewer,
+                actorId: interviewerActor?.actorId || row.interviewer.user_id || null,
+                actorName: interviewerActor?.actorName || null,
+                actorRole: interviewerActor?.actorRole || null,
+                role_name: interviewerActor?.actorRole || row.interviewer.role_name || null,
+            } : row.interviewer,
+            interviewer_actor_name: interviewerActor?.actorName || null,
+            interviewer_actor_role: interviewerActor?.actorRole || null,
+        }, interviewerActor, {
+            idField: 'interviewer_user_id',
+            nameField: 'actorName',
+            roleField: 'actorRole',
+        })
+    })
+    return Array.isArray(payload) ? shaped : shaped[0]
 }
 
 const getAll = async (filters = {}) => {
@@ -47,13 +74,13 @@ const getAll = async (filters = {}) => {
     if (error) throw error
     if (pagination.hasPagination) {
         return {
-            data,
+            data: await enrichInterviewActors(data),
             total: count || 0,
             page: pagination.page,
             limit: pagination.limit,
         }
     }
-    return data
+    return enrichInterviewActors(data)
 }
 
 const getById = async (id) => {
@@ -64,11 +91,11 @@ const getById = async (id) => {
             slot:interview_slots(slot_id, slot_date, slot_time, duration_minutes),
             interviewee:users!interviews_interviewee_user_id_fkey(user_id, first_name, last_name, email),
             interviewer:users!interviews_interviewer_user_id_fkey(user_id, first_name, last_name, email)
-        `)
+    `)
         .eq('interview_id', id)
         .single()
     if (error) throw error
-    return data
+    return enrichInterviewActors(data)
 }
 
 const create = async (payload) => {
@@ -77,7 +104,7 @@ const create = async (payload) => {
         .insert([payload])
         .select()
     if (error) throw error
-    return data[0]
+    return enrichInterviewActors(data[0])
 }
 
 // Generic internal updater — used by all status transition functions
@@ -88,7 +115,7 @@ const updateById = async (id, payload) => {
         .eq('interview_id', id)
         .select()
     if (error) throw error
-    return data[0]
+    return enrichInterviewActors(data[0])
 }
 
 const selectSlot = async (id, slot_id, notes = null) => {

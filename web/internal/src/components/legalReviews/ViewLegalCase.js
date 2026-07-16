@@ -33,6 +33,7 @@ import { getLegalCaseDeadlines } from "./legalReviewCalendar";
 import { useAuth } from "@/lib/AuthContext";
 import LegalGuide from "./LegalGuide";
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
+import ActorByline from "@/components/ui/ActorByline";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -246,6 +247,18 @@ function formatLegalReviewDate(value) {
   return parsed.toLocaleDateString("en-PH");
 }
 
+function LegalActorByline({ actorName, actorRole, timestamp, fallbackName = "" }) {
+  return (
+    <ActorByline
+      actorName={actorName}
+      actorRole={actorRole}
+      timestamp={timestamp}
+      fallbackName={fallbackName}
+      as="span"
+    />
+  );
+}
+
 function ParalegalStatusPill({ status }) {
   return (
     <span className={`${styles.paralegalStatusPill} ${getParalegalStatusClass(status)}`}>
@@ -263,7 +276,13 @@ function ParalegalSupportDetails({ record, caseId }) {
   const completionPercent = evidenceItems.length > 0 ? Math.round((obtainedCount / evidenceItems.length) * 100) : 0;
   const overviewItems = [
     ["Case ID", caseId || "Not recorded"],
-    ["Organized By", record.organizedBy || "Not recorded"],
+    ["Organized By", (
+      <LegalActorByline
+        key="organized-by"
+        actorName={record.organizedBy}
+        actorRole={record.organizedByRole}
+      />
+    )],
     ["Last Updated", record.date || "Not recorded"],
     ["Ready For Lawyer Review", readyForLawyer ? "Yes" : "No"],
     ["Survivor Confirmed Understanding", record.survivorUnderstood ? "Yes" : "No"],
@@ -301,7 +320,7 @@ function ParalegalSupportDetails({ record, caseId }) {
         {overviewItems.map(([key, value]) => (
           <div key={key} className={styles.detailItem}>
             <p className={styles.detailKey}>{key}</p>
-            <p className={styles.detailVal}>{value}</p>
+            <p className={styles.detailVal}>{value || "Not recorded"}</p>
           </div>
         ))}
       </div>
@@ -444,7 +463,13 @@ function LegalReviewDetailsSection({ caseData }) {
         >
           <div className={styles.detailGrid}>
             {[
-              ["Assessed By", caseData.lawyerRecord.assessedBy],
+              ["Assessed By", (
+                <LegalActorByline
+                  key="assessed-by"
+                  actorName={caseData.lawyerRecord.assessedBy}
+                  actorRole={caseData.lawyerRecord.assessedByRole}
+                />
+              )],
               ["Date", caseData.lawyerRecord.date],
               ["Consultation Type", caseData.lawyerRecord.consultationType],
               ["Engagement Status", caseData.lawyerRecord.engagementStatus],
@@ -474,7 +499,14 @@ function LegalReviewDetailsSection({ caseData }) {
               <div key={`${document.name}-${index}`} className={styles.reviewLogItem}>
                 <div className={styles.reviewLogMeta}>
                   <strong>{document.name}</strong>
-                  <span>{document.confidential ? "Confidential" : "Standard access"} · {document.uploadedBy}</span>
+                  <span>
+                    {document.confidential ? "Confidential" : "Standard access"}
+                    <span aria-hidden="true"> · </span>
+                    <LegalActorByline
+                      actorName={document.uploadedBy}
+                      actorRole={document.uploadedByRole}
+                    />
+                  </span>
                 </div>
                 {safeDocumentUrl(document.link)
                   ? <a href={safeDocumentUrl(document.link)} target="_blank" rel="noreferrer">Open document</a>
@@ -496,7 +528,19 @@ function LegalReviewDetailsSection({ caseData }) {
               <p className={styles.detailKey}>Endorsed To</p>
               <p className={styles.detailVal}>{caseData.endorsedTo || "Not endorsed"}</p>
             </div>
+            {(caseData.endorsementDetails?.endorsedBy || caseData.endorsementDetails?.endorsedByRole) && (
+              <div className={styles.detailItem}>
+                <p className={styles.detailKey}>Endorsed By</p>
+                <p className={styles.detailVal}>
+                  <LegalActorByline
+                    actorName={caseData.endorsementDetails.endorsedBy}
+                    actorRole={caseData.endorsementDetails.endorsedByRole}
+                  />
+                </p>
+              </div>
+            )}
             {Object.entries(caseData.endorsementDetails || {}).map(([k, v]) => (
+              ["endorsedBy", "endorsedById", "endorsedByRole"].includes(k) ? null :
               v !== null && v !== undefined && v !== "" && (!Array.isArray(v) || v.length > 0) ? (
               <div key={k} className={styles.detailItem}>
                 <p className={styles.detailKey}>{k.replace(/_/g, " ")}</p>
@@ -518,9 +562,37 @@ function LegalReviewDetailsSection({ caseData }) {
               <div key={`${entry.date}-${index}`} className={styles.reviewLogItem}>
                 <div className={styles.reviewLogMeta}>
                   <strong>{entry.date}</strong>
-                  <span>{entry.by}</span>
+                  <LegalActorByline
+                    actorName={entry.by}
+                    actorRole={entry.byRole}
+                  />
                 </div>
                 <p>{entry.update}</p>
+              </div>
+            ))}
+          </div>
+        </DetailAccordion>
+      )}
+
+      {(caseData.legalReviewLogs?.length > 0) && (
+        <DetailAccordion
+          title="Legal Review Logs"
+          style={{ order: 8 }}
+          summary={`${caseData.legalReviewLogs.length} log${caseData.legalReviewLogs.length === 1 ? "" : "s"}`}
+        >
+          <div className={styles.reviewLogList}>
+            {caseData.legalReviewLogs.map((log, index) => (
+              <div key={log.legal_review_log_id || index} className={styles.reviewLogItem}>
+                <div className={styles.reviewLogMeta}>
+                  <strong>{String(log.action_type || "Legal review update").replace(/_/g, " ")}</strong>
+                  <LegalActorByline
+                    actorName={log.actorName || log.performed_by_name}
+                    actorRole={log.actorRole || log.performed_by_role}
+                    timestamp={log.performed_at}
+                    fallbackName="Legal reviewer"
+                  />
+                </div>
+                {log.remarks && <p>{log.remarks}</p>}
               </div>
             ))}
           </div>

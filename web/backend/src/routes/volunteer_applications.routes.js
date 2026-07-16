@@ -7,6 +7,7 @@ const requireCommittee = require('../middleware/requireCommittee.middleware')
 const requireVolunteerApplicationAccess = require('../middleware/requireVolunteerApplicationAccess.middleware')
 const { getAnalysis } = require('../controllers/volunteer_application_analysis.controller');
 const { getEssayEvaluation, saveEssayEvaluation, getInterviewEvaluation, saveInterviewEvaluation } = require('../controllers/volunteer_application_evaluations.controller')
+const { resolveActors, withActor } = require('../utils/actor')
 const requireMembershipCommittee = requireCommittee(2)
 
 router.get('/my_applications',          verifyToken, getMyApplications)
@@ -32,26 +33,15 @@ router.get('/:id/status-history', verifyToken, requireVolunteerApplicationAccess
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Collect unique user IDs
-  const userIds = [...new Set(
-    (data || []).map(h => h.changed_by).filter(Boolean)
-  )];
-
-  // Fetch names in one query
-  const { data: users } = userIds.length
-    ? await supabase
-        .from('users')
-        .select('user_id, first_name, last_name')
-        .in('user_id', userIds.map(Number))
-    : { data: [] };
-
-  const userMap = Object.fromEntries(
-    (users || []).map(u => [String(u.user_id), `${u.first_name} ${u.last_name}`.trim()])
-  );
+  const actorsById = await resolveActors((data || []).map(h => h.changed_by).filter(Boolean));
 
   const formatted = (data || []).map(h => ({
-    ...h,
-    changed_by_name: userMap[h.changed_by] || 'System',
+    ...withActor(h, actorsById[h.changed_by], {
+      idField: 'changed_by',
+      nameField: 'changed_by_name',
+      roleField: 'changed_by_role',
+      fallbackName: 'System',
+    }),
   }));
 
   return res.json({ data: formatted });

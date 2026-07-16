@@ -9,6 +9,7 @@ import {
   fetchTaskActivity,
   updateProjectTask,
 } from "@/lib/api"
+import ActorByline from "@/components/ui/ActorByline"
 import TaskStatusBadge from "./TaskStatusBadge"
 import styles from "./TaskPanel.module.css"
 
@@ -197,7 +198,12 @@ export default function TaskPanel({ projectId, readOnly = false }) {
                   <div className={styles.activity}>
                     {activity[task.task_id].length === 0 ? <span>No activity recorded.</span> : activity[task.task_id].map((item) => (
                       <span key={item.activity_id}>
-                        {item.action.replaceAll("_", " ")} · {new Date(item.created_at).toLocaleString("en-PH")}
+                        {item.action.replaceAll("_", " ")}
+                        <ActorByline
+                          actorName={item.actorName || item.changed_by_name}
+                          actorRole={item.actorRole || item.changed_by_role}
+                          timestamp={item.created_at}
+                        />
                       </span>
                     ))}
                   </div>

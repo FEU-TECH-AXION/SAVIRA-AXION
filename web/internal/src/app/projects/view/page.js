@@ -6,6 +6,7 @@ import { FiArrowLeft, FiEdit2, FiImage } from "react-icons/fi"
 import CreateEditProject from "@/components/projects/CreateEditProject"
 import TaskPanel from "@/components/projects/TaskPanel"
 import Tooltip from "@/components/ui/Tooltip"
+import ActorByline from "@/components/ui/ActorByline"
 import { fetchProject, updateProject, uploadProjectImage } from "@/lib/api"
 import { getProjectDisplayStatus } from "@/lib/projectStatus"
 import styles from "@/components/projects/CreateEditProject.module.css"
@@ -52,6 +53,22 @@ function formatTime(value) {
 
 function listPeople(values) {
   return values?.filter(Boolean).join(", ") || "Not assigned"
+}
+
+function ProjectCreatorByline({ project }) {
+  const actorName = project.createdByName || project.created_by_name
+  const actorRole = project.createdByRole || project.created_by_role
+  if (!actorName && !actorRole) return "Not recorded"
+
+  return (
+    <ActorByline
+      actorName={actorName}
+      actorRole={actorRole}
+      timestamp={project.createdAt}
+      as="span"
+      fallbackName=""
+    />
+  )
 }
 
 function ProjectView() {
@@ -229,6 +246,10 @@ function ProjectView() {
           <SectionCard title="Visibility & Publication">
             <Field label="Visibility" value={project.visibility} />
             <Field label="Approval Status" value={project.approvalStatus} />
+          </SectionCard>
+          <SectionCard title="Creation">
+            <Field label="Created By" value={<ProjectCreatorByline project={project} />} />
+            <Field label="Created At" value={formatDate(project.createdAt)} />
           </SectionCard>
           <SectionCard title="Status & Schedule">
             <Field label="Project Status" value={getProjectDisplayStatus(project)} />

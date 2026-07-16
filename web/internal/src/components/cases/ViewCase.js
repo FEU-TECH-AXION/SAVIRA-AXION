@@ -36,6 +36,7 @@ import FollowUpsPanel, {
   FollowUpComposer,
 } from "./FollowUps";
 import Tooltip from "@/components/ui/Tooltip";
+import ActorByline from "@/components/ui/ActorByline";
 import { useAuth, authFetch } from "@/lib/AuthContext";
 import { API_URL } from "@/lib/internalApiFetch";
 import StatusGuide from "./StatusGuide";
@@ -295,7 +296,12 @@ function StatusHistorySection({ caseData }) {
                   <StatusBadge status={h.status} />
                   {h.isOverride && <span className={styles.overrideBadge}>Override</span>}
                 </div>
-                <p className={styles.historyMeta}>{h.date} - {h.by}</p>
+                <ActorByline
+                  actorName={h.actorName || h.changed_by_name || h.by}
+                  actorRole={h.actorRole || h.changed_by_role}
+                  timestamp={h.date}
+                  className={styles.historyMeta}
+                />
                 {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
                 {h.isOverride && h.overrideReason && (
                   <p className={styles.overrideReason}>
@@ -489,11 +495,13 @@ function AssessmentActionGroup({ title, records, fields, emptyText }) {
       ) : (
         records.map((record, index) => (
           <div key={record.case_assessment_id || `${title}-${record.created_at}-${index}`} className={styles.reviewDetailBlock}>
-            <p className={styles.historyMeta}>
-              {record.created_at
-                ? new Date(record.created_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })
-                : "Date unavailable"}
-            </p>
+            <ActorByline
+              actorName={record.actorName || record.changed_by_name}
+              actorRole={record.actorRole || record.changed_by_role}
+              timestamp={record.created_at}
+              fallbackName="Unknown user"
+              className={styles.historyMeta}
+            />
             <div className={styles.detailGrid}>
               {fields(record).map(([label, value]) => {
                 const formatted = Array.isArray(value) ? value.filter(Boolean).join(", ") : value;
@@ -961,7 +969,16 @@ function CaseManagementTab({
             return (
               <div key={id || `${log.performed_at}-${log.remarks}`} className={styles.noteLogItem}>
                 <div className={styles.noteLogHeader}>
-                  <div><p className={styles.noteLogAuthor}>{log.performed_by_name || log.performed_by || actorName || "Unknown user"}</p><p className={styles.noteLogMeta}>{formatLogDate(getLogDate(log))}</p></div>
+                  <div>
+                    <ActorByline
+                      actorName={log.actorName || log.performed_by_name || log.performed_by || actorName}
+                      actorRole={log.actorRole || log.performed_by_role}
+                      timestamp={getLogDate(log)}
+                      fallbackName="Unknown user"
+                      className={styles.noteLogMeta}
+                      timestampFormatter={formatLogDate}
+                    />
+                  </div>
                   <div className={styles.noteLogActions}>
                     <Tooltip text="Edit this internal note">
                       <button type="button" className={styles.noteIconBtn} aria-label="Edit note" onClick={() => { setEditingNoteId(id); setEditingNoteText(log.remarks || ""); }}><FiEdit2 /></button>

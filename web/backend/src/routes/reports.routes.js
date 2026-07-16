@@ -17,6 +17,73 @@ router.use(authorize("Admin"));
 // timestamp so we can filter with Supabase's .gte() filter.
 // ─────────────────────────────────────────────────────────────────────────────
 
+function getAuthenticatedActor(req) {
+  return {
+    id: req.user?.user_id || req.user?.id || null,
+    role: req.user?.role || req.user?.role_name || null,
+  };
+}
+
+function normalizeModules(modules) {
+  if (!Array.isArray(modules)) return [];
+  return modules
+    .map((moduleName) => String(moduleName || "").trim())
+    .filter(Boolean);
+}
+
+router.post("/generation-log", async (req, res) => {
+  try {
+    const actor = getAuthenticatedActor(req);
+    if (!actor.id) {
+      return res.status(401).json({ error: "Authenticated user is required." });
+    }
+
+    const format = String(req.body?.format || "").trim().toLowerCase();
+    if (!["pdf", "xlsx"].includes(format)) {
+      return res.status(400).json({ error: "format must be pdf or xlsx." });
+    }
+
+    const modules = normalizeModules(req.body?.modules);
+    const dateRange = req.body?.date_range === undefined || req.body?.date_range === null
+      ? null
+      : String(req.body.date_range).slice(0, 100);
+    const fileName = req.body?.file_name === undefined || req.body?.file_name === null
+      ? null
+      : String(req.body.file_name).slice(0, 255);
+
+    const { data, error } = await supabase
+      .from("report_generation_logs")
+      .insert([{
+        generated_by_id: actor.id,
+        generated_by_role: actor.role,
+        format,
+        modules,
+        date_range: dateRange,
+        file_name: fileName,
+      }])
+      .select("id, generated_by_id, generated_by_role, generated_at, format, modules, date_range, file_name")
+      .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({
+      data: {
+        id: data.id,
+        generatedById: data.generated_by_id,
+        generatedByRole: data.generated_by_role,
+        generatedAt: data.generated_at,
+        format: data.format,
+        modules: data.modules || [],
+        dateRange: data.date_range,
+        fileName: data.file_name,
+      },
+    });
+  } catch (err) {
+    console.error("Report generation log error:", err);
+    return res.status(500).json({ error: "Failed to record report generation." });
+  }
+});
+
 function getRangeStart(range) {
   const now = new Date();
   switch (range) {

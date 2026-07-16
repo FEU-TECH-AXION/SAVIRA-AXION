@@ -1,6 +1,7 @@
 const CaseAssessments = require('../models/case_assessments.model')
 const supabase       = require('../config/supabase')
 const { getPublicIdByCaseReportId } = require('../utils/casePublicIds')
+const { resolveActor, resolveActors, withActor } = require('../utils/actor')
 
 const PRELIMINARY_REFERRAL_BODIES = new Set([
   'DSWD',
@@ -13,10 +14,23 @@ const REFERRAL_ALLOWED_MIN_STATUS_ID = 3 // Undergoing Review
 const getItems = async (req, res) => {
   try {
     const data = await CaseAssessments.getAll()
-    res.json(data)
+    res.json(await enrichAssessmentActors(data))
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+}
+
+async function enrichAssessmentActors(items = []) {
+  const rows = Array.isArray(items) ? items : [items]
+  const actorsById = await resolveActors(rows.map((item) => item?.changed_by_id))
+  const shaped = rows.map((item) =>
+    withActor(item, actorsById[item?.changed_by_id], {
+      idField: 'changed_by_id',
+      nameField: 'changed_by_name',
+      roleField: 'changed_by_role',
+    })
+  )
+  return Array.isArray(items) ? shaped : shaped[0]
 }
 
 // GET /api/case_assessments/case/:caseReportId
@@ -26,8 +40,9 @@ const getItems = async (req, res) => {
 const getItemsByCaseReport = async (req, res) => {
   try {
     const data = await CaseAssessments.getByCaseReport(req.params.caseReportId)
+    const enriched = await enrichAssessmentActors(data)
     res.json({
-      data: data.map((item) => ({ ...item, case_report_id: req.casePublicId || item.case_report_id })),
+      data: enriched.map((item) => ({ ...item, case_report_id: req.casePublicId || item.case_report_id })),
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -37,8 +52,9 @@ const getItemsByCaseReport = async (req, res) => {
 const createItem = async (req, res) => {
   try {
     const item = await CaseAssessments.create(req.body)
+    const enriched = await enrichAssessmentActors(item)
     res.status(201).json({
-      ...item,
+      ...enriched,
       case_report_id: await getPublicIdByCaseReportId(item.case_report_id),
     })
   } catch (err) {
@@ -133,9 +149,18 @@ const recordAssessmentAction  = async (req, res) => {
       .single()
 
     if (error) throw error
+    const actor = await resolveActor(approver.user_id)
 
     res.json({
-      data: { ...data, case_report_id: req.casePublicId || data.case_report_id },
+      data: withActor(
+        { ...data, case_report_id: req.casePublicId || data.case_report_id },
+        actor,
+        {
+          idField: 'changed_by_id',
+          nameField: 'changed_by_name',
+          roleField: 'changed_by_role',
+        }
+      ),
     })
   } catch (err) {
     res.status(500).json({ error: err.message })

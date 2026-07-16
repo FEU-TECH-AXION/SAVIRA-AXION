@@ -994,9 +994,11 @@ async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) 
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+  return { filename };
 }
 
 function cleanPdfLabel(value, fallback = "Unspecified") {
@@ -1376,6 +1378,32 @@ async function exportToPDF({ activeModules, dateRange, dataAvailability, rawData
     blob: doc.output("blob"),
     filename: `report_${generatedAt.toISOString().slice(0, 10)}.pdf`,
   };
+}
+
+function getActiveReportModules(activeModules = {}) {
+  return Object.entries(activeModules)
+    .filter(([, enabled]) => enabled)
+    .map(([moduleName]) => moduleName);
+}
+
+function recordReportGeneration({ format, modules, dateRange, fileName }) {
+  internalApiFetch("/api/reports/generation-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      format,
+      modules,
+      date_range: dateRange,
+      file_name: fileName,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.warn(`Report generation audit log failed (${response.status}).`);
+    }
+  }).catch((err) => {
+    console.warn("Report generation audit log failed.", err);
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2082,7 +2110,7 @@ export default function ReportGenerator() {
   async function handleExportXLSX() {
     setExportMenuOpen(false);
     try {
-      await exportToXLSX({
+      const result = await exportToXLSX({
         activeModules,
         dataAvailability: {
           caseData,
@@ -2093,6 +2121,14 @@ export default function ReportGenerator() {
         },
         analyticsData,
       });
+      if (result?.filename) {
+        recordReportGeneration({
+          format: "xlsx",
+          modules: getActiveReportModules(activeModules),
+          dateRange,
+          fileName: result.filename,
+        });
+      }
     } catch (err) {
       console.error("Excel export failed:", err);
       setError("Failed to generate Excel workbook. Please try again.");
@@ -2123,6 +2159,12 @@ export default function ReportGenerator() {
             url: URL.createObjectURL(result.blob),
             filename: result.filename,
           };
+        });
+        recordReportGeneration({
+          format: "pdf",
+          modules: getActiveReportModules(activeModules),
+          dateRange,
+          fileName: result.filename,
         });
       }
     } catch (err) {
