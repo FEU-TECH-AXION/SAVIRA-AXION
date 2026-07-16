@@ -1189,7 +1189,7 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
 
       <View style={s.consentOption}>
         <Checkbox
-          label={<>I understand and agree that the information I provide will be collected and processed solely for case management, in accordance with the <Text style={s.inlineStrong}>Data Privacy Act of 2012 (RA 10173)</Text>. My data will not be shared without my consent.</>}
+          label="I understand and agree that the information I provide will be collected and processed solely for case management, in accordance with the Data Privacy Act of 2012 (RA 10173). My data will not be shared without my consent."
           value={consents.dataPrivacy}
           onChange={setConsent("dataPrivacy")}
           error={errors.dataPrivacy}
@@ -1202,7 +1202,7 @@ function StepConsent({ complainant, onComplainantChange, consents, onConsentChan
 
       <View style={s.consentOption}>
         <Checkbox
-          label={<>I agree that <Text style={s.inlineStrong}>anonymized, de-identified</Text> details of my report may be used to improve case handling and outcomes. No personally identifiable information will be retained or linked to any analysis.</>}
+          label="I agree that anonymized, de-identified details of my report may be used to improve case handling and outcomes. No personally identifiable information will be retained or linked to any analysis."
           value={consents.caseAnalysis}
           onChange={setConsent("caseAnalysis")}
           error={errors.caseAnalysis}
@@ -5239,29 +5239,38 @@ const s = StyleSheet.create({
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
   modalCancelBtn: {
     flex: 1,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: BORDER,
     borderRadius: 12,
     paddingVertical: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalCancelText: { color: '#374151', fontSize: 13, fontWeight: '800' },
+  modalCancelText: { color: '#374151', fontSize: 13, fontWeight: '800', textAlign: 'center', flexShrink: 1 },
   modalPrimaryBtn: {
     flex: 1.4,
+    minHeight: 48,
     backgroundColor: TEAL,
     borderRadius: 12,
     paddingVertical: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  modalPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '900', textAlign: 'center', flexShrink: 1 },
   modalDangerBtn: {
     flex: 1.4,
+    minHeight: 48,
     backgroundColor: ORANGE,
     borderRadius: 12,
     paddingVertical: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalDangerText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  modalDangerText: { color: '#fff', fontSize: 13, fontWeight: '900', textAlign: 'center', flexShrink: 1 },
   filePickBtn: {
     marginTop: 10,
     borderWidth: 1,

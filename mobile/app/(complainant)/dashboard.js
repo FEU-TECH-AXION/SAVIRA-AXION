@@ -60,7 +60,7 @@ function Navbar({ onBurger, onNotifications, notifCount, user }) {
 }
 
 // ── Hero Banner ───────────────────────────────────────────────────────────────
-function HeroBanner({ firstName, lastName, totalNotifications, t }) {
+function HeroBanner({ firstName, lastName, t }) {
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || t('User');
   return (
     <View style={s.heroBannerWrap}>
@@ -71,11 +71,6 @@ function HeroBanner({ firstName, lastName, totalNotifications, t }) {
       >
         <View style={s.heroOverlay}>
           <Text style={s.heroTitle}>{t('Welcome, {name}!', { name: displayName })}</Text>
-          <View style={s.statCard}>
-            <View style={s.statDot} />
-            <Text style={s.statNum}>{totalNotifications}</Text>
-            <Text style={s.statLabel}>{t('New\nNotifications')}</Text>
-          </View>
         </View>
       </ImageBackground>
     </View>
@@ -581,7 +576,6 @@ export default function ComplainantDashboard() {
         <HeroBanner
           firstName={user?.firstName || user?.first_name || 'User'}
           lastName={user?.lastName || user?.last_name || ''}
-          totalNotifications={unreadCount}
           t={t}
         />
 
@@ -721,31 +715,6 @@ heroOverlay: {
     fontWeight: '800',
     marginBottom: 16,
   },
-  statCard: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  statDot: {
-    position: 'absolute',
-    top: -14,
-    left: 16,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: ORANGE,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  statNum: { color: '#fff', fontSize: 36, fontWeight: '800', marginLeft: 24 },
-  statLabel: { color: '#fff', fontSize: 14, lineHeight: 20 },
-
   // Content
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
