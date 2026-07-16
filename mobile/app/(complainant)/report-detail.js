@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
-  Text,
+  Text as RNText,
   View,
   Pressable,
   Image,
@@ -21,6 +21,19 @@ import SideNav from '../../components/SideNav';
 import HeaderAvatar from '../../components/HeaderAvatar';
 import NavSearchButton from '../../components/NavSearchButton';
 import NotificationBell from '../../components/NotificationBell';
+import { translateText, useI18n } from '../../lib/i18n';
+
+const DetailLanguageContext = createContext('en');
+
+function Text({ children, ...props }) {
+  const language = useContext(DetailLanguageContext);
+  const translateChild = (child) => {
+    if (typeof child === 'string') return translateText(language, child);
+    if (Array.isArray(child)) return child.map(translateChild);
+    return child;
+  };
+  return <RNText {...props}>{translateChild(children)}</RNText>;
+}
 
 const TEAL = '#037F81';
 const ORANGE = '#E96433';
@@ -465,6 +478,7 @@ function getFollowUpEntries(request) {
 }
 
 export default function ReportDetailScreen() {
+  const { language, t } = useI18n();
   const router = useRouter();
   const { caseId, displayId, from, tab } = useLocalSearchParams();
   const fromParam = Array.isArray(from) ? from[0] : from;
@@ -978,6 +992,7 @@ export default function ReportDetailScreen() {
   };
 
   return (
+    <DetailLanguageContext.Provider value={language}>
     <View style={s.container}>
       <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
       <Navbar onBurger={() => setNavOpen(true)} />
@@ -1505,7 +1520,7 @@ export default function ReportDetailScreen() {
                                 setReplyError('');
                                 setReplyDrafts((current) => ({ ...current, [item.id]: text }));
                               }}
-                              placeholder="Write a reply..."
+                              placeholder={t('Write a reply...')}
                               placeholderTextColor="#9ca3af"
                             />
                             {replyError ? <Text style={s.followError}>{replyError}</Text> : null}
@@ -1631,7 +1646,7 @@ export default function ReportDetailScreen() {
                   setActionError('');
                   setFollowUpMessage(text);
                 }}
-                placeholder="Describe the correction or additional information..."
+                placeholder={t('Describe the correction or additional information...')}
                 placeholderTextColor="#9ca3af"
               />
               {actionError ? <Text style={s.modalError}>{actionError}</Text> : null}
@@ -1784,7 +1799,7 @@ export default function ReportDetailScreen() {
                   setAvailabilityError('');
                   setAvailabilityReason(text);
                 }}
-                placeholder="Briefly explain your availability or why the offered slots do not work."
+                placeholder={t('Briefly explain your availability or why the offered slots do not work.')}
                 placeholderTextColor="#9ca3af"
               />
               {availabilityError ? <Text style={s.modalError}>{availabilityError}</Text> : null}
@@ -1822,7 +1837,7 @@ export default function ReportDetailScreen() {
                 setCancelInterviewError('');
                 setCancelInterviewReason(text);
               }}
-              placeholder="Briefly explain why the interview should be cancelled."
+              placeholder={t('Briefly explain why the interview should be cancelled.')}
               placeholderTextColor="#9ca3af"
             />
             {cancelInterviewError ? <Text style={s.modalError}>{cancelInterviewError}</Text> : null}
@@ -1859,7 +1874,7 @@ export default function ReportDetailScreen() {
                 setActionError('');
                 setWithdrawReason(text);
               }}
-              placeholder="Explain why you want to withdraw this case."
+              placeholder={t('Explain why you want to withdraw this case.')}
               placeholderTextColor="#9ca3af"
             />
             {withdrawalCopy.requiresAffidavit && (
@@ -1881,6 +1896,7 @@ export default function ReportDetailScreen() {
         </View>
       </Modal>
     </View>
+    </DetailLanguageContext.Provider>
   );
 }
 
