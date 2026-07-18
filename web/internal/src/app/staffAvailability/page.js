@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { fetchStaffAvailability, updateStaffAvailability } from "@/lib/api"
 import Tooltip from "@/components/ui/Tooltip"
 import StaffAvailabilityFilterMenu from "./StaffAvailabilityFilterMenu"
@@ -75,14 +75,56 @@ function AvailabilityDialogForm({
   const singlePerson = people.length === 1 ? people[0] : null
   const [status, setStatus] = useState(singlePerson?.availability_status || "Available")
   const [note, setNote] = useState(singlePerson?.availability_note || "")
+  const [step, setStep] = useState("form")
+  const confirmButtonRef = useRef(null)
 
   const isStatus = dialog.type === "status"
   const targetLabel = singlePerson?.name || `${people.length} staff members`
+  const statusPatch = { availability_status: status }
+  const shouldShowImpact = status === "On Leave" || status === "Out of Office"
+  const impactTotals = useMemo(() => people.reduce((totals, person) => {
+    const cases = Number(person.active_cases) || 0
+    const legal = Number(person.active_legal_assignments) || 0
+    const reviews = Number(person.active_reviews) || 0
+    const projects = Number(person.active_projects) || 0
+
+    return {
+      affectedPeople: totals.affectedPeople + (cases + legal + reviews + projects > 0 ? 1 : 0),
+      cases: totals.cases + cases,
+      legal: totals.legal + legal,
+      reviews: totals.reviews + reviews,
+      projects: totals.projects + projects,
+    }
+  }, {
+    affectedPeople: 0,
+    cases: 0,
+    legal: 0,
+    reviews: 0,
+    projects: 0,
+  }), [people])
+  const impactParts = [
+    impactTotals.cases > 0 ? `${impactTotals.cases} ${impactTotals.cases === 1 ? "case" : "cases"}` : null,
+    impactTotals.legal > 0 ? `${impactTotals.legal} legal ${impactTotals.legal === 1 ? "assignment" : "assignments"}` : null,
+    impactTotals.reviews > 0 ? `${impactTotals.reviews} ${impactTotals.reviews === 1 ? "review" : "reviews"}` : null,
+    impactTotals.projects > 0 ? `${impactTotals.projects} ${impactTotals.projects === 1 ? "project" : "projects"}` : null,
+  ].filter(Boolean)
+  const showImpactWarning = shouldShowImpact && impactTotals.affectedPeople > 0
+
+  useEffect(() => {
+    if (step === "confirm") {
+      confirmButtonRef.current?.focus()
+    }
+  }, [step])
 
   function submit(event) {
     event.preventDefault()
+    if (isStatus && step === "form") {
+      setStep("confirm")
+      return
+    }
+
     onSubmit(people, isStatus
-      ? { availability_status: status }
+      ? statusPatch
       : { availability_note: note.trim() || null }
     )
   }
@@ -96,40 +138,92 @@ function AvailabilityDialogForm({
         role="dialog"
         aria-modal="true"
       >
-        <h2>{isStatus ? "Update Availability Status" : "Edit Scheduler Note"}</h2>
-        <p>
-          {isStatus
-            ? `Choose the explicit status shown to assignment teams for ${targetLabel}.`
-            : `Notes are kept out of the table and should only include scheduler context for ${targetLabel}.`}
-        </p>
+        {isStatus && step === "confirm" ? (
+          <>
+            <h2>Confirm status change</h2>
+            {singlePerson ? (
+              <p className={styles.statusReview}>
+                {singlePerson.name}: {singlePerson.availability_status} &rarr; {status}
+              </p>
+            ) : (
+              <>
+                <p className={styles.statusReview}>
+                  {people.length} staff members &rarr; {status}
+                </p>
+                <div className={styles.statusReviewList}>
+                  {people.map((person) => (
+                    <p key={person.user_id}>
+                      {person.name}: {person.availability_status} &rarr; {status}
+                    </p>
+                  ))}
+                </div>
+              </>
+            )}
 
-        {isStatus ? (
-          <label className={styles.dialogLabel}>
-            Availability status
-            <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              {STATUSES.map((value) => <option key={value}>{value}</option>)}
-            </select>
-          </label>
+            {showImpactWarning ? (
+              <div className={styles.impactWarning}>
+                {impactTotals.affectedPeople} of the selected staff have active work assigned ({impactParts.join(", ")}).
+                Changing their status will NOT automatically reassign this work &mdash; please reassign manually afterward.
+              </div>
+            ) : null}
+
+            <div className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.dialogSecondary}
+                onClick={() => setStep("form")}
+                disabled={saving}
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                className={styles.dialogPrimary}
+                disabled={saving}
+                ref={confirmButtonRef}
+              >
+                {saving ? "Saving..." : "Confirm & Save"}
+              </button>
+            </div>
+          </>
         ) : (
-          <label className={styles.dialogLabel}>
-            Availability note
-            <textarea
-              value={note}
-              placeholder="Optional context for schedulers"
-              onChange={(event) => setNote(event.target.value)}
-              autoFocus
-            />
-          </label>
-        )}
+          <>
+            <h2>{isStatus ? "Update Availability Status" : "Edit Scheduler Note"}</h2>
+            <p>
+              {isStatus
+                ? `Choose the explicit status shown to assignment teams for ${targetLabel}.`
+                : `Notes are kept out of the table and should only include scheduler context for ${targetLabel}.`}
+            </p>
 
-        <div className={styles.dialogActions}>
-          <button type="button" className={styles.dialogSecondary} onClick={onCancel} disabled={saving}>
-            Cancel
-          </button>
-          <button type="submit" className={styles.dialogPrimary} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
+            {isStatus ? (
+              <label className={styles.dialogLabel}>
+                Availability status
+                <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                  {STATUSES.map((value) => <option key={value}>{value}</option>)}
+                </select>
+              </label>
+            ) : (
+              <label className={styles.dialogLabel}>
+                Availability note
+                <textarea
+                  value={note}
+                  placeholder="Optional context for schedulers"
+                  onChange={(event) => setNote(event.target.value)}
+                  autoFocus
+                />
+              </label>
+            )}
+
+            <div className={styles.dialogActions}>
+              <button type="button" className={styles.dialogSecondary} onClick={onCancel} disabled={saving}>
+                Cancel
+              </button>
+              <button type="submit" className={styles.dialogPrimary} disabled={saving}>
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   )

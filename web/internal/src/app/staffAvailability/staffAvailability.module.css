@@ -215,6 +215,43 @@
   resize: vertical;
 }
 
+.statusReview {
+  color: var(--sasha-text);
+  font-weight: 700;
+}
+
+.statusReviewList {
+  max-height: 180px;
+  overflow: auto;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: var(--sasha-offwhite);
+}
+
+.statusReviewList p {
+  margin: 0;
+  color: var(--sasha-text);
+  font-weight: 700;
+}
+
+.statusReviewList p + p {
+  margin-top: 0.45rem;
+}
+
+.impactWarning {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  color: #92400e;
+  background: #fffbeb;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .dialogActions {
   display: flex;
   justify-content: flex-end;
@@ -357,6 +394,22 @@
 :global(html[data-theme="dark"]) .dialog p,
 :global(html[data-theme="dark"]) .empty {
   color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .statusReview,
+:global(html[data-theme="dark"]) .statusReviewList p {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .statusReviewList {
+  background: #0f1720;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .impactWarning {
+  border-color: #a16207;
+  color: #fde68a;
+  background: #3f2f0d;
 }
 
 :global(html[data-theme="dark"]) .dialogLabel select,
