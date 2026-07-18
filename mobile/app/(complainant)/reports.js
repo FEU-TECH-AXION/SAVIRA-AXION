@@ -141,7 +141,7 @@ const ORGANIZATION_TYPE_OPTIONS = [
 ];
 const LOCATION_TYPE_OPTIONS = ["Physical Location", "Online"];
 const YES_NO_OPTIONS = ["Yes", "No"];
-const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member"];
 const PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
 const UNKNOWN_PERPETRATOR_GENDER_OPTIONS = ["Male", "Female", "Unable to tell"];
 

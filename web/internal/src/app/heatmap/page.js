@@ -251,7 +251,6 @@ function FilterSection({ filters, onChange, meta }) {
             { value: "Male", label: "Male" },
             { value: "Female", label: "Female" },
             { value: "LGBTQIA+ member", label: "LGBTQIA+ member" },
-            { value: "Prefer not to say", label: "Prefer not to say" },
           ],
           placeholder: "All",
         },

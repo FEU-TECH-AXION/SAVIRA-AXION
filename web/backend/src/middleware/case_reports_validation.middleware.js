@@ -20,7 +20,7 @@ const VALID_ORGS = [
   "No Organization / Independent",
   "Others",
 ];
-const VALID_GENDERS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const VALID_GENDERS = ["Male", "Female", "LGBTQIA+ member"];
 const VALID_ORG_TYPES = [
   "School / University",
   "Workplace / Company",

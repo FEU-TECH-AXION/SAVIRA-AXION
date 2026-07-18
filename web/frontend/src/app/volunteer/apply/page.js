@@ -147,7 +147,7 @@ const INITIAL_ESSAY = {
   description: "",
 };
 
-const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member"];
 const PRONOUN_OPTIONS = ["he", "she", "they"];
 const ORGANIZATION_OPTIONS = ["BSP", "GSP", "No Organization / Independent", "Other"];
 const ORGANIZATION_LABELS = {
@@ -553,7 +553,6 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             <option value="Male">Male</option>
             <option value="Female">Female</option>
             <option value="LGBTQIA+ member">LGBTQIA+ member</option>
-            <option value="Prefer not to say">Prefer not to say</option>
           </Select>
         </Field>
         <Field label="Pronouns">

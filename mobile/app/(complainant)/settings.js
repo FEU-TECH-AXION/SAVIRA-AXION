@@ -55,7 +55,6 @@ const GENDER_IDENTITY_OPTIONS = [
   'Male',
   'Female',
   'LGBTQIA+ member',
-  'Prefer not to say',
 ];
 
 function isLegacyGenderIdentity(value) {
