@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix web/backend\" \"npm run dev --prefix web/frontend\" \"npm run start --prefix mobile\"",
-    "dev:web": "concurrently \"npm run dev --prefix web/backend\" \"npm run dev --prefix web/frontend\"",
+    "dev": "concurrently \"npm run dev --prefix web/backend\" \"npm run dev --prefix web/frontend\" \"npm run dev --prefix web/internal\" \"npm run start --prefix mobile\"",
+    "dev:web": "concurrently \"npm run dev --prefix web/backend\" \"npm run dev --prefix web/frontend\" \"npm run dev --prefix web/internal\"",
     "dev:mobile": "npm run start --prefix mobile",
-    "install:all": "npm i && npm i --prefix web/backend && npm i --prefix web/frontend && npm i --prefix mobile"
+    "install:all": "npm i && npm i --prefix web/backend && npm i --prefix web/frontend && npm i --prefix web/internal && npm i --prefix mobile"
   },
   "repository": {
     "type": "git",
