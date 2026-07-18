@@ -31,6 +31,8 @@ const ALLOWED_FIELDS = [
 // Strip ISO timestamp suffix so HTML <input type="date"> gets plain YYYY-MM-DD
 const toDateStr = (val) => (val ? String(val).split('T')[0] : null)
 const toTimeStr = (val) => (val ? String(val).slice(0, 5) : '')
+const normalizeName = (value) => String(value || '').trim().toLowerCase()
+const UNAVAILABLE_ASSIGNMENT_STATUSES = ['On Leave', 'Out of Office']
 
 const parseDate = (value) => {
   if (!value) return null
@@ -149,6 +151,61 @@ const sanitize = (payload) => {
   )
 }
 
+const getProjectAssignmentNames = (payload = {}) => {
+  const values = [
+    ...(Array.isArray(payload.projectOfficers) ? payload.projectOfficers : []),
+    ...(Array.isArray(payload.projectCommitteeMembers) ? payload.projectCommitteeMembers : []),
+    ...(Array.isArray(payload.project_officers) ? payload.project_officers : []),
+    ...(Array.isArray(payload.project_committee_members) ? payload.project_committee_members : []),
+  ]
+
+  const namesByKey = new Map()
+  for (const value of values) {
+    const name = String(value || '').trim()
+    const key = normalizeName(name)
+    if (key && !namesByKey.has(key)) namesByKey.set(key, name)
+  }
+  return [...namesByKey.values()]
+}
+
+const validateProjectPersonnelAvailability = async (payload = {}) => {
+  const submittedNames = getProjectAssignmentNames(payload)
+  if (submittedNames.length === 0) return
+
+  const submittedNamesByKey = new Map(submittedNames.map((name) => [normalizeName(name), name]))
+  const { data: users, error } = await supabase
+    .from('users')
+    .select(`
+      first_name,
+      last_name,
+      availability_status,
+      is_active,
+      roles (role_name)
+    `)
+    .eq('is_active', true)
+    .in('availability_status', UNAVAILABLE_ASSIGNMENT_STATUSES)
+
+  if (error) throw error
+
+  const unavailable = []
+  for (const user of users || []) {
+    if (!['Staff', 'Case Officer', 'Legal Personnel'].includes(user.roles?.role_name)) continue
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim()
+    const submittedName = submittedNamesByKey.get(normalizeName(fullName))
+    if (submittedName) {
+      unavailable.push(`${submittedName} (${user.availability_status})`)
+    }
+  }
+
+  if (unavailable.length > 0) {
+    const err = new Error(
+      `Cannot assign the following personnel - they are currently unavailable: ${unavailable.join(', ')}`
+    )
+    err.status = 400
+    throw err
+  }
+}
+
 const getAll = async (filters = {}) => {
   let query = supabase.from('projects').select('*')
 
@@ -196,6 +253,7 @@ const getById = async (projectId) => {
 }
 
 const create = async (payload) => {
+  await validateProjectPersonnelAvailability(payload)
   const dataToInsert = toDbPayload(payload)
   if (payload?.createdById !== undefined) dataToInsert.created_by_id = payload.createdById
   if (payload?.createdByRole !== undefined) dataToInsert.created_by_role = payload.createdByRole
@@ -218,6 +276,7 @@ const create = async (payload) => {
 }
 
 const updateById = async (projectId, payload) => {
+  await validateProjectPersonnelAvailability(payload)
   const dataToUpdate = toDbPayload(payload)
   const { data, error } = await supabase
     .from('projects')
@@ -259,4 +318,5 @@ module.exports = {
   updateById,
   deleteById,
   deleteMany,
+  validateProjectPersonnelAvailability,
 }

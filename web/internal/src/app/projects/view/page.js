@@ -116,6 +116,7 @@ function ProjectView() {
       window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (err) {
       setSavingError(err.message || "Unable to save project.")
+      throw err
     }
   }
 

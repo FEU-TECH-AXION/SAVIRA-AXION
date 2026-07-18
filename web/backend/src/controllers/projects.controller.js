@@ -87,6 +87,7 @@ const updateItem = async (req, res) => {
     const item = await ProjectsModel.updateById(req.params.id, req.body)
     res.json(item)
   } catch (err) {
+    if (err && err.status) return res.status(err.status).json({ error: err.message })
     res.status(500).json({ error: err.message })
   }
 }

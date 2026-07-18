@@ -294,6 +294,7 @@ export default function ProjectManagement() {
       setEditingProject(null);
     } catch (err) {
       showToast(err.message || 'Unable to save project.', 'danger');
+      throw err;
     }
   }
   function handleFormCancel() {

@@ -359,7 +359,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
     return e;
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     const assignedNames = [
@@ -381,7 +381,17 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
       setDuplicateAssignments(duplicates);
       return;
     }
-    onSave({ ...form, id: initial?.id, createdAt: initial?.createdAt || new Date().toISOString() });
+    try {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.form;
+        return next;
+      });
+      await onSave({ ...form, id: initial?.id, createdAt: initial?.createdAt || new Date().toISOString() });
+    } catch (error) {
+      setErrors({ form: error.message || "Unable to save project." });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   const isPublicRequest = form.visibility === "public";
@@ -416,7 +426,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
 
       {Object.keys(errors).length > 0 && (
         <div className={styles.errorBanner}>
-          <FiInfo /> Please fill in all required fields before submitting.
+          <FiInfo /> {errors.form || "Please fill in all required fields before submitting."}
         </div>
       )}
 
