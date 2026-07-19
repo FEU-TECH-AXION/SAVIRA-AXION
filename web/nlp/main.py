@@ -14,6 +14,8 @@ load_dotenv()
 
 app = FastAPI(title="SAVIRA NLP Service", version="1.0.0")
 
+ESSAY_APPROVAL_THRESHOLD = 70.0
+
 # ── Helpers ───────────────────────────────────────────────────────
 def coerce_str(val):
     """Coerce Groq output to string — handles list, None, or unexpected types."""
@@ -209,7 +211,7 @@ async def analyze_essay(request: EssayRequest):
         notes  = result.get("notes", {})
 
         # Step 4 — Determine threshold
-        threshold_passed = result["essay_weighted_total"] >= 50.0
+        threshold_passed = result["essay_weighted_total"] >= ESSAY_APPROVAL_THRESHOLD
 
         # Step 5 — Return structured result
         return EssayAnalysisResponse(
