@@ -35,11 +35,15 @@ const getAll = async () => {
 
     if (staffIds.length > 0) {
         const userIds = staffRows.map((row) => row.user_id)
-        const [{ data: taskAssignments, error: taskError }, { data: reviewAssignments, error: reviewError }, { data: projects, error: projectError }] = await Promise.all([
+        const [{ data: taskAssignments, error: taskError }, { data: reviewAssignments, error: reviewError }, { data: projectAssignments, error: projectError }] = await Promise.all([
             supabase.from('project_tasks').select('assigned_to, status').in('assigned_to', staffIds)
                 .not('status', 'in', '("Completed","Cancelled")'),
             supabase.from('volunteer_application_assignments').select('assessor_id').in('assessor_id', userIds).eq('is_active', true),
-            supabase.from('projects').select('project_status, start_date, end_date, project_officers, project_committee_members'),
+            supabase
+                .from('project_assignments')
+                .select('staff_id, projects(project_id, project_status, start_date, end_date)')
+                .in('staff_id', staffIds)
+                .eq('is_active', true),
         ])
         if (taskError) throw taskError
         if (reviewError) throw reviewError
@@ -50,10 +54,6 @@ const getAll = async () => {
         for (const item of reviewAssignments || []) {
             activeReviewCounts[item.assessor_id] = (activeReviewCounts[item.assessor_id] || 0) + 1
         }
-        const staffByName = new Map(staffRows.map((row) => [
-            `${row.users?.first_name || ''} ${row.users?.last_name || ''}`.trim().toLowerCase(),
-            row.user_id,
-        ]))
         const parseDate = (value) => {
             if (!value) return null
             const date = new Date(`${String(value).split('T')[0]}T00:00:00`)
@@ -62,21 +62,23 @@ const getAll = async () => {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         const computeProjectStatus = (project) => {
-            if (['Postponed', 'Cancelled'].includes(project.project_status)) return project.project_status
-            const start = parseDate(project.start_date)
-            const end = parseDate(project.end_date) || start
+            if (['Postponed', 'Cancelled'].includes(project?.project_status)) return project.project_status
+            const start = parseDate(project?.start_date)
+            const end = parseDate(project?.end_date) || start
             if (!start) return 'Upcoming'
             if (end && end < today) return 'Completed'
             if (start > today) return 'Upcoming'
             return 'Active'
         }
-        for (const project of projects || []) {
-            if (!['Upcoming', 'Active'].includes(computeProjectStatus(project))) continue
-            const names = [...(project.project_officers || []), ...(project.project_committee_members || [])]
-            for (const name of new Set(names.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean))) {
-                const userId = staffByName.get(name)
-                if (userId) activeProjectCounts[userId] = (activeProjectCounts[userId] || 0) + 1
-            }
+        const staffById = new Map(staffRows.map((row) => [row.staff_id, row]))
+        const countedProjects = new Set()
+        for (const assignment of projectAssignments || []) {
+            if (!['Upcoming', 'Active'].includes(computeProjectStatus(assignment.projects))) continue
+            const projectKey = `${assignment.staff_id}:${assignment.projects?.project_id || ''}`
+            if (countedProjects.has(projectKey)) continue
+            countedProjects.add(projectKey)
+            const staff = staffById.get(assignment.staff_id)
+            if (staff?.user_id) activeProjectCounts[staff.user_id] = (activeProjectCounts[staff.user_id] || 0) + 1
         }
     }
 

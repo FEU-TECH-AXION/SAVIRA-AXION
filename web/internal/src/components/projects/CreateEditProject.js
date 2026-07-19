@@ -14,7 +14,7 @@
 
 import { useState, useEffect } from "react";
 import styles from "./CreateEditProject.module.css";
-import { FiArrowLeft, FiUpload, FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
+import { FiArrowLeft, FiUpload, FiInfo } from "react-icons/fi";
 import { MdPublic, MdPublicOff } from "react-icons/md";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import TaskPanel from "./TaskPanel";
@@ -86,8 +86,8 @@ const EMPTY_FORM = {
   financialRequirements: "",
   operationalRequirements: "",
 
-  projectOfficers: [""],
-  projectCommitteeMembers: [""],
+  projectOfficers: [],
+  projectCommitteeMembers: [],
 
   // ── Visibility / publication ──────────────────────────────────
   visibility: "private",      // "private" | "public"
@@ -125,7 +125,20 @@ function normalizeInitial(init) {
   if (!out.statusOverride && ["Postponed", "Cancelled"].includes(out.status)) {
     out.statusOverride = out.status;
   }
+  out.projectOfficers = buildInitialPeople(out.projectOfficers, out.projectOfficerIds);
+  out.projectCommitteeMembers = buildInitialPeople(out.projectCommitteeMembers, out.projectCommitteeMemberIds);
   return out;
+}
+
+function buildInitialPeople(names = [], ids = []) {
+  const nameList = Array.isArray(names) ? names : [];
+  const idList = Array.isArray(ids) ? ids : [];
+  return idList
+    .map((id, index) => ({
+      staff_id: id,
+      name: nameList[index] || `Staff #${id}`,
+    }))
+    .filter((person) => person.staff_id);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,112 +171,105 @@ function FormGroup({ label, required, hint, error, children }) {
   );
 }
 
-function PeopleList({
+function StaffPicker({
   label,
   hint,
   values,
   onChange,
   placeholder,
-  suggestions = [],
-  suggestionsLoading = false,
-  suggestionsError = "",
-  listId,
+  staff = [],
+  loading = false,
+  error = "",
   otherValues = [],
   onDuplicate,
 }) {
-  const normalizeName = (value) => String(value || "").trim().toLocaleLowerCase();
+  const [search, setSearch] = useState("");
+  const selectedIds = new Set((values || []).map((person) => String(person.staff_id)));
+  const otherSelectedIds = new Set((otherValues || []).map((person) => String(person.staff_id)));
+  const results = (staff || []).filter((person) => {
+    const id = String(person.staff_id);
+    if (selectedIds.has(id)) return false;
+    if (otherSelectedIds.has(id)) return false;
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return true;
+    return String(person.name || "").toLocaleLowerCase().includes(query);
+  });
 
-  function update(index, val) {
-    const normalized = normalizeName(val);
-    const usedElsewhere = [
-      ...values.filter((_, valueIndex) => valueIndex !== index),
-      ...otherValues,
-    ].some((value) => normalizeName(value) === normalized);
-
-    if (normalized && usedElsewhere) {
-      onDuplicate?.(val.trim());
+  function add(person) {
+    if (selectedIds.has(String(person.staff_id)) || otherSelectedIds.has(String(person.staff_id))) {
+      onDuplicate?.(person.name);
       return;
     }
-
-    const next = [...values];
-    next[index] = val;
-    onChange(next);
+    onChange([...(values || []), { staff_id: person.staff_id, name: person.name }]);
+    setSearch("");
   }
-  function add() { onChange([...values, ""]); }
-  function remove(index) { onChange(values.filter((_, i) => i !== index)); }
+  function remove(id) {
+    onChange((values || []).filter((person) => String(person.staff_id) !== String(id)));
+  }
 
   return (
     <div className={styles.peopleList}>
       <label className={styles.formLabel}>{label}</label>
       {hint && <p className={styles.formHint}>{hint}</p>}
-      {values.map((v, i) => (
-        <div key={i} className={styles.peopleRow}>
-          {(() => {
-            const selectedElsewhere = new Set(
-              [
-                ...values.filter((_, valueIndex) => valueIndex !== i),
-                ...otherValues,
-              ]
-                .map(normalizeName)
-                .filter(Boolean)
-            );
-            const availableSuggestions = suggestions.filter(
-              (person) =>
-                normalizeName(person.name) === normalizeName(v) ||
-                !selectedElsewhere.has(normalizeName(person.name))
-            );
+      <div className={styles.selectedPeople}>
+        {(values || []).length === 0 ? (
+          <span className={styles.emptyPeople}>No one selected yet. Search below to add.</span>
+        ) : (
+          values.map((person) => (
+            <span key={person.staff_id} className={styles.personChip}>
+              {person.name}
+              <button type="button" onClick={() => remove(person.staff_id)} title={`Remove ${person.name}`}>
+                ×
+              </button>
+            </span>
+          ))
+        )}
+      </div>
 
-            return (
-              <>
-          <input
-            className={styles.formInput}
-            type="text"
-            placeholder={
-              suggestionsLoading
-                ? "Loading personnel…"
-                : suggestions.length === 0
-                  ? "No personnel suggestions available"
-                  : placeholder || "Search or select personnel"
-            }
-            value={v ?? ""}
-            onChange={(e) => update(i, e.target.value)}
-            list={availableSuggestions.length > 0 ? `${listId}-${i}` : undefined}
-            autoComplete="off"
-          />
-          {availableSuggestions.length > 0 && (
-            <datalist id={`${listId}-${i}`}>
-              {availableSuggestions.map((person) => (
-                <option
-                  key={person.user_id}
-                  value={person.name}
-                  label={`${person.availability || "Available"} · ${person.activeProjects || 0}/${person.maxProjects || 5} projects${person.committee ? ` · ${person.committee}` : ""}`}
-                />
-              ))}
-            </datalist>
-          )}
-          {values.length > 1 && (
-            <button type="button" className={styles.removeBtn} onClick={() => remove(i)}>
-              <FiTrash2 size={15} />
-            </button>
-          )}
-              </>
-            );
-          })()}
-        </div>
-      ))}
-      {suggestionsError && (
+      <div className={styles.staffSearchWrap}>
+        <input
+          className={styles.formInput}
+          type="text"
+          placeholder={
+            loading
+              ? "Loading personnel..."
+              : staff.length === 0
+                ? "No available staff found"
+                : placeholder || "Search staff by name"
+          }
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          autoComplete="off"
+          disabled={loading || staff.length === 0}
+        />
+        {(search.trim().length > 0 || results.length > 0) && results.length > 0 && (
+          <div className={styles.staffResults}>
+            {results.map((person) => (
+              <button key={person.staff_id} type="button" onClick={() => add(person)} className={styles.staffResult}>
+                <span>
+                  <strong>{person.name}</strong>
+                  {person.committee && <small>{person.committee}</small>}
+                </span>
+                <small>{person.activeProjects || 0}/{person.maxProjects || 5} projects</small>
+              </button>
+            ))}
+          </div>
+        )}
+        {search.trim().length > 0 && results.length === 0 && (
+          <div className={styles.staffNoResults}>No available staff found matching &quot;{search}&quot;.</div>
+        )}
+      </div>
+
+      {error && (
         <p className={styles.formHint} style={{ color: "#b91c1c" }}>
-          {suggestionsError}
+          {error}
         </p>
       )}
-      {!suggestionsLoading && !suggestionsError && suggestions.length === 0 && (
+      {!loading && !error && staff.length === 0 && (
         <p className={styles.formHint}>
-          No staff records are available for suggestions. Names can still be entered manually.
+          No active, available staff records can be assigned right now.
         </p>
       )}
-      <button type="button" className={styles.addPersonBtn} onClick={add}>
-        <FiPlus size={14} /> Add another
-      </button>
     </div>
   );
 }
@@ -309,6 +315,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
         const suggestions = (Array.isArray(body) ? body : [])
           .filter((staffMember) => !["On Leave", "Out of Office"].includes(staffMember.availability_status))
           .map((staffMember) => ({
+            staff_id: staffMember.staff_id,
             user_id: staffMember.user_id || staffMember.users?.user_id,
             name: `${staffMember.users?.first_name || ""} ${staffMember.users?.last_name || ""}`.trim(),
             email: staffMember.users?.email || "",
@@ -317,7 +324,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
             activeProjects: staffMember.active_projects || 0,
             maxProjects: staffMember.max_project_assignments || 5,
           }))
-          .filter((person) => person.user_id && person.name)
+          .filter((person) => person.staff_id && person.name)
           .sort((a, b) => a.name.localeCompare(b.name));
 
         if (!cancelled) setPersonnelSuggestions(suggestions);
@@ -362,15 +369,13 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
   async function handleSubmit() {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-    const assignedNames = [
+    const assignedPeople = [
       ...(form.projectOfficers || []),
       ...(form.projectCommitteeMembers || []),
-    ]
-      .map((name) => String(name || "").trim())
-      .filter(Boolean);
-    const counts = assignedNames.reduce((map, name) => {
-      const key = name.toLocaleLowerCase();
-      const current = map.get(key) || { name, count: 0 };
+    ].filter((person) => person?.staff_id);
+    const counts = assignedPeople.reduce((map, person) => {
+      const key = String(person.staff_id);
+      const current = map.get(key) || { name: person.name, count: 0 };
       map.set(key, { name: current.name, count: current.count + 1 });
       return map;
     }, new Map());
@@ -387,7 +392,15 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
         delete next.form;
         return next;
       });
-      await onSave({ ...form, id: initial?.id, createdAt: initial?.createdAt || new Date().toISOString() });
+      await onSave({
+        ...form,
+        id: initial?.id,
+        createdAt: initial?.createdAt || new Date().toISOString(),
+        projectOfficers: (form.projectOfficers || []).map((person) => person.name),
+        projectCommitteeMembers: (form.projectCommitteeMembers || []).map((person) => person.name),
+        projectOfficerIds: (form.projectOfficers || []).map((person) => person.staff_id),
+        projectCommitteeMemberIds: (form.projectCommitteeMembers || []).map((person) => person.staff_id),
+      });
     } catch (error) {
       setErrors({ form: error.message || "Unable to save project." });
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -615,31 +628,29 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
           <SectionCard title="Project Team" subtitle="Internal use only.">
             <div className={styles.internalBadge}>Internal use only</div>
 
-            <PeopleList
+            <StaffPicker
               label="Project Officers"
               hint="Officers responsible for leading the project."
               placeholder="Search staff by name"
               values={form.projectOfficers}
               onChange={(v) => set("projectOfficers", v)}
-              suggestions={personnelSuggestions}
-              suggestionsLoading={personnelLoading}
-              suggestionsError={personnelError}
-              listId="project-officer-suggestions"
+              staff={personnelSuggestions}
+              loading={personnelLoading}
+              error={personnelError}
               otherValues={form.projectCommitteeMembers}
               onDuplicate={(name) => setDuplicateAssignments([name])}
             />
 
             <div style={{ marginTop: "1.5rem" }}>
-              <PeopleList
+              <StaffPicker
                 label="Project Committee Members"
                 hint="All committee members involved."
                 placeholder="Search staff by name"
                 values={form.projectCommitteeMembers}
                 onChange={(v) => set("projectCommitteeMembers", v)}
-                suggestions={personnelSuggestions}
-                suggestionsLoading={personnelLoading}
-                suggestionsError={personnelError}
-                listId="project-committee-member-suggestions"
+                staff={personnelSuggestions}
+                loading={personnelLoading}
+                error={personnelError}
                 otherValues={form.projectOfficers}
                 onDuplicate={(name) => setDuplicateAssignments([name])}
               />

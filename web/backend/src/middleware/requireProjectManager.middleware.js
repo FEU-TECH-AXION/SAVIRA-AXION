@@ -2,12 +2,6 @@ const supabase = require('../config/supabase')
 
 const PROJECT_MANAGER_ROLES = new Set(['Admin', 'Project Officer'])
 
-const normalizeName = (value) =>
-  String(value || '').trim().replace(/\s+/g, ' ').toLowerCase()
-
-const fullName = (user) =>
-  normalizeName(`${user?.first_name || ''} ${user?.last_name || ''}`)
-
 async function getProjectId(req, source) {
   if (source === 'project') return req.params.projectId || req.params.id
   if (source === 'task') {
@@ -23,16 +17,16 @@ async function getProjectId(req, source) {
   return null
 }
 
-async function getUserName(userId) {
+async function getStaffId(userId) {
   if (!userId) return ''
   const { data, error } = await supabase
-    .from('users')
-    .select('first_name, last_name')
+    .from('staff')
+    .select('staff_id')
     .eq('user_id', userId)
     .maybeSingle()
 
   if (error) throw error
-  return fullName(data)
+  return data?.staff_id || null
 }
 
 function requireProjectManager(source = 'project') {
@@ -44,21 +38,20 @@ function requireProjectManager(source = 'project') {
       const projectId = await getProjectId(req, source)
       if (!projectId) return res.status(404).json({ error: 'Project not found.' })
 
-      const { data: project, error } = await supabase
-        .from('projects')
-        .select('project_officers')
+      const staffId = await getStaffId(req.user.id || req.user.user_id)
+      if (!staffId) return res.status(403).json({ error: 'Forbidden' })
+
+      const { data: assignment, error } = await supabase
+        .from('project_assignments')
+        .select('assignment_id')
         .eq('project_id', projectId)
+        .eq('staff_id', staffId)
+        .eq('project_role', 'officer')
+        .eq('is_active', true)
         .maybeSingle()
 
       if (error) throw error
-      if (!project) return res.status(404).json({ error: 'Project not found.' })
-
-      const actorName = fullName(req.user) || await getUserName(req.user.id || req.user.user_id)
-      const projectOfficers = Array.isArray(project.project_officers)
-        ? project.project_officers
-        : []
-
-      if (actorName && projectOfficers.some((name) => normalizeName(name) === actorName)) {
+      if (assignment) {
         return next()
       }
 

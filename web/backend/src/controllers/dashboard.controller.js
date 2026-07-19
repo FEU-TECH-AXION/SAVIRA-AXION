@@ -338,20 +338,34 @@ async function getConfirmedInterviewDeadlines({ userId = null, limit = 20 } = {}
   }))
 }
 
-async function getProjectDeadlines({ actorName = null, limit = 30 } = {}) {
+async function getProjectDeadlines({ staffId = null, limit = 30 } = {}) {
+  if (staffId) {
+    const { data, error } = await supabase
+      .from('project_assignments')
+      .select('projects(event_name, due_date, end_date, project_status)')
+      .eq('staff_id', staffId)
+      .eq('is_active', true)
+      .limit(limit)
+    if (error) throw error
+
+    return (data || [])
+      .map((assignment) => assignment.projects)
+      .filter(Boolean)
+      .map((project) => makeDeadline({
+        icon: 'project',
+        title: project.event_name || 'Project deadline',
+        dateValue: project.due_date || project.end_date,
+        type: 'project',
+      }))
+  }
+
   const { data, error } = await supabase
     .from('projects')
-    .select('event_name, due_date, end_date, project_status, project_officers, project_committee_members')
+    .select('event_name, due_date, end_date, project_status')
     .limit(limit)
   if (error) throw error
 
   return (data || [])
-    .filter((project) => {
-      if (!actorName) return true
-      const officers = Array.isArray(project.project_officers) ? project.project_officers : [project.project_officers].filter(Boolean)
-      const members = Array.isArray(project.project_committee_members) ? project.project_committee_members : [project.project_committee_members].filter(Boolean)
-      return [...officers, ...members].some((name) => samePerson(name, actorName))
-    })
     .map((project) => makeDeadline({
       icon: 'project',
       title: project.event_name || 'Project deadline',
@@ -542,23 +556,26 @@ async function getLegalDeadlines({ userId = null, limit = 50 } = {}) {
 async function getStaffContext(userId) {
   const { data, error } = await supabase
     .from('staff')
-    .select('committee_id, committees ( committee_name ), users ( first_name, last_name )')
+    .select('staff_id, committee_id, committees ( committee_name ), users ( first_name, last_name )')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
   const name = `${data?.users?.first_name || ''} ${data?.users?.last_name || ''}`.trim()
   return {
+    staffId: data?.staff_id || null,
     committeeId: data?.committee_id || null,
     committeeName: data?.committees?.committee_name || '',
     actorName: name,
   }
 }
 
-async function getStaffWorkCounts({ userId, actorName, committeeName }) {
-  const [projectsResult, tasksResult] = await Promise.all([
+async function getStaffWorkCounts({ userId, staffId, actorName, committeeName }) {
+  const [projectAssignmentsResult, tasksResult] = await Promise.all([
     supabase
-      .from('projects')
-      .select('project_status, start_date, due_date, end_date, project_officers, project_committee_members'),
+      .from('project_assignments')
+      .select('projects(project_id, project_status, start_date, due_date, end_date)')
+      .eq('staff_id', staffId || -1)
+      .eq('is_active', true),
     supabase
       .from('project_tasks')
       .select(`
@@ -571,14 +588,17 @@ async function getStaffWorkCounts({ userId, actorName, committeeName }) {
         )
       `),
   ])
-  if (projectsResult.error) throw projectsResult.error
+  if (projectAssignmentsResult.error) throw projectAssignmentsResult.error
   if (tasksResult.error) throw tasksResult.error
 
-  const scopedProjects = (projectsResult.data || []).filter((project) => {
-    const officers = Array.isArray(project.project_officers) ? project.project_officers : [project.project_officers].filter(Boolean)
-    const members = Array.isArray(project.project_committee_members) ? project.project_committee_members : [project.project_committee_members].filter(Boolean)
-    return [...officers, ...members].some((name) => samePerson(name, actorName))
-  })
+  const scopedProjectsById = new Map()
+  for (const assignment of projectAssignmentsResult.data || []) {
+    const project = assignment.projects
+    if (project?.project_id && !scopedProjectsById.has(project.project_id)) {
+      scopedProjectsById.set(project.project_id, project)
+    }
+  }
+  const scopedProjects = [...scopedProjectsById.values()]
   const scopedTasks = (tasksResult.data || []).filter((task) => {
     const assigneeName = `${task.staff?.users?.first_name || ''} ${task.staff?.users?.last_name || ''}`.trim()
     const mine = task.staff?.user_id === userId || samePerson(assigneeName, actorName)
@@ -674,7 +694,7 @@ async function buildStaffSummary(req) {
   const [volunteers, interviewDeadlines, projectDeadlines, taskDeadlines, workCounts] = await Promise.all([
     isMembershipStaff ? getVolunteerCounts({ role: 'staff', userId }) : Promise.resolve({ total: 0, newToday: 0, reviewApplications: 0 }),
     isMembershipStaff ? getConfirmedInterviewDeadlines({ userId, limit: 20 }) : Promise.resolve([]),
-    getProjectDeadlines({ actorName: context.actorName, limit: 40 }),
+    getProjectDeadlines({ staffId: context.staffId, limit: 40 }),
     getProjectTaskDeadlines({
       userId,
       actorName: context.actorName,
@@ -682,7 +702,7 @@ async function buildStaffSummary(req) {
       includeCommittee: Boolean(context.committeeName),
       limit: 40,
     }),
-    getStaffWorkCounts({ userId, actorName: context.actorName, committeeName: context.committeeName }),
+    getStaffWorkCounts({ userId, staffId: context.staffId, actorName: context.actorName, committeeName: context.committeeName }),
   ])
 
   return {

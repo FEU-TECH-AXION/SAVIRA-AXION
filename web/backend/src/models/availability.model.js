@@ -5,8 +5,6 @@ const increment = (map, key) => {
   map[key] = (map[key] || 0) + 1
 }
 
-const normalizeName = (value) => String(value || '').trim().toLowerCase()
-
 const parseDate = (value) => {
   if (!value) return null
   const date = new Date(`${String(value).split('T')[0]}T00:00:00`)
@@ -67,20 +65,24 @@ const getActiveWorkSummary = async (userId) => {
   const [
     caseOfficersResult,
     legalPersonnelResult,
+    staffResult,
     projectsResult,
   ] = await Promise.all([
     supabase.from('case_officers').select('case_officer_id, user_id').eq('user_id', userId),
     supabase.from('legal_personnels').select('legal_personnel_id, user_id').eq('user_id', userId),
-    supabase.from('projects')
-      .select('project_id, project_status, start_date, end_date, project_officers, project_committee_members'),
+    supabase.from('staff').select('staff_id, user_id').eq('user_id', userId),
+    supabase.from('project_assignments')
+      .select('staff_id, projects(project_id, project_status, start_date, end_date)')
+      .eq('is_active', true),
   ])
 
-  for (const result of [caseOfficersResult, legalPersonnelResult, projectsResult]) {
+  for (const result of [caseOfficersResult, legalPersonnelResult, staffResult, projectsResult]) {
     if (result.error) throw result.error
   }
 
   const caseOfficerIds = (caseOfficersResult.data || []).map((row) => row.case_officer_id)
   const legalPersonnelIds = (legalPersonnelResult.data || []).map((row) => row.legal_personnel_id)
+  const staffIds = new Set((staffResult.data || []).map((row) => row.staff_id))
 
   const [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult] =
     await Promise.all([
@@ -100,15 +102,18 @@ const getActiveWorkSummary = async (userId) => {
   const caseLoads = {}
   const legalLoads = {}
   let projects = 0
-  const targetName = normalizeName(name)
 
   for (const row of caseAssignmentsResult.data || []) increment(caseLoads, row.case_officer_id)
   for (const row of legalAssignmentsResult.data || []) increment(legalLoads, row.legal_personnel_id)
 
-  for (const project of projectsResult.data || []) {
-    if (!['Upcoming', 'Active'].includes(computeProjectStatus(project))) continue
-    const names = [...(project.project_officers || []), ...(project.project_committee_members || [])]
-    if (new Set(names.map(normalizeName).filter(Boolean)).has(targetName)) projects += 1
+  const countedProjects = new Set()
+  for (const assignment of projectsResult.data || []) {
+    if (!staffIds.has(assignment.staff_id)) continue
+    if (!['Upcoming', 'Active'].includes(computeProjectStatus(assignment.projects))) continue
+    const projectId = assignment.projects?.project_id
+    if (!projectId || countedProjects.has(projectId)) continue
+    countedProjects.add(projectId)
+    projects += 1
   }
 
   const cases = caseOfficerIds.reduce((total, id) => total + (caseLoads[id] || 0), 0)
@@ -159,7 +164,6 @@ const getAll = async () => {
     legalPersonnelResult,
     staffResult,
     conflictsResult,
-    projectsResult,
     interviewsResult,
   ] = await Promise.all([
     supabase.from('case_officers').select('case_officer_id, user_id').in('user_id', userIds),
@@ -170,8 +174,6 @@ const getAll = async () => {
       .in('user_id', userIds)
       .gte('ends_at', new Date().toISOString())
       .order('starts_at', { ascending: true }),
-    supabase.from('projects')
-      .select('project_id, project_status, start_date, end_date, project_officers, project_committee_members'),
     supabase.from('interviews')
       .select(`
         interview_id,
@@ -186,7 +188,7 @@ const getAll = async () => {
       .not('status', 'in', '("completed","cancelled","rejected","expired")'),
   ])
 
-  for (const result of [caseOfficersResult, legalPersonnelResult, staffResult, conflictsResult, projectsResult, interviewsResult]) {
+  for (const result of [caseOfficersResult, legalPersonnelResult, staffResult, conflictsResult, interviewsResult]) {
     if (result.error) throw result.error
   }
 
@@ -197,7 +199,7 @@ const getAll = async () => {
   const legalPersonnelIds = legalPersonnel.map((row) => row.legal_personnel_id)
   const staffIds = staffRows.map((row) => row.staff_id)
 
-  const [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult, taskAssignmentsResult] =
+  const [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult, taskAssignmentsResult, projectAssignmentsResult] =
     await Promise.all([
       caseOfficerIds.length
         ? supabase.from('case_assignments').select('case_officer_id').in('case_officer_id', caseOfficerIds).eq('is_active', true)
@@ -209,9 +211,16 @@ const getAll = async () => {
       staffIds.length
         ? supabase.from('project_tasks').select('assigned_to, status').in('assigned_to', staffIds)
         : Promise.resolve({ data: [], error: null }),
+      staffIds.length
+        ? supabase
+          .from('project_assignments')
+          .select('staff_id, projects(project_id, project_status, start_date, end_date)')
+          .in('staff_id', staffIds)
+          .eq('is_active', true)
+        : Promise.resolve({ data: [], error: null }),
     ])
 
-  for (const result of [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult, taskAssignmentsResult]) {
+  for (const result of [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult, taskAssignmentsResult, projectAssignmentsResult]) {
     if (result.error) throw result.error
   }
 
@@ -231,17 +240,17 @@ const getAll = async () => {
     if (!['Completed', 'Cancelled'].includes(row.status)) increment(taskLoads, row.assigned_to)
   }
 
-  const usersByName = new Map(relevantUsers.map((user) => [
-    normalizeName(`${user.first_name || ''} ${user.last_name || ''}`),
-    user.user_id,
-  ]))
-  for (const project of projectsResult.data || []) {
-    if (!['Upcoming', 'Active'].includes(computeProjectStatus(project))) continue
-    const names = [...(project.project_officers || []), ...(project.project_committee_members || [])]
-    for (const name of new Set(names.map(normalizeName).filter(Boolean))) {
-      const userId = usersByName.get(name)
-      if (userId) increment(projectLoads, userId)
-    }
+  const userIdByStaffId = new Map(staffRows.map((row) => [row.staff_id, row.user_id]))
+  const countedProjectAssignments = new Set()
+  for (const assignment of projectAssignmentsResult.data || []) {
+    if (!['Upcoming', 'Active'].includes(computeProjectStatus(assignment.projects))) continue
+    const userId = userIdByStaffId.get(assignment.staff_id)
+    const projectId = assignment.projects?.project_id
+    if (!userId || !projectId) continue
+    const key = `${assignment.staff_id}:${projectId}`
+    if (countedProjectAssignments.has(key)) continue
+    countedProjectAssignments.add(key)
+    increment(projectLoads, userId)
   }
 
   const conflictsByUser = {}

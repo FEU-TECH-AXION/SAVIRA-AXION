@@ -84,7 +84,11 @@ const createItem = async (req, res) => {
 
 const updateItem = async (req, res) => {
   try {
-    const item = await ProjectsModel.updateById(req.params.id, req.body)
+    const actor = getAuthenticatedActor(req)
+    const item = await ProjectsModel.updateById(req.params.id, {
+      ...req.body,
+      updatedById: actor.id,
+    })
     res.json(item)
   } catch (err) {
     if (err && err.status) return res.status(err.status).json({ error: err.message })

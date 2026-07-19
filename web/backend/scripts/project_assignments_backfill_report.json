@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-07-19T07:26:02.046Z",
+  "dry_run": true,
+  "total_projects_scanned": 4,
+  "total_matched_inserted": 0,
+  "total_matched_would_insert": 6,
+  "total_matched_skipped_existing": 0,
+  "total_dropped_unmatched": 3,
+  "total_dropped_ambiguous": 0,
+  "dropped": [
+    {
+      "project_id": 14,
+      "project_name": "Pride Celebration: Celebrating Authentic Selves",
+      "source_field": "project_officers",
+      "unmatched_name": "Kyla Legazpi",
+      "reason": "unmatched"
+    },
+    {
+      "project_id": 14,
+      "project_name": "Pride Celebration: Celebrating Authentic Selves",
+      "source_field": "project_committee_members",
+      "unmatched_name": "Jasmine Albay",
+      "reason": "unmatched"
+    },
+    {
+      "project_id": 14,
+      "project_name": "Pride Celebration: Celebrating Authentic Selves",
+      "source_field": "project_committee_members",
+      "unmatched_name": "Mayumi Lakandula",
+      "reason": "unmatched"
+    }
+  ]
+}
