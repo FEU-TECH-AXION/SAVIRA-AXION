@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 // ── Uses its own dedicated stylesheet ─────────────────────────────────────────
 import styles from "./VolunteerHistory.module.css";
@@ -254,7 +254,20 @@ export default function ApplicationHistoryPage() {
   };
 
   // Eligibility is derived from the fetched list (cheap, client-side)
-  const eligibility = loading ? null : getSubmissionEligibility(applications);
+  const eligibility = useMemo(
+    () => (loading ? null : getSubmissionEligibility(applications)),
+    [loading, applications]
+  );
+
+  useEffect(() => {
+    if (loading || !eligibility || eligibility.allowed) return;
+    const cleanupTimer = window.setTimeout(() => {
+      localStorage.removeItem(draftStorageKey);
+      localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+      setDraft(null);
+    }, 0);
+    return () => window.clearTimeout(cleanupTimer);
+  }, [loading, eligibility, draftStorageKey]);
 
   return (
     <main className={styles.pageWrapper}>
@@ -313,7 +326,7 @@ export default function ApplicationHistoryPage() {
 
           <div className="row g-3">
             {/* Draft card */}
-            {draft && (
+            {draft && (!eligibility || eligibility.allowed) && (
               <div className="col-12">
                 <HistoryCard
                   title="Draft Application"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import styles from "./ApplyApplicationForm.module.css";
 import { useRouter } from "next/navigation";
 import { FaCheck } from "react-icons/fa6";
@@ -1532,6 +1532,10 @@ export default function CreateApplication({
   const hasLoadedDraft = useRef(false);
   const hasHydratedProfile = useRef(false);
   const draftStorageKey = getScopedDraftKey(VOLUNTEER_APPLICATION_DRAFT_KEY, authUser);
+  const eligibility = useMemo(
+    () => (appsLoading ? null : getSubmissionEligibility(myApplications)),
+    [appsLoading, myApplications]
+  );
 
   const resetApplicationDraft = () => {
     localStorage.removeItem(draftStorageKey);
@@ -1549,7 +1553,20 @@ export default function CreateApplication({
   };
 
   useEffect(() => {
-    if (authLoading) return undefined;
+    if (authLoading || appsLoading || !eligibility) return undefined;
+
+    if (!eligibility.allowed) {
+      const cleanupTimer = window.setTimeout(() => {
+        localStorage.removeItem(draftStorageKey);
+        localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+        setDraftNotice("");
+        setDraftChecked(true);
+        isDirty.current = false;
+        hasLoadedDraft.current = false;
+      }, 0);
+      return () => window.clearTimeout(cleanupTimer);
+    }
+
     const timer = window.setTimeout(() => {
       try {
         localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
@@ -1569,7 +1586,7 @@ export default function CreateApplication({
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [authLoading, draftStorageKey]);
+  }, [authLoading, appsLoading, eligibility, draftStorageKey]);
 
   useEffect(() => {
     if (authLoading || !draftChecked || hasLoadedDraft.current || hasHydratedProfile.current) return;
@@ -1592,6 +1609,7 @@ export default function CreateApplication({
 
   useEffect(() => {
     if (submitted) return;
+    if (!draftChecked || !eligibility?.allowed) return;
     if (!isDirty.current) {
       const hasDraft =
         Object.values(applicant).some(Boolean) ||
@@ -1620,6 +1638,8 @@ export default function CreateApplication({
     essay,
     submitted,
     draftStorageKey,
+    draftChecked,
+    eligibility,
   ]);
 
   const clearError = (key) => {
@@ -1677,7 +1697,6 @@ export default function CreateApplication({
   };
 
   const [submitError, setSubmitError] = useState(null)
-  const eligibility = appsLoading ? null : getSubmissionEligibility(myApplications);
 
   const handleSubmit = async () => {
       try {
@@ -1764,7 +1783,7 @@ export default function CreateApplication({
         </section>
 
         {/* ── Paginated Form Card ── */}
-        {draftNotice && !submitted && (
+        {draftNotice && !submitted && eligibility?.allowed && (
           <div className={`${styles.alertCard} ${styles.alertCardInfo}`}>
             <div className={styles.alertContent}>
               <span className={styles.alertLabel}>Draft found</span>
