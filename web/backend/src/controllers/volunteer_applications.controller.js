@@ -37,11 +37,21 @@ const MEMBERSHIP_COMMITTEE_ID = 2
 const REAPPLICATION_WAIT_DAYS = 15
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000
 const APPLICATION_STATUSES = new Set(['pending', 'reviewing', 'approved', 'rejected'])
+const REAPPLICATION_ALLOWED_STATUSES = new Set(['rejected', 'withdrawn'])
 
 function statusLabel(status) {
     return String(status || '')
         .replace(/_/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function getApplicationDecisionDate(application = {}) {
+    return (
+        application.resolved_at ||
+        application.updated_at ||
+        application.created_at ||
+        null
+    )
 }
 
 const getAuthenticatedUserId = (req) =>
@@ -445,7 +455,71 @@ const createItem = async (req, res) => {
         volunteerApplicantId = newApplicant.volunteer_applicant_id
     }
 
-        // ── 2. Find or create organization ──
+        // ── 2. Enforce reapplication rules ──
+        const { data: previousApplications, error: previousApplicationsError } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, application_status, resolved_at, updated_at, created_at')
+            .eq('volunteer_applicant_id', volunteerApplicantId)
+
+        if (previousApplicationsError) throw previousApplicationsError
+
+        const existingApplications = previousApplications || []
+        if (existingApplications.length > 0) {
+            const approvedApplication = existingApplications.find(
+                (application) => String(application.application_status || '').toLowerCase() === 'approved'
+            )
+
+            if (approvedApplication) {
+                return res.status(409).json({
+                    error: 'Your volunteer application has already been approved. You cannot submit another application.',
+                    code: 'APPLICATION_ALREADY_APPROVED',
+                    status: approvedApplication.application_status,
+                })
+            }
+
+            const blockingApplication = existingApplications.find((application) => {
+                const status = String(application.application_status || '').toLowerCase()
+                return !REAPPLICATION_ALLOWED_STATUSES.has(status)
+            })
+
+            if (blockingApplication) {
+                return res.status(409).json({
+                    error: 'You already have an application under review. Please wait for it to be resolved before applying again.',
+                    code: 'APPLICATION_IN_PROGRESS',
+                    status: blockingApplication.application_status,
+                })
+            }
+
+            const latestTerminalApplication = existingApplications
+                .filter((application) =>
+                    REAPPLICATION_ALLOWED_STATUSES.has(String(application.application_status || '').toLowerCase())
+                )
+                .sort((a, b) =>
+                    new Date(getApplicationDecisionDate(b) || 0) -
+                    new Date(getApplicationDecisionDate(a) || 0)
+                )[0]
+
+            const decisionAt = new Date(getApplicationDecisionDate(latestTerminalApplication))
+            if (!Number.isNaN(decisionAt.getTime())) {
+                const eligibleAt = new Date(decisionAt.getTime() + REAPPLICATION_WAIT_MS)
+                if (Date.now() < eligibleAt.getTime()) {
+                    const status = String(latestTerminalApplication.application_status || '').toLowerCase()
+                    return res.status(409).json({
+                        error: `You can reapply 15 days after your ${status} application, on ${eligibleAt.toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            timeZone: 'Asia/Manila',
+                        })}.`,
+                        code: 'REAPPLICATION_COOLDOWN',
+                        eligible_at: eligibleAt.toISOString(),
+                        wait_days: REAPPLICATION_WAIT_DAYS,
+                        status,
+                    })
+                }
+            }
+        }
+
         const org = await OrganizationsModel.findOrCreateOrganization(applicant)
 
         // ── 3. Fetch active question set + all 15 questions ──
@@ -507,59 +581,6 @@ const createItem = async (req, res) => {
                 screening_question_id: question.screening_question_id,
                 answer_value:          answerValue,
             })
-        }
-
-        // ── 5. Check for existing active application ──
-        const { data: existingApplication } = await supabase
-            .from('volunteer_applications')
-            .select('volunteer_application_id, application_status')
-            .eq('volunteer_applicant_id', volunteerApplicantId)
-            .in('application_status', ['pending', 'reviewing', 'under_review'])
-            .maybeSingle()
-
-        if (existingApplication) {
-            return res.status(409).json({
-                error: 'You already have an active application. Please wait for it to be resolved before applying again.',
-                status: existingApplication.application_status
-            })
-        }
-
-        // ── 6. Enforce the rejection reapplication cooldown ──
-        const { data: latestRejectedApplication, error: rejectedError } = await supabase
-            .from('volunteer_applications')
-            .select('volunteer_application_id, resolved_at, updated_at, created_at')
-            .eq('volunteer_applicant_id', volunteerApplicantId)
-            .eq('application_status', 'rejected')
-            .order('resolved_at', { ascending: false, nullsFirst: false })
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-        if (rejectedError) throw rejectedError
-
-        if (latestRejectedApplication) {
-            const rejectedAtValue =
-                latestRejectedApplication.resolved_at ||
-                latestRejectedApplication.updated_at ||
-                latestRejectedApplication.created_at
-            const rejectedAt = new Date(rejectedAtValue)
-
-            if (!Number.isNaN(rejectedAt.getTime())) {
-                const eligibleAt = new Date(rejectedAt.getTime() + REAPPLICATION_WAIT_MS)
-                if (Date.now() < eligibleAt.getTime()) {
-                    return res.status(409).json({
-                        error: `You can reapply 15 days after your rejected application, on ${eligibleAt.toLocaleDateString('en-PH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            timeZone: 'Asia/Manila',
-                        })}.`,
-                        code: 'REAPPLICATION_COOLDOWN',
-                        eligible_at: eligibleAt.toISOString(),
-                        wait_days: REAPPLICATION_WAIT_DAYS,
-                    })
-                }
-            }
         }
 
         // ── 7. Create the application ──
@@ -831,9 +852,10 @@ const withdrawApplication = async (req, res) => {
     try {
         const { id } = req.params;
         
+        const now = new Date()
         const { data, error } = await supabase
             .from('volunteer_applications')
-            .update({ application_status: 'withdrawn', updated_at: new Date() })
+            .update({ application_status: 'withdrawn', updated_at: now, resolved_at: now })
             .eq('volunteer_application_id', id)
             .select()
             .single();
@@ -875,7 +897,7 @@ const undoWithdrawApplication = async (req, res) => {
         
         const { data, error } = await supabase
             .from('volunteer_applications')
-            .update({ application_status: newStatus, updated_at: new Date() })
+            .update({ application_status: newStatus, updated_at: new Date(), resolved_at: null })
             .eq('volunteer_application_id', id)
             .select()
             .single();
