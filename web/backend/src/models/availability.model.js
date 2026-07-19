@@ -36,7 +36,7 @@ const getAvailabilityStatus = async (userId) => {
 const getAvailabilityRecord = async (userId) => {
   const { data, error } = await supabase
     .from('users')
-    .select('user_id, availability_status, availability_note, availability_reason')
+    .select('user_id, availability_status, availability_note')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
@@ -142,7 +142,6 @@ const getAll = async () => {
       is_active,
       availability_status,
       availability_note,
-      availability_reason,
       availability_updated_at,
       max_active_cases,
       max_legal_assignments,
@@ -329,7 +328,6 @@ const getAll = async () => {
       availability_status: explicitStatus,
       effective_status: effectiveStatus,
       availability_note: user.availability_note || null,
-      availability_reason: user.availability_reason || null,
       availability_updated_at: user.availability_updated_at || null,
       loads,
       limits,
@@ -347,7 +345,6 @@ const update = async (userId, payload) => {
   const allowed = {
     availability_status: payload.availability_status,
     availability_note: payload.availability_note,
-    availability_reason: payload.availability_reason,
     max_active_cases: payload.max_active_cases,
     max_legal_assignments: payload.max_legal_assignments,
     max_volunteer_reviews: payload.max_volunteer_reviews,
@@ -365,7 +362,6 @@ const update = async (userId, payload) => {
       user_id,
       availability_status,
       availability_note,
-      availability_reason,
       availability_updated_at,
       max_active_cases,
       max_legal_assignments,

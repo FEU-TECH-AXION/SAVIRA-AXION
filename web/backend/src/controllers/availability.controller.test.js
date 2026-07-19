@@ -34,8 +34,7 @@ function loadController({
         return {
           user_id: userId,
           availability_status: previousStatus,
-          availability_note: 'Back next week',
-          availability_reason: 'Vacation',
+          availability_note: 'Vacation: Back next week',
         }
       },
       update: async (userId, payload) => {
@@ -191,17 +190,16 @@ describe('availability update reassignment notifications', () => {
     assert.deepEqual(calls.getActiveWorkSummary, [])
   })
 
-  it('rejects Other reason without detail text', async () => {
+  it('accepts leave updates with a schema-backed note', async () => {
     const { controller } = loadController()
 
     const response = await callUpdate(controller, {
       availability_status: 'On Leave',
-      availability_reason: 'Other',
-      availability_note: '',
+      availability_note: 'Other: Back next week',
     })
 
-    assert.equal(response.statusCode, 400)
-    assert.match(response.payload.error, /provide details/i)
+    assert.equal(response.statusCode, 200)
+    assert.equal(response.payload.data.availability_note, 'Other: Back next week')
   })
 })
 
@@ -213,8 +211,7 @@ describe('availability self-read permissions', () => {
 
     assert.equal(response.statusCode, 200)
     assert.equal(response.payload.data.availability_status, 'Available')
-    assert.equal(response.payload.data.availability_reason, 'Vacation')
-    assert.equal(response.payload.data.availability_note, 'Back next week')
+    assert.equal(response.payload.data.availability_note, 'Vacation: Back next week')
     assert.equal(response.payload.data.active_work.total, 3)
     assert.deepEqual(calls.getAvailabilityRecord, ['user-1'])
     assert.deepEqual(calls.getActiveWorkSummary, ['user-1'])

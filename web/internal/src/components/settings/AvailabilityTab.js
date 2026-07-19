@@ -30,6 +30,28 @@ function formatWorkParts(summary = {}) {
   ].filter(Boolean);
 }
 
+function splitAvailabilityNote(note = "") {
+  const text = String(note || "").trim();
+  const [maybeReason, ...rest] = text.split(": ");
+  if (AVAILABILITY_REASONS.includes(maybeReason)) {
+    return {
+      reason: maybeReason,
+      detail: rest.join(": ").trim(),
+    };
+  }
+  return {
+    reason: text ? "Other" : "",
+    detail: text,
+  };
+}
+
+function buildAvailabilityNote(reason, detail) {
+  const cleanDetail = String(detail || "").trim();
+  if (!reason) return cleanDetail || null;
+  if (reason === "Other") return cleanDetail || null;
+  return cleanDetail ? `${reason}: ${cleanDetail}` : reason;
+}
+
 export default function AvailabilityTab({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,7 +60,6 @@ export default function AvailabilityTab({ user, setUser }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [current, setCurrent] = useState({
     availability_status: user?.availability_status || "Available",
-    availability_reason: "",
     availability_note: "",
     active_work: { cases: 0, legal: 0, volunteer: 0, projects: 0, total: 0 },
   });
@@ -64,15 +85,15 @@ export default function AvailabilityTab({ user, setUser }) {
         if (cancelled) return;
         const next = {
           availability_status: data.availability_status || "Available",
-          availability_reason: data.availability_reason || "",
           availability_note: data.availability_note || "",
           active_work: data.active_work || { cases: 0, legal: 0, volunteer: 0, projects: 0, total: 0 },
         };
+        const noteParts = splitAvailabilityNote(next.availability_note);
         setCurrent(next);
         setForm({
           status: next.availability_status,
-          reason: next.availability_reason,
-          detail: next.availability_note || "",
+          reason: REASON_REQUIRED_STATUSES.includes(next.availability_status) ? noteParts.reason : "",
+          detail: REASON_REQUIRED_STATUSES.includes(next.availability_status) ? noteParts.detail : "",
         });
         setUser?.((existing) => existing ? { ...existing, availability_status: next.availability_status } : existing);
       } catch (err) {
@@ -114,8 +135,7 @@ export default function AvailabilityTab({ user, setUser }) {
 
     const payload = {
       availability_status: form.status,
-      availability_reason: needsReason ? form.reason : null,
-      availability_note: needsReason ? (form.detail.trim() || null) : null,
+      availability_note: needsReason ? buildAvailabilityNote(form.reason, form.detail) : null,
     };
 
     setSaving(true);
@@ -127,14 +147,14 @@ export default function AvailabilityTab({ user, setUser }) {
       const nextStatus = refreshed.availability_status || updated.availability_status || form.status;
       setCurrent({
         availability_status: nextStatus,
-        availability_reason: refreshed.availability_reason || "",
         availability_note: refreshed.availability_note || "",
         active_work: refreshed.active_work || current.active_work,
       });
+      const noteParts = splitAvailabilityNote(refreshed.availability_note);
       setForm({
         status: nextStatus,
-        reason: refreshed.availability_reason || "",
-        detail: refreshed.availability_note || "",
+        reason: REASON_REQUIRED_STATUSES.includes(nextStatus) ? noteParts.reason : "",
+        detail: REASON_REQUIRED_STATUSES.includes(nextStatus) ? noteParts.detail : "",
       });
       setUser?.((existing) => existing ? { ...existing, availability_status: nextStatus } : existing);
       setSuccess("Availability updated.");

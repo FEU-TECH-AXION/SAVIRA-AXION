@@ -6,25 +6,11 @@ const {
 
 const STATUSES = ['Available', 'Busy', 'On Leave', 'Out of Office']
 const REASSIGNMENT_STATUSES = ['On Leave', 'Out of Office']
-const REASONS = ['Vacation', 'Sick Leave', 'Family/Emergency', 'Field Work', 'Training', 'Personal', 'Other']
 
 function canAccessUser(req) {
   const isAdmin = Number(req.user?.role_id) === 3
   const isSelf = String(req.user?.id) === String(req.params.userId)
   return { isAdmin, isSelf, allowed: isAdmin || isSelf }
-}
-
-function validateAvailabilityReason(payload) {
-  if (!payload || !REASSIGNMENT_STATUSES.includes(payload.availability_status)) return null
-  if (!Object.prototype.hasOwnProperty.call(payload, 'availability_reason')) return null
-
-  const reason = String(payload.availability_reason || '').trim()
-  const detail = String(payload.availability_note || '').trim()
-
-  if (!reason) return 'Availability reason is required for On Leave or Out of Office.'
-  if (!REASONS.includes(reason)) return 'Invalid availability reason.'
-  if (reason === 'Other' && !detail) return 'Please provide details when the availability reason is Other.'
-  return null
 }
 
 function formatWorkParts(summary) {
@@ -81,7 +67,6 @@ const getItem = async (req, res) => {
       data: {
         availability_status: record.availability_status || 'Available',
         availability_note: record.availability_note || null,
-        availability_reason: record.availability_reason || null,
         active_work: activeWork,
       },
     })
@@ -99,9 +84,6 @@ const updateItem = async (req, res) => {
     if (req.body.availability_status && !STATUSES.includes(req.body.availability_status)) {
       return res.status(400).json({ error: 'Invalid availability status.' })
     }
-    const reasonError = validateAvailabilityReason(req.body)
-    if (reasonError) return res.status(400).json({ error: reasonError })
-
     const userId = req.params.userId
     const hasStatusChange = Object.prototype.hasOwnProperty.call(req.body, 'availability_status')
     const newStatus = req.body.availability_status

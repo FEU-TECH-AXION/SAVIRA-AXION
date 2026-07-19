@@ -289,7 +289,6 @@ function AvailabilityQuickToggle({ user, setUser, open, setOpen, wrapperRef }) {
     try {
       const updated = await updateStaffAvailability(user.user_id, {
         availability_status: nextStatus,
-        availability_reason: null,
         availability_note: null,
       });
       const savedStatus = updated.availability_status || nextStatus;
