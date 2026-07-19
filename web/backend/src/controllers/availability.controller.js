@@ -6,6 +6,15 @@ const {
 
 const STATUSES = ['Available', 'Busy', 'On Leave', 'Out of Office']
 const REASSIGNMENT_STATUSES = ['On Leave', 'Out of Office']
+const AVAILABILITY_REASONS = [
+  'Vacation',
+  'Sick Leave',
+  'Family/Emergency',
+  'Field Work',
+  'Training',
+  'Personal',
+  'Other',
+]
 
 function canAccessUser(req) {
   const isAdmin = Number(req.user?.role_id) === 3
@@ -20,6 +29,23 @@ function formatWorkParts(summary) {
     summary.volunteer > 0 ? `${summary.volunteer} ${summary.volunteer === 1 ? 'review' : 'reviews'}` : null,
     summary.projects > 0 ? `${summary.projects} ${summary.projects === 1 ? 'project' : 'projects'}` : null,
   ].filter(Boolean)
+}
+
+function validateAwayStatusPayload(body) {
+  if (!REASSIGNMENT_STATUSES.includes(body.availability_status)) return null
+
+  const note = String(body.availability_note || '').trim()
+  const separatorIndex = note.indexOf(':')
+  const reason = separatorIndex >= 0 ? note.slice(0, separatorIndex).trim() : note
+  const details = separatorIndex >= 0 ? note.slice(separatorIndex + 1).trim() : ''
+
+  if (!reason || !AVAILABILITY_REASONS.includes(reason)) {
+    return 'A valid reason is required for On Leave or Out of Office.'
+  }
+  if (!details) {
+    return 'Details are required for On Leave or Out of Office.'
+  }
+  return null
 }
 
 async function notifyAdminsAboutReassignment(userId, newStatus) {
@@ -83,6 +109,10 @@ const updateItem = async (req, res) => {
     }
     if (req.body.availability_status && !STATUSES.includes(req.body.availability_status)) {
       return res.status(400).json({ error: 'Invalid availability status.' })
+    }
+    const validationError = validateAwayStatusPayload(req.body)
+    if (validationError) {
+      return res.status(400).json({ error: validationError })
     }
     const userId = req.params.userId
     const hasStatusChange = Object.prototype.hasOwnProperty.call(req.body, 'availability_status')

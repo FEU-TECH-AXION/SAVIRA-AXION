@@ -57,15 +57,27 @@ function DateRangeDropdown({ field, value, onChange }) {
     function outside(event) {
       if (ref.current && !ref.current.contains(event.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const display = DATE_RANGE_OPTIONS.find((option) => option.value === value)?.label || (value ? "Custom Range" : "All");
 
   return (
     <div className={styles.defaultFilter} ref={ref}>
-      <button className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`} onClick={() => setOpen((prev) => !prev)}>
+      <button
+        className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`}
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{display}</span>
         <FiChevronDown size={13} />
@@ -132,8 +144,15 @@ function SelectDropdown({ field, value, onChange }) {
     function outside(event) {
       if (ref.current && !ref.current.contains(event.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const options = (field.options || []).filter((option) => option.toLowerCase().includes(query.toLowerCase()));
@@ -141,7 +160,12 @@ function SelectDropdown({ field, value, onChange }) {
 
   return (
     <div className={styles.defaultFilter} ref={ref}>
-      <button className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`} onClick={() => { setOpen((prev) => !prev); setQuery(""); }}>
+      <button
+        className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`}
+        onClick={() => { setOpen((prev) => !prev); setQuery(""); }}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{display}</span>
         <FiChevronDown size={13} />
@@ -186,16 +210,71 @@ function BooleanFilter({ field, value, onChange }) {
   );
 }
 
-function TextFilter({ field, value, onChange }) {
+function TextDropdown({ field, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(value || "");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function outside(event) {
+      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setInputVal(value || "");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [value]);
+
   return (
-    <div className={styles.searchWrap}>
-      <input
-        className={styles.searchInput}
-        type="text"
-        placeholder={field.label}
-        value={value || ""}
-        onChange={(event) => onChange(event.target.value)}
-      />
+    <div className={styles.defaultFilter} ref={ref}>
+      <button
+        className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`}
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <span className={styles.defaultFilterLabel}>{field.label}</span>
+        <span className={styles.defaultFilterValue}>{value || "All"}</span>
+        <FiChevronDown size={13} />
+      </button>
+      {open && (
+        <div className={styles.defaultFilterDropdown} style={{ minWidth: 220 }}>
+          <div className={styles.officerSearchWrap}>
+            <FiSearch size={13} className={styles.officerSearchIcon} />
+            <input
+              type="text"
+              className={styles.officerSearchInput}
+              placeholder={`Search ${field.label}...`}
+              value={inputVal}
+              onChange={(event) => {
+                setInputVal(event.target.value);
+                onChange(event.target.value);
+              }}
+              autoFocus
+            />
+          </div>
+          <div className={styles.defaultFilterFooter}>
+            <button className={styles.clearBtn} onClick={() => { setInputVal(""); onChange(""); setOpen(false); }}>
+              Clear
+            </button>
+            <button className={styles.doneBtn} onClick={() => setOpen(false)}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -203,7 +282,7 @@ function TextFilter({ field, value, onChange }) {
 function FilterControl({ field, value, onChange }) {
   if (field.type === "dateRange") return <DateRangeDropdown field={field} value={value} onChange={onChange} />;
   if (field.type === "boolean") return <BooleanFilter field={field} value={value} onChange={onChange} />;
-  if (field.type === "text") return <TextFilter field={field} value={value} onChange={onChange} />;
+  if (field.type === "text") return <TextDropdown field={field} value={value} onChange={onChange} />;
   return <SelectDropdown field={field} value={value} onChange={onChange} />;
 }
 
@@ -216,8 +295,15 @@ export default function FilterMenu({ activeFilters = {}, onFilterChange, onSearc
     function outside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const activeFilterCount = Object.values(activeFilters).filter((value) => value && value !== "All").length;
@@ -276,7 +362,12 @@ export default function FilterMenu({ activeFilters = {}, onFilterChange, onSearc
         ))}
 
         <div className={styles.filterMenuWrapper} ref={menuRef}>
-          <button className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`} onClick={() => setMenuOpen((prev) => !prev)}>
+          <button
+            className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`}
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+          >
             <FiFilter size={15} />
             {activeFilterCount > 0 && <span className={styles.filterBadge}>{activeFilterCount}</span>}
           </button>

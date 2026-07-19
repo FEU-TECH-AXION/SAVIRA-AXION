@@ -18,8 +18,15 @@ function SelectDropdown({ label, value, options, onChange }) {
     function outside(event) {
       if (ref.current && !ref.current.contains(event.target)) setOpen(false)
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false)
+    }
     document.addEventListener("mousedown", outside)
-    return () => document.removeEventListener("mousedown", outside)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", outside)
+      document.removeEventListener("keydown", onKeyDown)
+    }
   }, [])
 
   const display = value || "All"
@@ -36,6 +43,8 @@ function SelectDropdown({ label, value, options, onChange }) {
           setOpen((current) => !current)
           setSearch("")
         }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{label}</span>
         <span className={styles.defaultFilterValue}>{display}</span>

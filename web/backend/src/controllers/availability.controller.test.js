@@ -4,6 +4,7 @@ const { describe, it, afterEach } = require('node:test')
 const modelPath = require.resolve('../models/availability.model')
 const notificationPath = require.resolve('../services/notificationService')
 const controllerPath = require.resolve('./availability.controller')
+const validAwayNote = 'Vacation: Back next week'
 
 function loadController({
   previousStatus = 'Available',
@@ -126,7 +127,10 @@ describe('availability update reassignment notifications', () => {
   it('notifies admins when a user transitions into leave with active work', async () => {
     const { controller, calls } = loadController()
 
-    const response = await callUpdate(controller, { availability_status: 'On Leave' })
+    const response = await callUpdate(controller, {
+      availability_status: 'On Leave',
+      availability_note: validAwayNote,
+    })
     await calls.fireAndForget[0].promise
 
     assert.equal(response.statusCode, 200)
@@ -152,7 +156,10 @@ describe('availability update reassignment notifications', () => {
       summary: { cases: 0, legal: 0, volunteer: 0, projects: 0, total: 0, name: 'Juan Dela Cruz' },
     })
 
-    await callUpdate(controller, { availability_status: 'On Leave' })
+    await callUpdate(controller, {
+      availability_status: 'On Leave',
+      availability_note: validAwayNote,
+    })
     await calls.fireAndForget[0].promise
 
     assert.equal(calls.notifyRoleUsers.length, 0)
@@ -163,7 +170,10 @@ describe('availability update reassignment notifications', () => {
   it('skips notifications for a no-op unavailable status resave', async () => {
     const { controller, calls } = loadController({ previousStatus: 'On Leave' })
 
-    await callUpdate(controller, { availability_status: 'On Leave' })
+    await callUpdate(controller, {
+      availability_status: 'On Leave',
+      availability_note: validAwayNote,
+    })
 
     assert.equal(calls.notifyRoleUsers.length, 0)
     assert.equal(calls.fireAndForget.length, 0)
@@ -200,6 +210,32 @@ describe('availability update reassignment notifications', () => {
 
     assert.equal(response.statusCode, 200)
     assert.equal(response.payload.data.availability_note, 'Other: Back next week')
+  })
+
+  it('requires a valid reason for leave and out of office updates', async () => {
+    const { controller, calls } = loadController()
+
+    const response = await callUpdate(controller, {
+      availability_status: 'Out of Office',
+      availability_note: 'Back next week',
+    })
+
+    assert.equal(response.statusCode, 400)
+    assert.match(response.payload.error, /valid reason/i)
+    assert.equal(calls.fireAndForget.length, 0)
+  })
+
+  it('requires details for leave and out of office updates', async () => {
+    const { controller, calls } = loadController()
+
+    const response = await callUpdate(controller, {
+      availability_status: 'On Leave',
+      availability_note: 'Vacation',
+    })
+
+    assert.equal(response.statusCode, 400)
+    assert.match(response.payload.error, /details/i)
+    assert.equal(calls.fireAndForget.length, 0)
   })
 })
 

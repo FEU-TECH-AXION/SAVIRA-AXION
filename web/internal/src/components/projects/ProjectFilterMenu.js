@@ -105,8 +105,15 @@ function DateRangeDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const getDisplayLabel = () => {
@@ -124,6 +131,8 @@ function DateRangeDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => { setOpen(o => !o); setDateSearch(""); setCustomMode(false); }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
@@ -243,8 +252,15 @@ function SingleDateDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   return (
@@ -252,6 +268,8 @@ function SingleDateDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{value || "All"}</span>
@@ -291,8 +309,15 @@ function TextDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   useEffect(() => {
@@ -307,6 +332,8 @@ function TextDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{value || "All"}</span>
@@ -350,8 +377,15 @@ function SelectDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const displayValue = value && value !== "All" ? value : "All";
@@ -365,6 +399,8 @@ function SelectDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "All" ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => { setOpen(o => !o); setSelectSearch(""); }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{displayValue}</span>
@@ -435,8 +471,15 @@ export default function ProjectFilterMenu({ activeFilters, onFilterChange, onSea
     function outside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const activeFilterCount = Object.values(activeFilters || {}).filter(
@@ -523,6 +566,8 @@ export default function ProjectFilterMenu({ activeFilters, onFilterChange, onSea
             onClick={() => setMenuOpen(o => !o)}
             title="Add more filters"
             aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
           >
             <FiFilter size={15} />
             {activeFilterCount > 0 && (

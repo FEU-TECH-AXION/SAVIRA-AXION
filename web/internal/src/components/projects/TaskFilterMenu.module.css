@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex: 1;
 }
 
@@ -70,7 +70,7 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 /* ── Default filter pill ── */
@@ -490,4 +490,121 @@
 
 .filterDoneBtn:hover {
   background: #025f61;
+}
+/* Fixed-height, horizontally scrollable filter bar overrides */
+.filterBarWrap,
+.defaultFiltersRow {
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filterBarWrap::-webkit-scrollbar,
+.defaultFiltersRow::-webkit-scrollbar {
+  display: none;
+}
+
+.defaultFiltersRow {
+  flex: 0 1 auto;
+}
+
+.filterBarWrap:has(.defaultFilterDropdown),
+.filterBarWrap:has(.filterDropdown),
+.defaultFiltersRow:has(.defaultFilterDropdown) {
+  overflow: visible;
+}
+
+.defaultFilterDropdown,
+.filterDropdown {
+  max-width: calc(100vw - 2rem);
+}
+
+@media (max-width: 1024px) {
+  .filterBarWrap,
+  .defaultFiltersRow {
+    gap: 0.4rem;
+  }
+
+  .defaultFilterBtn {
+    padding: 0.4rem 0.7rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .filterBarWrap,
+  .defaultFiltersRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .searchWrap {
+    flex: 0 0 min(220px, 70vw);
+    min-width: min(220px, 70vw);
+  }
+
+  .defaultFilter,
+  .clearFilterSlot {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .defaultFilterBtn {
+    width: auto;
+    min-width: 0;
+    max-width: min(240px, calc(100vw - 2rem));
+  }
+
+  .defaultFilterDropdown,
+  .filterDropdown {
+    left: 0;
+    right: auto;
+    min-width: min(220px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+  }
+}
+/* Keep the Add Filters panel anchored to its trigger without scroll clipping. */
+.filterBarWrap:has(.filterDropdown),
+.defaultFiltersRow:has(.filterDropdown) {
+  overflow: visible;
+}
+
+.filterMenuWrapper {
+  position: relative;
+}
+
+.filterDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  max-width: min(360px, calc(100vw - 2rem));
+  max-height: min(520px, calc(100vh - 8rem));
+  overflow-y: auto;
+  z-index: 3000;
+}
+
+@media (max-width: 640px) {
+  .filterBarWrap:has(.filterDropdown),
+  .defaultFiltersRow:has(.filterDropdown) {
+    overflow: visible;
+  }
+
+  .filterDropdown {
+    top: calc(100% + 8px);
+    right: 0;
+    left: auto;
+    width: min(320px, calc(100vw - 2rem));
+    min-width: min(260px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    max-height: min(480px, calc(100vh - 7rem));
+  }
 }

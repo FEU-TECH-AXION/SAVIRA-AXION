@@ -11,10 +11,13 @@ import {
 } from "@/lib/availabilityOptions";
 import styles from "./AvailabilityTab.module.css";
 
-function Field({ label, error, children }) {
+function Field({ label, required = false, error, children }) {
   return (
     <div className={styles.field}>
-      <label className={styles.fieldLabel}>{label}</label>
+      <label className={styles.fieldLabel}>
+        {label}
+        {required && <span className={styles.requiredMark}>*</span>}
+      </label>
       {children}
       {error && <p className={styles.fieldError}>{error}</p>}
     </div>
@@ -48,7 +51,6 @@ function splitAvailabilityNote(note = "") {
 function buildAvailabilityNote(reason, detail) {
   const cleanDetail = String(detail || "").trim();
   if (!reason) return cleanDetail || null;
-  if (reason === "Other") return cleanDetail || null;
   return cleanDetail ? `${reason}: ${cleanDetail}` : reason;
 }
 
@@ -70,7 +72,7 @@ export default function AvailabilityTab({ user, setUser }) {
   });
 
   const needsReason = REASON_REQUIRED_STATUSES.includes(form.status);
-  const needsDetail = needsReason && form.reason === "Other";
+  const needsDetail = needsReason;
   const activeWorkParts = useMemo(() => formatWorkParts(current.active_work), [current.active_work]);
 
   useEffect(() => {
@@ -121,7 +123,7 @@ export default function AvailabilityTab({ user, setUser }) {
   function validate() {
     const next = {};
     if (needsReason && !form.reason) next.reason = "Choose a reason for this status.";
-    if (needsDetail && !form.detail.trim()) next.detail = "Add details when the reason is Other.";
+    if (needsDetail && !form.detail.trim()) next.detail = "Add details for this status.";
     return next;
   }
 
@@ -207,7 +209,7 @@ export default function AvailabilityTab({ user, setUser }) {
           </Field>
 
           {needsReason && (
-            <Field label="Reason" error={fieldErrors.reason}>
+            <Field label="Reason" required error={fieldErrors.reason}>
               <select
                 value={form.reason}
                 onChange={(event) => updateField("reason", event.target.value)}
@@ -222,11 +224,11 @@ export default function AvailabilityTab({ user, setUser }) {
           )}
 
           {needsReason && (
-            <Field label={needsDetail ? "Details" : "Optional details"} error={fieldErrors.detail}>
+            <Field label="Details" required error={fieldErrors.detail}>
               <textarea
                 value={form.detail}
                 onChange={(event) => updateField("detail", event.target.value)}
-                placeholder={needsDetail ? "Please explain the reason." : "Optional context for schedulers"}
+                placeholder="Please explain the reason."
                 disabled={saving}
               />
             </Field>

@@ -44,8 +44,15 @@ function DefaultFilterDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const displayValue = value && value !== "All" ? value : "All";
@@ -80,6 +87,8 @@ function DefaultFilterDropdown({ field, value, onChange }) {
         <button
           className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
           onClick={() => { setOpen(!open); setDateSearch(""); setCustomMode(false); }}
+        aria-expanded={open}
+        aria-haspopup="true"
         >
           <span className={styles.defaultFilterLabel}>{field.label}</span>
           <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
@@ -202,6 +211,8 @@ function DefaultFilterDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "All" ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => { setOpen(!open); setSelectSearch(""); }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>
@@ -254,8 +265,15 @@ export default function FilterMenu({ filters, onFilterChange, onClearAll }) {
     function outside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const activeFilterCount = Object.values(filters).filter(
@@ -318,6 +336,8 @@ export default function FilterMenu({ filters, onFilterChange, onClearAll }) {
             onClick={() => setMenuOpen(!menuOpen)}
             title="Add more filters"
             aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
           >
             <FiFilter size={15} />
             {activeFilterCount > 0 && (
