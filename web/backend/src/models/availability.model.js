@@ -25,6 +25,106 @@ const computeProjectStatus = (project) => {
   return 'Active'
 }
 
+const getAvailabilityStatus = async (userId) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, availability_status')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return data?.availability_status || null
+}
+
+const getAvailabilityRecord = async (userId) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, availability_status, availability_note, availability_reason')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return data || null
+}
+
+const getActiveWorkSummary = async (userId) => {
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select(`
+      user_id,
+      first_name,
+      last_name,
+      is_active,
+      roles (role_name)
+    `)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (userError) throw userError
+
+  const name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'This staff member'
+  if (!user?.user_id || user.is_active === false) {
+    return { cases: 0, legal: 0, volunteer: 0, projects: 0, total: 0, name }
+  }
+
+  const [
+    caseOfficersResult,
+    legalPersonnelResult,
+    projectsResult,
+  ] = await Promise.all([
+    supabase.from('case_officers').select('case_officer_id, user_id').eq('user_id', userId),
+    supabase.from('legal_personnels').select('legal_personnel_id, user_id').eq('user_id', userId),
+    supabase.from('projects')
+      .select('project_id, project_status, start_date, end_date, project_officers, project_committee_members'),
+  ])
+
+  for (const result of [caseOfficersResult, legalPersonnelResult, projectsResult]) {
+    if (result.error) throw result.error
+  }
+
+  const caseOfficerIds = (caseOfficersResult.data || []).map((row) => row.case_officer_id)
+  const legalPersonnelIds = (legalPersonnelResult.data || []).map((row) => row.legal_personnel_id)
+
+  const [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult] =
+    await Promise.all([
+      caseOfficerIds.length
+        ? supabase.from('case_assignments').select('case_officer_id').in('case_officer_id', caseOfficerIds).eq('is_active', true)
+        : Promise.resolve({ data: [], error: null }),
+      legalPersonnelIds.length
+        ? supabase.from('legal_case_assignments').select('legal_personnel_id').in('legal_personnel_id', legalPersonnelIds).eq('is_active', true)
+        : Promise.resolve({ data: [], error: null }),
+      supabase.from('volunteer_application_assignments').select('assessor_id').eq('assessor_id', userId).eq('is_active', true),
+    ])
+
+  for (const result of [caseAssignmentsResult, legalAssignmentsResult, reviewAssignmentsResult]) {
+    if (result.error) throw result.error
+  }
+
+  const caseLoads = {}
+  const legalLoads = {}
+  let projects = 0
+  const targetName = normalizeName(name)
+
+  for (const row of caseAssignmentsResult.data || []) increment(caseLoads, row.case_officer_id)
+  for (const row of legalAssignmentsResult.data || []) increment(legalLoads, row.legal_personnel_id)
+
+  for (const project of projectsResult.data || []) {
+    if (!['Upcoming', 'Active'].includes(computeProjectStatus(project))) continue
+    const names = [...(project.project_officers || []), ...(project.project_committee_members || [])]
+    if (new Set(names.map(normalizeName).filter(Boolean)).has(targetName)) projects += 1
+  }
+
+  const cases = caseOfficerIds.reduce((total, id) => total + (caseLoads[id] || 0), 0)
+  const legal = legalPersonnelIds.reduce((total, id) => total + (legalLoads[id] || 0), 0)
+  const volunteer = (reviewAssignmentsResult.data || []).length
+
+  return {
+    cases,
+    legal,
+    volunteer,
+    projects,
+    total: cases + legal + volunteer + projects,
+    name,
+  }
+}
+
 const getAll = async () => {
   const { data: users, error: usersError } = await supabase
     .from('users')
@@ -37,6 +137,7 @@ const getAll = async () => {
       is_active,
       availability_status,
       availability_note,
+      availability_reason,
       availability_updated_at,
       max_active_cases,
       max_legal_assignments,
@@ -219,6 +320,7 @@ const getAll = async () => {
       availability_status: explicitStatus,
       effective_status: effectiveStatus,
       availability_note: user.availability_note || null,
+      availability_reason: user.availability_reason || null,
       availability_updated_at: user.availability_updated_at || null,
       loads,
       limits,
@@ -236,6 +338,7 @@ const update = async (userId, payload) => {
   const allowed = {
     availability_status: payload.availability_status,
     availability_note: payload.availability_note,
+    availability_reason: payload.availability_reason,
     max_active_cases: payload.max_active_cases,
     max_legal_assignments: payload.max_legal_assignments,
     max_volunteer_reviews: payload.max_volunteer_reviews,
@@ -253,6 +356,7 @@ const update = async (userId, payload) => {
       user_id,
       availability_status,
       availability_note,
+      availability_reason,
       availability_updated_at,
       max_active_cases,
       max_legal_assignments,
@@ -264,4 +368,4 @@ const update = async (userId, payload) => {
   return data
 }
 
-module.exports = { getAll, update }
+module.exports = { getAll, getAvailabilityStatus, getAvailabilityRecord, getActiveWorkSummary, update }

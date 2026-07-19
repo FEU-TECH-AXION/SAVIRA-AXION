@@ -33,17 +33,25 @@ function renderSortIcon(field, sortField, sortDir) {
   return <span className={styles.sortActive}>{sortDir === "asc" ? "\u2191" : "\u2193"}</span>
 }
 
-function WorkloadCell({ person }) {
+function WorkloadCell({ person, getApplicableModules }) {
+  const applicableModules = getApplicableModules(person)
   const items = [
-    ["Cases", person.active_cases || 0, person.limits?.cases],
-    ["Legal", person.active_legal_assignments || 0, person.limits?.legal],
-    ["Reviews", person.active_reviews || 0, person.limits?.volunteer],
-    ["Projects", person.active_projects || 0, person.limits?.projects],
-  ]
+    ["Case management", "Cases", person.active_cases || 0, person.limits?.cases],
+    ["Legal review", "Legal", person.active_legal_assignments || 0, person.limits?.legal],
+    ["Volunteer applications", "Reviews", person.active_reviews || 0, person.limits?.volunteer],
+    ["Project tracker", "Projects", person.active_projects || 0, person.limits?.projects],
+  ].filter(([module]) => applicableModules.includes(module))
+
+  if (items.length === 0) {
+    return <span className={styles.muted}>No applicable workload</span>
+  }
 
   return (
-    <div className={styles.workloadGrid}>
-      {items.map(([label, current, max]) => (
+    <div
+      className={styles.workloadGrid}
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(62px, 1fr))` }}
+    >
+      {items.map(([, label, current, max]) => (
         <span key={label}>
           <strong>{current}</strong>
           <small>{label}{max ? ` / ${max}` : ""}</small>
@@ -111,6 +119,7 @@ export default function StaffAvailabilityTable({
   pageSize = 10,
   onPageChange,
   getModuleMetrics,
+  getApplicableModules,
   module,
   savingId,
   onEditStatus,
@@ -274,7 +283,9 @@ export default function StaffAvailabilityTable({
                         compact
                       />
                     </td>
-                    <td className={styles.td}><WorkloadCell person={person} /></td>
+                    <td className={styles.td}>
+                      <WorkloadCell person={person} getApplicableModules={getApplicableModules} />
+                    </td>
                     <td className={styles.td}>
                       {conflicts.length ? (
                         <Tooltip

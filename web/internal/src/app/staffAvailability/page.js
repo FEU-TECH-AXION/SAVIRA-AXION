@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { fetchStaffAvailability, updateStaffAvailability } from "@/lib/api"
+import { AVAILABILITY_STATUSES } from "@/lib/availabilityOptions"
 import Tooltip from "@/components/ui/Tooltip"
 import StaffAvailabilityFilterMenu from "./StaffAvailabilityFilterMenu"
 import StaffAvailabilityTable from "./StaffAvailabilityTable"
 import styles from "./staffAvailability.module.css"
 
-const STATUSES = ["Available", "Busy", "On Leave", "Out of Office"]
+const STATUSES = AVAILABILITY_STATUSES
 const PAGE_SIZE = 10
 
 function getModuleMetrics(person, module) {
@@ -35,12 +36,21 @@ function isNearCapacity(person, module) {
     Number(metrics.current) / Number(metrics.max) >= 0.75
 }
 
+function getApplicableModules(person) {
+  if (person.role === "Case Officer") return ["Case management"]
+  if (person.role === "Legal Personnel") return ["Legal review"]
+  if (person.role === "Staff" && Number(person.committee_id) === 2) {
+    return ["Volunteer applications", "Project tracker"]
+  }
+  if (person.role === "Staff") return ["Project tracker"]
+  return []
+}
+
 function matchesModule(person, module) {
   if (!module || module === "All") return true
-  if (module === "Case management") return person.role === "Case Officer"
-  if (module === "Legal review") return person.role === "Legal Personnel"
-  if (module === "Volunteer applications") return person.role === "Staff" && Number(person.committee_id) === 2
-  if (module === "Project tracker") return person.role === "Staff"
+  if (["Case management", "Legal review", "Volunteer applications", "Project tracker"].includes(module)) {
+    return getApplicableModules(person).includes(module)
+  }
   return true
 }
 
@@ -360,6 +370,7 @@ export default function StaffAvailabilityPage() {
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
           getModuleMetrics={getModuleMetrics}
+          getApplicableModules={getApplicableModules}
           module={filters.module}
           savingId={saving}
           onEditStatus={(target) => setDialog({

@@ -180,6 +180,13 @@ export async function fetchStaffAvailability() {
   return Array.isArray(data) ? data : data.data || [];
 }
 
+export async function fetchAvailabilityFor(userId) {
+  const res = await internalApiFetch(`/api/availability/${userId}`, { cache: "no-store" });
+  const data = await readJson(res, {});
+  if (!res.ok) throw new Error(data.error || "Failed to fetch availability");
+  return data.data;
+}
+
 export async function fetchStaff() {
   const res = await internalApiFetch("/api/staff", { cache: "no-store" });
   const data = await readJson(res, []);

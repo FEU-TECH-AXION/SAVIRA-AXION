@@ -2,13 +2,14 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FiCamera, FiUser, FiLock, FiHelpCircle, FiSliders, FiFlag } from "react-icons/fi";
+import { FiCamera, FiUser, FiLock, FiHelpCircle, FiSliders, FiFlag, FiClock } from "react-icons/fi";
 import { internalApiFetch } from "@/lib/internalApiFetch";
 import { useAuth } from "@/lib/AuthContext";
 import styles from "./profile.module.css";
 
 import ProfileTab from "@/components/settings/ProfileTab";
 import AccountPrivacyTab from "@/components/settings/AccountPrivacyTab";
+import AvailabilityTab from "@/components/settings/AvailabilityTab";
 import HelpCenterTab from "@/components/settings/HelpCenterTab";
 import DisplayAccessibilityTab from "@/components/settings/DisplayAccessibilityTab";
 import ReportProblemTab from "@/components/settings/ReportProblemTab";
@@ -17,6 +18,7 @@ import { getCurrentLanguage, translate } from "@/lib/i18n";
 const LABELS = {
   settingsProfile: "Profile",
   settingsAccountPrivacy: "Account & Security",
+  settingsAvailability: "Availability",
   settingsDisplayAccessibility: "Display & Accessibility",
   profileCompletion: "Profile Completion",
   addProfileFields: "Add",
@@ -120,6 +122,7 @@ const PROFILE_FIELD_LABELS = {
 const TABS = [
   { id: "profile", labelKey: "settingsProfile", icon: FiUser },
   { id: "lock", labelKey: "settingsAccountPrivacy", icon: FiLock },
+  { id: "availability", labelKey: "settingsAvailability", icon: FiClock },
   { id: "help", labelKey: "settingsHelpCenter", icon: FiHelpCircle },
   { id: "display", labelKey: "settingsDisplayAccessibility", icon: FiSliders },
   { id: "report", labelKey: "settingsReportProblem", icon: FiFlag },
@@ -312,6 +315,9 @@ function SettingsPageContent() {
         )}
         {activeTab === "lock" && (
           <AccountPrivacyTab user={user} setUser={setUser} t={t} />
+        )}
+        {activeTab === "availability" && (
+          <AvailabilityTab user={user} setUser={setUser} t={t} />
         )}
         {activeTab === "help" && (
           <HelpCenterTab user={user} t={t} />

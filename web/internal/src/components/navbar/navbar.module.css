@@ -270,6 +270,113 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
+.availabilityWrapper {
+  position: relative;
+}
+
+.availabilityPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.2rem 0.45rem;
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.availabilityPill:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.availabilityDropdown {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 200;
+  width: 230px;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.availabilityHeader {
+  margin: 0 0 0.55rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid #eee;
+  color: #222;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.availabilityCurrent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  color: #555;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.availabilityAction,
+.availabilityManage {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.availabilityAction {
+  border: 1px solid var(--sasha-teal);
+  color: #fff;
+  background: var(--sasha-teal);
+}
+
+.availabilityAction:hover:not(:disabled) {
+  background: var(--sasha-teal-dark);
+}
+
+.availabilityAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.availabilityManage {
+  border: 1px solid #dbe5e5;
+  color: var(--sasha-teal);
+  background: #f8fbfb;
+}
+
+.availabilityManage:hover {
+  background: #eef7f7;
+}
+
+.availabilityError {
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #f5c6c2;
+  border-radius: 8px;
+  color: #c0392b;
+  background: #fff0ef;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 /* ── Login button ── */
 .navLoginBtn {
   background: var(--sasha-orange);
