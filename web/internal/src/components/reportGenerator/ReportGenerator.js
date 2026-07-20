@@ -674,11 +674,13 @@ function buildVolunteerSummary(applications = []) {
   const waitlisted  = byStatus["Waitlisted"]  || 0;
   const processed   = approved + rejected + waitlisted;
   const approvalRate = processed ? Math.round((approved / processed) * 100) : 0;
+  const rejectionRate = processed ? Math.round((rejected / processed) * 100) : 0;
 
   return {
     total: applications.length,
     byStatus: Object.fromEntries(Object.entries(byStatus).filter(([, v]) => v > 0)),
     approvalRate,
+    rejectionRate,
     avgScore: scoreCount ? Math.round(totalScore / scoreCount) : 0,
     topFields: topEntries(fieldCounts, 6),
   };
@@ -867,7 +869,7 @@ function pairTableRows(entries = [], totalOverride = null) {
   ]);
 }
 
-function addWorksheetSection(worksheet, title, headers, rows = []) {
+function addWorksheetSection(worksheet, title, headers, rows = [], options = {}) {
   if (worksheet.rowCount > 0) worksheet.addRow([]);
   const sectionRow = worksheet.addRow([title]);
   formatSectionRow(sectionRow);
@@ -879,7 +881,25 @@ function addWorksheetSection(worksheet, title, headers, rows = []) {
   formatWorkbookHeader(headerRow);
 
   if (rows.length) {
-    rows.forEach((row) => worksheet.addRow(row));
+    rows.forEach((row) => {
+      const originalValues = Array.isArray(row) ? row : [row];
+      const typedValues = options.coerceNumeric ? originalValues.map((value) => {
+        if (typeof value !== "string") return value;
+        const trimmed = value.trim();
+        if (/^-?\d+(?:\.\d+)?%$/.test(trimmed)) return Number(trimmed.slice(0, -1)) / 100;
+        if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) return Number(trimmed);
+        return value;
+      }) : originalValues;
+      const addedRow = worksheet.addRow(typedValues);
+      if (options.coerceNumeric) {
+        originalValues.forEach((value, index) => {
+          if (typeof value === "string" && /^-?\d+(?:\.\d+)?%$/.test(value.trim())) {
+            addedRow.getCell(index + 1).numFmt = "0%";
+          }
+        });
+        if (/^total/i.test(String(originalValues[0] || ""))) addedRow.font = { bold: true };
+      }
+    });
   } else {
     worksheet.addRow(["No data available"]);
   }
@@ -934,29 +954,90 @@ function addSummarySheet(workbook, modules) {
   formatWorksheet(worksheet);
 }
 
-function addCasesSheet(workbook, caseData, analyticsData) {
+function addReportInfoSheet(workbook, { dateRange, generatedAt, modules, preparedBy }) {
+  const worksheet = workbook.addWorksheet("Report Info");
+  worksheet.columns = [
+    { key: "label", width: 24 },
+    { key: "value", width: 64 },
+  ];
+
+  worksheet.mergeCells("A1:B1");
+  const titleCell = worksheet.getCell("A1");
+  titleCell.value = "SAVIRA INSTITUTIONAL REPORT";
+  titleCell.font = { bold: true, size: 20, color: { argb: "FFFFFFFF" } };
+  titleCell.fill = XLSX_HEADER_FILL;
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  worksheet.getRow(1).height = 34;
+
+  worksheet.mergeCells("A2:B2");
+  worksheet.getCell("A2").value = "Aggregate administrative and program data";
+  worksheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
+  worksheet.getCell("A2").alignment = { horizontal: "center" };
+
+  const metadata = [
+    ["Reporting Period", getDateRangeLabel(dateRange)],
+    ["Generated", generatedAt],
+    ["Included Modules", modules.map((reportModule) => reportModule.title).join("\n")],
+    ["Confidentiality", "Confidential - For internal use only. This workbook contains aggregate institutional data and must be handled in accordance with SAVIRA/SASHA data privacy and records-management protocols."],
+  ];
+  metadata.forEach(([label, value], index) => {
+    const row = worksheet.getRow(index + 4);
+    row.values = [label, value];
+    row.getCell(1).font = { bold: true, color: { argb: "FF034B4D" } };
+    row.getCell(1).fill = XLSX_SECTION_FILL;
+    row.getCell(2).alignment = { vertical: "top", wrapText: true };
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFCBD5E1" } },
+        left: { style: "thin", color: { argb: "FFCBD5E1" } },
+        bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+        right: { style: "thin", color: { argb: "FFCBD5E1" } },
+      };
+    });
+  });
+  worksheet.getCell("B5").numFmt = "yyyy-mm-dd hh:mm";
+  worksheet.getRow(6).height = Math.max(30, modules.length * 15);
+  worksheet.getRow(7).height = 48;
+
+  const certificationRow = worksheet.addRow([]).number + 1;
+  worksheet.mergeCells(certificationRow, 1, certificationRow, 2);
+  const certificationCell = worksheet.getCell(certificationRow, 1);
+  certificationCell.value = "CERTIFICATION";
+  formatSectionRow(worksheet.getRow(certificationRow));
+  certificationCell.alignment = { horizontal: "center" };
+
+  const signatureRows = [
+    ["Prepared by", preparedBy || "Authenticated administrator"],
+    ["Noted by", "________________"],
+    ["Date", generatedAt],
+  ];
+  signatureRows.forEach(([label, value]) => {
+    const row = worksheet.addRow([label, value]);
+    row.getCell(1).font = { bold: true };
+  });
+  worksheet.getCell(worksheet.rowCount, 2).numFmt = "yyyy-mm-dd";
+  formatWorksheet(worksheet);
+  worksheet.getColumn(1).width = 24;
+  worksheet.getColumn(2).width = 64;
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  worksheet.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
+  certificationCell.alignment = { horizontal: "center", vertical: "middle" };
+}
+
+function addCasesSheet(workbook, rawData) {
   const worksheet = workbook.addWorksheet("Cases");
-  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
-    ["Open Reports", caseData.openCases],
-    ["Under Investigation", analyticsData?.underInvestigation ?? 0],
-    ["Completed Reports", caseData.closedCases],
-    ["Total Cases", caseData.total],
-    ["Average Resolution Days", caseData.avgResolutionDays],
-  ]);
-  addWorksheetSection(worksheet, "Reports by Status", ["Status", "Count", "Percentage"], countTableRows(caseData.byStatus, caseData.total));
-  addWorksheetSection(worksheet, "Reports by City", ["City", "Count", "Percentage"], countTableRows(caseData.byCity, caseData.total));
-  addWorksheetSection(worksheet, "Case Types", ["Case Type", "Count", "Percentage"], countTableRows(caseData.byType, caseData.total));
-  addWorksheetSection(worksheet, "Case Reports Last 30 Days", ["Date", "Filed Count"], (analyticsData?.trend || []).map((item) => [item.label, item.value]));
-  addWorksheetSection(
-    worksheet,
-    "Status Composition Over Time",
-    ["Date", "Submitted", "Undergoing Review", "Closed"],
-    (analyticsData?.stackedTrend || []).map((item) => [item.label, item.Submitted || 0, item["Undergoing Review"] || 0, item.Closed || 0])
-  );
+  buildCaseManagementTables(rawData?.cases || [], rawData?.endorsements || []).forEach((table) => {
+    addWorksheetSection(worksheet, table.title, table.headers, table.rows, { coerceNumeric: true });
+    if (table.note) {
+      const noteRow = worksheet.addRow(["Note", table.note]);
+      noteRow.getCell(1).font = { bold: true, italic: true };
+      noteRow.getCell(2).font = { italic: true, color: { argb: "FF475569" } };
+    }
+  });
   formatWorksheet(worksheet);
 }
 
-function addLegalSheet(workbook, legalData) {
+function addLegalSheet(workbook, legalData, endorsements = []) {
   const worksheet = workbook.addWorksheet("Legal Review");
   addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
     ["Cases in Legal", legalData.total],
@@ -968,7 +1049,11 @@ function addLegalSheet(workbook, legalData) {
   addWorksheetSection(worksheet, "Legal Cases by City", ["City", "Count", "Percentage"], countTableRows(legalData.byCity, legalData.total));
   addWorksheetSection(worksheet, "Legal Case Status Distribution", ["Status", "Count", "Percentage"], countTableRows(legalData.byStatus, legalData.total));
   addWorksheetSection(worksheet, "Legal Case Types", ["Case Type", "Count", "Percentage"], countTableRows(legalData.byType, legalData.total));
-  addWorksheetSection(worksheet, "Referral Outcome", ["Outcome", "Count", "Percentage"], countTableRows(legalData.referralBreakdown));
+  const outcomeCounts = Object.fromEntries(LEGAL_CROSSTAB_COLUMNS.map((outcome) => [outcome, 0]));
+  endorsements.forEach((caseItem) => {
+    outcomeCounts[getLegalOutcomeColumn(caseItem.status)] += 1;
+  });
+  addWorksheetSection(worksheet, "Referral Outcome", ["Outcome", "Count", "Percentage"], countTableRows(outcomeCounts, endorsements.length, true));
   formatWorksheet(worksheet);
 }
 
@@ -977,6 +1062,7 @@ function addVolunteersSheet(workbook, volunteerData) {
   addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
     ["Total Applications", volunteerData.total],
     ["Approval Rate", `${volunteerData.approvalRate}%`],
+    ["Rejection Rate", `${volunteerData.rejectionRate}%`],
     ["Average Score", volunteerData.avgScore],
   ]);
   addWorksheetSection(worksheet, "Applications by Status", ["Status", "Count", "Percentage"], countTableRows(volunteerData.byStatus, volunteerData.total));
@@ -1014,7 +1100,7 @@ function addUsersSheet(workbook, userData) {
   formatWorksheet(worksheet);
 }
 
-async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) {
+async function exportToXLSX({ activeModules, dateRange, dataAvailability, rawData, preparedBy }) {
   const modules = [];
   if (activeModules.cases && dataAvailability.caseData) {
     modules.push({ title: "Case Management", summary: dataAvailability.caseData });
@@ -1033,15 +1119,17 @@ async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) 
   }
   if (!modules.length) return;
 
+  const generatedAt = new Date();
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "SAVIRA";
-  workbook.created = new Date();
-  workbook.modified = new Date();
+  workbook.created = generatedAt;
+  workbook.modified = generatedAt;
   workbook.properties.date1904 = false;
 
+  addReportInfoSheet(workbook, { dateRange, generatedAt, modules, preparedBy });
   addSummarySheet(workbook, modules);
-  if (activeModules.cases && dataAvailability.caseData) addCasesSheet(workbook, dataAvailability.caseData, analyticsData);
-  if (activeModules.legal && dataAvailability.legalData) addLegalSheet(workbook, dataAvailability.legalData);
+  if (activeModules.cases && dataAvailability.caseData) addCasesSheet(workbook, rawData);
+  if (activeModules.legal && dataAvailability.legalData) addLegalSheet(workbook, dataAvailability.legalData, rawData?.endorsements || []);
   if (activeModules.volunteers && dataAvailability.volunteerData) addVolunteersSheet(workbook, dataAvailability.volunteerData);
   if (activeModules.projects && dataAvailability.projectData) addProjectsSheet(workbook, dataAvailability.projectData);
   if (activeModules.users && dataAvailability.userData) addUsersSheet(workbook, dataAvailability.userData);
@@ -1053,7 +1141,7 @@ async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) 
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const filename = `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `report_${generatedAt.toISOString().slice(0, 10)}.xlsx`;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
@@ -1150,6 +1238,78 @@ function getVictimAgeGroup(age) {
   if (numericAge <= 44) return "35-44";
   if (numericAge <= 54) return "45-54";
   return "55+";
+}
+
+function buildCaseManagementTables(cases = [], endorsements = []) {
+  return [
+    {
+      title: "Reported Cases",
+      headers: ["Purpose / Endorsed To", ...LEGAL_CROSSTAB_COLUMNS.slice(0, 5), "Declined to file", "Sub-Total"],
+      rows: buildEndorsementCrosstabRows(endorsements),
+    },
+    {
+      title: "Victims Assisted - Age Group",
+      headers: ["Age Group", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => getVictimAgeGroup(caseItem.age)), VICTIM_AGE_GROUPS),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Victims Assisted - Gender Identity",
+      headers: ["Gender Identity", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.gender_identity), VICTIM_GENDER_IDENTITIES),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Incident Location Type",
+      headers: ["Location Type", "Number of Cases"],
+      rows: buildIncidentLocationRows(cases),
+    },
+    {
+      title: "Incident Location City",
+      headers: ["City", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.city), CITIES),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Perpetrator Gender",
+      headers: ["Gender", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.perpetrator_gender), PERPETRATOR_GENDERS),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Case Categories",
+      headers: ["Category", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => [
+          caseItem.primary_category,
+          ...(caseItem.additional_categories || []),
+        ]), CASE_CATEGORIES),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Case Types",
+      headers: ["Case Type", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.case_type), CASE_TYPES),
+        null,
+        true
+      ),
+    },
+  ];
 }
 
 function addPdfFooter(doc, generatedAt) {
@@ -1451,75 +1611,7 @@ function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsDa
         { label: "Completed Reports", value: dataAvailability.caseData.closedCases },
         { label: "Total Cases", value: dataAvailability.caseData.total },
       ],
-      tables: [
-        {
-          title: "Reported Cases",
-          headers: ["Purpose / Endorsed To", ...LEGAL_CROSSTAB_COLUMNS.slice(0, 5), "Declined to file", "Sub-Total"],
-          rows: buildEndorsementCrosstabRows(endorsements),
-        },
-        {
-          title: "Victims Assisted - Age Group",
-          headers: ["Age Group", "Count", "Percentage"],
-          rows: objectToTableRows(
-            includeDomainValues(countCaseValues(cases, (caseItem) => getVictimAgeGroup(caseItem.age)), VICTIM_AGE_GROUPS),
-            null,
-            true
-          ),
-        },
-        {
-          title: "Victims Assisted - Gender Identity",
-          headers: ["Gender Identity", "Count", "Percentage"],
-          rows: objectToTableRows(
-            includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.gender_identity), VICTIM_GENDER_IDENTITIES),
-            null,
-            true
-          ),
-        },
-        {
-          title: "Incident Location Type",
-          headers: ["Location Type", "Number of Cases"],
-          rows: buildIncidentLocationRows(cases),
-        },
-        {
-          title: "Incident Location City",
-          headers: ["City", "Count", "Percentage"],
-          rows: objectToTableRows(
-            includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.city), CITIES),
-            null,
-            true
-          ),
-        },
-        {
-          title: "Perpetrator Gender",
-          headers: ["Gender", "Count", "Percentage"],
-          rows: objectToTableRows(
-            includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.perpetrator_gender), PERPETRATOR_GENDERS),
-            null,
-            true
-          ),
-        },
-        {
-          title: "Case Categories",
-          headers: ["Category", "Count", "Percentage"],
-          rows: objectToTableRows(
-            includeDomainValues(countCaseValues(cases, (caseItem) => [
-              caseItem.primary_category,
-              ...(caseItem.additional_categories || []),
-            ]), CASE_CATEGORIES),
-            null,
-            true
-          ),
-        },
-        {
-          title: "Case Types",
-          headers: ["Case Type", "Count", "Percentage"],
-          rows: objectToTableRows(
-            includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.case_type), CASE_TYPES),
-            null,
-            true
-          ),
-        },
-      ],
+      tables: buildCaseManagementTables(cases, endorsements),
     });
   }
 
@@ -2377,11 +2469,16 @@ export default function ReportGenerator() {
     });
   }
 
+  const authenticatedExportName = [authUser?.first_name, authUser?.middle_name, authUser?.last_name, authUser?.extension_name]
+    .filter(Boolean)
+    .join(" ") || authUser?.user_name || authUser?.email || "Authenticated administrator";
+
   async function handleExportXLSX() {
     setExportMenuOpen(false);
     try {
       const result = await exportToXLSX({
         activeModules,
+        dateRange,
         dataAvailability: {
           caseData,
           legalData,
@@ -2389,7 +2486,11 @@ export default function ReportGenerator() {
           projectData,
           userData,
         },
-        analyticsData,
+        rawData: {
+          ...rawRef.current,
+          ...applyAdvancedFilters(rawRef.current, dateRange, advancedFilters),
+        },
+        preparedBy: authenticatedExportName,
       });
       if (result?.filename) {
         recordReportGeneration({
@@ -2424,9 +2525,7 @@ export default function ReportGenerator() {
           ...applyAdvancedFilters(rawRef.current, dateRange, advancedFilters),
         },
         analyticsData,
-        preparedBy: [authUser?.first_name, authUser?.middle_name, authUser?.last_name, authUser?.extension_name]
-          .filter(Boolean)
-          .join(" ") || authUser?.user_name || authUser?.email || "Authenticated administrator",
+        preparedBy: authenticatedExportName,
       });
       if (result?.blob) {
         setPdfPreview((current) => {
