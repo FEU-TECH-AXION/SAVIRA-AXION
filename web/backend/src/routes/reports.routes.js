@@ -137,6 +137,48 @@ function computeProjectStatus(project) {
   return "Active";
 }
 
+router.get("/case-endorsements", async (req, res) => {
+  try {
+    const { data: reviews, error: reviewsError } = await supabase
+      .from("legal_reviews")
+      .select("case_report_id, endorsed_to, created_at")
+      .not("endorsed_to", "is", null)
+      .order("created_at", { ascending: false });
+    if (reviewsError) throw reviewsError;
+
+    const latestByCase = new Map();
+    for (const review of reviews || []) {
+      const endorsedTo = String(review.endorsed_to || "").trim();
+      if (endorsedTo && !latestByCase.has(review.case_report_id)) latestByCase.set(review.case_report_id, review);
+    }
+
+    const caseIds = [...latestByCase.keys()];
+    if (caseIds.length === 0) return res.json({ data: [] });
+
+    const { data: cases, error: casesError } = await supabase
+      .from("case_reports")
+      .select("case_report_id, public_id, case_status_id, created_at, case_statuses ( case_status_name )")
+      .in("case_report_id", caseIds)
+      .eq("is_current", true);
+    if (casesError) throw casesError;
+
+    return res.json({
+      data: (cases || []).map((caseItem) => ({
+        id: caseItem.public_id || caseItem.case_report_id,
+        case_report_id: caseItem.public_id || caseItem.case_report_id,
+        status: caseItem.case_statuses?.case_status_name || null,
+        case_status_id: caseItem.case_status_id,
+        endorsed_to: latestByCase.get(caseItem.case_report_id)?.endorsed_to || null,
+        date_filed: caseItem.created_at,
+        created_at: caseItem.created_at,
+      })),
+    });
+  } catch (err) {
+    console.error("Case endorsement report error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/reports/aggregate?dateRange=thisMonth
 //
@@ -371,7 +413,7 @@ router.get("/projects", async (req, res) => {
     const rangeStart = getRangeStart(req.query.dateRange || "all");
     let query = supabase
       .from("projects")
-      .select("project_id, project_status, start_date, end_date");
+      .select("project_id, project_status, category, approval_status, visibility, start_date, end_date, due_date, actual_end_date, created_at");
     query = applyDateFilter(query, rangeStart, "start_date");
 
     const { data, error } = await query;
@@ -383,8 +425,14 @@ router.get("/projects", async (req, res) => {
       status: computeProjectStatus(p),
       statusOverride: ["Postponed", "Cancelled"].includes(p.project_status) ? p.project_status : "",
       project_status: p.project_status,
+      category: p.category,
+      approval_status: p.approval_status,
+      visibility: p.visibility,
       start_date: p.start_date,
       end_date: p.end_date,
+      due_date: p.due_date,
+      actual_end_date: p.actual_end_date,
+      created_at: p.created_at,
     }));
 
     res.json({ data: normalized || [] });
