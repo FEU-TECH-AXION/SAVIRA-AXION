@@ -503,3 +503,59 @@
     padding: 0.65rem 0.55rem;
   }
 }
+
+@media (max-width: 640px) {
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(n+2):not(:last-child),
+  .table td:nth-child(n+2):not(:last-child) {
+    display: none;
+  }
+
+  .table th,
+  .table td {
+    height: 54px;
+    max-height: 54px;
+    padding: 0.65rem 0.6rem;
+    overflow: hidden;
+  }
+
+  .table th:first-child,
+  .table td:first-child {
+    width: calc(100% - 46px);
+  }
+
+  .table th:last-child,
+  .table td:last-child {
+    width: 46px;
+    padding-left: 0;
+    padding-right: 0.45rem;
+    text-align: right;
+  }
+
+  .truncateText strong {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .truncateText span {
+    display: none;
+  }
+
+  .iconBtn {
+    width: 34px;
+    height: 32px;
+  }
+}

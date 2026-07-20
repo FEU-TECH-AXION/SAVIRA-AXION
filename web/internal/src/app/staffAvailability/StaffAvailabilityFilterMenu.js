@@ -94,6 +94,24 @@ export default function StaffAvailabilityFilterMenu({
   searchValue,
   roleOptions = ["All"],
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    function outside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false)
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false)
+    }
+    document.addEventListener("mousedown", outside)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", outside)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [])
+
   const activeFilterCount = Object.values(activeFilters || {}).filter(
     (value) => value && value !== "All"
   ).length
@@ -163,6 +181,80 @@ export default function StaffAvailabilityFilterMenu({
             </Tooltip>
           </div>
         )}
+
+        <div className={styles.mobileFilterMenuWrapper} ref={menuRef}>
+          <button
+            type="button"
+            className={`${styles.filterMenuBtn} ${menuOpen ? styles.filterMenuBtnOpen : ""}`}
+            onClick={() => setMenuOpen((current) => !current)}
+            aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+          >
+            <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className={styles.filterBadge}>{activeFilterCount}</span>
+            )}
+          </button>
+
+          {menuOpen && (
+            <div className={styles.filterDropdown}>
+              <div className={styles.filterDropdownHeader}>
+                <h4 className={styles.filterDropdownTitle}>Filters</h4>
+                <button
+                  type="button"
+                  className={styles.filterDropdownClose}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <FiX size={15} />
+                </button>
+              </div>
+
+              <div className={styles.mobileSheetFilters}>
+                <SelectDropdown
+                  label="Status"
+                  value={activeFilters?.status || ""}
+                  options={STATUS_OPTIONS}
+                  onChange={(value) => setFilter("status", value)}
+                />
+                <SelectDropdown
+                  label="Module"
+                  value={activeFilters?.module || ""}
+                  options={MODULE_OPTIONS}
+                  onChange={(value) => setFilter("module", value)}
+                />
+                <SelectDropdown
+                  label="Role"
+                  value={activeFilters?.role || ""}
+                  options={roleOptions}
+                  onChange={(value) => setFilter("role", value)}
+                />
+                <SelectDropdown
+                  label="Load"
+                  value={activeFilters?.load || ""}
+                  options={LOAD_OPTIONS}
+                  onChange={(value) => setFilter("load", value)}
+                />
+              </div>
+
+              <div className={styles.filterDropdownFooter}>
+                {hasActiveControls && (
+                  <button type="button" className={styles.filterClearBtn} onClick={clearAll}>
+                    Clear All
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.filterDoneBtn}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -369,6 +369,7 @@ export default function FilterMenu({ activeFilters = {}, onFilterChange, onSearc
             aria-haspopup="true"
           >
             <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
             {activeFilterCount > 0 && <span className={styles.filterBadge}>{activeFilterCount}</span>}
           </button>
           {menuOpen && (
@@ -379,6 +380,28 @@ export default function FilterMenu({ activeFilters = {}, onFilterChange, onSearc
                   <FiX size={15} />
                 </button>
               </div>
+              <div className={styles.mobileSheetFilters}>
+                {DEFAULT_FILTERS.map((field) => (
+                  <FilterControl
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={activeFilters[field.key] || ""}
+                    onChange={(value) => setFilter(field.key, value)}
+                  />
+                ))}
+
+                {extraFieldDefs.map((field) => (
+                  <div key={`mobile-${field.key}`} className={styles.extraFilterWrap}>
+                    <FilterControl
+                      field={field}
+                      value={activeFilters[field.key] || ""}
+                      onChange={(value) => setFilter(field.key, value)}
+                    />
+                    <button className={styles.removeExtraBtn} onClick={() => toggleExtraField(field.key)} title={`Remove ${field.label}`}>
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ))}
               <p className={styles.filterDropdownHint}>Choose chapter-building fields to filter or show as columns.</p>
               <div className={styles.filterFieldsList}>
                 {ALL_FILTER_FIELDS.map(({ key, label }) => (
@@ -395,6 +418,8 @@ export default function FilterMenu({ activeFilters = {}, onFilterChange, onSearc
                   </div>
                 ))}
               </div>
+              </div>
+
               <div className={styles.filterDropdownFooter}>
                 <button className={styles.filterClearBtn} onClick={clearAll}>Clear All</button>
                 <button className={styles.filterDoneBtn} onClick={() => setMenuOpen(false)}>Done</button>

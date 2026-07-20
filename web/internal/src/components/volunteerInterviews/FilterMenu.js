@@ -340,6 +340,7 @@ export default function FilterMenu({ filters, onFilterChange, onClearAll }) {
             aria-haspopup="true"
           >
             <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
             {activeFilterCount > 0 && (
               <span className={styles.filterBadge}>{activeFilterCount}</span>
             )}
@@ -357,6 +358,35 @@ export default function FilterMenu({ filters, onFilterChange, onClearAll }) {
                 </button>
               </div>
 
+              <div className={styles.mobileSheetFilters}>
+                {DEFAULT_FILTERS.map(field => (
+                  <DefaultFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={filters[field.key] || ""}
+                    onChange={val => onFilterChange(field.key, val)}
+                  />
+                ))}
+
+                {extraFieldDefs.map(field => (
+                  <div key={`mobile-${field.key}`} className={styles.extraFilterWrap}>
+                    <DefaultFilterDropdown
+                      field={field}
+                      value={filters[field.key] || ""}
+                      onChange={val => onFilterChange(field.key, val)}
+                    />
+                    <button
+                      className={styles.removeExtraBtn}
+                      onClick={() => {
+                        toggleExtraField(field.key);
+                        onFilterChange(field.key, "");
+                      }}
+                      title={`Remove ${field.label} filter`}
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ))}
               <p className={styles.filterDropdownHint}>
                 Select fields to narrow down the table.
               </p>
@@ -379,6 +409,8 @@ export default function FilterMenu({ filters, onFilterChange, onClearAll }) {
                   );
                 })}
               </div>
+              </div>
+
 
               <div className={styles.filterDropdownFooter}>
                 {activeFilterCount > 0 && (

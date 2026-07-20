@@ -486,6 +486,65 @@
 }
 
 @media (max-width: 640px) {
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(n+4):not(:last-child),
+  .table td:nth-child(n+4):not(:last-child) {
+    display: none;
+  }
+
+  .checkTh,
+  .checkTd {
+    display: table-cell;
+    width: 34px;
+    min-width: 34px;
+    padding-left: 0.35rem;
+    padding-right: 0.15rem;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .table th:nth-child(2),
+  .caseIdTd {
+    width: 42%;
+    min-width: 0;
+    max-width: 42%;
+  }
+
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
+    width: calc(58% - 78px);
+    min-width: 0;
+    max-width: calc(58% - 78px);
+  }
+
+  .columnsTh,
+  .actionsTd {
+    width: 44px;
+    min-width: 44px;
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
   .bulkBar {
     grid-template-columns: minmax(0, 1fr) max-content;
     align-items: start;
@@ -507,7 +566,42 @@
 
   .th,
   .td {
-    padding: 0.6rem 0.6rem;
+    padding: 0.6rem 0.45rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .caseIdText {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .statusBadge {
+    display: block;
+    max-width: 100%;
+    width: max-content;
+    min-width: 0;
+    padding: 0.22rem 0.55rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+  }
+
+  .columnsBtn {
+    margin-left: 0;
+  }
+
+  .viewBtn {
+    width: 34px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .viewBtnLabel {
+    display: none;
   }
 
   .paginationBar {

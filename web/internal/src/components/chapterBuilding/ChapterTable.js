@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FiEye } from "react-icons/fi";
 import styles from "./ChapterTable.module.css";
 
 const STATUS_COLORS = {
@@ -93,6 +94,7 @@ export default function ChapterTable({
     () => paginated.filter((chapter) => selectedIds.has(chapter.id)),
     [paginated, selectedIds]
   );
+  const visibleColumnCount = 9 + extraColumns.length;
 
   function toggleAll() {
     setSelectedIds((prev) => {
@@ -168,12 +170,13 @@ export default function ChapterTable({
               {extraColumns.includes("location") && <th className={styles.th}>Location</th>}
               {extraColumns.includes("contactPerson") && <th className={styles.th}>Contact Person</th>}
               {extraColumns.includes("mentor") && <th className={styles.th}>SASHA Guide</th>}
+              <th className={`${styles.th} ${styles.actionsTh}`}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={11} className={styles.emptyState}>
+                <td colSpan={visibleColumnCount} className={styles.emptyState}>
                   No chapter records found.
                 </td>
               </tr>
@@ -220,6 +223,18 @@ export default function ChapterTable({
                     {extraColumns.includes("mentor") && (
                       <td className={`${styles.td} ${styles.textTd}`} title={chapter.higherStructureRepresentative || "No SASHA guide assigned"}>{chapter.higherStructureRepresentative || "No SASHA guide assigned"}</td>
                     )}
+                    <td className={`${styles.td} ${styles.actionsTd}`} onClick={(event) => event.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => onRowClick?.(chapter)}
+                        aria-label={`View ${chapter.chapterName || chapter.id}`}
+                        title="View chapter"
+                      >
+                        <FiEye size={15} aria-hidden="true" />
+                        <span className={styles.viewBtnLabel}>View</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })

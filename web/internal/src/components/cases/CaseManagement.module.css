@@ -275,6 +275,8 @@
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .table {
@@ -964,4 +966,84 @@
 .statGridItem,
 .actionCell {
   min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .contentShell,
+  .heroShell {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    overflow-x: clip;
+  }
+
+  .allList,
+  .layout,
+  .layout > *,
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .sectionHeading {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.75rem;
+  }
+
+  .sectionTitle {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .headingLine {
+    min-width: 2rem;
+  }
+
+  .tableTopBar {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    overflow: visible;
+  }
+
+  .tableTopBar > .searchWrap {
+    flex: 1 1 0% !important;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .tableTopBar > .searchWrap .searchInput {
+    height: 38px;
+    min-width: 0;
+    padding: 0 2.35rem 0 0.9rem;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .tableTopBar > .searchWrap .searchIcon {
+    right: 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .tableTopBar > [class*="filterBarWrap"] {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: max-content;
+  }
 }

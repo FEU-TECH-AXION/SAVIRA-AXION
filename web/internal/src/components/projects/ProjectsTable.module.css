@@ -10,6 +10,8 @@
   border: 1px solid #e5e7eb;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ── Bulk action bar ── */
@@ -87,6 +89,9 @@
 
 /* ── Scrollable table area ── */
 .tableScroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -457,17 +462,94 @@
 }
 
 @media (max-width: 640px) {
-  .th,
-  .td {
-    padding: 0.6rem 0.55rem;
+  .tableWrap,
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
+  .tableScroll {
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2),
+  .table th:nth-child(n+4):not(:last-child),
+  .table td:nth-child(n+4):not(:last-child) {
+    display: none;
+  }
+
+  .checkTh,
+  .checkTd {
+    position: static;
+    width: 42px;
+    min-width: 42px;
+    padding-left: 0.55rem;
+    padding-right: 0.25rem;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
+  }
+
+  .table th:nth-child(3),
   .titleTd {
-    max-width: 24vw;
+    width: calc(100% - 88px);
+    min-width: 0;
+    max-width: calc(100% - 88px);
+    overflow: hidden;
+  }
+
+  .columnsTh,
+  .actionsTd {
+    width: 46px;
+    min-width: 46px;
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .th,
+  .td {
+    padding: 0.6rem 0.45rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .titleStack,
+  .titleText,
+  .taglineText {
+    max-width: 100%;
+  }
+
+  .titleStack {
+    overflow: hidden;
   }
 
   .rowActions {
     opacity: 1;
+    justify-content: flex-end;
+  }
+
+  .rowActions .rowBtn:not(.taskBtn) {
+    display: none;
+  }
+
+  .taskBtn {
+    width: 34px;
+    height: 32px;
+    padding: 0;
+  }
+
+  .taskBtn span {
+    display: none;
   }
 
   .paginationBar {

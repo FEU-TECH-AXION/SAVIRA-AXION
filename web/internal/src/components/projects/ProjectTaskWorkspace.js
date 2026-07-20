@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { FiArrowLeft, FiExternalLink } from "react-icons/fi"
+import { FiArrowLeft, FiEye } from "react-icons/fi"
 import { fetchAllProjectTasks, fetchStaff } from "@/lib/api"
 import Tooltip from "@/components/ui/Tooltip"
 import TaskStatusBadge from "./TaskStatusBadge"
@@ -291,7 +291,7 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
                           onClick={() => router.push(`/projects/view?projectId=${task.project_id}`)}
                           aria-label={`Open project ${task.project_id}`}
                         >
-                          <FiExternalLink />
+                          <FiEye />
                         </button>
                       </Tooltip>
                     </td>

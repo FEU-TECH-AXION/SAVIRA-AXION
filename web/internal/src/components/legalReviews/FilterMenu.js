@@ -501,6 +501,7 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone, lawy
             aria-haspopup="true"
             >
               <FiFilter size={15} />
+              <span className={styles.filterMenuBtnLabel}>Filters</span>
               {activeFilterCount > 0 && (
                 <span className={styles.filterBadge}>{activeFilterCount}</span>
               )}
@@ -519,6 +520,40 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone, lawy
                 </button>
               </div>
 
+              <div className={styles.mobileSheetFilters}>
+                {DEFAULT_FILTERS.map(field => (
+                  <DefaultFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={activeFilters[field.key] || ""}
+                    onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+                    lawyerOptions={lawyerOptions}
+                    paralegalOptions={paralegalOptions}
+                  />
+                ))}
+
+                {extraFieldDefs.map(field => (
+                  <div key={`mobile-${field.key}`} className={styles.extraFilterWrap}>
+                    <DefaultFilterDropdown
+                      field={field}
+                      value={activeFilters[field.key] || ""}
+                      onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+                      lawyerOptions={lawyerOptions}
+                      paralegalOptions={paralegalOptions}
+                    />
+                    <Tooltip text={`Remove ${field.label} filter`}>
+                      <button
+                        className={styles.removeExtraBtn}
+                        onClick={() => {
+                          toggleExtraField(field.key);
+                          onFilterChange({ ...activeFilters, [field.key]: "" });
+                        }}
+                      >
+                        <FiX size={12} />
+                      </button>
+                    </Tooltip>
+                  </div>
+                ))}
               <p className={styles.filterDropdownHint}>
                 Select fields to narrow down the grid. The filter menu includes all case fields.
               </p>
@@ -554,6 +589,8 @@ export default function FilterMenu({ activeFilters, onFilterChange, onDone, lawy
                   );
                 })}
               </div>
+              </div>
+
 
               <div className={styles.filterDropdownFooter}>
                 {activeFilterCount > 0 && (

@@ -177,13 +177,16 @@
 }
 
 .tableScroll {
-  overflow-x: auto;
+  overflow-x: hidden;
+  max-width: 100%;
+  min-width: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
-  min-width: 860px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.86rem;
 }
@@ -199,6 +202,8 @@
   background: #f9fafb;
   border-bottom: 2px solid var(--sasha-border);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table td {
@@ -209,6 +214,8 @@
   color: var(--sasha-text);
   vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table tbody tr {
@@ -231,11 +238,115 @@
   color: var(--sasha-teal);
 }
 
+.optionalCol,
+.optionalCell,
+.scoreDetailCol,
+.scoreDetailCell,
+.evaluatorCol,
+.evaluatorCell {
+  display: none;
+}
+
+.checkTh,
+.checkTd {
+  width: 44px;
+  padding-left: 1rem;
+  padding-right: 0.5rem;
+  text-align: center;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #037F81;
+  cursor: pointer;
+}
+
+.rowSelected {
+  background: #e1f5f5 !important;
+}
+
+.appIdTd {
+  font-weight: 650;
+}
+
+.rankTh,
+.rankCell {
+  width: 7%;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.appIdTh,
+.appIdTd {
+  width: 15%;
+}
+
+.applicantTh,
+.applicantTd {
+  width: 22%;
+  min-width: 0;
+}
+
+.statusTh,
+.statusTd {
+  width: 13%;
+}
+
+.priorityTh,
+.priorityTd {
+  width: 16%;
+}
+
+.totalTh,
+.totalCell {
+  width: 13%;
+}
+
+.actionsTh,
+.actionsTd {
+  width: 10%;
+  text-align: right;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: #037F81;
+  border-color: #037F81;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.viewBtnLabel {
+  display: inline;
+}
+
 .nameStack {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  max-width: 220px;
+  width: 100%;
+  max-width: 20rem;
   min-width: 0;
 }
 
@@ -254,6 +365,9 @@
 .statusPill {
   display: inline-block;
   width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
   background: #e1f5f5;
@@ -273,6 +387,94 @@
 .error {
   color: #991b1b;
   background: #fef2f2;
+}
+
+.paginationBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.pageArrow {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+
+.pageArrow:hover:not(:disabled) {
+  border-color: #037F81;
+  color: #037F81;
+  background: #f0fffe;
+}
+
+.pageArrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pageNumbers {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.pageBtn {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.pageBtn:hover {
+  border-color: #037F81;
+  color: #037F81;
+}
+
+.pageBtnActive {
+  background: #037F81 !important;
+  color: #ffffff !important;
+  border-color: #037F81 !important;
+  font-weight: 700;
+}
+
+.ellipsis {
+  color: #9ca3af;
+  font-size: 0.82rem;
+  padding: 0 4px;
+}
+
+.recordCount {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
 }
 
 /* ════════════════════════════════════════
@@ -305,29 +507,16 @@
 
   .table {
     font-size: 0.8rem;
-    min-width: 560px;
-  }
-
-  .table th:nth-child(5),
-  .table td:nth-child(5),
-  .table th:nth-child(6),
-  .table td:nth-child(6),
-  .table th:nth-child(7),
-  .table td:nth-child(7),
-  .table th:nth-child(8),
-  .table td:nth-child(8),
-  .table th:nth-child(9),
-  .table td:nth-child(9),
-  .table th:nth-child(10),
-  .table td:nth-child(10),
-  .table th:nth-child(12),
-  .table td:nth-child(12) {
-    display: none;
+    min-width: 0;
   }
 
   .table th,
   .table td {
     padding: 0.65rem 0.75rem;
+  }
+
+  .viewBtnLabel {
+    display: none;
   }
 }
 
@@ -346,6 +535,102 @@
 
   .inner {
     padding: 0 0 2rem;
+  }
+
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.55rem 0.2rem;
+    font-size: 0.72rem;
+  }
+
+  .applicantTh,
+  .applicantTd,
+  .priorityTh,
+  .priorityTd,
+  .totalTh,
+  .totalCell {
+    display: none;
+  }
+
+  .table .checkTh,
+  .table .checkTd {
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    padding-left: 0.55rem;
+    padding-right: 0.15rem;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .table .rankTh,
+  .table .rankCell {
+    width: 52px;
+    min-width: 52px;
+    max-width: 52px;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .table .appIdTh,
+  .table .appIdTd {
+    width: calc(100% - 230px);
+    min-width: 0;
+    max-width: calc(100% - 230px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .table .statusTh,
+  .table .statusTd {
+    width: 76px;
+    min-width: 76px;
+    max-width: 76px;
+  }
+
+  .table .actionsTh,
+  .table .actionsTd {
+    width: 68px;
+    min-width: 68px;
+    max-width: 68px;
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: right;
+  }
+
+  .viewBtn {
+    width: 34px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .nameStack span {
+    display: none;
+  }
+
+  .paginationBar {
+    flex-wrap: wrap;
+  }
+
+  .recordCount {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
   }
 
 }

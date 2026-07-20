@@ -410,6 +410,7 @@ export default function TaskFilterMenu({ activeFilters, onFilterChange, onSearch
             aria-haspopup="true"
           >
             <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
             {activeFilterCount > 0 && (
               <span className={styles.filterBadge}>{activeFilterCount}</span>
             )}
@@ -426,6 +427,32 @@ export default function TaskFilterMenu({ activeFilters, onFilterChange, onSearch
                   <FiX size={15} />
                 </button>
               </div>
+              <div className={styles.mobileSheetFilters}>
+                {DEFAULT_FILTERS.map(field => (
+                  <DefaultFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={(activeFilters || {})[field.key] || ""}
+                    onChange={val => onFilterChange({ ...(activeFilters || {}), [field.key]: val })}
+                  />
+                ))}
+
+                {extraFieldDefs.map(field => (
+                  <div key={`mobile-${field.key}`} className={styles.extraFilterWrap}>
+                    <DefaultFilterDropdown
+                      field={field}
+                      value={(activeFilters || {})[field.key] || ""}
+                      onChange={val => onFilterChange({ ...(activeFilters || {}), [field.key]: val })}
+                    />
+                    <button
+                      className={styles.removeExtraBtn}
+                      onClick={() => toggleExtraField(field.key)}
+                      title={`Remove ${field.label} filter`}
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ))}
               <p className={styles.filterDropdownHint}>
                 Select a field to add as a filter column.
               </p>
@@ -447,6 +474,32 @@ export default function TaskFilterMenu({ activeFilters, onFilterChange, onSearch
                   );
                 })}
               </div>
+              </div>
+
+              <div className={styles.desktopFilterFields}>
+                <p className={styles.filterDropdownHint}>
+                  Select a field to add as a filter column.
+                </p>
+                <div className={styles.filterFieldsList}>
+                  {ALL_FILTER_FIELDS.map(({ key, label }) => {
+                    const alreadyAdded = extraFields.includes(key);
+                    return (
+                      <div key={`desktop-${key}`} className={styles.filterField}>
+                        <label className={styles.filterFieldLabel}>
+                          <input
+                            type="checkbox"
+                            className={styles.filterFieldCheckbox}
+                            checked={alreadyAdded}
+                            onChange={() => toggleExtraField(key)}
+                          />
+                          {label}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className={styles.filterDropdownFooter}>
                 <button className={styles.filterClearBtn} onClick={handleClearAll}>
                   Clear All

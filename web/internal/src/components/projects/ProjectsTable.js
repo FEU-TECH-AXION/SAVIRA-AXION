@@ -335,11 +335,11 @@ export default function ProjectsTable({
                         {onView && (
                           <button
                             className={`${styles.rowBtn} ${styles.taskBtn}`}
-                            title="View project and tasks"
+                            title="View project"
                             onClick={() => onView(p)}
                             aria-label={`View project ${p.id}`}
                           >
-                            <FiEye /> <span>Tasks</span>
+                            <FiEye /> <span>View</span>
                           </button>
                         )}
                         {onEdit && (

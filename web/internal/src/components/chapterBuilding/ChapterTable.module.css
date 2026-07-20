@@ -325,6 +325,40 @@
   background: #e1f5f5;
 }
 
+.actionsTh,
+.actionsTd {
+  text-align: right;
+  width: 86px;
+  white-space: nowrap;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: #037F81;
+  border-color: #037F81;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.viewBtnLabel {
+  display: inline;
+}
+
 /* Checkbox */
 .checkbox {
   width: 16px;
@@ -448,16 +482,92 @@
   .table td:nth-child(11):not(:last-child) {
     display: none;
   }
+
+  .viewBtnLabel {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
+  .tableWrap,
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .tableScroll {
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(n+3):not(:last-child),
+  .table td:nth-child(n+3):not(:last-child) {
+    display: none;
+  }
+
   .th,
   .td {
-    padding: 0.6rem 0.55rem;
+    padding: 0.6rem 0.45rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
+    width: calc(100% - 124px);
+    min-width: 0;
+    max-width: calc(100% - 124px);
+  }
+
+  .checkTh,
+  .checkTd {
+    position: static;
+    width: 42px;
+    min-width: 42px;
+    padding-left: 0.55rem;
+    padding-right: 0.25rem;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
   }
 
   .nameTd {
-    max-width: 24vw;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .nameStack,
+  .nameText,
+  .emailText {
+    max-width: 100%;
+  }
+
+  .nameStack {
+    overflow: hidden;
+  }
+
+  .actionsTh,
+  .actionsTd {
+    width: 82px;
+    min-width: 82px;
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: right;
+  }
+
+  .viewBtn {
+    width: 34px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
   }
 
   .paginationBar {
