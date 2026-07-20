@@ -155,7 +155,7 @@ async function fetchVolunteers(rangeStart) {
 async function fetchProjects(rangeStart) {
   let query = supabase
     .from("projects")
-    .select("project_id, project_status, start_date, end_date, actual_end_date");
+    .select("project_id, project_status, category, approval_status, visibility, start_date, end_date, due_date, created_at");
   query = applyDateFilter(query, rangeStart, "start_date");
 
   const { data, error } = await query;
@@ -169,9 +169,13 @@ async function fetchProjects(rangeStart) {
     status: computeProjectStatus(project),
     statusOverride: ["Postponed", "Cancelled"].includes(project.project_status) ? project.project_status : "",
     project_status: project.project_status,
+    category: project.category,
+    approval_status: project.approval_status,
+    visibility: project.visibility,
     start_date: project.start_date,
     end_date: project.end_date,
-    actual_end_date: project.actual_end_date,
+    due_date: project.due_date,
+    created_at: project.created_at,
   }));
 }
 

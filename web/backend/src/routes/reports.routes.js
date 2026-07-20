@@ -413,7 +413,7 @@ router.get("/projects", async (req, res) => {
     const rangeStart = getRangeStart(req.query.dateRange || "all");
     let query = supabase
       .from("projects")
-      .select("project_id, project_status, category, approval_status, visibility, start_date, end_date, due_date, actual_end_date, created_at");
+      .select("project_id, project_status, category, approval_status, visibility, start_date, end_date, due_date, created_at");
     query = applyDateFilter(query, rangeStart, "start_date");
 
     const { data, error } = await query;
@@ -431,7 +431,6 @@ router.get("/projects", async (req, res) => {
       start_date: p.start_date,
       end_date: p.end_date,
       due_date: p.due_date,
-      actual_end_date: p.actual_end_date,
       created_at: p.created_at,
     }));
 
