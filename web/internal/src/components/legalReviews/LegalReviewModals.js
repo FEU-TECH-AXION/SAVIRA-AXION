@@ -168,6 +168,7 @@ export function ParalegalSupportModal({ open, onClose, caseData, onSave, actorNa
             Boolean(item?.fileLink);
         });
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       evidenceItems,
       selectedEvidenceLabels,
@@ -400,7 +401,14 @@ export function EndorseModal({ open, onClose, caseData, onSave }) {
 
   useEffect(() => {
     if (!open || !caseData) return;
-    setBody(caseData.endorsedTo || "");
+    const existingBody =
+      caseData.endorsedTo ||
+      caseData.endorsementDetails?.endorsed_to ||
+      caseData.endorsement?.endorsed_to ||
+      caseData.referralBody ||
+      "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBody(existingBody === "None" ? "" : existingBody);
     setDetails(caseData.endorsementDetails || {});
     setPublicUpdate({ isPublic: false, publicMessage: "" });
   }, [open, caseData]);
@@ -486,6 +494,7 @@ export function MonitoringModal({ open, onClose, caseData, onSave, actorName }) 
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUpdate("");
     setDate(new Date().toISOString().split("T")[0]);
     setPublicUpdate({ isPublic: false, publicMessage: "" });

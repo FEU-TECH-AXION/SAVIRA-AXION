@@ -84,7 +84,7 @@ function CreateInterviewSlotModal({ open, onClose, onCreate, initialDate }) {
   const handleSubmit = () => {
   if (!formData.date) { alert("Please select a date"); return; }
 
-  // â”€â”€ Validate future date â”€â”€
+  // -- Validate future date --
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const selectedDate = new Date(formData.date);
@@ -168,7 +168,7 @@ function EditSlotModal({ open, onClose, slot, onSave }) {
   const handleSubmit = () => {
     if (!formData.date) { alert("Please select a date"); return; }
 
-    // â”€â”€ Validate future date â”€â”€
+    // -- Validate future date --
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const selectedDate = new Date(formData.date);
@@ -403,7 +403,7 @@ export default function CaseInterviewManagement() {
   const [editingSlot, setEditingSlot]       = useState(null);
   const [disablingSlot, setDisablingSlot]   = useState(null);
 
-  // â”€â”€ Fetch slots and interviews â”€â”€
+  // -- Fetch slots and interviews --
   useEffect(() => {
     if (authLoading || !user) return;
     const fetchAll = async () => {
@@ -438,7 +438,7 @@ export default function CaseInterviewManagement() {
             casePublicId: iv.case_report_id || null,
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
-              : "â€”",
+              : "—",
             interviewStatus: getInterviewDisplayStatus(iv),
             scheduledDate: iv.slot?.slot_date || null,
             scheduledTime: iv.slot?.slot_time?.slice(0, 5) || null,
@@ -487,7 +487,7 @@ export default function CaseInterviewManagement() {
     setCurrentPage(1);
   };
 
-  // â”€â”€ Slot handlers â”€â”€
+  // -- Slot handlers --
   const handleOpenCreateSlot = (dateStr) => {
     setCreateSlotDate(dateStr || "");
     setModalState("createSlot");
@@ -573,13 +573,13 @@ export default function CaseInterviewManagement() {
 
       setSlots((prev) => prev.map((s) => s.id === slot.id ? { ...s, status: "disabled" } : s));
       setDisablingSlot(null);
-      setModalState(null); // â† close modal after API succeeds
+      setModalState(null); // ← close modal after API succeeds
     } catch (err) {
       alert(err.message);
     }
   };
 
-  // â”€â”€ Interview handlers â”€â”€
+  // -- Interview handlers --
   const handleAddMeetingLink = (selectedIds) => {
     setSelectedInterviews(selectedIds);
     setMeetingLinkModal(true);

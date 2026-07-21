@@ -151,6 +151,15 @@ function StatusHistorySection({ caseData }) {
 function CaseCalendarSection({ caseData }) {
   const deadlines = getLegalCaseDeadlines(caseData);
 
+  function formatCalendarDateText(deadline) {
+    const dateText = deadline.date.toLocaleDateString("en-PH");
+    if (deadline.type === "status") return dateText;
+
+    const today = new Date(new Date().toDateString());
+    const dayDelta = Math.ceil((deadline.date - today) / 86400000);
+    return `${dateText} (${dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})`;
+  }
+
   return (
     <section className={styles.section}>
       <h2 className={styles.sectionHeadingText}>Case Calendar</h2>
@@ -159,14 +168,10 @@ function CaseCalendarSection({ caseData }) {
       ) : (
         <div className={styles.detailGrid}>
           {deadlines.map((deadline) => {
-            const today = new Date(new Date().toDateString());
-            const dayDelta = Math.ceil((deadline.date - today) / 86400000);
             return (
               <div key={deadline.id} className={styles.detailItem}>
                 <p className={styles.detailKey}>{deadline.label}</p>
-                <p className={styles.detailVal}>
-                  {deadline.date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})
-                </p>
+                <p className={styles.detailVal}>{formatCalendarDateText(deadline)}</p>
               </div>
             );
           })}

@@ -16,6 +16,17 @@ const createAssignment = async (req, res) => {
         }
 
         const assignment = await assignCaseToOfficer(case_report_id, case_officer_id, assignedBy);
+        const { officerName } = await getCaseOfficerName(case_officer_id);
+        await supabase.from('case_report_logs').insert([{
+            case_report_id,
+            action_type: 'case_officer_assigned',
+            remarks: `Case officer assigned: ${officerName}.`,
+            is_public: true,
+            public_message: getPublicCaseOfficerMessage(officerName),
+            performed_by_user_id: assignedBy,
+            performed_at: new Date().toISOString(),
+        }]);
+
         const publicId = await getPublicIdByCaseReportId(case_report_id);
         return res.status(201).json({ data: { ...assignment, case_report_id: publicId } });
     } catch (err) {
@@ -53,6 +64,28 @@ const CaseAssignmentsModel = require('../models/case_assignments.model');
 const supabase = require('../config/supabase');
 const { getPublicIdByCaseReportId } = require('../utils/casePublicIds');
 
+function getPublicCaseOfficerMessage(officerName) {
+    return `${officerName || 'A case officer'} has been assigned as your case officer to coordinate your case and support next steps.`;
+}
+
+async function getCaseOfficerName(case_officer_id) {
+    const { data: officerData, error: officerError } = await supabase
+        .from('case_officers')
+        .select('user_id, users(first_name, last_name)')
+        .eq('case_officer_id', case_officer_id)
+        .single();
+
+    if (officerError || !officerData) {
+        return { officerData: null, officerName: `Officer #${case_officer_id}` };
+    }
+
+    const officerName = officerData.users
+        ? `${officerData.users.first_name} ${officerData.users.last_name}`.trim()
+        : `Officer #${case_officer_id}`;
+
+    return { officerData, officerName };
+}
+
 // POST /api/case_assignments/bulk-assign — assign multiple cases to multiple officers
 const bulkAssignOfficers = async (req, res) => {
     try {
@@ -85,13 +118,9 @@ const bulkAssignOfficers = async (req, res) => {
                 }
 
                 // Get officer details for logging
-                const { data: officerData, error: officerError } = await supabase
-                    .from('case_officers')
-                    .select('user_id, users(first_name, last_name)')
-                    .eq('case_officer_id', case_officer_id)
-                    .single();
+                const { officerData, officerName } = await getCaseOfficerName(case_officer_id);
 
-                if (officerError || !officerData) {
+                if (!officerData) {
                     results.failed.push({
                         case_report_id,
                         case_officer_id,
@@ -99,8 +128,6 @@ const bulkAssignOfficers = async (req, res) => {
                     });
                     continue;
                 }
-
-                const officerName = officerData.users ? `${officerData.users.first_name} ${officerData.users.last_name}`.trim() : `Officer #${case_officer_id}`;
 
                 validRows.push({
                     case_report_id,
@@ -113,6 +140,8 @@ const bulkAssignOfficers = async (req, res) => {
                     case_report_id,
                     action_type: 'case_officer_assigned',
                     remarks: `Case officer assigned: ${officerName}.${notes ? ' Notes: ' + notes : ''}`,
+                    is_public: true,
+                    public_message: getPublicCaseOfficerMessage(officerName),
                     performed_by_user_id: assignedBy,
                     performed_at: new Date().toISOString(),
                 });

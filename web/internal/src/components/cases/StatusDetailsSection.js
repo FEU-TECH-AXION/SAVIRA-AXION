@@ -1,5 +1,7 @@
 "use client";
 
+import ActorByline from "@/components/ui/ActorByline";
+
 const STATUS_DETAIL_LABELS = {
   duplicateChecked: "Duplicate Report Checked",
   safetyIssues: "Immediate Safety Issues",
@@ -69,12 +71,22 @@ function formatValue(value) {
   return value;
 }
 
-function formatUpdatedBy(entry) {
-  const name = entry?.actorName || entry?.changed_by_name || entry?.by;
-  const role = entry?.actorRole || entry?.changed_by_role;
-  if (!name) return role || "";
-  if (!role || String(name).includes(role)) return name;
-  return `${name} - ${role}`;
+function getUpdatedByParts(entry) {
+  const rawName = entry?.actorName || entry?.changed_by_name || entry?.by || "";
+  const explicitRole = entry?.actorRole || entry?.changed_by_role || "";
+  const separator = rawName.includes(" - ") ? " - " : rawName.includes(" · ") ? " · " : null;
+  const [parsedName, parsedRole] = separator ? rawName.split(separator).map((part) => part.trim()) : [rawName, ""];
+
+  return {
+    name: parsedName || "",
+    role: explicitRole || parsedRole || "",
+  };
+}
+
+function isEmptyDisplayValue(value) {
+  if (value === undefined || value === null) return true;
+  if (typeof value === "string") return value.trim() === "";
+  return false;
 }
 
 export default function StatusDetailsSection({
@@ -102,14 +114,23 @@ export default function StatusDetailsSection({
       ) : (
         orderedEntries.map((entry, index) => {
           const key = entry.historyId || `${entry.status}-${entry.date}-${index}`;
+          const updatedBy = getUpdatedByParts(entry);
           const details = (
             <div className={styles.detailGrid}>
               {[
                 ["Date", entry.date],
-                ["Updated By", formatUpdatedBy(entry)],
+                ["Updated By", updatedBy.name || updatedBy.role ? (
+                  <ActorByline
+                    key="updated-by"
+                    actorName={updatedBy.name}
+                    actorRole={updatedBy.role}
+                    fallbackName=""
+                    as="span"
+                  />
+                ) : ""],
                 ...Object.entries(entry.formData).map(([fieldKey, value]) => [STATUS_DETAIL_LABELS[fieldKey] || humanize(fieldKey), formatValue(value)]),
               ].map(([label, value]) => {
-                if (value === undefined || value === null || String(value).trim() === "") return null;
+                if (isEmptyDisplayValue(value)) return null;
                 return (
                   <div key={label} className={styles.detailItem}>
                     <p className={styles.detailKey}>{label}</p>

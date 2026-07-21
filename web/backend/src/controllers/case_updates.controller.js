@@ -25,6 +25,8 @@ async function getPublicUpdates(req, res) {
         date: l.performed_at,
         title: actionTypeLabel(l.action_type),
         description: l.public_message,
+        performed_by_name: l.performed_by_name,
+        performed_by_role: l.performed_by_role,
       })),
       ...legalLogs.map((l) => ({
         id: `legal-${l.legal_review_log_id}`,
@@ -32,6 +34,8 @@ async function getPublicUpdates(req, res) {
         date: l.performed_at,
         title: actionTypeLabel(l.action_type),
         description: l.public_message,
+        performed_by_name: l.performed_by_name,
+        performed_by_role: l.performed_by_role,
       })),
     ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
@@ -48,6 +52,9 @@ function actionTypeLabel(actionType) {
     monitoring_update_added: 'Monitoring Update',
     paralegal_record_saved: 'Legal Support Update',
     lawyer_consultation_saved: 'Lawyer Consultation',
+    case_officer_assigned: 'Case officer assigned',
+    paralegal_assigned: 'Paralegal assigned',
+    lawyer_assigned: 'Lawyer assigned',
   }
   return labels[actionType] || 'Case Update'
 }

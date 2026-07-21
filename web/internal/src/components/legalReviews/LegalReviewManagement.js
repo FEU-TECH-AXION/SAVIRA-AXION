@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./LegalReviewManagement.module.css";
@@ -62,9 +62,9 @@ function cleanErrorDetails(value) {
     .slice(0, 180);
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // CONSTANTS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 const LEGAL_CASE_STATUSES = [
   "Under Case Evaluation",
@@ -115,9 +115,9 @@ function isParalegalType(value) {
   return normalizePersonnelType(value) === "paralegal";
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // STATUS COLORS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 const STATUS_COLORS = {
   "Under Case Evaluation": { bg: "#f3e8ff", color: "#6b21a8" },
@@ -128,9 +128,9 @@ const STATUS_COLORS = {
   "Perpetrator Convicted": { bg: "#d1fae5", color: "#065f46" },
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // UTILITY COMPONENTS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 function StatusBadge({ status }) {
   const s = STATUS_COLORS[status] || { bg: "#f3f4f6", color: "#374151" };
@@ -165,11 +165,11 @@ function LegalActorByline({ actorName, actorRole, timestamp, fallbackName = "" }
 function Pagination({ current, total, onChange }) {
   return (
     <div className={styles.pagination}>
-      <button className={styles.pageArrow} onClick={() => onChange(current - 1)} disabled={current === 1}>â†</button>
+      <button className={styles.pageArrow} onClick={() => onChange(current - 1)} disabled={current === 1}>←</button>
       {Array.from({ length: total }, (_, i) => i + 1).map((p) => (
         <button key={p} className={`${styles.pageBtn} ${p === current ? styles.pageBtnActive : ""}`} onClick={() => onChange(p)}>{p}</button>
       ))}
-      <button className={styles.pageArrow} onClick={() => onChange(current + 1)} disabled={current === total}>â†’</button>
+      <button className={styles.pageArrow} onClick={() => onChange(current + 1)} disabled={current === total}>→</button>
     </div>
   );
 }
@@ -195,20 +195,27 @@ function ActionCard({ icon, title, description, onView, badge }) {
 function CaseCalendarModal({ open, onClose, cases, onFullView }) {
   const deadlines = useMemo(() => cases.flatMap(getLegalCaseDeadlines), [cases]);
   const today = new Date(new Date().toDateString());
+
+  function formatDeadlineMeta(deadline) {
+    const dateText = deadline.date.toLocaleDateString("en-PH");
+    if (deadline.type === "status") return dateText;
+
+    const dayDelta = Math.ceil((deadline.date - today) / 86400000);
+    return `${dateText} · ${dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "Today" : `in ${dayDelta} day(s)`}`;
+  }
+
   return (
     <Modal open={open} onClose={onClose} title="Case Calendar" wide>
       <p className={styles.formDesc}>Upcoming and overdue hearing, investigation, and referral follow-up dates.</p>
       {deadlines.length === 0 ? <p className={styles.emptyState}>No structured deadlines have been recorded for these cases yet.</p> : (
         <div className={styles.historyList}>
           {deadlines.map((deadline, index) => {
-            const date = deadline.date;
-            const dayDelta = Math.ceil((date - today) / 86400000);
             return (
               <div key={`${deadline.caseId}-${deadline.label}-${deadline.value}-${index}`} className={styles.historyItem}>
                 <div className={styles.historyDot} />
                 <div className={styles.historyContent}>
-                  <strong>{deadline.caseId} Â· {deadline.label}</strong>
-                  <span className={styles.historyMeta}>{date.toLocaleDateString("en-PH")} Â· {dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "Today" : `in ${dayDelta} day(s)`}</span>
+                  <strong>{deadline.caseId} · {deadline.label}</strong>
+                  <span className={styles.historyMeta}>{formatDeadlineMeta(deadline)}</span>
                   <span className={styles.historyNotes}>{deadline.status}</span>
                 </div>
               </div>
@@ -225,9 +232,9 @@ function CaseCalendarModal({ open, onClose, cases, onFullView }) {
 }
 
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// VIEW CASE MODAL â€” full detail
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
+// VIEW CASE MODAL — full detail
+// -----------------------------------------------------------------------------
 
 function ViewCaseModal({ open, onClose, caseData }) {
   const [showHistory, setShowHistory] = useState(false);
@@ -245,7 +252,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
     .sort((a, b) => new Date(a.value) - new Date(b.value))[0];
 
   return (
-    <Modal open={open} onClose={onClose} title={`Legal Case â€” ${caseData.id}`} wide>
+    <Modal open={open} onClose={onClose} title={`Legal Case — ${caseData.id}`} wide>
       <div className={styles.viewGrid}>
         {[
           ["Case ID",              caseData.id],
@@ -255,7 +262,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
           ["Lawyer(s)",            assignedNames(caseData, "lawyer")],
           ["Paralegal(s)",         assignedNames(caseData, "paralegal")],
           ["Date Reported",        caseData.dateReported],
-          ["Endorsed To",          caseData.endorsedTo || "â€”"],
+          ["Endorsed To",          caseData.endorsedTo || "—"],
           ...(caseData.pendingApproval ? [["Pending Change", <PendingBadge key="pending-change" />]] : []),
         ].map(([k, v]) => (
           <div key={k} className={styles.viewRow}>
@@ -378,7 +385,7 @@ function ViewCaseModal({ open, onClose, caseData }) {
                   <div className={styles.historyDot} />
                   <div className={styles.historyContent}>
                     <StatusBadge status={h.status} />
-                    <span className={styles.historyMeta}>{h.date} Â· {h.by}</span>
+                    <span className={styles.historyMeta}>{h.date} · {h.by}</span>
                     {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
                   </div>
                 </div>
@@ -395,18 +402,18 @@ function ViewCaseModal({ open, onClose, caseData }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // ASSIGN LEGAL OFFICER / PARALEGAL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// PARALEGAL SUPPORT MODAL â€” organize case facts and documents
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
+// PARALEGAL SUPPORT MODAL — organize case facts and documents
+// -----------------------------------------------------------------------------
 
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // LAWYER CONSULTATION MODAL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 
 function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
@@ -420,7 +427,7 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
     recommendation: "",
     additionalNotes: "",
   });
-  const laws = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code â€” Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
+  const laws = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code — Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
   const actions = ["Administrative action", "Civil action", "Criminal action"];
   const automaticGaps = Object.entries(caseData?.paralegalRecord?.evidenceItems || {})
     .filter(([, item]) => item.status !== "Obtained")
@@ -475,7 +482,7 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Lawyer Consultation â€” Legal Assessment" wide>
+    <Modal open={open} onClose={onClose} title="Lawyer Consultation — Legal Assessment" wide>
       {caseData.paralegalRecord?.readyForLawyerReview && <p className={styles.approvalNotice}>The paralegal marked this file ready for lawyer review.</p>}
       <div className={styles.formGrid}>
         <FormGroup label="Consultation type"><FSelect value={form.consultationType} onChange={(event) => setForm((previous) => ({ ...previous, consultationType: event.target.value }))}><option>Initial</option><option>Follow-up</option></FSelect></FormGroup>
@@ -503,7 +510,7 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
 //   }}, [open, caseData]);
 //   if (!caseData) return null;
 
-//   const LAWS = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code â€” Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
+//   const LAWS = ["RA 11313 (Safe Spaces Act)", "RA 9262 (VAWC)", "RA 7877 (Anti-Sexual Harassment Act)", "RA 9995 (Anti-Photo and Video Voyeurism Act)", "RA 10175 (Cybercrime Prevention Act)", "RA 11930 (Anti-OSAEC and Anti-CSAEM Act)", "Revised Penal Code — Rape provisions", "RA 9208 (Anti-Trafficking in Persons Act)", "Administrative / institutional rules"];
 //   const ACTIONS = ["Administrative action", "Civil action", "Criminal action"];
 
 //   const toggleLaw = (l) => setForm((p) => ({ ...p, applicableLaws: p.applicableLaws.includes(l) ? p.applicableLaws.filter((x) => x !== l) : [...p.applicableLaws, l] }));
@@ -517,7 +524,7 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
 //   }
 
 //   return (
-//     <Modal open={open} onClose={onClose} title="Lawyer Consultation â€” Legal Assessment" wide>
+//     <Modal open={open} onClose={onClose} title="Lawyer Consultation — Legal Assessment" wide>
 //       <p className={styles.formDesc}>Assess the facts and identify applicable laws, possible courses of action, and evidence gaps. This record informs the referral decision and is documented for the survivor's benefit.</p>
 //       <div className={styles.formGrid}>
 //         <FormGroup label="Case ID"><FInput value={caseData.id} disabled /></FormGroup>
@@ -542,13 +549,13 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
 //           </div>
 //         </FormGroup>
 //         <FormGroup label="Evidence Gaps Identified" hint="What evidence or information is still missing?">
-//           <FTextarea placeholder="e.g. No medico-legal report yet, respondent identity unconfirmedâ€¦" value={form.evidenceGaps} onChange={set("evidenceGaps")} />
+//           <FTextarea placeholder="e.g. No medico-legal report yet, respondent identity unconfirmed…" value={form.evidenceGaps} onChange={set("evidenceGaps")} />
 //         </FormGroup>
 //         <FormGroup label="Legal Recommendation" hint="What does the lawyer recommend as next steps for this case?">
-//           <FTextarea placeholder="Provide clear recommendation â€” referral, filing, further investigation, etc." value={form.recommendation} onChange={set("recommendation")} />
+//           <FTextarea placeholder="Provide clear recommendation — referral, filing, further investigation, etc." value={form.recommendation} onChange={set("recommendation")} />
 //         </FormGroup>
 //         <FormGroup label="Additional Notes">
-//           <FTextarea placeholder="Other legal observations, risks, or notesâ€¦" value={form.additionalNotes} onChange={set("additionalNotes")} />
+//           <FTextarea placeholder="Other legal observations, risks, or notes…" value={form.additionalNotes} onChange={set("additionalNotes")} />
 //         </FormGroup>
 //       </div>
 //       <div className={styles.modalFooter}>
@@ -559,19 +566,19 @@ function LawyerConsultModal({ open, onClose, caseData, onSave, actorName }) {
 //   );
 // }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ENDORSEMENT / REFERRAL MODAL â€” with full per-institution tracking
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
+// ENDORSEMENT / REFERRAL MODAL — with full per-institution tracking
+// -----------------------------------------------------------------------------
 
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// MONITORING LOG MODAL â€” add an update entry
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
+// MONITORING LOG MODAL — add an update entry
+// -----------------------------------------------------------------------------
 
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// STATUS CHANGE MODAL â€” with approval flow
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
+// STATUS CHANGE MODAL — with approval flow
+// -----------------------------------------------------------------------------
 
 const STATUS_TRANSITIONS = {
   "Verified - True":       ["Under Case Evaluation"],
@@ -612,7 +619,7 @@ function StatusChangeModal({ open, onClose, caseData, onSubmit, actorName, isAdm
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Update Status â€” ${caseData.id}`} wide>
+    <Modal open={open} onClose={onClose} title={`Update Status — ${caseData.id}`} wide>
       <div className={styles.approvalNotice}>
         <FiClock style={{ flexShrink: 0 }} />
         <span>This change will be submitted for <strong>Admin approval</strong> before taking effect. The complainant will be informed after approval.</span>
@@ -633,7 +640,7 @@ function StatusChangeModal({ open, onClose, caseData, onSubmit, actorName, isAdm
                   style={{ background: c.bg, color: c.color, borderColor: c.color + "44" }}
                   onClick={() => setSelected(s)}
                 >
-                  {s} â†’
+                  {s} →
                 </button>
               );
             })}
@@ -641,7 +648,7 @@ function StatusChangeModal({ open, onClose, caseData, onSubmit, actorName, isAdm
           {selected && (
             <div className={styles.formGrid} style={{ marginTop: "1rem" }}>
               <FormGroup label="Reason / Notes" hint="Explain why the status is being changed.">
-                <FTextarea placeholder="e.g. Complaint formally filed with PNP WCPD on May 10â€¦" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <FTextarea placeholder="e.g. Complaint formally filed with PNP WCPD on May 10…" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </FormGroup>
             </div>
           )}
@@ -655,9 +662,9 @@ function StatusChangeModal({ open, onClose, caseData, onSubmit, actorName, isAdm
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // ADMIN APPROVAL MODAL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
   const [rejectReason, setRejectReason] = useState("");
@@ -748,9 +755,9 @@ function ApprovalModal({ open, onClose, caseData, onApprove, onReject }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ASSIGN LEGAL MODAL â€” assign case to legal team member + send email notification
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
+// ASSIGN LEGAL MODAL — assign case to legal team member + send email notification
+// -----------------------------------------------------------------------------
 
 function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSave, showToast }) {
   const [search,      setSearch]      = useState("");
@@ -866,8 +873,8 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
           if (body.failed?.length > 0) {
               const failMsgs = body.failed
                   .map(f => `Personnel #${f.legal_personnel_id}: ${f.reason}`)
-                  .join(" Â· ");
-              setError(`Some assignments failed â€” ${failMsgs}`);
+                  .join(" · ");
+              setError(`Some assignments failed — ${failMsgs}`);
               const duplicateFailures = body.failed.filter((failure) =>
                   String(failure.reason || "").toLowerCase().includes("already")
               );
@@ -917,7 +924,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
           <FInput value={caseData.caseId || caseData.id} disabled />
         </FormGroup>
 
-        {/* Chip display â€” who will be assigned */}
+        {/* Chip display — who will be assigned */}
         <FormGroup label="Currently Assigned">
           <div style={{
             background: "#f9fafb",
@@ -947,7 +954,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                       fontWeight: 600,
                     }}
                   >
-                    âœ“ {person.name || `Personnel #${person.legal_personnel_id}`}
+                    ✓ {person.name || `Personnel #${person.legal_personnel_id}`}
                     <span style={{ fontSize: "0.7rem", opacity: 0.75 }}>
                       {person.assignment_role === "lawyer" ? "Lawyer" : "Paralegal"}
                     </span>
@@ -957,7 +964,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                       title={`Remove ${person.name || "legal personnel"}`}
                       style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", padding: 0, lineHeight: 1 }}
                     >
-                      Ã—
+                      ×
                     </button>
                   </span>
                 ))}
@@ -979,7 +986,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
           }}>
             {assigned.length === 0 ? (
               <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
-                No one selected yet â€” search below to add.
+                No one selected yet — search below to add.
               </span>
             ) : (
               assigned.map(p => (
@@ -1015,7 +1022,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                     }}
                     title="Remove"
                   >
-                    Ã—
+                    ×
                   </button>
                 </span>
               ))
@@ -1034,7 +1041,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
                 ? "No legal personnel are available."
                 : noAvailableLegalPersonnel
                 ? "All legal personnel are already assigned."
-                : "e.g. Ryan, paralegalâ€¦"}
+                : "e.g. Ryan, paralegal…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
@@ -1140,7 +1147,7 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
           disabled={saving || assigned.length === 0}
         >
           {saving
-            ? `Assigning ${assigned.length}â€¦`
+            ? `Assigning ${assigned.length}…`
             : `Assign${assigned.length > 0 ? ` (${assigned.length})` : ""}`
           }
         </button>
@@ -1173,9 +1180,9 @@ function AssignLegalModal({ open, onClose, caseData, legalPersonnels = [], onSav
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // SELECT CASE MODAL (for action cards)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, filterFn }) {
   const [q, setQ] = useState("");
@@ -1188,7 +1195,7 @@ function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, f
   return (
     <Modal open={open} onClose={onClose} title={title} wide>
       <div className={styles.searchWrap} style={{ marginBottom: "1rem" }}>
-        <input className={styles.searchInput} placeholder="Search casesâ€¦" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={styles.searchInput} placeholder="Search cases…" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className={styles.searchIcon}><FiSearch /></span>
       </div>
       <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
@@ -1217,27 +1224,44 @@ function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, f
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // COOKIES
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // MAIN PAGE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 function mergeLegalReviewData(caseData, review) {
   if (!review) return caseData;
+  const endorsedTo = review.endorsed_to || getExistingEndorsedTo(caseData);
   return {
     ...caseData,
     legalReviewId: review.legal_review_id,
     paralegalRecord: review.paralegal_record || null,
     lawyerRecord: review.lawyer_record || null,
-    endorsedTo: review.endorsed_to || caseData.endorsedTo || null,
-    endorsementStatus: review.endorsed_to ? `Endorsed to ${review.endorsed_to}` : caseData.endorsementStatus,
-    endorsementDetails: review.endorsement_details || null,
+    endorsedTo,
+    referralBody: review.endorsed_to || caseData.referralBody || endorsedTo || null,
+    referralRequired: Boolean(review.endorsed_to || caseData.referralRequired || endorsedTo),
+    endorsementStatus: endorsedTo ? `Endorsed to ${endorsedTo}` : caseData.endorsementStatus,
+    endorsementDetails: review.endorsement_details || getExistingEndorsementDetails(caseData),
     monitoringLog: review.monitoring_log || [],
     documentRepository: review.document_repository || [],
   };
+}
+
+function getExistingEndorsedTo(caseData = {}) {
+  const value =
+    caseData.endorsedTo ||
+    caseData.endorsementDetails?.endorsed_to ||
+    caseData.endorsement?.endorsed_to ||
+    caseData.referralBody ||
+    null;
+  return value && value !== "None" ? value : null;
+}
+
+function getExistingEndorsementDetails(caseData = {}) {
+  return caseData.endorsementDetails || caseData.endorsement || null;
 }
 
 function mergeStatusHistory(caseData, history = []) {
@@ -1258,6 +1282,8 @@ function mergeStatusHistory(caseData, history = []) {
 
 function mapLegalReportToCase(report) {
   const status = STATUS_STEP[report.case_status_id] || "Verified - True";
+  const endorsedTo = report.endorsement?.endorsed_to || report.referral_body || null;
+  const endorsementDetails = report.endorsement || null;
   const defaultHistory = [{
     status,
     date: new Date(report.created_at).toLocaleDateString("en-PH"),
@@ -1269,8 +1295,8 @@ function mapLegalReportToCase(report) {
     id: report.case_report_id,
     caseId: report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
     reporterId: String(report.complainant_id),
-    region: report.incident_province || report.incident_city || "â€”",
-    city: report.incident_city || "â€”",
+    region: report.incident_province || report.incident_city || "—",
+    city: report.incident_city || "—",
     status,
     assignedOfficer: report.assigned_officer || null,
     assignedLegal: (report.assigned_legal || []).map((person) => ({
@@ -1282,8 +1308,11 @@ function mapLegalReportToCase(report) {
     primaryCategory: report.primary_category || null,
     additionalCategories: report.additional_categories || [],
     pendingApproval: null,
-    endorsedTo: null,
-    endorsementDetails: null,
+    referralRequired: Boolean(report.referral_required || endorsedTo),
+    referralBody: report.referral_body || endorsedTo,
+    endorsedTo,
+    endorsementStatus: endorsedTo ? `Endorsed to ${endorsedTo}` : report.endorsement_status || null,
+    endorsementDetails,
     paralegalRecord: null,
     lawyerRecord: null,
     monitoringLog: [],
@@ -1317,6 +1346,7 @@ export default function LegalReviewManagement() {
     [legalPersonnels, user.id]
   );
   const legalPersonnelType = user.legalPersonnelType || currentLegalPersonnel?.legal_personnel_type || "";
+  const actorRole = isLegal && legalPersonnelType ? legalPersonnelType : user.role || "Legal Personnel";
   const isParalegal = isLegal && isParalegalType(legalPersonnelType);
   const isLawyer = isLegal && isLawyerType(legalPersonnelType);
   const canUseParalegalWorkflows = isAdmin || isParalegal;
@@ -1584,7 +1614,7 @@ export default function LegalReviewManagement() {
           case_report_id: caseData.id,
           proposed_status: proposedStatus,
           changed_by_id: authUser?.user_id || authUser?.id || null,
-          changed_by_role: authUser?.role_name || authUser?.role || user.role || "Legal Personnel",
+          changed_by_role: actorRole,
           notes: changeDetails.notes,
           form_data: changeDetails.formData || {},
           assessment_type: proposedStatus,
@@ -1598,6 +1628,9 @@ export default function LegalReviewManagement() {
         status: proposedStatus,
         date: changeDetails.date,
         by: changeDetails.submittedBy,
+        actorName: changeDetails.submittedBy,
+        actorRole,
+        changed_by_role: actorRole,
         notes: changeDetails.notes,
         formData: changeDetails.formData,
         approvalStatus: payload.requiresApproval ? "pending" : "approved",
@@ -1687,9 +1720,9 @@ export default function LegalReviewManagement() {
   const paginated = cases;
   const pendingCases = useMemo(() => cases.filter((c) => c.pendingApproval), [cases]);
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -----------------------------------------------------------------------------
   // RENDER
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -----------------------------------------------------------------------------
 
   return (
     <>
@@ -1738,7 +1771,7 @@ export default function LegalReviewManagement() {
               {canUseLawyerWorkflow && <ActionCard icon={<img src="/LegalIconLawyer.png" alt="" className={styles.actionIconImg} />} title="Lawyer Consultation" description="Record legal assessment: applicable laws, possible actions (criminal/civil/admin), and evidence gaps." onView={() => setModal("selectLawyer")} />}
             </div>
             <div className={styles.actionCell} style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
-              {canUseAllLegalWorkflows && <ActionCard icon={<img src="/LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court â€” with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />}
+              {canUseAllLegalWorkflows && <ActionCard icon={<img src="/LegalIconEndorse.png" alt="" className={styles.actionIconImg} />} title="Endorse / Track Referrals" description="Endorse a case to DSWD, PNP, BSP/GSP, CODI, or Court — with full institution-specific monitoring." onView={() => setModal("selectEndorse")} />}
             </div>
             <div className={styles.actionCell} style={!canUseAllLegalWorkflows ? { display: "none" } : undefined}>
               {canUseAllLegalWorkflows && <ActionCard icon={<img src="/LegalIconUpdate.png" alt="" className={styles.actionIconImg} />} title="Update Case Status" description="Record routine progress immediately; filing and terminal outcomes require admin approval." onView={() => setModal("selectStatus")} />}
@@ -1776,7 +1809,7 @@ export default function LegalReviewManagement() {
             {/* Search + Filter bar */}
             <div className={styles.tableTopBar}>
               <div className={styles.searchWrap} style={{ flex: 1 }}>
-                <input className={styles.searchInput} placeholder="Search Case ID, regionâ€¦" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <input className={styles.searchInput} placeholder="Search Case ID, region…" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <span className={styles.searchIcon}><FiSearch /></span>
               </div>
               <FilterMenu
@@ -1830,7 +1863,7 @@ export default function LegalReviewManagement() {
       </main>
       <LegalGuide open={legalGuideOpen} onClose={() => setLegalGuideOpen(false)} />
 
-      {/* â•â• MODALS â•â• */}
+      {/* ══ MODALS ══ */}
       <ParalegalSupportModal open={modal === "paralegal"} onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <SharedLawyerConsultModal open={modal === "lawyer"} onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
       <EndorseModal         open={modal === "endorse"}      onClose={closeModal} caseData={selectedCase} onSave={saveCase} actorName={actorName} />
@@ -1881,7 +1914,7 @@ export default function LegalReviewManagement() {
         }}
       />
 
-      {/* Action card â†’ select case â†’ action */}
+      {/* Action card → select case → action */}
       <SelectCaseModal open={modal === "selectParalegal"} onClose={closeModal} cases={cases} title="Select Case for Paralegal Support" actionLabel="Paralegal" onAction={(c) => open(c, "paralegal")} />
       <SelectCaseModal open={modal === "selectLawyer"}    onClose={closeModal} cases={cases} title="Select Case for Lawyer Consultation" actionLabel="Consult" onAction={(c) => open(c, "lawyer")} />
       <SelectCaseModal open={modal === "selectEndorse"}   onClose={closeModal} cases={cases} title="Select Case to Endorse / Track Referral" actionLabel="Endorse" onAction={(c) => open(c, "endorse")} />
