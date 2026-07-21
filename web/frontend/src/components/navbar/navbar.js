@@ -221,9 +221,6 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-                <button className={`${styles.iconBtn} ${styles.helpBtn}`} aria-label={t("navHelp")}>
-                  <FiHelpCircle size={20} />
-                </button>
                 <UserMenu key={pathname} user={user} logout={logout} t={t} />
               </div>
             </>
