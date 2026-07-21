@@ -3,6 +3,7 @@ const router  = express.Router();
 const { createClient } = require("@supabase/supabase-js");
 const { verifyToken } = require("../middleware/auth.middleware");
 const authorize = require("../middleware/authorize.middleware");
+const { publicVolunteerApplicationRef } = require("../utils/volunteerApplicationPublicIds");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,6 +17,73 @@ router.use(authorize("Admin"));
 // HELPER — convert the dateRange string from the frontend into a UTC ISO
 // timestamp so we can filter with Supabase's .gte() filter.
 // ─────────────────────────────────────────────────────────────────────────────
+
+function getAuthenticatedActor(req) {
+  return {
+    id: req.user?.user_id || req.user?.id || null,
+    role: req.user?.role || req.user?.role_name || null,
+  };
+}
+
+function normalizeModules(modules) {
+  if (!Array.isArray(modules)) return [];
+  return modules
+    .map((moduleName) => String(moduleName || "").trim())
+    .filter(Boolean);
+}
+
+router.post("/generation-log", async (req, res) => {
+  try {
+    const actor = getAuthenticatedActor(req);
+    if (!actor.id) {
+      return res.status(401).json({ error: "Authenticated user is required." });
+    }
+
+    const format = String(req.body?.format || "").trim().toLowerCase();
+    if (!["pdf", "xlsx"].includes(format)) {
+      return res.status(400).json({ error: "format must be pdf or xlsx." });
+    }
+
+    const modules = normalizeModules(req.body?.modules);
+    const dateRange = req.body?.date_range === undefined || req.body?.date_range === null
+      ? null
+      : String(req.body.date_range).slice(0, 100);
+    const fileName = req.body?.file_name === undefined || req.body?.file_name === null
+      ? null
+      : String(req.body.file_name).slice(0, 255);
+
+    const { data, error } = await supabase
+      .from("report_generation_logs")
+      .insert([{
+        generated_by_id: actor.id,
+        generated_by_role: actor.role,
+        format,
+        modules,
+        date_range: dateRange,
+        file_name: fileName,
+      }])
+      .select("id, generated_by_id, generated_by_role, generated_at, format, modules, date_range, file_name")
+      .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({
+      data: {
+        id: data.id,
+        generatedById: data.generated_by_id,
+        generatedByRole: data.generated_by_role,
+        generatedAt: data.generated_at,
+        format: data.format,
+        modules: data.modules || [],
+        dateRange: data.date_range,
+        fileName: data.file_name,
+      },
+    });
+  } catch (err) {
+    console.error("Report generation log error:", err);
+    return res.status(500).json({ error: "Failed to record report generation." });
+  }
+});
 
 function getRangeStart(range) {
   const now = new Date();
@@ -70,6 +138,48 @@ function computeProjectStatus(project) {
   return "Active";
 }
 
+router.get("/case-endorsements", async (req, res) => {
+  try {
+    const { data: reviews, error: reviewsError } = await supabase
+      .from("legal_reviews")
+      .select("case_report_id, endorsed_to, created_at")
+      .not("endorsed_to", "is", null)
+      .order("created_at", { ascending: false });
+    if (reviewsError) throw reviewsError;
+
+    const latestByCase = new Map();
+    for (const review of reviews || []) {
+      const endorsedTo = String(review.endorsed_to || "").trim();
+      if (endorsedTo && !latestByCase.has(review.case_report_id)) latestByCase.set(review.case_report_id, review);
+    }
+
+    const caseIds = [...latestByCase.keys()];
+    if (caseIds.length === 0) return res.json({ data: [] });
+
+    const { data: cases, error: casesError } = await supabase
+      .from("case_reports")
+      .select("case_report_id, public_id, case_status_id, created_at, case_statuses ( case_status_name )")
+      .in("case_report_id", caseIds)
+      .eq("is_current", true);
+    if (casesError) throw casesError;
+
+    return res.json({
+      data: (cases || []).map((caseItem) => ({
+        id: caseItem.public_id || caseItem.case_report_id,
+        case_report_id: caseItem.public_id || caseItem.case_report_id,
+        status: caseItem.case_statuses?.case_status_name || null,
+        case_status_id: caseItem.case_status_id,
+        endorsed_to: latestByCase.get(caseItem.case_report_id)?.endorsed_to || null,
+        date_filed: caseItem.created_at,
+        created_at: caseItem.created_at,
+      })),
+    });
+  } catch (err) {
+    console.error("Case endorsement report error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/reports/aggregate?dateRange=thisMonth
 //
@@ -106,6 +216,7 @@ router.get("/aggregate", async (req, res) => {
       .from("case_reports")
       .select(`
         case_report_id,
+        public_id,
         incident_location_type,
         incident_city,
         date_filed:created_at,
@@ -120,7 +231,7 @@ router.get("/aggregate", async (req, res) => {
 
     // Normalize into the flat shape buildCaseSummary() expects
     const cases = (casesRaw || []).map((r) => ({
-      id:            r.case_report_id,
+      id:            r.public_id,
       status:        r.case_statuses?.case_status_name  || null,
       case_type:     r.case_types?.case_type_name       || null,
       // Frontend reads c.region || c.location_type — supply both
@@ -137,6 +248,7 @@ router.get("/aggregate", async (req, res) => {
       .from("volunteer_applications")
       .select(`
         volunteer_application_id,
+        public_id,
         application_status,
         negotiable_score,
         fields_with_background,
@@ -150,7 +262,8 @@ router.get("/aggregate", async (req, res) => {
 
     // Normalize: frontend buildVolunteerSummary() reads a.status and a.score
     const volunteers = (volunteersRaw || []).map((r) => ({
-      id:                 r.volunteer_application_id,
+      id:                 r.public_id,
+      application_ref:    publicVolunteerApplicationRef(r.public_id),
       // Map snake_case DB values to Title Case to match VOLUNTEER_STATUSES constant
       status:             mapVolunteerStatus(r.application_status),
       score:              r.negotiable_score             || null,
@@ -236,6 +349,7 @@ router.get("/cases", async (req, res) => {
       .from("case_reports")
       .select(`
         case_report_id,
+        public_id,
         incident_location_type,
         date_filed:created_at,
         date_resolved,
@@ -248,7 +362,7 @@ router.get("/cases", async (req, res) => {
     if (error) throw error;
 
     const normalized = (data || []).map((r) => ({
-      id:            r.case_report_id,
+      id:            r.public_id,
       status:        r.case_statuses?.case_status_name || null,
       case_type:     r.case_types?.case_type_name      || null,
       region:        r.incident_location_type           || null,
@@ -272,14 +386,15 @@ router.get("/volunteers", async (req, res) => {
     const rangeStart = getRangeStart(req.query.dateRange || "all");
     let query = supabase
       .from("volunteer_applications")
-      .select("volunteer_application_id, application_status, negotiable_score, fields_with_background, fields_of_interest, created_at");
+      .select("volunteer_application_id, public_id, application_status, negotiable_score, fields_with_background, fields_of_interest, created_at");
     query = applyDateFilter(query, rangeStart, "created_at");
 
     const { data, error } = await query;
     if (error) throw error;
 
     const normalized = (data || []).map((r) => ({
-      id:                  r.volunteer_application_id,
+      id:                  r.public_id,
+      application_ref:     publicVolunteerApplicationRef(r.public_id),
       status:              mapVolunteerStatus(r.application_status),
       score:               r.negotiable_score    || null,
       field_of_background: r.fields_with_background || null,
@@ -302,7 +417,7 @@ router.get("/projects", async (req, res) => {
     const rangeStart = getRangeStart(req.query.dateRange || "all");
     let query = supabase
       .from("projects")
-      .select("project_id, project_status, start_date, end_date");
+      .select("project_id, project_status, category, approval_status, visibility, start_date, end_date, due_date, created_at");
     query = applyDateFilter(query, rangeStart, "start_date");
 
     const { data, error } = await query;
@@ -314,8 +429,13 @@ router.get("/projects", async (req, res) => {
       status: computeProjectStatus(p),
       statusOverride: ["Postponed", "Cancelled"].includes(p.project_status) ? p.project_status : "",
       project_status: p.project_status,
+      category: p.category,
+      approval_status: p.approval_status,
+      visibility: p.visibility,
       start_date: p.start_date,
       end_date: p.end_date,
+      due_date: p.due_date,
+      created_at: p.created_at,
     }));
 
     res.json({ data: normalized || [] });

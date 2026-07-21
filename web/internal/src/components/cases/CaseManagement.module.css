@@ -260,6 +260,13 @@
   grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: start;
+  min-width: 0;
+  width: 100%;
+}
+
+.layout > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── Table ── */
@@ -268,12 +275,15 @@
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
   overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
+  min-width: 640px;
 }
 
 .table thead tr { background: var(--sasha-teal); }
@@ -288,14 +298,25 @@
 
 .table tbody tr {
   border-bottom: 1px solid var(--sasha-border);
+  height: 56px;
   transition: background 0.12s;
 }
 .table tbody tr:last-child { border-bottom: none; }
 .table tbody tr:hover { background: var(--sasha-offwhite); }
 .table tbody td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.6rem 0.85rem;
   color: var(--sasha-text);
   font-size: 0.82rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.truncateCell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .emptyState {
@@ -691,6 +712,8 @@
   background: var(--sasha-white);
   border-radius: 10px;
   border: 1px solid var(--sasha-border);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .filterMenuWrapper {
@@ -881,6 +904,11 @@
   .sidebar { order: -1; }
   .sectionTitle { font-size: 1.5rem; }
   .heroTitle { font-size: 1.75rem; margin-bottom: 1.25rem; }
+  .heroContent { padding: 2.5rem 1.25rem; }
+  .statGrid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .statCard { min-height: 108px; padding: 1.35rem 1.1rem; }
+  .statNum { font-size: 2.35rem; }
+  .statLabel { font-size: 0.92rem; }
   .statusGuideBtn {
     position: static;
     margin: -0.25rem auto 1.5rem;
@@ -888,6 +916,18 @@
 }
 
 @media (max-width: 575.98px) {
+  .heroBanner { padding: 0.75rem 0 0.85rem; margin-bottom: 0.85rem; }
+  .heroContent { padding: 1.35rem 1rem 1.15rem; margin-top: 0.5rem; }
+  .heroTitle {
+    font-size: 1.35rem;
+    line-height: 1.15;
+    margin-bottom: 0.85rem;
+  }
+  .statusGuideBtn {
+    margin: 0 auto 0.85rem;
+    padding: 0.42rem 0.75rem;
+    font-size: 0.74rem;
+  }
   .modalBox {
     max-width: 100%;
     border-radius: 1rem 1rem 0 0;
@@ -943,4 +983,123 @@
 .statGridItem,
 .actionCell {
   min-width: 0;
+}
+
+@media (max-width: 575.98px) {
+  .statGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 8.85rem);
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .statGridItem {
+    width: auto;
+    max-width: none;
+  }
+
+  .statCard {
+    box-sizing: border-box;
+    gap: 0.42rem;
+    min-height: 2.25rem;
+    min-width: 0;
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border-radius: 14px;
+    white-space: nowrap;
+  }
+
+  .statNum {
+    font-size: 0.95rem;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .statLabel {
+    font-size: 0.64rem;
+    line-height: 1;
+    margin: 0;
+    text-align: left;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .contentShell,
+  .heroShell {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    overflow-x: clip;
+  }
+
+  .allList,
+  .layout,
+  .layout > *,
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .sectionHeading {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.75rem;
+  }
+
+  .sectionTitle {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .headingLine {
+    min-width: 2rem;
+  }
+
+  .tableTopBar {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    overflow: visible;
+  }
+
+  .tableTopBar > .searchWrap {
+    flex: 1 1 0% !important;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .tableTopBar > .searchWrap .searchInput {
+    height: 38px;
+    min-width: 0;
+    padding: 0 2.35rem 0 0.9rem;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .tableTopBar > .searchWrap .searchIcon {
+    right: 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .tableTopBar > [class*="filterBarWrap"] {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: max-content;
+  }
 }

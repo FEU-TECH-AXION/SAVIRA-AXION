@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase')
+const { resolveActors, withActor } = require('../utils/actor')
 
 const TASK_FIELDS = [
   'assigned_to', 'title', 'description', 'status', 'priority', 'due_date',
@@ -127,7 +128,15 @@ async function listActivity(taskId) {
     .eq('task_id', taskId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data || []
+  const rows = data || []
+  const actorsById = await resolveActors(rows.map((row) => row.changed_by))
+  return rows.map((row) =>
+    withActor(row, actorsById[row.changed_by], {
+      idField: 'changed_by',
+      nameField: 'changed_by_name',
+      roleField: 'changed_by_role',
+    })
+  )
 }
 
 async function logActivity(taskId, userId, action, oldStatus, newStatus, details) {

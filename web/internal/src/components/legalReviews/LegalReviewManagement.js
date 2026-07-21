@@ -25,6 +25,7 @@ import {
   MonitoringModal,
 } from "./LegalReviewModals";
 import LegalGuide from "./LegalGuide";
+import ActorByline from "@/components/ui/ActorByline";
 
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 
@@ -149,6 +150,18 @@ function PendingBadge() {
   );
 }
 
+function LegalActorByline({ actorName, actorRole, timestamp, fallbackName = "" }) {
+  return (
+    <ActorByline
+      actorName={actorName}
+      actorRole={actorRole}
+      timestamp={timestamp}
+      fallbackName={fallbackName}
+      as="span"
+    />
+  );
+}
+
 function Pagination({ current, total, onChange }) {
   return (
     <div className={styles.pagination}>
@@ -266,7 +279,19 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {caseData.endorsementDetails && (
         <div className={styles.detailBlock}>
           <h4 className={styles.detailTitle}>Endorsement / Filing Details</h4>
+          {(caseData.endorsementDetails.endorsedBy || caseData.endorsementDetails.endorsedByRole) && (
+            <div className={styles.viewRow}>
+              <span className={styles.viewKey}>Endorsed by</span>
+              <span className={styles.viewVal}>
+                <LegalActorByline
+                  actorName={caseData.endorsementDetails.endorsedBy}
+                  actorRole={caseData.endorsementDetails.endorsedByRole}
+                />
+              </span>
+            </div>
+          )}
           {Object.entries(caseData.endorsementDetails).map(([k, v]) => (
+            ["endorsedBy", "endorsedById", "endorsedByRole"].includes(k) ? null :
             v !== null && v !== undefined && v !== "" && (!Array.isArray(v) || v.length > 0) ? (
             <div key={k} className={styles.viewRow}>
               <span className={styles.viewKey}>{k.replace(/_/g, " ")}</span>
@@ -280,7 +305,15 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {caseData.paralegalRecord && (
         <div className={styles.detailBlock}>
           <h4 className={styles.detailTitle}>Paralegal Support Record</h4>
-          <div className={styles.viewRow}><span className={styles.viewKey}>Organized by</span><span className={styles.viewVal}>{caseData.paralegalRecord.organizedBy}</span></div>
+          <div className={styles.viewRow}>
+            <span className={styles.viewKey}>Organized by</span>
+            <span className={styles.viewVal}>
+              <LegalActorByline
+                actorName={caseData.paralegalRecord.organizedBy}
+                actorRole={caseData.paralegalRecord.organizedByRole}
+              />
+            </span>
+          </div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.paralegalRecord.date}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Documents</span><span className={styles.viewVal}>{caseData.paralegalRecord.documents}</span></div>
         </div>
@@ -290,7 +323,15 @@ function ViewCaseModal({ open, onClose, caseData }) {
       {caseData.lawyerRecord && (
         <div className={styles.detailBlock}>
           <h4 className={styles.detailTitle}>Lawyer Consultation Record</h4>
-          <div className={styles.viewRow}><span className={styles.viewKey}>Assessed by</span><span className={styles.viewVal}>{caseData.lawyerRecord.assessedBy}</span></div>
+          <div className={styles.viewRow}>
+            <span className={styles.viewKey}>Assessed by</span>
+            <span className={styles.viewVal}>
+              <LegalActorByline
+                actorName={caseData.lawyerRecord.assessedBy}
+                actorRole={caseData.lawyerRecord.assessedByRole}
+              />
+            </span>
+          </div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Date</span><span className={styles.viewVal}>{caseData.lawyerRecord.date}</span></div>
           <div className={styles.viewRow}><span className={styles.viewKey}>Recommendation</span><span className={styles.viewVal}>{caseData.lawyerRecord.recommendation}</span></div>
         </div>
@@ -309,7 +350,11 @@ function ViewCaseModal({ open, onClose, caseData }) {
                 <div key={i} className={styles.historyItem}>
                   <div className={styles.historyDot} />
                   <div className={styles.historyContent}>
-                    <span className={styles.historyMeta}>{m.date} Â· {m.by}</span>
+                    <span className={styles.historyMeta}>
+                      {m.date}
+                      <span aria-hidden="true"> · </span>
+                      <LegalActorByline actorName={m.by} actorRole={m.byRole} />
+                    </span>
                     <p className={styles.historyNotes}>{m.update}</p>
                   </div>
                 </div>
@@ -1155,9 +1200,9 @@ function SelectCaseModal({ open, onClose, cases, title, actionLabel, onAction, f
               : list.map((c) => (
                 <tr key={c.id}>
                   <td>{c.id}</td>
-                  <td>{c.region}</td>
+                  <td className={styles.truncateCell} title={c.region || ""}>{c.region}</td>
                   <td><StatusBadge status={c.status} />{c.pendingApproval && <span style={{ marginLeft: 4 }}><PendingBadge /></span>}</td>
-                  <td>{assignedNames(c, "lawyer")}</td>
+                  <td className={styles.truncateCell} title={assignedNames(c, "lawyer") || "Unassigned"}>{assignedNames(c, "lawyer") || "—"}</td>
                   <td><button className={styles.tblBtnEdit} onClick={() => onAction(c)}>{actionLabel}</button></td>
                 </tr>
               ))
@@ -1212,7 +1257,6 @@ function mergeStatusHistory(caseData, history = []) {
 }
 
 function mapLegalReportToCase(report) {
-  const year = new Date(report.created_at).getFullYear();
   const status = STATUS_STEP[report.case_status_id] || "Verified - True";
   const defaultHistory = [{
     status,
@@ -1223,7 +1267,7 @@ function mapLegalReportToCase(report) {
 
   return {
     id: report.case_report_id,
-    caseId: `${year}-` + String(report.case_report_id).padStart(3, "0"),
+    caseId: report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
     reporterId: String(report.complainant_id),
     region: report.incident_province || report.incident_city || "â€”",
     city: report.incident_city || "â€”",
@@ -1860,7 +1904,7 @@ export default function LegalReviewManagement() {
                       <td>{c.id}</td>
                       <td><StatusBadge status={c.status} /></td>
                       <td><StatusBadge status={c.pendingApproval.proposedStatus} /></td>
-                      <td>{c.pendingApproval.submittedBy}</td>
+                      <td className={styles.truncateCell} title={c.pendingApproval.submittedBy || ""}>{c.pendingApproval.submittedBy}</td>
                       <td>{c.pendingApproval.date}</td>
                       <td><button className={styles.tblBtnApprove} onClick={() => { setSelectedCase(c); setModal("approval"); }}>Review</button></td>
                     </tr>

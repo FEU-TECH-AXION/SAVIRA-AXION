@@ -232,7 +232,7 @@ async function getPendingStatusHistoryByCaseIds(caseReportIds = []) {
 async function getPublicLogsByCase(caseReportId) {
   const { data, error } = await supabase
     .from('legal_review_logs')
-    .select('legal_review_log_id, action_type, public_message, performed_by_user_id, performed_at')
+    .select('legal_review_log_id, action_type, public_message, performed_by_user_id, performed_by_role, performed_at')
     .eq('case_report_id', caseReportId)
     .eq('is_public', true)
     .order('performed_at', { ascending: false })
@@ -282,12 +282,14 @@ async function resolveLegalPersonnelId({ caseReportId, currentReview, legalPerso
   return null
 }
 
-async function createForCase({ caseReportId, legalPersonnelId }) {
+async function createForCase({ caseReportId, legalPersonnelId, createdById = null, createdByRole = null }) {
   const { data, error } = await supabase
     .from('legal_reviews')
     .insert([{
       case_report_id: caseReportId,
       legal_personnel_id: legalPersonnelId,
+      created_by_id: createdById,
+      created_by_role: createdByRole,
       review_type: 'Legal Review',
       review_status: 'In Progress',
       ...REVIEW_DETAIL_COLUMNS,
@@ -309,7 +311,16 @@ async function updateReview(legalReviewId, patch) {
   return data
 }
 
-async function logAction({ legalReviewId, caseReportId, actionType, remarks, performedByUserId, isPublic = false, publicMessage = null }) {
+async function logAction({
+  legalReviewId,
+  caseReportId,
+  actionType,
+  remarks,
+  performedByUserId,
+  performedByRole = null,
+  isPublic = false,
+  publicMessage = null,
+}) {
   const { data, error } = await supabase
     .from('legal_review_logs')
     .insert([{
@@ -320,6 +331,7 @@ async function logAction({ legalReviewId, caseReportId, actionType, remarks, per
       is_public: isPublic,
       public_message: isPublic ? publicMessage : null,
       performed_by_user_id: performedByUserId,
+      performed_by_role: performedByRole,
       performed_at: new Date().toISOString(),
     }])
     .select()

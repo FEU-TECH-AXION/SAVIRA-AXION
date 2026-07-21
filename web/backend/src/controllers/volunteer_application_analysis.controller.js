@@ -1,10 +1,14 @@
 const VolunteerApplicationAnalysisModel = require('../models/volunteer_application_analysis.model')
 const { getAnalysisByApplicationId, createAnalysis } = require('../models/volunteer_application_analysis.model');
+const {
+    replaceVolunteerApplicationId,
+    replaceVolunteerApplicationIdsFromDatabase,
+} = require('../utils/volunteerApplicationPublicIds')
 
 const getItems = async (req, res) => {
     try {
         const data = await VolunteerApplicationAnalysisModel.getAll()
-        res.json(data)
+        res.json(await replaceVolunteerApplicationIdsFromDatabase(data))
     } catch (err) {
         // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
@@ -18,7 +22,7 @@ const createItem = async (req, res) => {
         const item = await VolunteerApplicationAnalysisModel.createAnalysis(req.body)
 
         // 201 instead of 200 to explicitly signal a resource was created
-        res.status(201).json(item)
+        res.status(201).json(await replaceVolunteerApplicationIdsFromDatabase(item))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -28,7 +32,7 @@ async function getAnalysis(req, res) {
     try {
         const { id } = req.params;
         const data = await VolunteerApplicationAnalysisModel.getAnalysisByApplicationId(id);
-        return res.json({ data });
+        return res.json({ data: replaceVolunteerApplicationId(data, req.volunteerApplicationPublicId) });
     } catch (err) {
         console.error('[getAnalysis]', err.message);
         // 404 is correct here — pending rows that don't exist yet return this,

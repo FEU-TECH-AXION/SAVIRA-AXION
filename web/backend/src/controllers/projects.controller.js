@@ -2,6 +2,13 @@ const ProjectsModel = require('../models/projects.model')
 const supabase = require('../config/supabase')
 const { randomUUID } = require('crypto')
 
+function getAuthenticatedActor(req) {
+  return {
+    id: req.user?.user_id || req.user?.id || null,
+    role: req.user?.role || req.user?.role_name || null,
+  }
+}
+
 const getItems = async (req, res) => {
   try {
     const filters = {
@@ -61,7 +68,12 @@ const createItem = async (req, res) => {
     }
     
     // 3. Insert into the database
-    const item = await ProjectsModel.create(req.body)
+    const actor = getAuthenticatedActor(req)
+    const item = await ProjectsModel.create({
+      ...req.body,
+      createdById: actor.id,
+      createdByRole: actor.role,
+    })
     res.status(201).json(item)
   } catch (err) {
     console.error('projects.create error:', err && err.stack ? err.stack : err)
@@ -72,9 +84,14 @@ const createItem = async (req, res) => {
 
 const updateItem = async (req, res) => {
   try {
-    const item = await ProjectsModel.updateById(req.params.id, req.body)
+    const actor = getAuthenticatedActor(req)
+    const item = await ProjectsModel.updateById(req.params.id, {
+      ...req.body,
+      updatedById: actor.id,
+    })
     res.json(item)
   } catch (err) {
+    if (err && err.status) return res.status(err.status).json({ error: err.message })
     res.status(500).json({ error: err.message })
   }
 }

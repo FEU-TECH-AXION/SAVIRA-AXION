@@ -592,6 +592,10 @@
     grid-template-columns: 1fr;
   }
 
+  .otherEvaluatorGrid {
+    grid-template-columns: 1fr;
+  }
+
   .modalBox {
     max-width: 100%;
     border-radius: 1rem 1rem 0 0;
@@ -811,6 +815,149 @@
   margin: 0 0 1rem;
   font-size: 0.78rem;
   color: #6b7280;
+}
+
+.evaluationAccordion {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.evaluationAccordionHeader {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  color: #1f2937;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.evaluationAccordionHeader svg {
+  flex-shrink: 0;
+  color: #037F81;
+}
+
+.evaluationAccordionTitle {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #037F81;
+}
+
+.evaluationAccordionSubtitle {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.76rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.evaluationAccordionBody {
+  border-top: 1px solid #e5e7eb;
+  padding: 1rem;
+}
+
+.otherEvaluatorPanel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.otherEvaluatorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.otherEvaluatorGrid .otherEvaluatorPanel {
+  margin-bottom: 0;
+}
+
+.otherEvaluatorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.otherEvaluatorHeader span {
+  min-width: 28px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e1f5f5;
+  color: #037F81;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.otherEvaluatorTitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #374151;
+}
+
+.otherEvaluatorEmpty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.evaluatorScoreList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.evaluatorScoreCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.evaluatorScoreHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.evaluatorScoreTotal {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+  font-weight: 900;
+  color: #037F81;
+}
+
+.evaluatorCriteriaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1rem;
+}
+
+.evaluatorCriterionRow span {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #4b5563;
+  line-height: 1.35;
 }
 
 /* ── Eval criterion (inside ApplicantScoresTab) ── */

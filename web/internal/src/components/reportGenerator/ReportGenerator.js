@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import ExcelJS from "exceljs";
 import styles from "./ReportGenerator.module.css";
 import { internalApiFetch } from "@/lib/internalApiFetch";
+import { useAuth } from "@/lib/AuthContext";
 import {
   FiDownload,
   FiFileText,
@@ -83,7 +84,20 @@ const CITIES = [
 
 const VOLUNTEER_STATUSES = ["Pending", "Under Review", "Approved", "Rejected", "Waitlisted"];
 const PROJECT_STATUSES = ["Upcoming", "Active", "Completed", "Postponed", "Cancelled"];
+const PROJECT_CATEGORIES = [
+  "New Projects",
+  "Happening Soon",
+  "Youth Leadership Programs",
+  "Legal & Policy Education",
+  "Awareness Campaign",
+  "Community Outreach",
+];
+const PROJECT_APPROVAL_STATUSES = ["pending", "approved", "rejected"];
 const USER_ROLES = ["Admin", "Case Officer", "Legal Personnel", "Staff", "User"];
+const VICTIM_AGE_GROUPS = ["Under 18", "18-24", "25-34", "35-44", "45-54", "55+"];
+const VICTIM_GENDER_IDENTITIES = ["Male", "Female", "Member of LGBTQIA+"];
+const PERPETRATOR_GENDERS = ["Male", "Female", "Member of LGBTQIA+", "Unable to tell"];
+const CASE_CATEGORIES = ["Physical", "Virtual", "Verbal"];
 
 const DATE_RANGES = [
   { label: "All Time",     value: "all" },
@@ -94,12 +108,12 @@ const DATE_RANGES = [
   { label: "Last 30 Days", value: "last30Days" },
 ];
 
-const ENDORSEMENT_BODIES = [
-  "DSWD",
-  "PNP Women and Children Protection Desk",
-  "BSP/GSP Mechanism",
-  "School/Workplace CODI",
-  "Court (with lawyer)",
+const ENDORSEMENT_REPORT_ROWS = [
+  { value: "DSWD", label: "a. Cases endorsed to DSWD" },
+  { value: "PNP Women and Children Protection Desk", label: "b. Cases endorsed to PNP Women's Desk" },
+  { value: "BSP/GSP Mechanism", label: "c. Cases endorsed to BSP/GSP" },
+  { value: "School/Workplace CODI", label: "d. Cases endorsed to workplace/school/entities' CODI" },
+  { value: "Court (with lawyer)", label: "e. Cases filed in Court" },
 ];
 
 const LEGAL_CROSSTAB_COLUMNS = ["Ongoing", "Won", "Settled", "Dismissed", "Unresolved", "Declined"];
@@ -187,6 +201,17 @@ function titleFromSnake(raw) {
   return String(raw).split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
+function normalizeGenderValue(value) {
+  const text = String(value || "").trim();
+  const normalized = text.toLowerCase();
+  if (["male", "lalaki"].includes(normalized)) return "Male";
+  if (["female", "babae"].includes(normalized)) return "Female";
+  if (["member of lgbtqia+", "lgbtqia+ member", "miyembro ng lgbtqia+"].includes(normalized)) {
+    return "Member of LGBTQIA+";
+  }
+  return text || null;
+}
+
 function recordDate(record, ...fields) {
   for (const field of fields) {
     const raw = record[field];
@@ -256,7 +281,7 @@ function normalizeCaseReport(row) {
     null;
 
   const caseType =
-    row.case_type || row.caseType || row.case_type_name || row.case_types?.case_type_name || row.primary_category || null;
+    row.case_type || row.caseType || row.case_type_name || row.case_types?.case_type_name || null;
 
   // Resolve the city field — try multiple field names the backend might send
   const city =
@@ -269,6 +294,8 @@ function normalizeCaseReport(row) {
     id: row.id || row.case_report_id,
     status,
     case_type: caseType,
+    age: Number.isFinite(Number(row.age)) ? Number(row.age) : null,
+    gender_identity: normalizeGenderValue(row.gender_identity || row.genderIdentity || row.victim_gender),
     primary_category: row.primary_category || row.primaryCategory || null,
     additional_categories: Array.isArray(row.additional_categories)
       ? row.additional_categories
@@ -285,6 +312,7 @@ function normalizeCaseReport(row) {
     incident_location: row.incident_location || row.incidentLocation || null,
     perpetrator_relationship: row.perpetrator_relationship || row.perpetratorRelationship || null,
     perpetrator_occupation: row.perpetrator_occupation || row.perpetratorOccupation || null,
+    perpetrator_gender: normalizeGenderValue(row.perpetrator_gender || row.perpetratorGender),
     endorsed_to: row.endorsed_to || row.endorsedTo || row.legal_review?.endorsed_to || row.endorsement?.endorsed_to || null,
     date_filed: row.date_filed || row.dateSubmitted || row.created_at || null,
     date_resolved: row.date_resolved || row.dateResolved || row.updated_at || null,
@@ -363,7 +391,13 @@ function applyAdvancedFilters(raw, range, filters) {
     .filter((u) => withinDateInputs(u, filters, ["created_at", "createdAt"]))
     .filter((u) => filters.userRole === "all" || u.role_name === filters.userRole);
 
-  return { cases: filteredCases, legalCases: filteredLegalCases, volunteers: filteredVolunteers, projects: filteredProjects, users: filteredUsers };
+  const filteredCaseIds = new Set(filteredCases.map((caseItem) => caseItem.id).filter(Boolean));
+  const filteredEndorsements = filterByDateRange(raw.endorsements || [], range, "date_filed", "created_at")
+    .filter((c) => withinDateInputs(c, filters, ["date_filed", "created_at"]))
+    .filter((c) => filters.caseStatus === "all" || c.status === filters.caseStatus)
+    .filter((c) => filteredCaseIds.has(c.id));
+
+  return { cases: filteredCases, legalCases: filteredLegalCases, volunteers: filteredVolunteers, projects: filteredProjects, users: filteredUsers, endorsements: filteredEndorsements };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -420,14 +454,37 @@ async function fetchApprovedStatusHistoryMap(cases = []) {
   const caseIds = [...new Set(cases.map((c) => c.id).filter(Boolean))];
   if (caseIds.length === 0) return {};
 
-  const params = new URLSearchParams({ caseIds: caseIds.join(",") });
-  const response = await internalApiFetch(`/api/case_status_history/batch/approved?${params.toString()}`, {
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to load case status history");
+  const chunks = [];
+  for (let index = 0; index < caseIds.length; index += 50) chunks.push(caseIds.slice(index, index + 50));
+  const payloads = await Promise.all(chunks.map(async (chunk) => {
+    const params = new URLSearchParams({ caseIds: chunk.join(",") });
+    const response = await internalApiFetch(`/api/case_status_history/batch/approved?${params.toString()}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to load case status history");
+    return response.json();
+  }));
+  return groupStatusHistoryByCase(payloads.flatMap(toArray));
+}
 
-  const payload = await response.json();
-  return groupStatusHistoryByCase(toArray(payload));
+async function fetchAllCaseReportPages() {
+  const rows = [];
+  let page = 1;
+  let total = null;
+
+  do {
+    const params = new URLSearchParams({ page: String(page), limit: "100" });
+    const response = await internalApiFetch(`/api/case_reports/all?${params.toString()}`, { credentials: "include" });
+    if (!response.ok) throw new Error("Failed to load case reports");
+    const payload = await response.json();
+    const pageRows = toArray(payload);
+    rows.push(...pageRows);
+    total = Number.isFinite(Number(payload?.total)) ? Number(payload.total) : rows.length;
+    if (pageRows.length === 0) break;
+    page += 1;
+  } while (rows.length < total);
+
+  return rows;
 }
 
 function getStatusBucket(status) {
@@ -617,11 +674,13 @@ function buildVolunteerSummary(applications = []) {
   const waitlisted  = byStatus["Waitlisted"]  || 0;
   const processed   = approved + rejected + waitlisted;
   const approvalRate = processed ? Math.round((approved / processed) * 100) : 0;
+  const rejectionRate = processed ? Math.round((rejected / processed) * 100) : 0;
 
   return {
     total: applications.length,
     byStatus: Object.fromEntries(Object.entries(byStatus).filter(([, v]) => v > 0)),
     approvalRate,
+    rejectionRate,
     avgScore: scoreCount ? Math.round(totalScore / scoreCount) : 0,
     topFields: topEntries(fieldCounts, 6),
   };
@@ -666,7 +725,7 @@ function buildProjectSummary(projects = []) {
   return {
     total: projects.length,
     byStatus: Object.fromEntries(Object.entries(byStatus).filter(([, v]) => v > 0)),
-    byCategory: Object.fromEntries(topEntries(byCategory, 6)),
+    byCategory,
     byVisibility,
     byApproval,
     timeliness,
@@ -702,7 +761,7 @@ function buildUserSummary(users = []) {
     byRole: Object.fromEntries(Object.entries(byRole).filter(([, v]) => v > 0)),
     byCity: Object.fromEntries(topEntries(cityCounts, 6)),
     byGender: genderCounts,
-    activeBreakdown: users.length ? { Active: active, Deactivated: deactivated } : {},
+    activeBreakdown: { Activated: active, Deactivated: deactivated },
     activeUsers: active,
     deactivated,
     newThisMonth,
@@ -786,8 +845,10 @@ function sortCountEntries(counts = {}) {
     .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
 }
 
-function countTableRows(counts = {}, totalOverride = null) {
-  const entries = sortCountEntries(counts);
+function countTableRows(counts = {}, totalOverride = null, includeZero = false) {
+  const entries = includeZero
+    ? Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])))
+    : sortCountEntries(counts);
   const total = totalOverride ?? entries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
   return entries.map(([label, count]) => [
     label,
@@ -808,7 +869,7 @@ function pairTableRows(entries = [], totalOverride = null) {
   ]);
 }
 
-function addWorksheetSection(worksheet, title, headers, rows = []) {
+function addWorksheetSection(worksheet, title, headers, rows = [], options = {}) {
   if (worksheet.rowCount > 0) worksheet.addRow([]);
   const sectionRow = worksheet.addRow([title]);
   formatSectionRow(sectionRow);
@@ -820,7 +881,25 @@ function addWorksheetSection(worksheet, title, headers, rows = []) {
   formatWorkbookHeader(headerRow);
 
   if (rows.length) {
-    rows.forEach((row) => worksheet.addRow(row));
+    rows.forEach((row) => {
+      const originalValues = Array.isArray(row) ? row : [row];
+      const typedValues = options.coerceNumeric ? originalValues.map((value) => {
+        if (typeof value !== "string") return value;
+        const trimmed = value.trim();
+        if (/^-?\d+(?:\.\d+)?%$/.test(trimmed)) return Number(trimmed.slice(0, -1)) / 100;
+        if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) return Number(trimmed);
+        return value;
+      }) : originalValues;
+      const addedRow = worksheet.addRow(typedValues);
+      if (options.coerceNumeric) {
+        originalValues.forEach((value, index) => {
+          if (typeof value === "string" && /^-?\d+(?:\.\d+)?%$/.test(value.trim())) {
+            addedRow.getCell(index + 1).numFmt = "0%";
+          }
+        });
+        if (/^total/i.test(String(originalValues[0] || ""))) addedRow.font = { bold: true };
+      }
+    });
   } else {
     worksheet.addRow(["No data available"]);
   }
@@ -875,29 +954,90 @@ function addSummarySheet(workbook, modules) {
   formatWorksheet(worksheet);
 }
 
-function addCasesSheet(workbook, caseData, analyticsData) {
+function addReportInfoSheet(workbook, { dateRange, generatedAt, modules, preparedBy }) {
+  const worksheet = workbook.addWorksheet("Report Info");
+  worksheet.columns = [
+    { key: "label", width: 24 },
+    { key: "value", width: 64 },
+  ];
+
+  worksheet.mergeCells("A1:B1");
+  const titleCell = worksheet.getCell("A1");
+  titleCell.value = "SAVIRA INSTITUTIONAL REPORT";
+  titleCell.font = { bold: true, size: 20, color: { argb: "FFFFFFFF" } };
+  titleCell.fill = XLSX_HEADER_FILL;
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  worksheet.getRow(1).height = 34;
+
+  worksheet.mergeCells("A2:B2");
+  worksheet.getCell("A2").value = "Aggregate administrative and program data";
+  worksheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
+  worksheet.getCell("A2").alignment = { horizontal: "center" };
+
+  const metadata = [
+    ["Reporting Period", getDateRangeLabel(dateRange)],
+    ["Generated", generatedAt],
+    ["Included Modules", modules.map((reportModule) => reportModule.title).join("\n")],
+    ["Confidentiality", "Confidential - For internal use only. This workbook contains aggregate institutional data and must be handled in accordance with SAVIRA/SASHA data privacy and records-management protocols."],
+  ];
+  metadata.forEach(([label, value], index) => {
+    const row = worksheet.getRow(index + 4);
+    row.values = [label, value];
+    row.getCell(1).font = { bold: true, color: { argb: "FF034B4D" } };
+    row.getCell(1).fill = XLSX_SECTION_FILL;
+    row.getCell(2).alignment = { vertical: "top", wrapText: true };
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFCBD5E1" } },
+        left: { style: "thin", color: { argb: "FFCBD5E1" } },
+        bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+        right: { style: "thin", color: { argb: "FFCBD5E1" } },
+      };
+    });
+  });
+  worksheet.getCell("B5").numFmt = "yyyy-mm-dd hh:mm";
+  worksheet.getRow(6).height = Math.max(30, modules.length * 15);
+  worksheet.getRow(7).height = 48;
+
+  const certificationRow = worksheet.addRow([]).number + 1;
+  worksheet.mergeCells(certificationRow, 1, certificationRow, 2);
+  const certificationCell = worksheet.getCell(certificationRow, 1);
+  certificationCell.value = "CERTIFICATION";
+  formatSectionRow(worksheet.getRow(certificationRow));
+  certificationCell.alignment = { horizontal: "center" };
+
+  const signatureRows = [
+    ["Prepared by", preparedBy || "Authenticated administrator"],
+    ["Noted by", "________________"],
+    ["Date", generatedAt],
+  ];
+  signatureRows.forEach(([label, value]) => {
+    const row = worksheet.addRow([label, value]);
+    row.getCell(1).font = { bold: true };
+  });
+  worksheet.getCell(worksheet.rowCount, 2).numFmt = "yyyy-mm-dd";
+  formatWorksheet(worksheet);
+  worksheet.getColumn(1).width = 24;
+  worksheet.getColumn(2).width = 64;
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  worksheet.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
+  certificationCell.alignment = { horizontal: "center", vertical: "middle" };
+}
+
+function addCasesSheet(workbook, rawData) {
   const worksheet = workbook.addWorksheet("Cases");
-  addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
-    ["Open Reports", caseData.openCases],
-    ["Under Investigation", analyticsData?.underInvestigation ?? 0],
-    ["Completed Reports", caseData.closedCases],
-    ["Total Cases", caseData.total],
-    ["Average Resolution Days", caseData.avgResolutionDays],
-  ]);
-  addWorksheetSection(worksheet, "Reports by Status", ["Status", "Count", "Percentage"], countTableRows(caseData.byStatus, caseData.total));
-  addWorksheetSection(worksheet, "Reports by City", ["City", "Count", "Percentage"], countTableRows(caseData.byCity, caseData.total));
-  addWorksheetSection(worksheet, "Case Types", ["Case Type", "Count", "Percentage"], countTableRows(caseData.byType, caseData.total));
-  addWorksheetSection(worksheet, "Case Reports Last 30 Days", ["Date", "Filed Count"], (analyticsData?.trend || []).map((item) => [item.label, item.value]));
-  addWorksheetSection(
-    worksheet,
-    "Status Composition Over Time",
-    ["Date", "Submitted", "Undergoing Review", "Closed"],
-    (analyticsData?.stackedTrend || []).map((item) => [item.label, item.Submitted || 0, item["Undergoing Review"] || 0, item.Closed || 0])
-  );
+  buildCaseManagementTables(rawData?.cases || [], rawData?.endorsements || []).forEach((table) => {
+    addWorksheetSection(worksheet, table.title, table.headers, table.rows, { coerceNumeric: true });
+    if (table.note) {
+      const noteRow = worksheet.addRow(["Note", table.note]);
+      noteRow.getCell(1).font = { bold: true, italic: true };
+      noteRow.getCell(2).font = { italic: true, color: { argb: "FF475569" } };
+    }
+  });
   formatWorksheet(worksheet);
 }
 
-function addLegalSheet(workbook, legalData) {
+function addLegalSheet(workbook, legalData, endorsements = []) {
   const worksheet = workbook.addWorksheet("Legal Review");
   addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
     ["Cases in Legal", legalData.total],
@@ -909,7 +1049,11 @@ function addLegalSheet(workbook, legalData) {
   addWorksheetSection(worksheet, "Legal Cases by City", ["City", "Count", "Percentage"], countTableRows(legalData.byCity, legalData.total));
   addWorksheetSection(worksheet, "Legal Case Status Distribution", ["Status", "Count", "Percentage"], countTableRows(legalData.byStatus, legalData.total));
   addWorksheetSection(worksheet, "Legal Case Types", ["Case Type", "Count", "Percentage"], countTableRows(legalData.byType, legalData.total));
-  addWorksheetSection(worksheet, "Referral Outcome", ["Outcome", "Count", "Percentage"], countTableRows(legalData.referralBreakdown));
+  const outcomeCounts = Object.fromEntries(LEGAL_CROSSTAB_COLUMNS.map((outcome) => [outcome, 0]));
+  endorsements.forEach((caseItem) => {
+    outcomeCounts[getLegalOutcomeColumn(caseItem.status)] += 1;
+  });
+  addWorksheetSection(worksheet, "Referral Outcome", ["Outcome", "Count", "Percentage"], countTableRows(outcomeCounts, endorsements.length, true));
   formatWorksheet(worksheet);
 }
 
@@ -918,6 +1062,7 @@ function addVolunteersSheet(workbook, volunteerData) {
   addWorksheetSection(worksheet, "Key Metrics", ["Metric", "Value"], [
     ["Total Applications", volunteerData.total],
     ["Approval Rate", `${volunteerData.approvalRate}%`],
+    ["Rejection Rate", `${volunteerData.rejectionRate}%`],
     ["Average Score", volunteerData.avgScore],
   ]);
   addWorksheetSection(worksheet, "Applications by Status", ["Status", "Count", "Percentage"], countTableRows(volunteerData.byStatus, volunteerData.total));
@@ -933,9 +1078,9 @@ function addProjectsSheet(workbook, projectData) {
     ["Completed", projectData.completedOnTime],
     ["Overdue (Ongoing)", projectData.overdueCount],
   ]);
-  addWorksheetSection(worksheet, "Projects by Status", ["Status", "Count", "Percentage"], countTableRows(projectData.byStatus, projectData.total));
-  addWorksheetSection(worksheet, "Projects by Category", ["Category", "Count", "Percentage"], countTableRows(projectData.byCategory, projectData.total));
-  addWorksheetSection(worksheet, "Approval Breakdown", ["Approval Status", "Count", "Percentage"], countTableRows(projectData.byApproval, projectData.total));
+  addWorksheetSection(worksheet, "Projects by Status", ["Status", "Count", "Percentage"], countTableRows(includeDomainValues(projectData.byStatus, PROJECT_STATUSES), projectData.total, true));
+  addWorksheetSection(worksheet, "Projects by Category", ["Category", "Count", "Percentage"], countTableRows(includeDomainValues(projectData.byCategory, PROJECT_CATEGORIES), projectData.total, true));
+  addWorksheetSection(worksheet, "Approval Breakdown", ["Approval Status", "Count", "Percentage"], countTableRows(includeDomainValues(projectData.byApproval, PROJECT_APPROVAL_STATUSES), projectData.total, true));
   addWorksheetSection(worksheet, "Visibility Breakdown", ["Visibility", "Count", "Percentage"], countTableRows(projectData.byVisibility, projectData.total));
   addWorksheetSection(worksheet, "Timeliness", ["Category", "Count", "Percentage"], countTableRows(projectData.timeliness));
   formatWorksheet(worksheet);
@@ -951,11 +1096,11 @@ function addUsersSheet(workbook, userData) {
   ]);
   addWorksheetSection(worksheet, "Users by Role", ["Role", "Count", "Percentage"], countTableRows(userData.byRole, userData.total));
   addWorksheetSection(worksheet, "Users by City", ["City", "Count", "Percentage"], countTableRows(userData.byCity, userData.total));
-  addWorksheetSection(worksheet, "Active vs Deactivated", ["Status", "Count", "Percentage"], countTableRows(userData.activeBreakdown, userData.total));
+  addWorksheetSection(worksheet, "Activated vs Deactivated", ["Status", "Count", "Percentage"], countTableRows(userData.activeBreakdown, userData.total, true));
   formatWorksheet(worksheet);
 }
 
-async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) {
+async function exportToXLSX({ activeModules, dateRange, dataAvailability, rawData, preparedBy }) {
   const modules = [];
   if (activeModules.cases && dataAvailability.caseData) {
     modules.push({ title: "Case Management", summary: dataAvailability.caseData });
@@ -974,15 +1119,17 @@ async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) 
   }
   if (!modules.length) return;
 
+  const generatedAt = new Date();
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "SAVIRA";
-  workbook.created = new Date();
-  workbook.modified = new Date();
+  workbook.created = generatedAt;
+  workbook.modified = generatedAt;
   workbook.properties.date1904 = false;
 
+  addReportInfoSheet(workbook, { dateRange, generatedAt, modules, preparedBy });
   addSummarySheet(workbook, modules);
-  if (activeModules.cases && dataAvailability.caseData) addCasesSheet(workbook, dataAvailability.caseData, analyticsData);
-  if (activeModules.legal && dataAvailability.legalData) addLegalSheet(workbook, dataAvailability.legalData);
+  if (activeModules.cases && dataAvailability.caseData) addCasesSheet(workbook, rawData);
+  if (activeModules.legal && dataAvailability.legalData) addLegalSheet(workbook, dataAvailability.legalData, rawData?.endorsements || []);
   if (activeModules.volunteers && dataAvailability.volunteerData) addVolunteersSheet(workbook, dataAvailability.volunteerData);
   if (activeModules.projects && dataAvailability.projectData) addProjectsSheet(workbook, dataAvailability.projectData);
   if (activeModules.users && dataAvailability.userData) addUsersSheet(workbook, dataAvailability.userData);
@@ -994,39 +1141,25 @@ async function exportToXLSX({ activeModules, dataAvailability, analyticsData }) 
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `report_${generatedAt.toISOString().slice(0, 10)}.xlsx`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+  return { filename };
 }
 
-function cleanPdfLabel(value, fallback = "Unspecified") {
-  const text = String(value || "").trim();
-  return text || fallback;
-}
-
-function countBy(records = [], selector) {
-  const counts = {};
-  for (const record of records) {
-    const value = selector(record);
-    const values = Array.isArray(value) ? value : [value];
-    for (const item of values) {
-      const label = cleanPdfLabel(item);
-      counts[label] = (counts[label] || 0) + 1;
-    }
-  }
-  return counts;
-}
-
-function objectToTableRows(counts = {}, totalOverride = null) {
+function objectToTableRows(counts = {}, totalOverride = null, includeZero = false) {
   const entries = Object.entries(counts)
-    .filter(([, count]) => Number(count) > 0)
+    .filter(([, count]) => includeZero || Number(count) > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const total = totalOverride ?? entries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
-  return entries.map(([label, count]) => [
+  const rows = entries.map(([label, count]) => [
     label,
     String(count),
     total ? `${Math.round((Number(count) / total) * 100)}%` : "0%",
   ]);
+  rows.push(["TOTAL", String(total), total ? "100%" : "0%"]);
+  return rows;
 }
 
 function getLegalOutcomeColumn(status) {
@@ -1039,37 +1172,143 @@ function getLegalOutcomeColumn(status) {
 }
 
 function buildEndorsementCrosstabRows(cases = []) {
-  const rows = ENDORSEMENT_BODIES.map((body) => {
+  const rows = ENDORSEMENT_REPORT_ROWS.map(({ value, label }) => {
     const counts = Object.fromEntries(LEGAL_CROSSTAB_COLUMNS.map((column) => [column, 0]));
     for (const caseItem of cases) {
-      if (caseItem.endorsed_to !== body) continue;
+      if (caseItem.endorsed_to !== value) continue;
       counts[getLegalOutcomeColumn(caseItem.status)] += 1;
     }
     const subtotal = LEGAL_CROSSTAB_COLUMNS.reduce((sum, column) => sum + counts[column], 0);
-    return [body, ...LEGAL_CROSSTAB_COLUMNS.map((column) => String(counts[column])), String(subtotal)];
+    return [label, ...LEGAL_CROSSTAB_COLUMNS.map((column) => String(counts[column])), String(subtotal)];
   });
 
   const totals = LEGAL_CROSSTAB_COLUMNS.map((column, index) =>
     rows.reduce((sum, row) => sum + Number(row[index + 1] || 0), 0)
   );
-  rows.push(["Total", ...totals.map(String), String(totals.reduce((sum, value) => sum + value, 0))]);
+  rows.push(["Total Cases", ...totals.map(String), String(totals.reduce((sum, value) => sum + value, 0))]);
   return rows;
 }
 
-function buildCaseTrendSummaryRows(analyticsData) {
-  const trend = analyticsData?.trend || [];
-  const statusTrend = analyticsData?.stackedTrend || [];
-  const totalFiled = trend.reduce((sum, item) => sum + Number(item.value || 0), 0);
-  const peak = trend.reduce((best, item) => Number(item.value || 0) > Number(best?.value || 0) ? item : best, null);
-  const latestStatus = statusTrend[statusTrend.length - 1] || {};
+function countCaseValues(cases = [], selector) {
+  const counts = {};
+  for (const caseItem of cases) {
+    const selected = selector(caseItem);
+    const values = Array.isArray(selected) ? selected : [selected];
+    const uniqueValues = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+    uniqueValues.forEach((value) => {
+      counts[value] = (counts[value] || 0) + 1;
+    });
+  }
+  return counts;
+}
+
+function includeDomainValues(counts = {}, labels = []) {
+  const canonicalByLowercase = new Map(labels.map((label) => [label.toLowerCase(), label]));
+  const complete = Object.fromEntries(labels.map((label) => [label, 0]));
+
+  Object.entries(counts).forEach(([label, count]) => {
+    const canonicalLabel = canonicalByLowercase.get(String(label).toLowerCase()) || label;
+    complete[canonicalLabel] = (complete[canonicalLabel] || 0) + Number(count || 0);
+  });
+  return complete;
+}
+
+function buildIncidentLocationRows(cases = []) {
+  const counts = { Online: 0, Physical: 0 };
+  cases.forEach((caseItem) => {
+    const value = String(caseItem.incident_location_type || "").trim().toLowerCase();
+    if (value === "online") counts.Online += 1;
+    if (value === "physical" || value === "physical location") counts.Physical += 1;
+  });
+  const total = counts.Online + counts.Physical;
 
   return [
-    ["Reports filed in last 30 days", String(totalFiled)],
-    ["Average daily filings", trend.length ? (totalFiled / trend.length).toFixed(1) : "0"],
-    ["Peak filing day", peak ? `${peak.label} (${peak.value})` : "No filings"],
-    ["Latest Submitted count", String(latestStatus.Submitted || 0)],
-    ["Latest Undergoing Review count", String(latestStatus["Undergoing Review"] || 0)],
-    ["Latest Closed count", String(latestStatus.Closed || 0)],
+    ["Online", String(counts.Online)],
+    ["Physical", String(counts.Physical)],
+    ["TOTAL", String(total)],
+  ];
+}
+
+function getVictimAgeGroup(age) {
+  const numericAge = Number(age);
+  if (!Number.isFinite(numericAge) || numericAge < 0) return null;
+  if (numericAge < 18) return "Under 18";
+  if (numericAge <= 24) return "18-24";
+  if (numericAge <= 34) return "25-34";
+  if (numericAge <= 44) return "35-44";
+  if (numericAge <= 54) return "45-54";
+  return "55+";
+}
+
+function buildCaseManagementTables(cases = [], endorsements = []) {
+  return [
+    {
+      title: "Reported Cases",
+      headers: ["Purpose / Endorsed To", ...LEGAL_CROSSTAB_COLUMNS.slice(0, 5), "Declined to file", "Sub-Total"],
+      rows: buildEndorsementCrosstabRows(endorsements),
+    },
+    {
+      title: "Victims Assisted - Age Group",
+      headers: ["Age Group", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => getVictimAgeGroup(caseItem.age)), VICTIM_AGE_GROUPS),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Victims Assisted - Gender Identity",
+      headers: ["Gender Identity", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.gender_identity), VICTIM_GENDER_IDENTITIES),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Incident Location Type",
+      headers: ["Location Type", "Number of Cases"],
+      rows: buildIncidentLocationRows(cases),
+    },
+    {
+      title: "Incident Location City",
+      headers: ["City", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.city), CITIES),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Perpetrator Gender",
+      headers: ["Gender", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.perpetrator_gender), PERPETRATOR_GENDERS),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Case Categories",
+      headers: ["Category", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => [
+          caseItem.primary_category,
+          ...(caseItem.additional_categories || []),
+        ]), CASE_CATEGORIES),
+        null,
+        true
+      ),
+    },
+    {
+      title: "Case Types",
+      headers: ["Case Type", "Count", "Percentage"],
+      rows: objectToTableRows(
+        includeDomainValues(countCaseValues(cases, (caseItem) => caseItem.case_type), CASE_TYPES),
+        null,
+        true
+      ),
+    },
   ];
 }
 
@@ -1095,54 +1334,91 @@ function addPdfCoverPage(doc, { dateRange, generatedAt, modules }) {
   const width = doc.internal.pageSize.getWidth();
   const height = doc.internal.pageSize.getHeight();
 
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, 0, width, height, "F");
   doc.setFillColor(3, 127, 129);
-  doc.rect(0, 0, width, 145, "F");
+  doc.rect(0, 0, width, 18, "F");
 
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(40, 36, 104, 54, 8, 8, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
   doc.setTextColor(3, 127, 129);
-  doc.text("SAVIRA", 92, 58, { align: "center" });
-  doc.setFontSize(10);
-  doc.text("SASHA", 92, 76, { align: "center" });
+  doc.setFontSize(20);
+  doc.text("SAVIRA", width / 2, 74, { align: "center" });
+  doc.setFontSize(9);
+  doc.setCharSpace(1.8);
+  doc.text("SASHA CASE MANAGEMENT SYSTEM", width / 2, 94, { align: "center" });
+  doc.setCharSpace(0);
+  doc.setDrawColor(3, 127, 129);
+  doc.setLineWidth(1.2);
+  doc.line(72, 116, width - 72, 116);
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(30);
-  doc.text("Report", 40, 188);
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(28);
+  doc.text("INSTITUTIONAL REPORT", width / 2, 174, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  doc.text("Aggregate system summary for internal review.", 40, 212);
-
-  doc.setTextColor(30, 41, 59);
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("Date Range", 40, 280);
-  doc.text("Generated", 40, 325);
-  doc.text("Included Modules", 40, 370);
-
-  doc.setFont("helvetica", "normal");
   doc.setTextColor(71, 85, 105);
-  doc.text(getDateRangeLabel(dateRange), 170, 280);
-  doc.text(generatedAt.toLocaleString("en-PH"), 170, 325);
+  doc.text("Aggregate administrative and program data", width / 2, 198, { align: "center" });
 
-  let y = 370;
-  modules.forEach((reportModule) => {
-    doc.circle(174, y - 4, 2.5, "F");
-    doc.text(reportModule.title, 185, y);
-    y += 20;
-  });
+  const panelX = 72;
+  const panelWidth = width - 144;
+  const labelWidth = 122;
+  const panelY = 244;
+  const rowHeight = 42;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.7);
+  doc.roundedRect(panelX, panelY, panelWidth, rowHeight * 2, 4, 4, "FD");
+  doc.line(panelX, panelY + rowHeight, panelX + panelWidth, panelY + rowHeight);
+  doc.line(panelX + labelWidth, panelY, panelX + labelWidth, panelY + rowHeight * 2);
 
-  doc.setFillColor(255, 247, 237);
-  doc.roundedRect(40, height - 150, width - 80, 58, 8, 8, "F");
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(154, 52, 18);
-  doc.text("Confidential - For internal use only", 58, height - 118);
+  doc.setFontSize(9);
+  doc.setTextColor(51, 65, 85);
+  doc.text("REPORTING PERIOD", panelX + 16, panelY + 26);
+  doc.text("DATE GENERATED", panelX + 16, panelY + rowHeight + 26);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(120, 53, 15);
-  doc.text("This PDF contains aggregate report data only and must be handled according to SAVIRA/SASHA data privacy protocols.", 58, height - 98, {
-    maxWidth: width - 116,
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text(getDateRangeLabel(dateRange), panelX + labelWidth + 16, panelY + 26);
+  doc.text(generatedAt.toLocaleString("en-PH", { timeZone: REPORT_TIME_ZONE }), panelX + labelWidth + 16, panelY + rowHeight + 26);
+
+  const modulesY = 360;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(3, 127, 129);
+  doc.text("REPORT COVERAGE", panelX, modulesY);
+  doc.setDrawColor(203, 213, 225);
+  doc.line(panelX, modulesY + 10, panelX + panelWidth, modulesY + 10);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  modules.forEach((reportModule, index) => {
+    const itemY = modulesY + 39 + index * 28;
+    doc.setFillColor(3, 127, 129);
+    doc.circle(panelX + 5, itemY - 3, 2.2, "F");
+    doc.text(reportModule.title, panelX + 18, itemY);
   });
+
+  doc.setFillColor(236, 253, 245);
+  doc.setDrawColor(167, 243, 208);
+  doc.roundedRect(panelX, height - 158, panelWidth, 70, 4, 4, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(6, 95, 70);
+  doc.text("CONFIDENTIAL - FOR INTERNAL USE ONLY", panelX + 18, height - 130);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text(
+    "This document contains aggregate institutional data and must be handled in accordance with SAVIRA/SASHA data privacy and records-management protocols.",
+    panelX + 18,
+    height - 110,
+    { maxWidth: panelWidth - 36 }
+  );
+
+  doc.setFillColor(3, 127, 129);
+  doc.rect(0, height - 14, width, 14, "F");
 }
 
 function ensurePdfSpace(doc, cursor, requiredHeight) {
@@ -1162,7 +1438,7 @@ function addPdfSectionTitle(doc, title, cursor) {
   cursor.y += 18;
 }
 
-function addPdfTable(doc, { title, headers, rows }, cursor) {
+function addPdfTable(doc, { title, headers, rows, note }, cursor) {
   const width = doc.internal.pageSize.getWidth();
   const margin = 40;
   const contentWidth = width - margin * 2;
@@ -1172,43 +1448,70 @@ function addPdfTable(doc, { title, headers, rows }, cursor) {
     : headers.length === 3
       ? [contentWidth * 0.58, contentWidth * 0.2, contentWidth * 0.22]
       : [contentWidth * 0.3, ...Array(headers.length - 1).fill((contentWidth * 0.7) / (headers.length - 1))];
-  const rowHeight = 18;
+  const minimumRowHeight = 22;
+  const getCellLines = (cell, width) => doc.splitTextToSize(String(cell ?? ""), Math.max(width - 12, 8));
+  const getRowHeight = (row) => Math.max(
+    minimumRowHeight,
+    ...row.map((cell, index) => getCellLines(cell, colWidths[index]).length * 10 + 10)
+  );
+  const headerHeight = getRowHeight(headers);
 
   addPdfSectionTitle(doc, title, cursor);
-  ensurePdfSpace(doc, cursor, rowHeight * 2);
+  ensurePdfSpace(doc, cursor, headerHeight + minimumRowHeight);
 
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, cursor.y, contentWidth, rowHeight, "F");
+  doc.setFillColor(226, 232, 240);
+  doc.setDrawColor(71, 85, 105);
+  doc.setLineWidth(0.6);
+  doc.rect(margin, cursor.y, contentWidth, headerHeight, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
   let x = margin;
   headers.forEach((header, index) => {
-    doc.text(header, x + 6, cursor.y + 12, { maxWidth: colWidths[index] - 12 });
+    const align = index > 0 ? "right" : "left";
+    const cellX = align === "right" ? x + colWidths[index] - 6 : x + 6;
+    doc.text(getCellLines(header, colWidths[index]), cellX, cursor.y + 14, { align });
+    if (index > 0) doc.line(x, cursor.y, x, cursor.y + headerHeight);
     x += colWidths[index];
   });
-  cursor.y += rowHeight;
+  cursor.y += headerHeight;
 
   doc.setFont("helvetica", "normal");
   doc.setTextColor(51, 65, 85);
   safeRows.forEach((row, rowIndex) => {
+    const rowHeight = getRowHeight(row);
     ensurePdfSpace(doc, cursor, rowHeight);
-    if (rowIndex % 2 === 1) {
+    const isTotalRow = rowIndex === safeRows.length - 1 && /^total/i.test(String(row[0] || ""));
+    if (isTotalRow) {
+      doc.setFillColor(226, 232, 240);
+      doc.setFont("helvetica", "bold");
+    } else if (rowIndex % 2 === 1) {
       doc.setFillColor(248, 250, 252);
-      doc.rect(margin, cursor.y, contentWidth, rowHeight, "F");
+      doc.setFont("helvetica", "normal");
+    } else {
+      doc.setFillColor(255, 255, 255);
+      doc.setFont("helvetica", "normal");
     }
+    doc.rect(margin, cursor.y, contentWidth, rowHeight, "FD");
     x = margin;
     row.forEach((cell, index) => {
-      const align = index > 0 && headers.length > 2 ? "right" : "left";
+      const align = index > 0 ? "right" : "left";
       const cellX = align === "right" ? x + colWidths[index] - 6 : x + 6;
-      doc.text(String(cell ?? ""), cellX, cursor.y + 12, {
-        maxWidth: colWidths[index] - 12,
-        align,
-      });
+      doc.text(getCellLines(cell, colWidths[index]), cellX, cursor.y + 14, { align });
+      if (index > 0) doc.line(x, cursor.y, x, cursor.y + rowHeight);
       x += colWidths[index];
     });
     cursor.y += rowHeight;
   });
+  if (note) {
+    cursor.y += 10;
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    const lines = doc.splitTextToSize(note, contentWidth);
+    doc.text(lines, margin, cursor.y + 10);
+    cursor.y += lines.length * 12;
+  }
   cursor.y += 10;
 }
 
@@ -1249,12 +1552,54 @@ function addModulePage(doc, title, metrics, tables) {
   doc.text(title, 40, cursor.y);
   cursor.y += 28;
   addMetricTiles(doc, metrics, cursor);
-  tables.forEach((table) => addPdfTable(doc, table, cursor));
+  tables.forEach((table) => {
+    doc.addPage();
+    addPdfTable(doc, table, { y: 44 });
+  });
+}
+
+function addCertificationPage(doc, { preparedBy, generatedAt }) {
+  doc.addPage();
+  const width = doc.internal.pageSize.getWidth();
+  const margin = 72;
+  let y = 92;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(3, 127, 129);
+  doc.text("CERTIFICATION", width / 2, y, { align: "center" });
+
+  y += 72;
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text("Prepared by:", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(preparedBy || "Authenticated administrator", 170, y);
+  doc.setDrawColor(30, 41, 59);
+  doc.line(170, y + 8, width - margin, y + 8);
+
+  y += 82;
+  doc.setFont("helvetica", "bold");
+  doc.text("Noted by:", margin, y);
+  doc.line(170, y + 8, width - margin, y + 8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Signature over printed name", 170, y + 24);
+
+  y += 82;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text("Date:", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(generatedAt.toLocaleDateString("en-PH", { timeZone: REPORT_TIME_ZONE }), 170, y);
 }
 
 function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsData }) {
   const modules = [];
   const cases = rawData?.cases || [];
+  const endorsements = rawData?.endorsements || [];
 
   if (activeModules.cases && dataAvailability.caseData) {
     modules.push({
@@ -1266,22 +1611,7 @@ function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsDa
         { label: "Completed Reports", value: dataAvailability.caseData.closedCases },
         { label: "Total Cases", value: dataAvailability.caseData.total },
       ],
-      tables: [
-        { title: "Last 30 Days Numeric Summary", headers: ["Metric", "Value"], rows: buildCaseTrendSummaryRows(analyticsData) },
-        { title: "Reports by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byCity, dataAvailability.caseData.total) },
-        { title: "Reports by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byStatus, dataAvailability.caseData.total) },
-        { title: "Case Types", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.caseData.byType, dataAvailability.caseData.total) },
-        { title: "Perpetrator Relationship", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.perpetrator_relationship), cases.length) },
-        { title: "Perpetrator Occupation", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.perpetrator_occupation), cases.length) },
-        { title: "Incident Location Type", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.incident_location_type), cases.length) },
-        { title: "Incident Location", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => item.incident_location), cases.length) },
-        { title: "Harassment/Abuse Categories", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(countBy(cases, (item) => [item.primary_category, ...(item.additional_categories || [])].filter(Boolean))) },
-        {
-          title: "Legal Endorsement Crosstab",
-          headers: ["Endorsed To", ...LEGAL_CROSSTAB_COLUMNS, "Subtotal"],
-          rows: buildEndorsementCrosstabRows(cases),
-        },
-      ],
+      tables: buildCaseManagementTables(cases, endorsements),
     });
   }
 
@@ -1331,9 +1661,33 @@ function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsDa
         { label: "Overdue (Ongoing)", value: dataAvailability.projectData.overdueCount },
       ],
       tables: [
-        { title: "Projects by Status", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byStatus, dataAvailability.projectData.total) },
-        { title: "Projects by Category", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byCategory, dataAvailability.projectData.total) },
-        { title: "Approval Breakdown", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.projectData.byApproval, dataAvailability.projectData.total) },
+        {
+          title: "Projects by Status",
+          headers: ["Category", "Count", "Percentage"],
+          rows: objectToTableRows(
+            includeDomainValues(dataAvailability.projectData.byStatus, PROJECT_STATUSES),
+            dataAvailability.projectData.total,
+            true
+          ),
+        },
+        {
+          title: "Projects by Category",
+          headers: ["Category", "Count", "Percentage"],
+          rows: objectToTableRows(
+            includeDomainValues(dataAvailability.projectData.byCategory, PROJECT_CATEGORIES),
+            dataAvailability.projectData.total,
+            true
+          ),
+        },
+        {
+          title: "Approval Breakdown",
+          headers: ["Approval Status", "Count", "Percentage"],
+          rows: objectToTableRows(
+            includeDomainValues(dataAvailability.projectData.byApproval, PROJECT_APPROVAL_STATUSES),
+            dataAvailability.projectData.total,
+            true
+          ),
+        },
       ],
     });
   }
@@ -1351,7 +1705,7 @@ function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsDa
       tables: [
         { title: "Users by Role", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.byRole, dataAvailability.userData.total) },
         { title: "Users by City", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.byCity, dataAvailability.userData.total) },
-        { title: "Active vs. Deactivated", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.activeBreakdown, dataAvailability.userData.total) },
+        { title: "Activated vs. Deactivated", headers: ["Category", "Count", "Percentage"], rows: objectToTableRows(dataAvailability.userData.activeBreakdown, dataAvailability.userData.total, true) },
       ],
     });
   }
@@ -1359,7 +1713,7 @@ function buildPdfModules({ activeModules, dataAvailability, rawData, analyticsDa
   return modules;
 }
 
-async function exportToPDF({ activeModules, dateRange, dataAvailability, rawData, analyticsData }) {
+async function exportToPDF({ activeModules, dateRange, dataAvailability, rawData, analyticsData, preparedBy }) {
   const generatedAt = new Date();
   const modules = buildPdfModules({ activeModules, dataAvailability, rawData, analyticsData });
   if (modules.length === 0) return;
@@ -1371,11 +1725,38 @@ async function exportToPDF({ activeModules, dateRange, dataAvailability, rawData
     addModulePage(doc, reportModule.title, reportModule.metrics, reportModule.tables);
   });
 
+  addCertificationPage(doc, { preparedBy, generatedAt });
   addPdfFooter(doc, generatedAt);
   return {
     blob: doc.output("blob"),
     filename: `report_${generatedAt.toISOString().slice(0, 10)}.pdf`,
   };
+}
+
+function getActiveReportModules(activeModules = {}) {
+  return Object.entries(activeModules)
+    .filter(([, enabled]) => enabled)
+    .map(([moduleName]) => moduleName);
+}
+
+function recordReportGeneration({ format, modules, dateRange, fileName }) {
+  internalApiFetch("/api/reports/generation-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      format,
+      modules,
+      date_range: dateRange,
+      file_name: fileName,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.warn(`Report generation audit log failed (${response.status}).`);
+    }
+  }).catch((err) => {
+    console.warn("Report generation audit log failed.", err);
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1609,12 +1990,12 @@ function BarChart({ data, color, colorVar = "--accent-primary", height = 200 }) 
 // DONUT CHART — true donut (ring) with distinct colors + pct legend
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DonutChart({ data, colors }) {
-  const entries = Object.entries(data || {}).filter(([, value]) => Number(value) > 0);
+function DonutChart({ data, colors, includeZero = false }) {
+  const entries = Object.entries(data || {}).filter(([, value]) => includeZero || Number(value) > 0);
   if (!entries.length) return <p className={styles.noData}>No data available.</p>;
 
   const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (!total) return <p className={styles.noData}>No data available.</p>;
+  const percentageBase = total || 1;
 
   const palette = colors || DONUT_COLORS_STATUS;
 
@@ -1624,7 +2005,7 @@ function DonutChart({ data, colors }) {
   let cumulative = 0;
 
   const segments = entries.map(([label, value], i) => {
-    const pct = value / total;
+    const pct = value / percentageBase;
     const length = pct * circumference;
     const offset = cumulative * circumference;
     cumulative += pct;
@@ -1947,6 +2328,7 @@ function ReportSection({ icon, title, children, id }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReportGenerator() {
+  const { user: authUser } = useAuth();
   const [dateRange, setDateRange]         = useState("all");
   const [advancedFilters, setAdvancedFilters] = useState({
     from: "",
@@ -1971,7 +2353,7 @@ export default function ReportGenerator() {
   const [pdfPreview, setPdfPreview]         = useState(null);
   const [error, setError]                   = useState(null);
   const exportMenuRef                       = useRef(null);
-  const rawRef = useRef({ cases: [], legalCases: [], volunteers: [], projects: [], users: [], statusHistoryByCaseId: {} });
+  const rawRef = useRef({ cases: [], legalCases: [], volunteers: [], projects: [], users: [], endorsements: [], statusHistoryByCaseId: {} });
   const [filterOptionsSource, setFilterOptionsSource] = useState({ cases: [], volunteers: [], users: [] });
 
   const [caseData,      setCaseData]      = useState(null);
@@ -2012,26 +2394,33 @@ export default function ReportGenerator() {
     setLoading(true);
     setError(null);
     try {
-      const [casesRes, volunteersRes, projectsRes, usersRes, legalRes] = await Promise.allSettled([
-        internalApiFetch(`/api/case_reports/all`,       { credentials: "include" }),
+      const [casesRes, volunteersRes, projectsRes, usersRes, legalRes, endorsementsRes] = await Promise.allSettled([
+        fetchAllCaseReportPages(),
         internalApiFetch(`/api/volunteer_applications`, { credentials: "include" }),
         internalApiFetch(`/api/reports/projects`,       { credentials: "include" }),
         internalApiFetch(`/api/users`,                  { credentials: "include" }),
         internalApiFetch(`/api/legal_reviews/management`, { credentials: "include" }),
+        internalApiFetch(`/api/reports/case-endorsements`, { credentials: "include" }),
       ]);
 
       const safeJson = async (settled) => {
-        if (settled.status !== "fulfilled" || !settled.value.ok) return null;
+        if (settled.status !== "fulfilled") return null;
+        if (Array.isArray(settled.value)) return settled.value;
+        if (!settled.value.ok) return null;
         try { return await settled.value.json(); } catch { return null; }
       };
 
-      const [casesRaw, volunteersRaw, projectsRaw, usersRaw, legalRaw] = await Promise.all([
-        safeJson(casesRes), safeJson(volunteersRes), safeJson(projectsRes), safeJson(usersRes), safeJson(legalRes),
+      const [casesRaw, volunteersRaw, projectsRaw, usersRaw, legalRaw, endorsementsRaw] = await Promise.all([
+        safeJson(casesRes), safeJson(volunteersRes), safeJson(projectsRes), safeJson(usersRes), safeJson(legalRes), safeJson(endorsementsRes),
       ]);
 
       const normalizedCases = toArray(casesRaw).map(normalizeCaseReport);
       const legalPayload = legalRaw?.data || legalRaw;
-      const normalizedLegalCases = toArray(legalPayload?.cases || legalRaw).map(normalizeCaseReport);
+      const legalReviews = legalPayload?.reviews || {};
+      const normalizedLegalCases = toArray(legalPayload?.cases || legalRaw).map((caseItem) => normalizeCaseReport({
+        ...caseItem,
+        ...(legalReviews[caseItem.public_id || caseItem.id || caseItem.case_report_id] || {}),
+      }));
       const statusHistoryByCaseId = await fetchApprovedStatusHistoryMap(normalizedCases);
 
       rawRef.current = {
@@ -2040,6 +2429,7 @@ export default function ReportGenerator() {
         volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
         projects:   toArray(projectsRaw).map(normalizeProject),
         users:      toArray(usersRaw).map(normalizeUser),
+        endorsements: toArray(endorsementsRaw).map(normalizeCaseReport),
         statusHistoryByCaseId,
       };
       setFilterOptionsSource(rawRef.current);
@@ -2079,11 +2469,16 @@ export default function ReportGenerator() {
     });
   }
 
+  const authenticatedExportName = [authUser?.first_name, authUser?.middle_name, authUser?.last_name, authUser?.extension_name]
+    .filter(Boolean)
+    .join(" ") || authUser?.user_name || authUser?.email || "Authenticated administrator";
+
   async function handleExportXLSX() {
     setExportMenuOpen(false);
     try {
-      await exportToXLSX({
+      const result = await exportToXLSX({
         activeModules,
+        dateRange,
         dataAvailability: {
           caseData,
           legalData,
@@ -2091,8 +2486,20 @@ export default function ReportGenerator() {
           projectData,
           userData,
         },
-        analyticsData,
+        rawData: {
+          ...rawRef.current,
+          ...applyAdvancedFilters(rawRef.current, dateRange, advancedFilters),
+        },
+        preparedBy: authenticatedExportName,
       });
+      if (result?.filename) {
+        recordReportGeneration({
+          format: "xlsx",
+          modules: getActiveReportModules(activeModules),
+          dateRange,
+          fileName: result.filename,
+        });
+      }
     } catch (err) {
       console.error("Excel export failed:", err);
       setError("Failed to generate Excel workbook. Please try again.");
@@ -2113,8 +2520,12 @@ export default function ReportGenerator() {
           projectData,
           userData,
         },
-        rawData: rawRef.current,
+        rawData: {
+          ...rawRef.current,
+          ...applyAdvancedFilters(rawRef.current, dateRange, advancedFilters),
+        },
         analyticsData,
+        preparedBy: authenticatedExportName,
       });
       if (result?.blob) {
         setPdfPreview((current) => {
@@ -2123,6 +2534,12 @@ export default function ReportGenerator() {
             url: URL.createObjectURL(result.blob),
             filename: result.filename,
           };
+        });
+        recordReportGeneration({
+          format: "pdf",
+          modules: getActiveReportModules(activeModules),
+          dateRange,
+          fileName: result.filename,
         });
       }
     } catch (err) {
@@ -2502,13 +2919,13 @@ export default function ReportGenerator() {
                     <DonutChart data={userData.byGender} colors={DONUT_COLORS_USER} />
                   </div> */}
 
-                  {/* Active vs Deactivated */}
+                  {/* Activated vs Deactivated */}
                   <div className={styles.breakdownCard}>
                     <h4 className={styles.breakdownCardTitle}>
                       <FiUserCheck size={12} style={{ marginRight: 4 }} />
-                      Active vs. Deactivated
+                      Activated vs. Deactivated
                     </h4>
-                    <DonutChart data={userData.activeBreakdown} colors={DONUT_COLORS_BINARY} />
+                    <DonutChart data={userData.activeBreakdown} colors={DONUT_COLORS_BINARY} includeZero />
                   </div>
 
                 </div>

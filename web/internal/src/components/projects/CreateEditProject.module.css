@@ -385,48 +385,101 @@
   margin-bottom: 0;
 }
 
-.peopleRow {
+.selectedPeople {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.removeBtn {
-  flex-shrink: 0;
-  background: #fee2e2;
-  color: #dc2626;
-  border: none;
-  border-radius: 6px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.removeBtn:hover {
-  background: #fca5a5;
-}
-
-.addPersonBtn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: 1.5px dashed var(--sasha-border);
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 2.4rem;
+  padding: 0.5rem;
+  border: 1px solid var(--sasha-border);
   border-radius: 8px;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--sasha-teal);
-  cursor: pointer;
-  transition: border-color 0.12s;
+  background: var(--sasha-offwhite);
+  margin-bottom: 0.6rem;
 }
-.addPersonBtn:hover {
-  border-color: var(--sasha-teal);
+
+.emptyPeople {
+  align-self: center;
+  color: var(--sasha-muted);
+  font-size: 0.8rem;
+}
+
+.personChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.personChip button {
+  border: none;
+  background: transparent;
+  color: #0369a1;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.staffSearchWrap {
+  position: relative;
+}
+
+.staffResults,
+.staffNoResults {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--sasha-white);
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.staffResults {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.staffResult {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #eef2f7;
+  background: transparent;
+  color: var(--sasha-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+}
+
+.staffResult:hover {
   background: var(--sasha-teal-light);
+}
+
+.staffResult span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.staffResult small,
+.staffNoResults {
+  color: var(--sasha-muted);
+  font-size: 0.78rem;
+}
+
+.staffNoResults {
+  padding: 0.75rem;
 }
 
 /* ══ SIDEBAR ═══════════════════════════════════════════ */
@@ -635,8 +688,7 @@
 
 :global(html[data-theme="dark"]) .backBtn,
 :global(html[data-theme="dark"]) .btnSecondary,
-:global(html[data-theme="dark"]) .modeTab,
-:global(html[data-theme="dark"]) .addPersonBtn {
+:global(html[data-theme="dark"]) .modeTab {
   background: var(--sasha-surface);
   border-color: var(--sasha-border);
   color: var(--sasha-text);
@@ -644,8 +696,7 @@
 
 :global(html[data-theme="dark"]) .backBtn:hover,
 :global(html[data-theme="dark"]) .btnSecondary:hover,
-:global(html[data-theme="dark"]) .modeTab:hover,
-:global(html[data-theme="dark"]) .addPersonBtn:hover {
+:global(html[data-theme="dark"]) .modeTab:hover {
   background: var(--sasha-teal-light);
   border-color: var(--sasha-teal-text);
   color: var(--sasha-teal-text);
@@ -693,6 +744,22 @@
 :global(html[data-theme="dark"]) .formInput:focus {
   border-color: var(--sasha-teal-text);
   box-shadow: 0 0 0 3px rgba(111, 211, 204, 0.16);
+}
+
+:global(html[data-theme="dark"]) .selectedPeople,
+:global(html[data-theme="dark"]) .staffResults,
+:global(html[data-theme="dark"]) .staffNoResults {
+  background: var(--sasha-surface-inset);
+  border-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .staffResult {
+  color: var(--sasha-text);
+  border-bottom-color: var(--sasha-border);
+}
+
+:global(html[data-theme="dark"]) .staffResult:hover {
+  background: var(--sasha-teal-light);
 }
 
 :global(html[data-theme="dark"]) .modeTabActive,

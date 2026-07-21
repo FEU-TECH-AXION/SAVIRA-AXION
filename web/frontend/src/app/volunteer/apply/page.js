@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import styles from "./ApplyApplicationForm.module.css";
 import { useRouter } from "next/navigation";
 import { FaCheck } from "react-icons/fa6";
@@ -119,6 +119,9 @@ const APP_STATUS_DISPLAY = {
 };
 
 const VOLUNTEER_APPLICATION_DRAFT_KEY = "savira_volunteer_application_draft";
+const REAPPLICATION_WAIT_DAYS = 15;
+const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000;
+const REAPPLICATION_ALLOWED_STATUSES = new Set(["rejected", "withdrawn"]);
 
 function getUserDraftKey(user) {
   return user?.id || user?.user_id || user?.email || "anonymous";
@@ -126,6 +129,74 @@ function getUserDraftKey(user) {
 
 function getScopedDraftKey(baseKey, user) {
   return `${baseKey}:${getUserDraftKey(user)}`;
+}
+
+function getApplicationDecisionDate(application = {}) {
+  return (
+    application.resolved_at ||
+    application.updated_at ||
+    application.created_at ||
+    null
+  );
+}
+
+function formatStatus(status) {
+  return String(status || "application")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getSubmissionEligibility(applications) {
+  if (!applications.length) return { allowed: true };
+
+  const approvedApplication = applications.find(
+    (app) => (app.application_status || "").toLowerCase() === "approved"
+  );
+  if (approvedApplication) {
+    return {
+      allowed: false,
+      reason: "approved",
+      applicationId: approvedApplication.volunteer_application_id,
+    };
+  }
+
+  const blockingApplication = applications.find((app) => {
+    const status = (app.application_status || "").toLowerCase();
+    return !REAPPLICATION_ALLOWED_STATUSES.has(status);
+  });
+  if (blockingApplication) {
+    return {
+      allowed: false,
+      reason: "active",
+      applicationId: blockingApplication.volunteer_application_id,
+      status: blockingApplication.application_status,
+    };
+  }
+
+  const latestTerminalApplication = applications
+    .filter((app) =>
+      REAPPLICATION_ALLOWED_STATUSES.has((app.application_status || "").toLowerCase())
+    )
+    .sort(
+      (a, b) =>
+        new Date(getApplicationDecisionDate(b) || 0) -
+        new Date(getApplicationDecisionDate(a) || 0)
+    )[0];
+
+  const decisionAt = new Date(getApplicationDecisionDate(latestTerminalApplication));
+  if (!Number.isNaN(decisionAt.getTime())) {
+    const unlocksAt = new Date(decisionAt.getTime() + REAPPLICATION_WAIT_MS);
+    if (Date.now() < unlocksAt.getTime()) {
+      return {
+        allowed: false,
+        reason: "cooldown",
+        unlocksAt,
+        status: latestTerminalApplication.application_status,
+      };
+    }
+  }
+
+  return { allowed: true };
 }
 
 const INITIAL_APPLICANT = {
@@ -147,7 +218,7 @@ const INITIAL_ESSAY = {
   description: "",
 };
 
-const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member"];
 const PRONOUN_OPTIONS = ["he", "she", "they"];
 const ORGANIZATION_OPTIONS = ["BSP", "GSP", "No Organization / Independent", "Other"];
 const ORGANIZATION_LABELS = {
@@ -553,7 +624,6 @@ function StepApplicantInfo({ data, onChange, errors, clearError }) {
             <option value="Male">Male</option>
             <option value="Female">Female</option>
             <option value="LGBTQIA+ member">LGBTQIA+ member</option>
-            <option value="Prefer not to say">Prefer not to say</option>
           </Select>
         </Field>
         <Field label="Pronouns">
@@ -1319,7 +1389,7 @@ function ApplicationStatusCard({ applicationData, applicationNumber }) {
     lastUpdated         = null,
   } = applicationData ?? {};
 
-  const displayId       = `APP-${String(id).padStart(5, "0")}`;
+  const displayId       = applicationId || `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
   const evaluatorLabel  = assignedEvaluator ?? "Unassigned";
   const updatedAgo      = timeAgo(lastUpdated);
 
@@ -1382,6 +1452,7 @@ export default function CreateApplication({
   events          = [],
 }) {
   const { t } = useI18n();
+  const router = useRouter();
   const { user: authUser, loading: authLoading } = useAuth();
   const [step, setStep]   = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -1403,7 +1474,7 @@ export default function CreateApplication({
               const res = await authFetch(`${API}/api/volunteer_applications/my_applications`)
               if (res.ok) {
                   const data = await res.json()
-                  setMyApplications(data)
+                  setMyApplications(Array.isArray(data) ? data : data.data || [])
               }
           } catch (err) {
               console.error('Failed to fetch applications:', err)
@@ -1461,6 +1532,10 @@ export default function CreateApplication({
   const hasLoadedDraft = useRef(false);
   const hasHydratedProfile = useRef(false);
   const draftStorageKey = getScopedDraftKey(VOLUNTEER_APPLICATION_DRAFT_KEY, authUser);
+  const eligibility = useMemo(
+    () => (appsLoading ? null : getSubmissionEligibility(myApplications)),
+    [appsLoading, myApplications]
+  );
 
   const resetApplicationDraft = () => {
     localStorage.removeItem(draftStorageKey);
@@ -1478,7 +1553,20 @@ export default function CreateApplication({
   };
 
   useEffect(() => {
-    if (authLoading) return undefined;
+    if (authLoading || appsLoading || !eligibility) return undefined;
+
+    if (!eligibility.allowed) {
+      const cleanupTimer = window.setTimeout(() => {
+        localStorage.removeItem(draftStorageKey);
+        localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+        setDraftNotice("");
+        setDraftChecked(true);
+        isDirty.current = false;
+        hasLoadedDraft.current = false;
+      }, 0);
+      return () => window.clearTimeout(cleanupTimer);
+    }
+
     const timer = window.setTimeout(() => {
       try {
         localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
@@ -1498,7 +1586,7 @@ export default function CreateApplication({
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [authLoading, draftStorageKey]);
+  }, [authLoading, appsLoading, eligibility, draftStorageKey]);
 
   useEffect(() => {
     if (authLoading || !draftChecked || hasLoadedDraft.current || hasHydratedProfile.current) return;
@@ -1521,6 +1609,7 @@ export default function CreateApplication({
 
   useEffect(() => {
     if (submitted) return;
+    if (!draftChecked || !eligibility?.allowed) return;
     if (!isDirty.current) {
       const hasDraft =
         Object.values(applicant).some(Boolean) ||
@@ -1549,6 +1638,8 @@ export default function CreateApplication({
     essay,
     submitted,
     draftStorageKey,
+    draftChecked,
+    eligibility,
   ]);
 
   const clearError = (key) => {
@@ -1610,6 +1701,10 @@ export default function CreateApplication({
   const handleSubmit = async () => {
       try {
           setSubmitError(null)
+          if (eligibility && !eligibility.allowed) {
+              setSubmitError("You are not eligible to submit another volunteer application yet. Please check your application history.")
+              return
+          }
           const normalizedApplicant = normalizeApplicantOptions(applicant);
           const normalizedScreening = normalizeScreeningOptions(screeningQuestions);
           setApplicant(normalizedApplicant);
@@ -1688,7 +1783,7 @@ export default function CreateApplication({
         </section>
 
         {/* ── Paginated Form Card ── */}
-        {draftNotice && !submitted && (
+        {draftNotice && !submitted && eligibility?.allowed && (
           <div className={`${styles.alertCard} ${styles.alertCardInfo}`}>
             <div className={styles.alertContent}>
               <span className={styles.alertLabel}>Draft found</span>
@@ -1703,7 +1798,46 @@ export default function CreateApplication({
             </button>
           </div>
         )}
-        {!submitted ? (
+        {!submitted && appsLoading ? (
+          <div className={`${styles.alertCard} ${styles.alertCardInfo}`}>
+            <div className={styles.alertContent}>
+              <span className={styles.alertLabel}>Checking application status</span>
+              <p className={styles.alertText}>Please wait while we confirm whether you can submit a volunteer application.</p>
+            </div>
+          </div>
+        ) : !submitted && eligibility && !eligibility.allowed ? (
+          <div className={`${styles.alertCard} ${styles.alertCardWarning}`} role="alert">
+            <div className={styles.alertContent}>
+              <span className={styles.alertLabel}>Unable to submit application</span>
+              {eligibility.reason === "approved" ? (
+                <p className={styles.alertText}>
+                  Your volunteer application has already been approved. You can&apos;t submit another application.
+                </p>
+              ) : eligibility.reason === "cooldown" ? (
+                <p className={styles.alertText}>
+                  Your previous application was {String(eligibility.status || "").toLowerCase()}. You may submit another application after{" "}
+                  {eligibility.unlocksAt.toLocaleDateString("en-PH", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}{" "}
+                  ({REAPPLICATION_WAIT_DAYS}-day waiting period).
+                </p>
+              ) : (
+                <p className={styles.alertText}>
+                  You already have an application marked {formatStatus(eligibility.status)}. You can&apos;t submit another application while it is under review.
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              className={styles.alertAction}
+              onClick={() => router.push("/volunteer/history")}
+            >
+              View Application History
+            </button>
+          </div>
+        ) : !submitted ? (
           <div className={styles.formCard}>
             {/* Form card header */}
             <div className={styles.formCardHeader}>
@@ -1798,8 +1932,8 @@ export default function CreateApplication({
               Your application has been received. We will review it and get back to you via your provided contact details.
               All information is handled with strict confidentiality.
             </p>
-            <button className={styles.submitBtn} onClick={() => { setSubmitted(false); setStep(0); }}>
-              {t("volunteerSubmitAnother")}
+            <button className={styles.submitBtn} onClick={() => router.push("/volunteer/history")}>
+              View Application History
             </button>
           </div>
         )}
@@ -1824,6 +1958,7 @@ export default function CreateApplication({
                   applicationNumber={i + 1}
                   applicationData={{
                     id: app.volunteer_application_id,
+                    applicationId: app.application_ref,
                     applicationStatus: app.application_status || "pending",
                     dateApplied: app.created_at
                       ? new Date(app.created_at).toLocaleDateString("en-PH", {

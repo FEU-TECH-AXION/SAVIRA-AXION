@@ -197,9 +197,9 @@ export default function ViewChapter() {
               <tbody>
                 {stats.members.map((member) => (
                   <tr key={member.userId || member.fullName}>
-                    <td><FiUsers /> {member.fullName || "Unnamed member"}</td>
-                    <td>{member.membershipType || "Unclassified"}</td>
-                    <td>{member.affiliation || "No affiliation recorded"}</td>
+                    <td className={styles.truncateCell} title={member.fullName || "Unnamed member"}><FiUsers /> {member.fullName || "Unnamed member"}</td>
+                    <td className={styles.truncateCell} title={member.membershipType || "Unclassified"}>{member.membershipType || "Unclassified"}</td>
+                    <td className={styles.truncateCell} title={member.affiliation || "No affiliation recorded"}>{member.affiliation || "No affiliation recorded"}</td>
                     <td>{member.oathTaken ? "Yes" : "No"}</td>
                     <td>{member.organizingCommittee ? "Yes" : "No"}</td>
                     <td>{member.organizingGroup ? "Yes" : "No"}</td>

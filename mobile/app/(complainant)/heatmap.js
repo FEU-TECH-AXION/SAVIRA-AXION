@@ -275,7 +275,6 @@ const GENDER_OPTIONS = [
   'Male',
   'Female',
   'LGBTQIA+ member',
-  'Prefer not to say',
 ];
 
 const PERPETRATOR_GENDER_OPTIONS = [

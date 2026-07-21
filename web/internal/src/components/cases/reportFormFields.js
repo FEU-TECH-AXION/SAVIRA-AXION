@@ -230,7 +230,7 @@ const LONG_TEXT_MAX_LENGTH = 1000;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
 const REPORT_TYPE_OPTIONS = ["Me (Myself)", "Someone else"];
-const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member"];
 const ORGANIZATION_OPTIONS = [
   "Boy Scouts of the Philippines (BSP)",
   "Girl Scouts of the Philippines (GSP)",

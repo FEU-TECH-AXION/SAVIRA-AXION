@@ -6,6 +6,7 @@ const {
   notifyCaseOwner,
   notifyRoleUsers,
 } = require('../services/notificationService')
+const { getPublicIdByCaseReportId } = require('../utils/casePublicIds')
 
 function getStatusNameById(statusId) {
   return Object.entries(CaseStatusHistory.STATUS_ID_MAP)
@@ -109,7 +110,14 @@ const getBatchApprovedHistory = async (req, res) => {
       .filter((id) => Number.isFinite(id))
 
     const data = await CaseStatusHistory.getApprovedByCaseReportIds(caseIds)
-    res.json({ data })
+    const publicRows = await Promise.all(caseIds.map(async (id) => [id, await getPublicIdByCaseReportId(id)]))
+    const publicById = Object.fromEntries(publicRows)
+    res.json({
+      data: data.map((row) => ({
+        ...row,
+        case_report_id: publicById[row.case_report_id] || row.case_report_id,
+      })),
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -182,7 +190,9 @@ const submitStatusChange = async (req, res) => {
 
     const currentStatus = getStatusNameById(currentCase.case_status_id)
     const allowedTransitions = getAllowedTransitions(currentStatus, requesterRole)
-    if (!allowedTransitions.includes(proposed_status)) {
+    const isSameStatusUpdate = proposed_status === currentStatus
+    // Same-status submissions are follow-up audit entries, not workflow transitions.
+    if (!isSameStatusUpdate && !allowedTransitions.includes(proposed_status)) {
       return res.status(403).json({
         error: `Your role cannot move this case from "${currentStatus}" to "${proposed_status}".`,
       })
@@ -203,7 +213,7 @@ const submitStatusChange = async (req, res) => {
       }
     }
 
-    const requiresApproval = CaseStatusHistory.APPROVAL_REQUIRED_STATUSES.has(proposed_status)
+    const requiresApproval = !isSameStatusUpdate && CaseStatusHistory.APPROVAL_REQUIRED_STATUSES.has(proposed_status)
     if (requiresApproval) {
       const existingPending = await CaseStatusHistory.getPending(case_report_id)
       if (existingPending) {
@@ -285,30 +295,32 @@ const submitStatusChange = async (req, res) => {
     })
 
     if (requiresApproval) {
+      const publicId = await getPublicIdByCaseReportId(case_report_id)
       fireAndForget(
         notifyRoleUsers(['Admin'], {
           title: 'Case status approval needed',
           body: `Report #${case_report_id} has a pending status change to ${proposed_status}.`,
           data: {
             type: 'case_status',
-            case_report_id,
+            case_report_id: publicId,
             status_history_id: historyRow.history_id,
-            link: `/cases/view?id=${case_report_id}`,
+            link: `/cases/view?caseId=${publicId}`,
             priority: 'high',
           },
         }),
         'Failed to notify admins about pending status change'
       )
     } else {
+      const publicId = await getPublicIdByCaseReportId(case_report_id)
       fireAndForget(
         notifyCaseOwner(case_report_id, {
           title: 'Report status updated',
           body: `Your report is now ${proposed_status}.`,
           data: {
             type: 'case_status',
-            case_report_id,
+            case_report_id: publicId,
             status_history_id: historyRow.history_id,
-            link: `/cases/view?id=${case_report_id}`,
+            link: `/report/view?caseId=${publicId}`,
             priority: 'high',
           },
         }),
@@ -320,8 +332,8 @@ const submitStatusChange = async (req, res) => {
       message: requiresApproval
         ? 'Status change submitted for admin approval.'
         : 'Status updated successfully.',
-      historyRow,
-      assessment,
+      historyRow: { ...historyRow, case_report_id: await getPublicIdByCaseReportId(historyRow.case_report_id) },
+      assessment: { ...assessment, case_report_id: await getPublicIdByCaseReportId(assessment.case_report_id) },
       requiresApproval,
     })
   } catch (err) {
@@ -399,7 +411,7 @@ const submitStatusOverride = async (req, res) => {
 
     res.status(201).json({
       message: 'Case status override recorded.',
-      historyRow,
+      historyRow: { ...historyRow, case_report_id: await getPublicIdByCaseReportId(historyRow.case_report_id) },
     })
   } catch (err) {
     console.error('[submitStatusOverride]', err.message)
@@ -434,22 +446,26 @@ const approveStatusChange = async (req, res) => {
       : await CaseStatusHistory.approve(Number(historyId), approver.user_id)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'approved')
     if (historyRow.case_report_id) {
+      const publicId = await getPublicIdByCaseReportId(historyRow.case_report_id)
       fireAndForget(
         notifyCaseOwner(historyRow.case_report_id, {
           title: 'Report status approved',
           body: `Your report is now ${getStatusNameById(historyRow.case_status_id)}.`,
           data: {
             type: 'case_status',
-            case_report_id: historyRow.case_report_id,
+            case_report_id: publicId,
             status_history_id: historyRow.history_id || historyId,
-            link: `/cases/view?id=${historyRow.case_report_id}`,
+            link: `/report/view?caseId=${publicId}`,
             priority: 'high',
           },
         }),
         'Failed to notify case owner about approved status'
       )
     }
-    res.json({ message: 'Status change approved and case updated.', historyRow })
+    res.json({
+      message: 'Status change approved and case updated.',
+      historyRow: { ...historyRow, case_report_id: await getPublicIdByCaseReportId(historyRow.case_report_id) },
+    })
   } catch (err) {
     console.error('[approveStatusChange]', err.stack || err)
     if (String(err.message || '').includes('Pending status change not found')) {
@@ -487,22 +503,26 @@ const rejectStatusChange = async (req, res) => {
       : await CaseStatusHistory.reject(Number(historyId), approver.user_id, rejection_reason)
     await CaseAssessments.updateAssessmentStatus(Number(historyId), 'rejected')
     if (historyRow.case_report_id) {
+      const publicId = await getPublicIdByCaseReportId(historyRow.case_report_id)
       fireAndForget(
         notifyCaseOwner(historyRow.case_report_id, {
           title: 'Report status update rejected',
           body: 'A proposed status update for your report was not approved.',
           data: {
             type: 'case_status',
-            case_report_id: historyRow.case_report_id,
+            case_report_id: publicId,
             status_history_id: historyRow.history_id || historyId,
-            link: `/cases/view?id=${historyRow.case_report_id}`,
+            link: `/report/view?caseId=${publicId}`,
             priority: 'normal',
           },
         }),
         'Failed to notify case owner about rejected status'
       )
     }
-    res.json({ message: 'Status change rejected.', historyRow })
+    res.json({
+      message: 'Status change rejected.',
+      historyRow: { ...historyRow, case_report_id: await getPublicIdByCaseReportId(historyRow.case_report_id) },
+    })
   } catch (err) {
     console.error('[rejectStatusChange]', err.stack || err)
     if (String(err.message || '').includes('Pending status change not found')) {

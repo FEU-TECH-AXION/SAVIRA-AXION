@@ -24,7 +24,11 @@ const STATUS_ID_BY_NAME = Object.fromEntries(
 
 const CASE_LIST_SELECT = `
   case_report_id,
+  public_id,
+  case_code,
   complainant_id,
+  age,
+  gender_identity,
   incident_description,
   incident_city,
   incident_province,
@@ -33,6 +37,7 @@ const CASE_LIST_SELECT = `
   incident_date,
   perpetrator_relationship,
   perpetrator_occupation,
+  perpetrator_gender,
   case_status_id,
   created_at,
   is_current,
@@ -192,6 +197,20 @@ async function getCaseAssessmentDetails(caseReportId) {
     .order('created_at', { ascending: false })
   if (error) throw error
 
+  const userIds = [...new Set((assessments || []).map((row) => row.changed_by_id).filter(Boolean))]
+  const actorById = await getHistoryActorMap(userIds)
+  const enrichedAssessments = (assessments || []).map((row) => {
+    const actor = actorById[row.changed_by_id]
+    return {
+      ...row,
+      by: formatHistoryActor(actor, row.changed_by_role),
+      actorName: formatHistoryActorName(actor),
+      actorRole: actor?.roles?.role_name || row.changed_by_role || null,
+      changed_by_name: formatHistoryActorName(actor),
+      changed_by_role: actor?.roles?.role_name || row.changed_by_role || null,
+    }
+  })
+
   const merged = {
     case_type: null,
     primary_category: null,
@@ -201,7 +220,7 @@ async function getCaseAssessmentDetails(caseReportId) {
     endorsement: null,
   }
 
-  for (const row of assessments || []) {
+  for (const row of enrichedAssessments) {
     if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
     if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
     if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
@@ -209,7 +228,7 @@ async function getCaseAssessmentDetails(caseReportId) {
     if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
   }
 
-  return { merged: stripAssessmentMergeFlags(merged), assessmentHistory: assessments || [] }
+  return { merged: stripAssessmentMergeFlags(merged), assessmentHistory: enrichedAssessments }
 }
 
 async function getCaseAssignmentsForDetail(caseReportId) {
@@ -345,6 +364,8 @@ async function getCaseSummaryById(caseReportId) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
+      case_code,
       complainant_id,
       name,
       email,
@@ -403,6 +424,8 @@ async function getReportsByUserId(complainantId) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
+      case_code,
       incident_description,
       incident_city,
       incident_date,
@@ -550,13 +573,17 @@ async function getStatusHistoryMap(caseIds, { staffView = true } = {}) {
   const actorById = await getHistoryActorMap(userIds)
 
   return (data || []).reduce((map, row) => {
+    const actor = actorById[row.changed_by_id]
     if (!map[row.case_report_id]) map[row.case_report_id] = []
     map[row.case_report_id].push({
       historyId: row.history_id,
       displayId: row.display_id,
       status: row.case_status?.case_status_name || STATUS_NAME_BY_ID[row.case_status_id] || null,
       date: new Date(row.approved_at || row.created_at).toLocaleDateString('en-PH'),
-      by: formatHistoryActor(actorById[row.changed_by_id], row.changed_by_role),
+      by: formatHistoryActor(actor, row.changed_by_role),
+      actorName: formatHistoryActorName(actor),
+      actorRole: actor?.roles?.role_name || row.changed_by_role || null,
+      changed_by_role: actor?.roles?.role_name || row.changed_by_role || null,
       notes: row.notes,
       formData: row.form_data,
       approvalStatus: row.approval_status,
@@ -587,15 +614,19 @@ async function getHistoryActorMap(userIds) {
 
 function formatHistoryActor(user, fallbackRole) {
   const role = user?.roles?.role_name || fallbackRole || ''
-  const name = user
+  const name = formatHistoryActorName(user)
+
+  if (name && role) return `${name} - ${role}`
+  return name || role || 'System'
+}
+
+function formatHistoryActorName(user) {
+  return user
     ? [user.first_name, user.middle_name, user.last_name, user.extension_name]
         .filter(Boolean)
         .join(' ')
         .trim()
     : ''
-
-  if (name && role) return `${name} - ${role}`
-  return name || role || 'System'
 }
 
 function withStatusHistory(report, statusHistoryMap) {
@@ -1020,11 +1051,17 @@ async function getAllReports(options = {}) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
+      case_code,
       complainant_id,
+      age,
+      gender_identity,
       incident_description,
       incident_city,
       incident_province,
+      incident_location_type,
       incident_date,
+      perpetrator_gender,
       case_status_id,
       created_at,
       is_current,
@@ -1210,6 +1247,21 @@ async function getDuplicateMatches(caseIds) {
     console.warn('[getDuplicateMatches] duplicate metadata unavailable:', error.message)
     return {}
   }
+  const matchedIds = [
+    ...new Set((data || [])
+      .flatMap((item) => [item.case_report_id, item.matched_case_report_id])
+      .filter(Boolean)),
+  ]
+  let publicById = {}
+  if (matchedIds.length > 0) {
+    const { data: publicRows, error: publicError } = await supabase
+      .from('case_reports')
+      .select('case_report_id, public_id')
+      .in('case_report_id', matchedIds)
+    if (!publicError) {
+      publicById = Object.fromEntries((publicRows || []).map((row) => [row.case_report_id, row.public_id]))
+    }
+  }
   return (data || [])
     .map((item) => ({
       ...item,
@@ -1218,7 +1270,11 @@ async function getDuplicateMatches(caseIds) {
     .filter((item) => item.similarity_score >= 45)
     .reduce((map, item) => {
       if (!map[item.case_report_id]) map[item.case_report_id] = []
-      map[item.case_report_id].push(item)
+      map[item.case_report_id].push({
+        ...item,
+        case_report_id: publicById[item.case_report_id] || item.case_report_id,
+        matched_case_report_id: publicById[item.matched_case_report_id] || item.matched_case_report_id,
+      })
       return map
     }, {})
 }
@@ -1245,6 +1301,7 @@ async function getHeatmapReports() {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
       incident_city,
       case_status_id,
       gender_identity,
@@ -1329,6 +1386,8 @@ async function getReportsByAssignedOfficer(userId, options = {}) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,
@@ -1479,6 +1538,8 @@ async function getReportsForLegal(userId, options = {}) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,
@@ -1592,6 +1653,8 @@ async function getReportsByAssignedLegal(userId) {
     .from('case_reports')
     .select(`
       case_report_id,
+      public_id,
+      case_code,
       complainant_id,
       incident_description,
       incident_city,

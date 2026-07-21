@@ -215,6 +215,43 @@
   resize: vertical;
 }
 
+.statusReview {
+  color: var(--sasha-text);
+  font-weight: 700;
+}
+
+.statusReviewList {
+  max-height: 180px;
+  overflow: auto;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--sasha-border);
+  border-radius: 8px;
+  background: var(--sasha-offwhite);
+}
+
+.statusReviewList p {
+  margin: 0;
+  color: var(--sasha-text);
+  font-weight: 700;
+}
+
+.statusReviewList p + p {
+  margin-top: 0.45rem;
+}
+
+.impactWarning {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  color: #92400e;
+  background: #fffbeb;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .dialogActions {
   display: flex;
   justify-content: flex-end;
@@ -275,34 +312,55 @@
     padding: 5rem 0.85rem 3rem;
   }
 
+  .heroBanner {
+    padding: 0.75rem 0 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .heroContent {
+    padding: 1.35rem 1rem 1.15rem;
+  }
+
   .heroTitle {
-    margin-bottom: 1.25rem;
-    font-size: 1.5rem;
+    margin-bottom: 0.85rem;
+    font-size: 1.35rem;
+    line-height: 1.15;
   }
 
   .statGrid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-    width: min(330px, 100%);
+    grid-template-columns: repeat(2, 8.85rem);
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .statGrid > * {
+    min-width: 0;
+    width: 100%;
   }
 
   .statCard {
+    box-sizing: border-box;
     justify-content: center;
-    gap: 0.6rem;
+    gap: 0.42rem;
     width: 100%;
-    height: 72px;
-    padding: 0.8rem 0.65rem;
-    border-radius: 16px;
+    min-height: 2.25rem;
+    height: 2.25rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 14px;
+    white-space: nowrap;
   }
 
   .statNum {
-    font-size: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1;
   }
 
   .statLabel {
-    font-size: 0.78rem;
-    line-height: 1.1;
+    font-size: 0.64rem;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .toolbar {
@@ -357,6 +415,22 @@
 :global(html[data-theme="dark"]) .dialog p,
 :global(html[data-theme="dark"]) .empty {
   color: #b9c4ce;
+}
+
+:global(html[data-theme="dark"]) .statusReview,
+:global(html[data-theme="dark"]) .statusReviewList p {
+  color: #f3f6f8;
+}
+
+:global(html[data-theme="dark"]) .statusReviewList {
+  background: #0f1720;
+  border-color: #435266;
+}
+
+:global(html[data-theme="dark"]) .impactWarning {
+  border-color: #a16207;
+  color: #fde68a;
+  background: #3f2f0d;
 }
 
 :global(html[data-theme="dark"]) .dialogLabel select,

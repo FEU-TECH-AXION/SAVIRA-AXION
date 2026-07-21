@@ -10,6 +10,8 @@
   border: 1px solid #e5e7eb;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ── Bulk action bar ── */
@@ -99,6 +101,8 @@
 .tableScroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ── Table ── */
@@ -106,7 +110,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  min-width: 720px;
+  min-width: 940px;
 }
 
 /* ── Header row ── */
@@ -148,9 +152,17 @@
 /* Checkbox column */
 .checkTh,
 .checkTd {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 44px;
   padding-left: 1rem;
   padding-right: 0.5rem;
+}
+
+.checkTh {
+  z-index: 3;
 }
 
 /* Columns toggle column */
@@ -165,6 +177,7 @@
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
   cursor: pointer;
+  height: 56px;
 }
 
 .row:last-child {
@@ -179,14 +192,70 @@
   background: #e1f5f5 !important;
 }
 
+.rowSelected .checkTd {
+  background: #e1f5f5;
+}
+
+.row:hover .checkTd {
+  background: #f0fffe;
+}
+
 /* ── Cells ── */
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.textTd {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wideTextTd {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionsTd {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: #037F81;
+  border-color: #037F81;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.viewBtnLabel {
+  display: inline;
 }
 
 .appIdTd {
+  min-width: 120px;
   white-space: nowrap;
 }
 
@@ -198,28 +267,41 @@
 
 .nameTd {
   min-width: 160px;
+  max-width: 240px;
+  overflow: hidden;
 }
 
 .nameStack {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
 }
 
 .nameText {
   font-weight: 600;
   color: #292929;
   font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .emailText {
   font-size: 0.75rem;
   color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .orgText {
   font-size: 0.82rem;
   color: #374151;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contactText {
@@ -242,6 +324,7 @@
 .statusBadge {
   display: inline-flex;
   align-items: center;
+  width: fit-content;
   padding: 0.22rem 0.65rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -377,4 +460,149 @@
 .recordCaret {
   font-size: 0.6rem;
   color: #9ca3af;
+}
+
+@media (max-width: 1100px) {
+  .viewBtn {
+    padding: 6px 8px;
+  }
+
+  .viewBtnLabel {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .table {
+    min-width: 640px;
+  }
+
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child),
+  .table th:nth-child(7):not(:last-child),
+  .table td:nth-child(7):not(:last-child),
+  .table th:nth-child(8):not(:last-child),
+  .table td:nth-child(8):not(:last-child),
+  .table th:nth-child(9):not(:last-child),
+  .table td:nth-child(9):not(:last-child) {
+    display: none;
+  }
+
+  .appIdTd {
+    min-width: 110px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
+    display: none;
+  }
+
+  .table th:nth-child(n+5):not(:last-child),
+  .table td:nth-child(n+5):not(:last-child) {
+    display: none;
+  }
+
+  .checkTh,
+  .checkTd {
+    position: static;
+    width: 42px;
+    min-width: 42px;
+    padding-left: 0.55rem;
+    padding-right: 0.25rem;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
+  }
+
+  .table th:nth-child(3),
+  .nameTd {
+    width: calc(100% - 172px);
+    min-width: 0;
+    max-width: calc(100% - 172px);
+    overflow: hidden;
+  }
+
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    width: 86px;
+  }
+
+  .columnsTh,
+  .actionsTd {
+    width: 44px;
+    min-width: 44px;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .th,
+  .td {
+    padding: 0.6rem 0.45rem;
+  }
+
+  .nameTd {
+    max-width: none;
+    min-width: 0;
+  }
+
+  .nameText {
+    font-size: 0.86rem;
+  }
+
+  .emailText {
+    font-size: 0.75rem;
+  }
+
+  .statusBadge {
+    max-width: 100%;
+    justify-content: center;
+    padding: 0.22rem 0.55rem;
+  }
+
+  .columnsBtn {
+    margin-left: 0;
+  }
+
+  .viewBtn {
+    width: 34px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .viewBtnLabel {
+    display: none;
+  }
+
+  .paginationBar {
+    flex-wrap: wrap;
+  }
+
+  .recordCount {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
 }

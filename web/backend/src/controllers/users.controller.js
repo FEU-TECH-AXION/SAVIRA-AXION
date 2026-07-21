@@ -12,7 +12,7 @@ const USER_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 }
 
-const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'LGBTQIA+ member', 'Prefer not to say']
+const ALLOWED_GENDER_IDENTITIES = ['Male', 'Female', 'LGBTQIA+ member']
 const AVATAR_BUCKET = 'avatars'
 const AVATAR_CHANGE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
 

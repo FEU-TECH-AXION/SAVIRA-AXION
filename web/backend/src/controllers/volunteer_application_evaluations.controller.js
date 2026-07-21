@@ -1,10 +1,15 @@
 const VolunteerApplicationEvaluationsModel = require('../models/volunteer_application_evaluations.model')
 const supabase = require('../config/supabase')
+const { resolveActors, withActor } = require('../utils/actor')
+const {
+    replaceVolunteerApplicationId,
+    replaceVolunteerApplicationIdsFromDatabase,
+} = require('../utils/volunteerApplicationPublicIds')
 
 const getItems = async (req, res) => {
     try {
         const data = await VolunteerApplicationEvaluationsModel.getAll()
-        res.json(data)
+        res.json(await replaceVolunteerApplicationIdsFromDatabase(data))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -13,7 +18,7 @@ const getItems = async (req, res) => {
 const createItem = async (req, res) => {
     try {
         const item = await VolunteerApplicationEvaluationsModel.create(req.body)
-        res.status(201).json(item)
+        res.status(201).json(await replaceVolunteerApplicationIdsFromDatabase(item))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -34,6 +39,52 @@ function aggregateEssay(rows = []) {
         experience: average(rows.map((row) => row.experience).filter((n) => n !== null && n !== undefined)),
         evaluator_count: rows.length,
     }
+}
+
+async function enrichEvaluations(rows = []) {
+    const list = Array.isArray(rows) ? rows : [rows]
+    const actorsById = await resolveActors(list.map((row) => row?.evaluated_by))
+    const shaped = list.map((row) =>
+        withActor(row, actorsById[row?.evaluated_by], {
+            idField: 'evaluated_by',
+            nameField: 'evaluated_by_name',
+            roleField: 'evaluated_by_role',
+        })
+    )
+    return Array.isArray(rows) ? shaped : shaped[0]
+}
+
+async function promoteApplicationToReviewing(applicationId, evaluatorId) {
+    const { data: application, error: lookupError } = await supabase
+        .from('volunteer_applications')
+        .select('application_status')
+        .eq('volunteer_application_id', parseInt(applicationId))
+        .maybeSingle()
+
+    if (lookupError) throw lookupError
+    if (String(application?.application_status || '').toLowerCase() !== 'pending') return null
+
+    const now = new Date()
+    const { data: updated, error: updateError } = await supabase
+        .from('volunteer_applications')
+        .update({ application_status: 'reviewing', updated_at: now, resolved_at: null })
+        .eq('volunteer_application_id', parseInt(applicationId))
+        .select('application_status')
+        .single()
+
+    if (updateError) throw updateError
+
+    const { error: historyError } = await supabase
+        .from('volunteer_application_status_history')
+        .insert({
+            volunteer_application_id: parseInt(applicationId),
+            status: 'reviewing',
+            notes: 'Automatically moved to reviewing after evaluator score was saved.',
+            changed_by: evaluatorId,
+        })
+
+    if (historyError) throw historyError
+    return updated
 }
 
 const upsertEvaluationByEvaluator = async (id, evaluatorId, payload) => {
@@ -78,16 +129,17 @@ const getEssayEvaluation = async (req, res) => {
             .eq('volunteer_application_id', id)
         if (error) throw error
 
+        const enriched = await enrichEvaluations(data || [])
         const current = evaluatorId
-            ? (data || []).find((row) => row.evaluated_by === evaluatorId)
-            : (data || [])[0]
+            ? enriched.find((row) => row.evaluated_by === evaluatorId)
+            : enriched[0]
 
-        res.status(200).json({
+        res.status(200).json(replaceVolunteerApplicationId({
             ...(current || {}),
             notes: current?.essay_notes || '',
             aggregate: aggregateEssay(data || []),
-            evaluations: data || [],
-        })
+            evaluations: enriched,
+        }, req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -108,7 +160,11 @@ const saveEssayEvaluation = async (req, res) => {
             essay_notes: notes,
             updated_at: new Date(),
         })
-        res.status(200).json(data)
+        const statusUpdate = await promoteApplicationToReviewing(id, evaluatorId)
+        res.status(200).json(replaceVolunteerApplicationId({
+            ...(await enrichEvaluations(data)),
+            application_status: statusUpdate?.application_status || null,
+        }, req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -120,24 +176,25 @@ const getInterviewEvaluation = async (req, res) => {
         const evaluatorId = req.user?.id || req.query.evaluated_by || null
         const { data, error } = await supabase
             .from('volunteer_application_evaluations')
-            .select('interview_score, interview_notes, evaluated_by')
+            .select('volunteer_application_evaluation_id, interview_score, interview_notes, evaluated_by, created_at, updated_at')
             .eq('volunteer_application_id', id)
         if (error) throw error
 
+        const enriched = await enrichEvaluations(data || [])
         const current = evaluatorId
-            ? (data || []).find((row) => row.evaluated_by === evaluatorId)
-            : (data || [])[0]
+            ? enriched.find((row) => row.evaluated_by === evaluatorId)
+            : enriched[0]
 
         const scoredRows = (data || []).filter((row) => row.interview_score !== null && row.interview_score !== undefined)
-        res.status(200).json({
+        res.status(200).json(replaceVolunteerApplicationId({
             score: current?.interview_score || 0,
             notes: current?.interview_notes || '',
             aggregate: {
                 score: average(scoredRows.map((row) => row.interview_score)),
                 evaluator_count: scoredRows.length,
             },
-            evaluations: data || [],
-        })
+            evaluations: enriched,
+        }, req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -154,7 +211,11 @@ const saveInterviewEvaluation = async (req, res) => {
             interview_notes: notes,
             updated_at: new Date(),
         })
-        res.status(200).json(data)
+        const statusUpdate = await promoteApplicationToReviewing(id, evaluatorId)
+        res.status(200).json(replaceVolunteerApplicationId({
+            ...(await enrichEvaluations(data)),
+            application_status: statusUpdate?.application_status || null,
+        }, req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }

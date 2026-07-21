@@ -17,6 +17,7 @@ import { FaCheckCircle } from "react-icons/fa";
 import { IoIosInformationCircle, IoIosWarning, IoIosClose } from "react-icons/io";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import Tooltip from "@/components/ui/Tooltip";
+import ActorByline from "@/components/ui/ActorByline";
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
 
 // ─── InterviewTab ─────────────────────────────────────────────────────────────
@@ -1703,7 +1704,14 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
           `${API_URL}/api/interviews?type=case_report&case_report_id=${caseData.id}`,
           { credentials: "include" }
         );
-        if (!res.ok) throw new Error("Failed to load interviews");
+        if (res.status === 403) {
+          setInterviews([]);
+          return;
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Failed to load interviews");
+        }
         const json = await res.json();
 
         setInterviews(
@@ -2367,6 +2375,12 @@ export default function InterviewTab({ caseData, isStaff, isCaseOfficer, showToa
                       ? "Interview details are confirmed."
                       : "The complainant has selected an interview schedule."}
                   </span>
+                  <ActorByline
+                    actorName={iv.actorName || iv.interviewer_actor_name || iv.interviewer?.actorName || [iv.interviewer?.first_name, iv.interviewer?.last_name].filter(Boolean).join(" ")}
+                    actorRole={iv.actorRole || iv.interviewer_actor_role || iv.interviewer?.actorRole || iv.interviewer?.role_name}
+                    timestamp={iv.updated_at || iv.created_at}
+                    fallbackName="Interviewer unavailable"
+                  />
                 </div>
                 <InterviewStatusBadge status={status} />
               </div>

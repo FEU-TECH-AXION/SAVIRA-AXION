@@ -367,3 +367,37 @@
   font-size: 0.8rem;
   margin: 0;
 }
+
+@media (max-width: 767.98px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .body {
+    padding: 0.75rem;
+  }
+
+  .mapBody {
+    min-height: 240px;
+  }
+
+  .metricRow {
+    gap: 0.5rem;
+    grid-template-columns: 1fr;
+  }
+
+  .metricRow div {
+    padding: 0.6rem 0.65rem;
+  }
+
+  .metricRow strong {
+    font-size: 1.1rem;
+  }
+
+  .metricRow span {
+    font-size: 0.68rem;
+  }
+}

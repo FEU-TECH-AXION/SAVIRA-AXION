@@ -25,6 +25,12 @@ function formatDate(value) {
   });
 }
 
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
 function assignedPersonnel(application) {
   if (application.assignedPersonnel || application.assigned_evaluator) {
     return application.assignedPersonnel || application.assigned_evaluator;
@@ -54,7 +60,7 @@ export function normalizeVolunteerApplication(application = {}) {
   return {
     ...application,
     id,
-    applicationId: application.applicationId || `APP-${String(id).padStart(5, "0")}`,
+    applicationId: formatApplicationRef(id, application.application_ref || application.applicationId),
     statusName: String(application.application_status || application.statusName || "pending").toLowerCase(),
     dateSubmitted: formatDate(createdAt),
     assignedPersonnel: assignedPersonnel(application),

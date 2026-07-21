@@ -32,6 +32,26 @@ const DEFAULT_FILTERS = [
 
 const COMMITTEES = ["Ways and Means", "Membership", "Publication", "Education and Research"];
 
+const METRO_MANILA_CITIES = [
+  "Caloocan",
+  "Las Pinas",
+  "Makati",
+  "Malabon",
+  "Mandaluyong",
+  "Manila",
+  "Marikina",
+  "Muntinlupa",
+  "Navotas",
+  "Paranaque",
+  "Pasay",
+  "Pasig",
+  "Pateros",
+  "Quezon City",
+  "San Juan",
+  "Taguig",
+  "Valenzuela",
+];
+
 const ADDITIONAL_FILTER_FIELDS = [
   {
     key: "committee",
@@ -43,7 +63,8 @@ const ADDITIONAL_FILTER_FIELDS = [
   {
     key: "city",
     label: "City",
-    type: "text",
+    type: "select",
+    options: ["All", ...METRO_MANILA_CITIES],
   },
   {
     key: "verificationStatus",
@@ -68,8 +89,15 @@ function DefaultFilterDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   if (field.type === "dateRange") {
@@ -97,6 +125,8 @@ function DefaultFilterDropdown({ field, value, onChange }) {
         <button
           className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
           onClick={() => { setOpen(!open); setDateSearch(""); setCustomMode(false); }}
+          aria-expanded={open}
+          aria-haspopup="true"
         >
           <span className={styles.defaultFilterLabel}>{field.label}</span>
           <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
@@ -182,6 +212,8 @@ function DefaultFilterDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "All" && value !== "" ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => { setOpen(!open); setSelectSearch(""); }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{displayValue}</span>
@@ -223,6 +255,72 @@ function DefaultFilterDropdown({ field, value, onChange }) {
 
 // ─── Main UserFilterMenu ──────────────────────────────────────────────────────
 
+function TextDropdown({ field, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(value || "");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function outside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    function onKeyDown(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setInputVal(value || "");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [value]);
+
+  return (
+    <div className={styles.defaultFilter} ref={ref}>
+      <button
+        className={`${styles.defaultFilterBtn} ${value ? styles.defaultFilterBtnActive : ""}`}
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <span className={styles.defaultFilterLabel}>{field.label}</span>
+        <span className={styles.defaultFilterValue}>{value || "All"}</span>
+        <FiChevronDown size={13} />
+      </button>
+      {open && (
+        <div className={styles.defaultFilterDropdown} style={{ minWidth: 220 }}>
+          <div className={styles.officerSearchWrap}>
+            <FiSearch size={13} className={styles.officerSearchIcon} />
+            <input
+              type="text"
+              className={styles.officerSearchInput}
+              placeholder={`Search ${field.label}...`}
+              value={inputVal}
+              onChange={e => { setInputVal(e.target.value); onChange(e.target.value); }}
+              autoFocus
+            />
+          </div>
+          <div className={styles.defaultFilterFooter}>
+            <button className={styles.clearBtn} onClick={() => { setInputVal(""); onChange(""); setOpen(false); }}>
+              Clear
+            </button>
+            <button className={styles.doneBtn} onClick={() => setOpen(false)}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Props:
  *  activeFilters    — object of { key: value }
@@ -238,8 +336,15 @@ export default function UserFilterMenu({ activeFilters, onFilterChange, onDone }
     function outside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const activeFilterCount = Object.values(activeFilters).filter(v => v && v !== "All" && v !== "").length;
@@ -287,16 +392,11 @@ export default function UserFilterMenu({ activeFilters, onFilterChange, onDone }
         {extraFieldDefs.map(field => (
           <div key={field.key} className={styles.extraFilterWrap}>
             {field.type === "text" ? (
-              <div className={styles.defaultFilter}>
-                <input
-                  type="text"
-                  className={styles.defaultFilterBtn}
-                  style={{ cursor: "text", minWidth: 120 }}
-                  placeholder={field.label}
-                  value={activeFilters[field.key] || ""}
-                  onChange={e => onFilterChange({ ...activeFilters, [field.key]: e.target.value })}
-                />
-              </div>
+              <TextDropdown
+                field={field}
+                value={activeFilters[field.key] || ""}
+                onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+              />
             ) : (
               <DefaultFilterDropdown
                 field={field}
@@ -322,8 +422,11 @@ export default function UserFilterMenu({ activeFilters, onFilterChange, onDone }
             onClick={() => setMenuOpen(!menuOpen)}
             title="Add more filters"
             aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
           >
             <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
             {activeFilterCount > 0 && (
               <span className={styles.filterBadge}>{activeFilterCount}</span>
             )}
@@ -338,6 +441,43 @@ export default function UserFilterMenu({ activeFilters, onFilterChange, onDone }
                 </button>
               </div>
 
+              <div className={styles.mobileSheetFilters}>
+                {DEFAULT_FILTERS.map(field => (
+                  <DefaultFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={activeFilters[field.key] || ""}
+                    onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+                  />
+                ))}
+
+                {extraFieldDefs.map(field => (
+                  <div key={`mobile-${field.key}`} className={styles.extraFilterWrap}>
+                    {field.type === "text" ? (
+                      <TextDropdown
+                        field={field}
+                        value={activeFilters[field.key] || ""}
+                        onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+                      />
+                    ) : (
+                      <DefaultFilterDropdown
+                        field={field}
+                        value={activeFilters[field.key] || ""}
+                        onChange={val => onFilterChange({ ...activeFilters, [field.key]: val })}
+                      />
+                    )}
+                    <button
+                      className={styles.removeExtraBtn}
+                      onClick={() => {
+                        toggleExtraField(field.key);
+                        onFilterChange({ ...activeFilters, [field.key]: "" });
+                      }}
+                      title={`Remove ${field.label} filter`}
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ))}
               <p className={styles.filterDropdownHint}>
                 Select additional fields to narrow down the user list.
               </p>
@@ -378,6 +518,8 @@ export default function UserFilterMenu({ activeFilters, onFilterChange, onDone }
                   );
                 })}
               </div>
+              </div>
+
 
               <div className={styles.filterDropdownFooter}>
                 {activeFilterCount > 0 && (

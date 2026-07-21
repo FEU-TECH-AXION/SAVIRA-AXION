@@ -28,7 +28,9 @@ async function getAnalysis(req, res) {
     try {
         const { caseReportId } = req.params;
         const data = await getAnalysisByReportId(caseReportId);
-        return res.json({ data });
+        return res.json({
+            data: data ? { ...data, case_report_id: req.casePublicId || data.case_report_id } : data,
+        });
     } catch (err) {
         console.error('[getAnalysis]', err.message);
         return res.status(404).json({ error: 'Analysis not found.' });

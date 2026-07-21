@@ -79,7 +79,7 @@ function numberReportsBySubmissionOrder(reports) {
 }
 
 async function fetchReportDetails(API_URL, report) {
-  const id = report.case_report_id || report.id;
+  const id = report.public_id || report.case_report_id || report.id;
   if (!id) return report;
 
   try {
@@ -423,7 +423,7 @@ export default function ReportHistoryPage() {
         key={followUpReport?.id || "closed-follow-up"}
         open={Boolean(followUpReport)}
         onClose={() => setFollowUpReport(null)}
-        caseId={followUpReport?.id}
+        caseId={followUpReport?.publicCaseId || followUpReport?.id}
         isStaff={false}
         reportData={followUpReport?.reportData}
         activeFollowUp={

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FiEye } from "react-icons/fi";
 import styles from "./ChapterTable.module.css";
 
 const STATUS_COLORS = {
@@ -93,6 +94,7 @@ export default function ChapterTable({
     () => paginated.filter((chapter) => selectedIds.has(chapter.id)),
     [paginated, selectedIds]
   );
+  const visibleColumnCount = 9 + extraColumns.length;
 
   function toggleAll() {
     setSelectedIds((prev) => {
@@ -168,12 +170,13 @@ export default function ChapterTable({
               {extraColumns.includes("location") && <th className={styles.th}>Location</th>}
               {extraColumns.includes("contactPerson") && <th className={styles.th}>Contact Person</th>}
               {extraColumns.includes("mentor") && <th className={styles.th}>SASHA Guide</th>}
+              <th className={`${styles.th} ${styles.actionsTh}`}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={11} className={styles.emptyState}>
+                <td colSpan={visibleColumnCount} className={styles.emptyState}>
                   No chapter records found.
                 </td>
               </tr>
@@ -199,27 +202,39 @@ export default function ChapterTable({
                         aria-label={`Select ${chapter.chapterName}`}
                       />
                     </td>
-                    <td className={`${styles.td} ${styles.nameTd}`}>
+                    <td className={`${styles.td} ${styles.nameTd}`} title={`${chapter.chapterName || "Untitled chapter"} - ${chapter.id}`}>
                       <div className={styles.nameStack}>
                         <span className={styles.nameText}>{chapter.chapterName || "Untitled chapter"}</span>
                         <span className={styles.emailText}>{chapter.id}</span>
                       </div>
                     </td>
-                    <td className={styles.td}>{chapter.formationLevel}</td>
+                    <td className={`${styles.td} ${styles.textTd}`} title={chapter.formationLevel || ""}>{chapter.formationLevel}</td>
                     <td className={styles.td}><StatusBadge status={chapter.status} /></td>
                     <td className={styles.td}>{chapter.memberCount}/40</td>
                     <td className={styles.td}>{chapter.cocCount} COC / {chapter.ogCount} OG</td>
                     <td className={styles.td}>{chapter.officersFilled}/6</td>
                     <td className={styles.td}>{formatDate(chapter.targetLaunchDate)}</td>
                     {extraColumns.includes("location") && (
-                      <td className={styles.td}>{chapter.location || "No location set"}</td>
+                      <td className={`${styles.td} ${styles.textTd}`} title={chapter.location || "No location set"}>{chapter.location || "No location set"}</td>
                     )}
                     {extraColumns.includes("contactPerson") && (
-                      <td className={styles.td}>{chapter.contactPerson || "No contact assigned"}</td>
+                      <td className={`${styles.td} ${styles.textTd}`} title={chapter.contactPerson || "No contact assigned"}>{chapter.contactPerson || "No contact assigned"}</td>
                     )}
                     {extraColumns.includes("mentor") && (
-                      <td className={styles.td}>{chapter.higherStructureRepresentative || "No SASHA guide assigned"}</td>
+                      <td className={`${styles.td} ${styles.textTd}`} title={chapter.higherStructureRepresentative || "No SASHA guide assigned"}>{chapter.higherStructureRepresentative || "No SASHA guide assigned"}</td>
                     )}
+                    <td className={`${styles.td} ${styles.actionsTd}`} onClick={(event) => event.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => onRowClick?.(chapter)}
+                        aria-label={`View ${chapter.chapterName || chapter.id}`}
+                        title="View chapter"
+                      >
+                        <FiEye size={15} aria-hidden="true" />
+                        <span className={styles.viewBtnLabel}>View</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })

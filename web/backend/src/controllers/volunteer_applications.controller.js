@@ -12,6 +12,11 @@ const {
     notifyUser,
     notifyVolunteerApplicationOwner,
 } = require('../services/notificationService')
+const {
+    exposeVolunteerApplicationPublicIds,
+    getPublicIdByVolunteerApplicationId,
+    publicVolunteerApplicationRef,
+} = require('../utils/volunteerApplicationPublicIds')
 
 
 // Maps your form keys to question_key values in the database
@@ -37,11 +42,21 @@ const MEMBERSHIP_COMMITTEE_ID = 2
 const REAPPLICATION_WAIT_DAYS = 15
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000
 const APPLICATION_STATUSES = new Set(['pending', 'reviewing', 'approved', 'rejected'])
+const REAPPLICATION_ALLOWED_STATUSES = new Set(['rejected', 'withdrawn'])
 
 function statusLabel(status) {
     return String(status || '')
         .replace(/_/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function getApplicationDecisionDate(application = {}) {
+    return (
+        application.resolved_at ||
+        application.updated_at ||
+        application.created_at ||
+        null
+    )
 }
 
 const getAuthenticatedUserId = (req) =>
@@ -87,10 +102,19 @@ function calculateScreeningScore(app = {}) {
 
 function priorityBonus(app = {}) {
     const gender = String(app.gender_identity || '').toLowerCase()
-    const pronouns = String(app.pronouns || '').toLowerCase()
-    const female = gender.includes('female') || gender.includes('woman') || pronouns.includes('she')
+    const female = gender.includes('female') || gender.includes('woman')
     const lgbtq = gender.includes('lgbtqia+ member') || gender.includes('lgbt') || gender.includes('queer') || gender.includes('non-binary') || gender.includes('trans')
-    return (female ? 3 : 0) + (lgbtq ? 3 : 0)
+    return (female ? 3 : 0) + (lgbtq ? 3 : 0) + commitmentPriorityBonus(app.hours_per_week)
+}
+
+function commitmentPriorityBonus(hoursPerWeek) {
+    const value = String(hoursPerWeek || '').toLowerCase()
+    const numericValue = Number(value.match(/\d+/)?.[0])
+
+    if (value.includes('more than 15') || value.includes('>15') || numericValue > 15) return 6
+    if (value.includes('10-15') || value.includes('10 to 15') || (numericValue >= 10 && numericValue <= 15)) return 4
+    if (value.includes('6-10') || value.includes('6 to 10') || (numericValue >= 6 && numericValue <= 10)) return 2
+    return 0
 }
 
 const getItems = async (req, res) => {
@@ -108,7 +132,7 @@ const getItems = async (req, res) => {
         }
 
         const data = await VolunteerApplicationsModel.getAll({ userId, role })
-        res.json(data)
+        res.json(exposeVolunteerApplicationPublicIds(data))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -205,11 +229,11 @@ const getItem = async (req, res) => {
             .maybeSingle()
         if (historyError) throw historyError
 
-        res.status(200).json({
+        res.status(200).json(exposeVolunteerApplicationPublicIds({
             ...data,
             applicant_user_id: data.volunteer_applicants?.user_id || null,
             status_notes: latestStatusHistory?.notes || null,
-        })
+        }))
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -278,14 +302,24 @@ const assignAssessors = async (req, res) => {
             .update({ application_status: 'reviewing', updated_at: new Date() })
             .in('volunteer_application_id', applicationIds)
 
+        const { data: assignedApplications, error: assignedApplicationsError } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, public_id')
+            .in('volunteer_application_id', applicationIds)
+        if (assignedApplicationsError) throw assignedApplicationsError
+        const publicIdsByInternalId = Object.fromEntries(
+            (assignedApplications || []).map((row) => [row.volunteer_application_id, row.public_id])
+        )
+
         for (const applicationId of applicationIds) {
+            const publicId = publicIdsByInternalId[applicationId]
             fireAndForget(
                 notifyVolunteerApplicationOwner(applicationId, {
                     title: 'Volunteer application under review',
                     body: 'Your volunteer application is now being reviewed.',
                     data: {
                         type: 'volunteer_application',
-                        volunteer_application_id: applicationId,
+                        volunteer_application_id: publicId || '',
                         link: '/volunteer/apply',
                         priority: 'normal',
                     },
@@ -294,7 +328,7 @@ const assignAssessors = async (req, res) => {
             )
         }
 
-        res.status(200).json({ data })
+        res.status(200).json({ data: exposeVolunteerApplicationPublicIds(data) })
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -302,14 +336,20 @@ const assignAssessors = async (req, res) => {
 
 const getRankings = async (req, res) => {
     try {
-        const { data: applications, error: appError } = await supabase
+        const userId = getAuthenticatedUserId(req)
+        const roleName = req.user?.role || req.user?.role_name
+        let query = supabase
             .from('volunteer_applications')
             .select(`
                 volunteer_application_id,
+                public_id,
                 name,
                 email,
                 gender_identity,
-                pronouns,
+                hours_per_week,
+                city,
+                fields_with_background,
+                fields_of_interest,
                 application_status,
                 non_negotiable_passed,
                 negotiable_score,
@@ -333,6 +373,20 @@ const getRankings = async (req, res) => {
                     status
                 )
             `)
+        if (roleName === 'Staff') {
+            const { data: assignments, error: assignmentError } = await supabase
+                .from('volunteer_application_assignments')
+                .select('volunteer_application_id')
+                .eq('assessor_id', userId)
+                .eq('is_active', true)
+            if (assignmentError) throw assignmentError
+
+            const assignedIds = (assignments || []).map((row) => row.volunteer_application_id)
+            if (assignedIds.length === 0) return res.status(200).json({ data: [] })
+            query = query.in('volunteer_application_id', assignedIds)
+        }
+
+        const { data: applications, error: appError } = await query
         if (appError) throw appError
 
         const ranked = (applications || []).map((app) => {
@@ -351,11 +405,17 @@ const getRankings = async (req, res) => {
             const totalScore = screeningScore + (hybridEssay / 100 * 50) + (interviewScore / 10 * 20) + bonus
 
             return {
-                application_id: app.volunteer_application_id,
+                application_id: app.public_id,
+                id: app.public_id,
+                application_ref: publicVolunteerApplicationRef(app.public_id),
                 name: app.name,
                 email: app.email,
                 gender_identity: app.gender_identity,
-                pronouns: app.pronouns,
+                hours_per_week: app.hours_per_week,
+                city: app.city,
+                fields_with_background: Array.isArray(app.fields_with_background) ? app.fields_with_background : [],
+                fields_of_interest: Array.isArray(app.fields_of_interest) ? app.fields_of_interest : [],
+                created_at: app.created_at,
                 application_status: app.application_status,
                 screening_score: Number(screeningScore.toFixed(2)),
                 human_essay_score: Number(humanEssay.toFixed(2)),
@@ -445,7 +505,71 @@ const createItem = async (req, res) => {
         volunteerApplicantId = newApplicant.volunteer_applicant_id
     }
 
-        // ── 2. Find or create organization ──
+        // ── 2. Enforce reapplication rules ──
+        const { data: previousApplications, error: previousApplicationsError } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, application_status, resolved_at, updated_at, created_at')
+            .eq('volunteer_applicant_id', volunteerApplicantId)
+
+        if (previousApplicationsError) throw previousApplicationsError
+
+        const existingApplications = previousApplications || []
+        if (existingApplications.length > 0) {
+            const approvedApplication = existingApplications.find(
+                (application) => String(application.application_status || '').toLowerCase() === 'approved'
+            )
+
+            if (approvedApplication) {
+                return res.status(409).json({
+                    error: 'Your volunteer application has already been approved. You cannot submit another application.',
+                    code: 'APPLICATION_ALREADY_APPROVED',
+                    status: approvedApplication.application_status,
+                })
+            }
+
+            const blockingApplication = existingApplications.find((application) => {
+                const status = String(application.application_status || '').toLowerCase()
+                return !REAPPLICATION_ALLOWED_STATUSES.has(status)
+            })
+
+            if (blockingApplication) {
+                return res.status(409).json({
+                    error: 'You already have an application under review. Please wait for it to be resolved before applying again.',
+                    code: 'APPLICATION_IN_PROGRESS',
+                    status: blockingApplication.application_status,
+                })
+            }
+
+            const latestTerminalApplication = existingApplications
+                .filter((application) =>
+                    REAPPLICATION_ALLOWED_STATUSES.has(String(application.application_status || '').toLowerCase())
+                )
+                .sort((a, b) =>
+                    new Date(getApplicationDecisionDate(b) || 0) -
+                    new Date(getApplicationDecisionDate(a) || 0)
+                )[0]
+
+            const decisionAt = new Date(getApplicationDecisionDate(latestTerminalApplication))
+            if (!Number.isNaN(decisionAt.getTime())) {
+                const eligibleAt = new Date(decisionAt.getTime() + REAPPLICATION_WAIT_MS)
+                if (Date.now() < eligibleAt.getTime()) {
+                    const status = String(latestTerminalApplication.application_status || '').toLowerCase()
+                    return res.status(409).json({
+                        error: `You can reapply 15 days after your ${status} application, on ${eligibleAt.toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            timeZone: 'Asia/Manila',
+                        })}.`,
+                        code: 'REAPPLICATION_COOLDOWN',
+                        eligible_at: eligibleAt.toISOString(),
+                        wait_days: REAPPLICATION_WAIT_DAYS,
+                        status,
+                    })
+                }
+            }
+        }
+
         const org = await OrganizationsModel.findOrCreateOrganization(applicant)
 
         // ── 3. Fetch active question set + all 15 questions ──
@@ -509,59 +633,6 @@ const createItem = async (req, res) => {
             })
         }
 
-        // ── 5. Check for existing active application ──
-        const { data: existingApplication } = await supabase
-            .from('volunteer_applications')
-            .select('volunteer_application_id, application_status')
-            .eq('volunteer_applicant_id', volunteerApplicantId)
-            .in('application_status', ['pending', 'reviewing', 'under_review'])
-            .maybeSingle()
-
-        if (existingApplication) {
-            return res.status(409).json({
-                error: 'You already have an active application. Please wait for it to be resolved before applying again.',
-                status: existingApplication.application_status
-            })
-        }
-
-        // ── 6. Enforce the rejection reapplication cooldown ──
-        const { data: latestRejectedApplication, error: rejectedError } = await supabase
-            .from('volunteer_applications')
-            .select('volunteer_application_id, resolved_at, updated_at, created_at')
-            .eq('volunteer_applicant_id', volunteerApplicantId)
-            .eq('application_status', 'rejected')
-            .order('resolved_at', { ascending: false, nullsFirst: false })
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-        if (rejectedError) throw rejectedError
-
-        if (latestRejectedApplication) {
-            const rejectedAtValue =
-                latestRejectedApplication.resolved_at ||
-                latestRejectedApplication.updated_at ||
-                latestRejectedApplication.created_at
-            const rejectedAt = new Date(rejectedAtValue)
-
-            if (!Number.isNaN(rejectedAt.getTime())) {
-                const eligibleAt = new Date(rejectedAt.getTime() + REAPPLICATION_WAIT_MS)
-                if (Date.now() < eligibleAt.getTime()) {
-                    return res.status(409).json({
-                        error: `You can reapply 15 days after your rejected application, on ${eligibleAt.toLocaleDateString('en-PH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            timeZone: 'Asia/Manila',
-                        })}.`,
-                        code: 'REAPPLICATION_COOLDOWN',
-                        eligible_at: eligibleAt.toISOString(),
-                        wait_days: REAPPLICATION_WAIT_DAYS,
-                    })
-                }
-            }
-        }
-
         // ── 7. Create the application ──
         const application = await VolunteerApplicationsModel.create({
             volunteer_applicant_id:    volunteerApplicantId,
@@ -615,8 +686,9 @@ const createItem = async (req, res) => {
                     : 'Your volunteer application has been submitted, but it did not pass the initial screening.',
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: application.volunteer_application_id,
-                    link: '/volunteer/apply',
+                        volunteer_application_id: application.public_id,
+                        application_ref: publicVolunteerApplicationRef(application.public_id),
+                        link: '/volunteer/apply',
                     priority: nonNegotiablePassed ? 'normal' : 'high',
                 },
             }),
@@ -629,8 +701,9 @@ const createItem = async (req, res) => {
                 body: `${application.name || 'A user'} submitted a volunteer application.`,
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: application.volunteer_application_id,
-                    link: `/volunteer/view?id=${application.volunteer_application_id}`,
+                    volunteer_application_id: application.public_id,
+                    application_ref: publicVolunteerApplicationRef(application.public_id),
+                    link: `/volunteer/view?id=${application.public_id}`,
                     priority: 'high',
                 },
             }),
@@ -639,7 +712,7 @@ const createItem = async (req, res) => {
 
         res.status(201).json({
             message:            'Application submitted successfully.',
-            application,
+            application: exposeVolunteerApplicationPublicIds(application),
             nonNegotiablePassed,
             negotiableScore,
         })
@@ -718,6 +791,7 @@ const updateItem = async (req, res) => {
         }
 
         const updated = await VolunteerApplicationsModel.update(id, updatePayload)
+        const publicId = updated?.public_id || await getPublicIdByVolunteerApplicationId(id)
 
         const { error: historyError } = await supabase
             .from('volunteer_application_status_history')
@@ -737,7 +811,8 @@ const updateItem = async (req, res) => {
                     : `Your volunteer application is now ${statusLabel(normalizedStatus)}.`,
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: id,
+                    volunteer_application_id: publicId || '',
+                    application_ref: publicVolunteerApplicationRef(publicId),
                     link: '/volunteer/apply',
                     priority: ['approved', 'rejected'].includes(normalizedStatus) ? 'high' : 'normal',
                 },
@@ -745,7 +820,7 @@ const updateItem = async (req, res) => {
             'Failed to notify applicant about application status'
         )
 
-        res.status(200).json(updated)
+        res.status(200).json(exposeVolunteerApplicationPublicIds(updated))
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -820,7 +895,7 @@ const getMyApplications = async (req, res) => {
         const applications = Array.from(applicationsById.values())
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 
-        res.status(200).json(applications)
+        res.status(200).json(exposeVolunteerApplicationPublicIds(applications))
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -831,9 +906,10 @@ const withdrawApplication = async (req, res) => {
     try {
         const { id } = req.params;
         
+        const now = new Date()
         const { data, error } = await supabase
             .from('volunteer_applications')
-            .update({ application_status: 'withdrawn', updated_at: new Date() })
+            .update({ application_status: 'withdrawn', updated_at: now, resolved_at: now })
             .eq('volunteer_application_id', id)
             .select()
             .single();
@@ -845,14 +921,15 @@ const withdrawApplication = async (req, res) => {
                 body: 'Your volunteer application has been withdrawn.',
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: id,
+                    volunteer_application_id: data.public_id || '',
+                    application_ref: publicVolunteerApplicationRef(data.public_id),
                     link: '/volunteer/apply',
                     priority: 'normal',
                 },
             }),
             'Failed to notify applicant about withdrawn application'
         )
-        res.json({ message: 'Application withdrawn successfully', data });
+        res.json({ message: 'Application withdrawn successfully', data: exposeVolunteerApplicationPublicIds(data) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -875,7 +952,7 @@ const undoWithdrawApplication = async (req, res) => {
         
         const { data, error } = await supabase
             .from('volunteer_applications')
-            .update({ application_status: newStatus, updated_at: new Date() })
+            .update({ application_status: newStatus, updated_at: new Date(), resolved_at: null })
             .eq('volunteer_application_id', id)
             .select()
             .single();
@@ -887,14 +964,15 @@ const undoWithdrawApplication = async (req, res) => {
                 body: `Your volunteer application is back to ${statusLabel(newStatus)}.`,
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: id,
+                    volunteer_application_id: data.public_id || '',
+                    application_ref: publicVolunteerApplicationRef(data.public_id),
                     link: '/volunteer/apply',
                     priority: 'normal',
                 },
             }),
             'Failed to notify applicant about restored application'
         )
-        res.json({ message: 'Withdrawal undone successfully', data });
+        res.json({ message: 'Withdrawal undone successfully', data: exposeVolunteerApplicationPublicIds(data) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

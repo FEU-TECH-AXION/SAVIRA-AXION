@@ -4,6 +4,7 @@ const {
     fireAndForget,
     notifyUser,
 } = require('../services/notificationService')
+const { getPublicIdByCaseReportId } = require('../utils/casePublicIds')
 
 async function requireParalegalForLegalPersonnel(req, res) {
     const role = String(req.user?.role || req.user?.role_name || '').toLowerCase()
@@ -36,7 +37,10 @@ const getItems = async (req, res) => {
 const createItem = async (req, res) => {
     try {
         const item = await LegalCaseAssignmentsModel.create(req.body)
-        res.status(201).json(item)
+        res.status(201).json({
+            ...item,
+            case_report_id: await getPublicIdByCaseReportId(item.case_report_id),
+        })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -116,15 +120,16 @@ const assignCase = async (req, res) => {
     }])
 
     if (personnelData.user_id) {
+      const publicId = await getPublicIdByCaseReportId(case_report_id)
       fireAndForget(
         notifyUser(personnelData.user_id, {
           title: 'Legal case assigned',
           body: 'You have been assigned to a legal review case.',
           data: {
             type: 'legal_assignment',
-            case_report_id,
+            case_report_id: publicId,
             legal_case_assignment_id: assignment.legal_case_assignment_id || '',
-            link: `/legalReviews/view?caseId=${case_report_id}`,
+            link: `/legalReviews/view?caseId=${publicId}`,
             priority: 'normal',
           },
         }),
@@ -132,7 +137,12 @@ const assignCase = async (req, res) => {
       )
     }
 
-    res.status(201).json({ data: assignment })
+    res.status(201).json({
+      data: {
+        ...assignment,
+        case_report_id: await getPublicIdByCaseReportId(assignment.case_report_id),
+      },
+    })
   } catch (err) {
     console.error('[assignCase]', err)
     res.status(500).json({ error: err.message })
@@ -228,6 +238,7 @@ const bulkAssignCase = async (req, res) => {
 
         // 3. Bulk insert all valid rows with shared batch_id
         if (validRows.length > 0) {
+            const publicId = await getPublicIdByCaseReportId(case_report_id)
             const rowsToInsert = validRows.map(({ _name, _user_id, ...row }) => row)
             await LegalCaseAssignmentsModel.bulkCreate(rowsToInsert)
 
@@ -250,9 +261,9 @@ const bulkAssignCase = async (req, res) => {
                             body: 'You have been assigned to a legal review case.',
                             data: {
                                 type: 'legal_assignment',
-                                case_report_id,
+                                case_report_id: publicId,
                                 legal_personnel_id: row.legal_personnel_id,
-                                link: `/legalReviews/view?caseId=${case_report_id}`,
+                                link: `/legalReviews/view?caseId=${publicId}`,
                                 priority: 'normal',
                             },
                         }),
@@ -261,6 +272,7 @@ const bulkAssignCase = async (req, res) => {
                 })
 
             results.assigned = validRows.map(r => ({
+                case_report_id: publicId,
                 legal_personnel_id: r.legal_personnel_id,
                 name:               r._name,
                 assignment_role:    r.assignment_role,

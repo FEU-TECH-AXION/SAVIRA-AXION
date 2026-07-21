@@ -434,7 +434,8 @@ export default function CaseInterviewManagement() {
           (pageData.interviews || []).map((iv) => ({
             ...iv,
             id: iv.interview_id,
-            caseId: `${new Date(iv.created_at).getFullYear()}-${String(iv.case_report_id).padStart(3, "0")}`,
+            caseId: iv.case_code || (iv.case_report_id ? `CASE-${String(iv.case_report_id).slice(0, 8).toUpperCase()}` : "Case interview"),
+            casePublicId: iv.case_report_id || null,
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`
               : "â€”",
@@ -697,7 +698,7 @@ export default function CaseInterviewManagement() {
 
   const handleViewDetails = (interviews) => {
     const interview = Array.isArray(interviews) ? interviews[0] : interviews;
-    router.push(`/cases/view?caseId=${interview.caseId.split("-")[1]}&tab=interview`);
+    router.push(`/cases/view?caseId=${interview.casePublicId}&tab=interview`);
   };
 
   return (

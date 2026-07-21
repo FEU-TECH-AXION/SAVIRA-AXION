@@ -270,6 +270,24 @@
   font-weight: 700;
   color: var(--sasha-text, #292929);
 }
+.taskContext {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--sasha-border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--sasha-offwhite, #f9fafb);
+}
+.taskContext span,
+.taskContext small {
+  color: var(--sasha-muted, #6b7280);
+  font-size: 0.78rem;
+}
+.taskContext strong {
+  color: var(--sasha-text, #292929);
+  font-size: 0.95rem;
+}
 .modal input,
 .modal textarea,
 .modal select {
@@ -345,6 +363,7 @@
 :global(html[data-theme="dark"]) .filters button,
 :global(html[data-theme="dark"]) .actions button,
 :global(html[data-theme="dark"]) .empty,
+:global(html[data-theme="dark"]) .taskContext,
 :global(html[data-theme="dark"]) .modal input,
 :global(html[data-theme="dark"]) .modal textarea,
 :global(html[data-theme="dark"]) .modal select,

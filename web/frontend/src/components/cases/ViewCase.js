@@ -36,12 +36,16 @@ const STATUS_STEP = {
   13: "Withdrawn",
 };
 
+const formatPublicCaseId = (id, fallback = "CASE") =>
+  id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : fallback;
+
 function mapCaseReportToViewData(data) {
-  const caseYear = new Date(data.created_at).getFullYear();
+  const publicCaseId = data.public_id || data.case_report_id || data.id;
   return {
     reportData: data,
-    id: data.case_report_id,
-    caseId: String(caseYear) + "-" + String(data.case_report_id).padStart(3, "0"),
+    id: publicCaseId,
+    publicCaseId,
+    caseId: data.case_code || formatPublicCaseId(publicCaseId),
     reporterId: data.complainant_user_id,
     region: data.incident_province || data.incident_city || "Not provided",
     status: STATUS_STEP[data.case_status_id] || "For Verification",
@@ -111,11 +115,14 @@ function mapCaseReportToViewData(data) {
     statusHistory: data.status_history?.length
       ? data.status_history
       : [{
-          status: STATUS_STEP[data.case_status_id] || "For Verification",
-          date: new Date(data.created_at).toLocaleDateString("en-PH"),
-          by: data.assigned_officer || "System",
-          notes: "Report received and logged.",
-        }],
+        status: STATUS_STEP[data.case_status_id] || "For Verification",
+        date: new Date(data.created_at).toLocaleDateString("en-PH"),
+        by: data.assigned_officer || "System",
+        actorName: data.assigned_officer || "System",
+        actorRole: data.assigned_officer ? "Case Officer" : null,
+        changed_by_role: data.assigned_officer ? "Case Officer" : null,
+        notes: "Report received and logged.",
+      }],
   };
 }
 
@@ -365,7 +372,7 @@ export default function ViewCase() {
           {displayedActiveTab === "interview" && showInterviewTab && userLoaded && <InterviewTab caseData={caseData} isStaff={false} isCaseOfficer={false} showToast={showToast} userId={user.id} />}
           {displayedActiveTab === "follow-ups" && userLoaded && (
             <FollowUpsPanel
-              caseId={caseData.id}
+              caseId={caseData.publicCaseId}
               caseStatus={caseData.status}
               isStaff={false}
               canManage={false}
@@ -402,7 +409,7 @@ export default function ViewCase() {
         <FollowUpComposer
           open={followUpComposerOpen}
           onClose={() => setFollowUpComposerOpen(false)}
-          caseId={caseData.id}
+          caseId={caseData.publicCaseId}
           isStaff={false}
           reportData={caseData.reportData}
           activeFollowUp={caseData.followUpSummary?.type === "user_change_request" && ["open", "responded"].includes(caseData.followUpSummary?.status) ? caseData.followUpSummary : null}

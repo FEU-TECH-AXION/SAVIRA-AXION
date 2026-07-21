@@ -11,6 +11,7 @@
  */
 
 const { createClient } = require("@supabase/supabase-js");
+const { publicVolunteerApplicationRef } = require("../utils/volunteerApplicationPublicIds");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -94,6 +95,7 @@ async function fetchCases(rangeStart) {
     .from("case_reports")   // FIX: correct table name (not "cases")
     .select(`
       case_report_id,
+      public_id,
       incident_location_type,
       created_at,
       date_resolved,
@@ -110,7 +112,7 @@ async function fetchCases(rangeStart) {
 
   // Normalise into the flat shape buildCaseSummary() reads
   return (data || []).map((r) => ({
-    id:            r.case_report_id,
+    id:            r.public_id,
     status:        r.case_statuses?.case_status_name  || null,
     case_type:     r.case_types?.case_type_name       || null,
     // frontend reads c.region || c.location_type — expose both
@@ -127,6 +129,7 @@ async function fetchVolunteers(rangeStart) {
     .from("volunteer_applications")
     .select(`
       volunteer_application_id,
+      public_id,
       application_status,
       negotiable_score,
       fields_with_background,
@@ -142,7 +145,8 @@ async function fetchVolunteers(rangeStart) {
   }
 
   return (data || []).map((r) => ({
-    id:                  r.volunteer_application_id,
+    id:                  r.public_id,
+    application_ref:     publicVolunteerApplicationRef(r.public_id),
     status:              mapVolunteerStatus(r.application_status),
     score:               r.negotiable_score          ?? null,
     field_of_background: r.fields_with_background    || null,
@@ -154,7 +158,7 @@ async function fetchVolunteers(rangeStart) {
 async function fetchProjects(rangeStart) {
   let query = supabase
     .from("projects")
-    .select("project_id, project_status, start_date, end_date, actual_end_date");
+    .select("project_id, project_status, category, approval_status, visibility, start_date, end_date, due_date, created_at");
   query = applyDateFilter(query, rangeStart, "start_date");
 
   const { data, error } = await query;
@@ -168,9 +172,13 @@ async function fetchProjects(rangeStart) {
     status: computeProjectStatus(project),
     statusOverride: ["Postponed", "Cancelled"].includes(project.project_status) ? project.project_status : "",
     project_status: project.project_status,
+    category: project.category,
+    approval_status: project.approval_status,
+    visibility: project.visibility,
     start_date: project.start_date,
     end_date: project.end_date,
-    actual_end_date: project.actual_end_date,
+    due_date: project.due_date,
+    created_at: project.created_at,
   }));
 }
 

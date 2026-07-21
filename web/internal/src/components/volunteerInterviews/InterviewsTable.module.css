@@ -7,8 +7,13 @@
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  -webkit-overflow-scrolling: touch;
 }
 
 .statusGroup {
@@ -53,6 +58,7 @@
 
 .interviewTable {
   width: 100%;
+  min-width: 840px;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
@@ -73,14 +79,24 @@
 }
 
 .interviewTable td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.9rem 1.25rem;
   border-bottom: 1px solid #e5e7eb;
   color: #1f2937;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .tableRow {
   transition: background-color 0.12s;
   cursor: pointer;
+  height: 56px;
+  background: #ffffff;
+}
+
+.tableRowAlt {
+  background: #f7f9fb;
 }
 
 .tableRow:hover {
@@ -94,32 +110,136 @@
 
 /* ── Column Widths ── */
 .colCheckbox {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 40px;
   text-align: center;
 }
 
-.colCaseId {
-  width: 110px;
+.colCaseId,
+.colAppId {
+  position: sticky;
+  left: 40px;
+  z-index: 2;
+  background: #ffffff;
+  width: 130px;
+}
+
+thead .colCheckbox,
+thead .colCaseId,
+thead .colAppId {
+  z-index: 3;
+}
+
+.tableRowAlt .colCheckbox,
+.tableRowAlt .colCaseId,
+.tableRowAlt .colAppId {
+  background: #f7f9fb;
+}
+
+.tableRowSelected .colCheckbox,
+.tableRowSelected .colCaseId,
+.tableRowSelected .colAppId,
+.tableRowSelected:hover .colCheckbox,
+.tableRowSelected:hover .colCaseId,
+.tableRowSelected:hover .colAppId {
+  background-color: rgba(3, 127, 129, 0.1) !important;
+}
+
+.tableRow:hover .colCheckbox,
+.tableRow:hover .colCaseId,
+.tableRow:hover .colAppId {
+  background-color: #f0fffe;
 }
 
 .colInterviewee {
-  width: 150px;
+  width: 220px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .colType {
   width: 120px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .colDateTime {
-  width: 160px;
+  width: 170px;
 }
 
 .colStatus {
-  width: 120px;
+  width: 150px;
 }
 
-.caseIdBadge {
+.colActions {
+  width: 88px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.columnsTh {
+  padding-right: 0.75rem;
+}
+
+.columnsBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.columnsBtn:hover {
+  background: #f3f4f6;
+  border-color: #037F81;
+  color: #037F81;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: #037F81;
+  border-color: #037F81;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.viewBtnLabel {
+  display: inline;
+}
+
+.caseIdBadge,
+.appIdBadge {
   display: inline-block;
+  width: fit-content;
   background: #e1f5f5;
   color: #037F81;
   padding: 0.3rem 0.6rem;
@@ -132,6 +252,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  width: fit-content;
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
   font-weight: 600;
@@ -286,4 +407,118 @@
   font-size: 0.95rem;
   background: #ffffff;
   border-radius: 12px;
+}
+
+@media (max-width: 1100px) {
+  .viewBtn {
+    padding: 6px 8px;
+  }
+
+  .viewBtnLabel {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .tableWrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .interviewTable {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .colType,
+  .colInterviewee,
+  .colDateTime {
+    display: none;
+  }
+
+  .colCheckbox {
+    display: table-cell;
+    position: static;
+    left: auto;
+    z-index: auto;
+    width: 34px;
+    padding-left: 0.35rem;
+    padding-right: 0.15rem;
+  }
+
+  .colCaseId,
+  .colAppId {
+    position: static;
+    left: auto;
+    z-index: auto;
+    width: 43%;
+  }
+
+  .colStatus {
+    width: 29%;
+    overflow: hidden;
+  }
+
+  .colActions {
+    width: 44px;
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+  }
+
+  .interviewTable th,
+  .interviewTable td {
+    padding: 0.65rem 0.45rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .interviewTable .colCheckbox {
+    padding-left: 0.35rem;
+    padding-right: 0.15rem;
+  }
+
+  .interviewTable .colActions {
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+  }
+
+  .caseIdBadge,
+  .appIdBadge,
+  .statusBadge {
+    max-width: 100%;
+  }
+
+  .caseIdBadge,
+  .appIdBadge {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .statusBadge {
+    justify-content: center;
+    padding: 0.24rem 0.5rem;
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bulkActionsBar {
+    align-items: stretch;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .columnsBtn {
+    margin-left: 0;
+  }
+
+  .viewBtn {
+    width: 34px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
 }

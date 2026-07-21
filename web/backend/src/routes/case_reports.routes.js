@@ -4,6 +4,7 @@ const { getItems, createItem, submitReport, getUserReports, getCaseStats, getAll
 const { verifyToken } = require('../middleware/auth.middleware')
 const authorize = require('../middleware/authorize.middleware')
 const requireCaseReportAccess = require('../middleware/requireCaseReportAccess.middleware')
+const { resolveCaseParam } = require('../utils/casePublicIds')
 const { validateCaseReport } = require('../middleware/case_reports_validation.middleware')
 const { amendCaseFields, createFollowUp, listFollowUps } = require('../controllers/follow_ups.controller')
 const { getPublicUpdates } = require('../controllers/case_updates.controller')
@@ -40,18 +41,18 @@ router.get('/all',        verifyToken, requireCaseAccess, getAllCases);
 router.get('/my-reports', verifyToken, getUserReports);
 router.post('/submit', verifyToken, handleEvidenceUpload, validateCaseReport, submitReport);
 
-router.get('/:id/follow-ups', verifyToken, listFollowUps);
-router.post('/:id/follow-ups', verifyToken, upload.single('file'), createFollowUp);
-router.patch('/:id/fields', verifyToken, upload.single('file'), amendCaseFields);
-router.post('/:id/withdraw', verifyToken, withdrawalUpload.single('affidavit'), withdrawCase);
-router.post('/:id/undo_withdraw', verifyToken, undoWithdrawCase);
-router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, requireCaseAccess, requireCaseReportAccess, dismissDuplicate);
-router.get('/:id/public-updates', verifyToken, requireCaseReportAccess, getPublicUpdates);
-router.get('/:id/nlp', verifyToken, requireCaseReportAccess, getNLPAnalysis); 
-router.get('/:id/summary', verifyToken, requireCaseReportAccess, getCaseSummaryById);
-router.get('/:id',     verifyToken, requireCaseReportAccess, getCaseById);
+router.get('/:id/follow-ups', verifyToken, resolveCaseParam('id'), listFollowUps);
+router.post('/:id/follow-ups', verifyToken, resolveCaseParam('id'), upload.single('file'), createFollowUp);
+router.patch('/:id/fields', verifyToken, resolveCaseParam('id'), upload.single('file'), amendCaseFields);
+router.post('/:id/withdraw', verifyToken, resolveCaseParam('id'), withdrawalUpload.single('affidavit'), withdrawCase);
+router.post('/:id/undo_withdraw', verifyToken, resolveCaseParam('id'), undoWithdrawCase);
+router.patch('/:id/duplicates/:matchId/dismiss', verifyToken, resolveCaseParam('id'), requireCaseAccess, requireCaseReportAccess, dismissDuplicate);
+router.get('/:id/public-updates', verifyToken, resolveCaseParam('id'), requireCaseReportAccess, getPublicUpdates);
+router.get('/:id/nlp', verifyToken, resolveCaseParam('id'), requireCaseReportAccess, getNLPAnalysis); 
+router.get('/:id/summary', verifyToken, resolveCaseParam('id'), requireCaseReportAccess, getCaseSummaryById);
+router.get('/:id',     verifyToken, resolveCaseParam('id'), requireCaseReportAccess, getCaseById);
 router.get('/',        verifyToken, authorize('Admin'), getItems);
 router.post('/',       verifyToken, authorize('Admin'), createItem);
-router.patch('/:id', verifyToken, requireCaseAccess, requireCaseReportAccess, updateItem)
+router.patch('/:id', verifyToken, resolveCaseParam('id'), requireCaseAccess, requireCaseReportAccess, updateItem)
 
 module.exports = router

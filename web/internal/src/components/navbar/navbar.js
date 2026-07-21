@@ -3,20 +3,31 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiBell, FiHelpCircle, FiMenu, FiSearch, FiX } from "react-icons/fi";
+import { FiBell, FiHelpCircle, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import { useAuth } from "@/lib/AuthContext";
+import { fetchAvailabilityFor, updateStaffAvailability } from "@/lib/api";
 import Sidebar from "@/components/sidebar/sidebar";
 import { ROLE_LABELS } from "@/components/navigation/navigationLinks";
 import { formatNotificationTime, useNotificationStore } from "@/lib/notificationStore";
 import { useI18n } from "@/lib/i18n";
+import { isInternalRole } from "@/lib/roles";
 import styles from "./navbar.module.css";
 
 function getInitials(user) {
-  return `${user?.first_name?.[0] || "U"}${user?.last_name?.[0] || ""}`.toUpperCase();
+  const nameInitials = [user?.first_name || user?.firstName, user?.last_name || user?.lastName]
+    .map((value) => value?.trim()?.[0])
+    .filter(Boolean)
+    .join("");
+
+  if (nameInitials) return nameInitials.toUpperCase();
+
+  const fallbackIdentity = user?.user_name || user?.email || "";
+  return fallbackIdentity.trim().slice(0, 1).toUpperCase();
 }
 
 function getDisplayName(user) {
-  const name = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
+  const name = `${user?.first_name || user?.firstName || ""} ${user?.last_name || user?.lastName || ""}`.trim();
   return name || user?.user_name || "Internal User";
 }
 
@@ -51,9 +62,11 @@ export default function Navbar() {
   const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const navbarRef = useRef(null);
   const notifRef = useRef(null);
-  const { user, logout, loading } = useAuth();
+  const availabilityRef = useRef(null);
+  const { user, setUser, logout, loading } = useAuth();
   const pathname = usePathname();
   const { notifications, unreadCount, markAllRead, dismissNotification } = useNotificationStore({
     enabled: Boolean(user) && !loading,
@@ -105,6 +118,30 @@ export default function Navbar() {
     };
   }, [notifOpen]);
 
+  useEffect(() => {
+    if (!availabilityOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!availabilityRef.current?.contains(event.target)) {
+        setAvailabilityOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setAvailabilityOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [availabilityOpen]);
+
   return (
     <>
       <nav className={styles.navbar} ref={navbarRef}>
@@ -135,6 +172,16 @@ export default function Navbar() {
           </div>
 
           <div className={styles.navRight}>
+            {user && isInternalRole(user.role_name || user.role) && (
+              <AvailabilityQuickToggle
+                user={user}
+                setUser={setUser}
+                open={availabilityOpen}
+                setOpen={setAvailabilityOpen}
+                wrapperRef={availabilityRef}
+              />
+            )}
+
             <div className={styles.notifWrapper} ref={notifRef}>
               <button
                 className={styles.iconBtn}
@@ -205,11 +252,7 @@ export default function Navbar() {
               )}
             </div>
 
-            <button className={styles.iconBtn} aria-label={t("navHelp")}>
-              <FiHelpCircle size={20} />
-            </button>
-
-            <UserMenu key={pathname} user={user} logout={logout} t={t} />
+            <UserMenu key={pathname} user={user} setUser={setUser} logout={logout} t={t} loading={loading} />
           </div>
         </div>
       </nav>
@@ -219,22 +262,125 @@ export default function Navbar() {
   );
 }
 
-function UserMenu({ user, logout, t }) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
+function AvailabilityQuickToggle({ user, setUser, open, setOpen, wrapperRef }) {
+  const [status, setStatus] = useState(user?.availability_status || "Available");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!open) return undefined;
+    let cancelled = false;
+
+    async function loadAvailability() {
+      if (!user?.user_id) return;
+      try {
+        const data = await fetchAvailabilityFor(user.user_id);
+        if (cancelled) return;
+        const nextStatus = data.availability_status || "Available";
+        setStatus(nextStatus);
+        setUser?.((current) => current ? { ...current, availability_status: nextStatus } : current);
+      } catch {
+        if (!cancelled) setStatus(user?.availability_status || "Available");
+      }
+    }
+
+    loadAvailability();
+    return () => { cancelled = true; };
+  }, [setUser, user?.availability_status, user?.user_id]);
+
+  async function setQuickStatus(nextStatus) {
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateStaffAvailability(user.user_id, {
+        availability_status: nextStatus,
+        availability_note: null,
+      });
+      const savedStatus = updated.availability_status || nextStatus;
+      setStatus(savedStatus);
+      setUser?.((current) => current ? { ...current, availability_status: savedStatus } : current);
+      setOpen(false);
+    } catch (err) {
+      setError(err.message || "Unable to update availability.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={styles.availabilityWrapper} ref={wrapperRef}>
+      <button
+        type="button"
+        className={styles.availabilityPill}
+        aria-label="Update availability"
+        aria-expanded={open}
+        onClick={() => {
+          setError("");
+          setOpen((current) => !current);
+        }}
+      >
+        <AvailabilityBadge status={status} compact />
+      </button>
+
+      {open && (
+        <div className={styles.availabilityDropdown}>
+          <div className={styles.availabilityHeader}>Availability</div>
+          <div className={styles.availabilityCurrent}>
+            Current <AvailabilityBadge status={status} compact />
+          </div>
+          {error && <p className={styles.availabilityError}>{error}</p>}
+          <button
+            type="button"
+            className={styles.availabilityAction}
+            disabled={saving || status === "Available"}
+            onClick={() => setQuickStatus("Available")}
+          >
+            Set Available
+          </button>
+          <button
+            type="button"
+            className={styles.availabilityAction}
+            disabled={saving || status === "Busy"}
+            onClick={() => setQuickStatus("Busy")}
+          >
+            Set Busy
+          </button>
+          <Link
+            href="/settings?tab=availability"
+            className={styles.availabilityManage}
+            onClick={() => setOpen(false)}
+          >
+            Manage availability
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMenu({ user, setUser, logout, t, loading }) {
+  const [open, setOpen] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const menuRef = useRef(null);
+  const mobileAvailabilityRef = useRef(null);
+  const initials = getInitials(user);
+  const hasAvatarContent = Boolean(user?.profile_img || initials);
+  const canOpenMenu = Boolean(user) && !loading;
+  const menuOpen = open && canOpenMenu;
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
 
     const handlePointerDown = (event) => {
       if (!menuRef.current?.contains(event.target)) {
         setOpen(false);
+        setAvailabilityOpen(false);
       }
     };
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setOpen(false);
+        setAvailabilityOpen(false);
       }
     };
 
@@ -245,27 +391,55 @@ function UserMenu({ user, logout, t }) {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [menuOpen]);
 
   return (
     <div className={styles.userMenu} ref={menuRef}>
       <button
-        className={styles.userAvatar}
-        onClick={() => setOpen((current) => !current)}
+        className={`${styles.userAvatar} ${!hasAvatarContent ? styles.userAvatarPlaceholder : ""}`}
+        onClick={() => {
+          if (!canOpenMenu) return;
+          setOpen((current) => !current);
+        }}
         aria-label={t("navMyProfile")}
-        aria-expanded={open}
+        aria-expanded={menuOpen}
+        disabled={!canOpenMenu}
       >
         {user?.profile_img ? (
           <img src={user.profile_img} alt="" className={styles.userAvatarImage} />
+        ) : initials ? (
+          initials
         ) : (
-          getInitials(user)
+          <FiUser size={17} aria-hidden="true" />
         )}
       </button>
 
-      {open && (
+      {menuOpen && (
         <div className={styles.userDropdown}>
           <p className={styles.dropdownName}>{getDisplayName(user)}</p>
           <p className={styles.dropdownRole}>{getRoleLabel(user, t)}</p>
+
+          <div className={styles.mobileDropdownControls}>
+            <div className={styles.dropdownSearchWrapper}>
+              <FiSearch className={styles.dropdownSearchIcon} size={15} />
+              <input
+                type="text"
+                className={styles.dropdownSearchInput}
+                placeholder={t("navSearchPlaceholder")}
+                aria-label={t("navSearch")}
+              />
+            </div>
+
+            {user && isInternalRole(user.role_name || user.role) && (
+              <AvailabilityQuickToggle
+                user={user}
+                setUser={setUser}
+                open={availabilityOpen}
+                setOpen={setAvailabilityOpen}
+                wrapperRef={mobileAvailabilityRef}
+              />
+            )}
+          </div>
 
           <hr className={styles.dropdownDivider} />
 

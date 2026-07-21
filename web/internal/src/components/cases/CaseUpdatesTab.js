@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ActorByline from "@/components/ui/ActorByline";
 import { authFetch } from "@/lib/AuthContext";
 import { API_URL } from "@/lib/internalApiFetch";
 import { STATUS_EXPLANATIONS } from "./CaseDetailsPage";
@@ -73,7 +74,13 @@ export default function CaseUpdatesTab({ caseId }) {
               </div>
               <div className={styles.caseUpdateContent}>
                 <h3 className={styles.caseUpdateTitle}>{title}</h3>
-                <p className={styles.historyMeta}>{formatUpdateDate(entry.date)}</p>
+                <ActorByline
+                  actorName={entry.actorName || entry.performed_by_name}
+                  actorRole={entry.actorRole || entry.performed_by_role}
+                  timestamp={entry.date}
+                  timestampFormatter={formatUpdateDate}
+                  className={styles.historyMeta}
+                />
                 {description && <p className={styles.historyNotes}>{description}</p>}
               </div>
             </div>

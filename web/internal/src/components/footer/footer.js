@@ -13,12 +13,13 @@ export default function Footer() {
   const { t } = useI18n();
   const quickLinks = getFooterQuickLinks(user);
   const pathname = usePathname();
+  const isHeatmap = pathname === "/heatmap";
 
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} ${isHeatmap ? styles.heatmapFooterCompact : ""}`}>
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <img src="/sasha-logo-white.png" alt="SASHA" className={styles.footerLogo} />

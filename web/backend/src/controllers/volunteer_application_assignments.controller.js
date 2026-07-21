@@ -2,11 +2,38 @@
 const supabase = require('../config/supabase')
 const VolunteerApplicationAssignmentsModel = require('../models/volunteer_application_assignments.model')
 const { notifyUser } = require('../services/notificationService');
+const {
+    getPublicIdByVolunteerApplicationId,
+    replaceVolunteerApplicationId,
+} = require('../utils/volunteerApplicationPublicIds')
+
+async function replaceAssignmentApplicationIds(payload) {
+    const rows = Array.isArray(payload) ? payload : [payload]
+    const ids = [...new Set(rows.map((row) => row?.volunteer_application_id).filter(Boolean))]
+    if (ids.length === 0) return payload
+
+    const { data, error } = await supabase
+        .from('volunteer_applications')
+        .select('volunteer_application_id, public_id')
+        .in('volunteer_application_id', ids)
+    if (error) throw error
+
+    const publicIdsByInternalId = Object.fromEntries(
+        (data || []).map((row) => [row.volunteer_application_id, row.public_id])
+    )
+    const shaped = rows.map((row) =>
+        replaceVolunteerApplicationId(row, publicIdsByInternalId[row?.volunteer_application_id])
+    )
+    return Array.isArray(payload) ? shaped : shaped[0]
+}
 
 const getItems = async (req, res) => {
     try {
-        const data = await VolunteerApplicationAssignmentsModel.getAll()
-        res.json(data)
+        const allData = await VolunteerApplicationAssignmentsModel.getAll()
+        const data = req.user?.role === 'Staff'
+            ? (allData || []).filter((row) => String(row.assessor_id) === String(req.user?.id || req.user?.user_id))
+            : allData
+        res.json(await replaceAssignmentApplicationIds(data))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -16,7 +43,7 @@ const getAssignmentsByApplication = async (req, res) => {
     const { applicationId } = req.params
     try {
         const data = await VolunteerApplicationAssignmentsModel.getActiveByApplication(applicationId)
-        res.json({ data })
+        res.json({ data: await replaceAssignmentApplicationIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -93,20 +120,26 @@ const bulkAssignApplication = async (req, res) => {
                     name:                     r._name,
                 }))
 
+            const publicIdsByApplication = {}
             for (const row of validRows.filter(r => insertedIds.has(`${r.volunteer_application_id}:${r.assessor_id}`))) {
+                publicIdsByApplication[row.volunteer_application_id] =
+                    publicIdsByApplication[row.volunteer_application_id] ||
+                    await getPublicIdByVolunteerApplicationId(row.volunteer_application_id)
                 notifyUser(row.assessor_id, {
                     title: 'New Application Assigned',
                     body: `You have been assigned to review a volunteer application.`,
                     data: {
-                        volunteer_application_id: row.volunteer_application_id,
-                        link: `/volunteer-applications/${row.volunteer_application_id}`,
+                        volunteer_application_id: publicIdsByApplication[row.volunteer_application_id] || '',
+                        link: publicIdsByApplication[row.volunteer_application_id]
+                            ? `/volunteer/view?id=${publicIdsByApplication[row.volunteer_application_id]}`
+                            : '/volunteer',
                     },
                 }).catch(err => console.error('[notifyUser] Failed to notify assessor:', err.message))
             }
         }
 
         res.status(201).json({
-            data:    results.assigned,
+            data:    await replaceAssignmentApplicationIds(results.assigned),
             failed:  results.failed,
             message: results.failed.length > 0
                 ? 'Some assignments failed.'

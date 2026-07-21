@@ -14,7 +14,7 @@ const NCR_CITIES = [
 ];
 
 const GENDER_IDENTITIES = [
-  "Male", "Female", "LGBTQIA+ member", "Prefer not to say",
+  "Male", "Female", "LGBTQIA+ member",
 ];
 
 const PHONE_REGEX = /^(?:\+63|0)9\d{9}$/;

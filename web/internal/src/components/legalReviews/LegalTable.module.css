@@ -122,7 +122,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  min-width: 700px;
+  min-width: 1040px;
 }
 
 /* ── Header row ── */
@@ -181,6 +181,7 @@
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
   cursor: pointer;
+  height: 56px;
 }
 
 .row:last-child {
@@ -197,12 +198,67 @@
 
 /* ── Cells ── */
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.textTd {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wideTextTd {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.narrowTextTd {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionsTd {
+  max-width: none;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.viewBtn:hover {
+  background: #037F81;
+  border-color: #037F81;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.viewBtnLabel {
+  display: inline;
 }
 
 .caseIdTd {
+  min-width: 130px;
   white-space: nowrap;
 }
 
@@ -245,6 +301,7 @@
 .statusBadge {
   display: inline-flex;
   align-items: center;
+  width: fit-content;
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 0.76rem;
@@ -389,7 +446,105 @@
 }
 
 /* ── Responsive ── */
+@media (max-width: 1100px) {
+  .viewBtn {
+    padding: 6px 8px;
+  }
+
+  .viewBtnLabel {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .table {
+    min-width: 520px;
+  }
+
+  .table th:nth-child(4):not(:last-child),
+  .table td:nth-child(4):not(:last-child),
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child),
+  .table th:nth-child(7):not(:last-child),
+  .table td:nth-child(7):not(:last-child),
+  .table th:nth-child(8):not(:last-child),
+  .table td:nth-child(8):not(:last-child),
+  .table th:nth-child(9):not(:last-child),
+  .table td:nth-child(9):not(:last-child),
+  .table th:nth-child(10):not(:last-child),
+  .table td:nth-child(10):not(:last-child),
+  .table th:nth-child(11):not(:last-child),
+  .table td:nth-child(11):not(:last-child) {
+    display: none;
+  }
+
+  .caseIdTd {
+    min-width: 110px;
+  }
+}
+
 @media (max-width: 640px) {
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(n+4):not(:last-child),
+  .table td:nth-child(n+4):not(:last-child) {
+    display: none;
+  }
+
+  .checkTh,
+  .checkTd {
+    display: table-cell;
+    width: 34px;
+    min-width: 34px;
+    padding-left: 0.35rem;
+    padding-right: 0.15rem;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .table th:nth-child(2),
+  .caseIdTd {
+    width: 42%;
+    min-width: 0;
+    max-width: 42%;
+  }
+
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
+    width: calc(58% - 78px);
+    min-width: 0;
+    max-width: calc(58% - 78px);
+  }
+
+  .columnsTh,
+  .actionsTd {
+    width: 44px;
+    min-width: 44px;
+    padding-left: 0.15rem;
+    padding-right: 0.35rem;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
   .bulkBar {
     grid-template-columns: minmax(0, 1fr) max-content;
     align-items: start;
@@ -411,7 +566,42 @@
 
   .th,
   .td {
-    padding: 0.6rem 0.6rem;
+    padding: 0.6rem 0.45rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .caseIdText {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .statusBadge {
+    display: block;
+    max-width: 100%;
+    width: max-content;
+    min-width: 0;
+    padding: 0.22rem 0.55rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+  }
+
+  .columnsBtn {
+    margin-left: 0;
+  }
+
+  .viewBtn {
+    width: 34px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .viewBtnLabel {
+    display: none;
   }
 
   .paginationBar {

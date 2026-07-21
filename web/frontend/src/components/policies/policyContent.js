@@ -54,7 +54,7 @@ Your access to and use of the Service is conditioned on Your acceptance of and c
 
 By accessing or using the Service, You agree to be bound by these Terms and Conditions. If You disagree with any part of these Terms and Conditions, You may not access the Service.
 
-Access to this system may be granted to individuals under the age of 18 who are victims or survivors of sexual harassment or abuse, subject to additional safeguarding measures and, where applicable, the involvement of a trusted adult or guardian. All other user roles (staff, case officer, legal personnel, volunteer applicant) must be 18 years of age or older to access the Service.
+Access to this system may be granted to individuals who are at least 13 years of age and are victims or survivors of sexual harassment or abuse, subject to additional safeguarding measures and, where applicable, the involvement of a trusted adult or guardian. All other user roles (staff, case officer, legal personnel, volunteer applicant) must be 16 years of age or older to access the Service.
 
 Your access to and use of the Service is also conditioned on Your acceptance of and compliance with the Privacy Policy of the Organization. Our Privacy Policy describes Our policies and procedures on the collection, use, and disclosure of Your personal information when You use the System, and tells You about Your privacy rights and how the law protects You. Please read Our Privacy Policy carefully before using Our Service.
 
@@ -154,7 +154,6 @@ If you have any questions about these Terms and Conditions, You can contact us:
 This Privacy Policy is designed to inform You ("the User") about the collection, use, and disclosure of data within the SAVIRA Case Management System.
 
 **Scouts Against Sexual Harassment and Abuse (SASHA)**
-270A ML Quezon Street, Buli, Muntinlupa City
 
 **For any data concerns, contact:** sasha@oneamaps.com
 
@@ -314,7 +313,7 @@ SASHA recognizes that some victims and survivors of sexual harassment or abuse m
 - The involvement of a trusted adult, guardian, or designated SASHA staff member is encouraged or required where appropriate.
 - Personal data of minors is treated with the highest level of sensitivity and confidentiality.
 
-All non-victim/survivor user roles (SASHA staff, case officers, legal personnel, volunteer applicants) must be 18 years of age or older to access the Service.
+All non-victim/survivor user roles (SASHA staff, case officers, legal personnel, volunteer applicants) must be 16 years of age or older to access the Service.
 
 If we become aware that personal data has been collected from a minor without appropriate authorization, we will take immediate steps to address this.
 

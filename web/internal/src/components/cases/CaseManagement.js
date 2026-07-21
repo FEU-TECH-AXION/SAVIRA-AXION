@@ -93,6 +93,9 @@ const STATUS_STEP = {
   13: "Withdrawn"
 };
 
+const formatPublicCaseId = (id, fallback = "CASE") =>
+  id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : fallback;
+
 // Which statuses a Case Officer is responsible for initiating
 const CASE_OFFICER_STATUSES = [
   "For Verification",
@@ -895,9 +898,9 @@ function AllCasesModal({ open, onClose, cases, onView, onAction }) {
               : filtered.map((c) => (
                 <tr key={c.id}>
                   <td>{c.caseId}</td>
-                  <td>{c.region}</td>
+                  <td className={styles.truncateCell} title={c.region || ""}>{c.region}</td>
                   <td><StatusBadge status={c.status} />{c.pendingApproval && <span style={{ marginLeft: 4 }}><PendingBadge /></span>}</td>
-                  <td>{c.assignedOfficer || "—"}</td>
+                  <td className={styles.truncateCell} title={c.assignedOfficer || "Unassigned"}>{c.assignedOfficer || "—"}</td>
                   <td>
                     <div className={styles.actionBtns}>
                       <button className={styles.tblBtnView} onClick={() => { onView(c); onClose(); }}>View</button>
@@ -1036,7 +1039,6 @@ useEffect(() => {
       setTotalRecords(payload.total || 0);
 
       const mapped = data.map((r) => {
-        const year = new Date(r.created_at).getFullYear();
         const initialHistory = [
           {
             status: STATUS_STEP[r.case_status_id] || "For Verification",
@@ -1051,7 +1053,7 @@ useEffect(() => {
 
         return mergeStatusHistory({
           id:              r.case_report_id,
-          caseId:          `${year}-` + String(r.case_report_id).padStart(3, "0"),
+          caseId:          r.case_code || formatPublicCaseId(r.public_id || r.case_report_id),
           reporterId:      String(r.complainant_id),
           region:          r.incident_province || r.incident_city || "—",
           incident_city:   r.incident_city || "",
@@ -1626,7 +1628,7 @@ const stats = useMemo(() => {
                       <td>{c.caseId}</td>
                       <td><StatusBadge status={c.status} /></td>
                       <td><StatusBadge status={c.pendingApproval.proposedStatus} /></td>
-                      <td>{c.pendingApproval.submittedBy}</td>
+                      <td className={styles.truncateCell} title={c.pendingApproval.submittedBy || ""}>{c.pendingApproval.submittedBy}</td>
                       <td>{c.pendingApproval.date}</td>
                       <td>
                         <button className={styles.tblBtnApprove} onClick={() => { setSelected(c); setModal("approval"); }}>Review</button>

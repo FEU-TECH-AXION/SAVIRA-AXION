@@ -302,7 +302,20 @@ export default function CasesTable({
 
       {/* Table */}
       <div className={styles.tableScroll}>
-        <table className={styles.table}>
+        <table className={`${styles.table} ${showPrimaryCategory ? styles.hasCategory : ""} ${showCity ? styles.hasCity : ""}`}>
+          <colgroup>
+            <col className={styles.selectCol} />
+            <col className={styles.caseIdCol} />
+            <col className={styles.statusCol} />
+            <col className={styles.duplicateCol} />
+            <col className={styles.caseTypeCol} />
+            <col className={styles.approvalCol} />
+            <col className={styles.officerCol} />
+            <col className={styles.dateCol} />
+            {showPrimaryCategory && <col className={styles.categoryCol} />}
+            {showCity && <col className={styles.cityCol} />}
+            <col className={styles.actionCol} />
+          </colgroup>
           <thead>
             <tr className={styles.headerRow}>
               {/* Master checkbox */}
@@ -341,6 +354,9 @@ export default function CasesTable({
             ) : (
               paginated.map((c, idx) => {
                 const isSelected = selectedIds.has(c.id);
+                const duplicateScore = c.possibleDuplicates?.length
+                  ? Math.max(...c.possibleDuplicates.map((item) => Number(item.similarity_score) || 0))
+                  : null;
                 const rowBg = isSelected
                   ? "#e1f5f5"
                   : idx % 2 === 1
@@ -382,15 +398,15 @@ export default function CasesTable({
                       <StatusBadge status={c.status} />
                     </td>
 
-                    <td className={styles.td}>
-                      {c.possibleDuplicates?.length ? (
+                    <td className={`${styles.td} ${styles.duplicateTd}`}>
+                      {duplicateScore !== null ? (
                         <span
                           className={styles.duplicateCheckBadge}
-                          title={`${c.possibleDuplicates.length} possible duplicate match(es)`}
+                          title={`${c.possibleDuplicates.length} possible duplicate match(es); highest similarity ${duplicateScore}%`}
                         >
                           <span className={styles.duplicateCheckDot} />
-                          Review matches
-                          <strong>{Math.max(...c.possibleDuplicates.map((item) => Number(item.similarity_score) || 0))}%</strong>
+                          Match
+                          <strong>{duplicateScore}%</strong>
                         </span>
                       ) : (
                         <span className={styles.muted}>No match</span>
@@ -398,8 +414,8 @@ export default function CasesTable({
                     </td>
 
                     {/* Case Type */}
-                    <td className={styles.td}>
-                      {formatCaseType(c.caseType) || <span className={styles.muted}>Unassigned</span>}
+                    <td className={`${styles.td} ${styles.wideTextTd}`} title={formatCaseType(c.caseType) || "Unassigned"}>
+                      {formatCaseType(c.caseType) || <span className={styles.muted}>—</span>}
                     </td>
 
                     {/* Approval Status */}
@@ -408,9 +424,9 @@ export default function CasesTable({
                     </td>
 
                     {/* Case Officer */}
-                    <td className={styles.td}>
+                    <td className={`${styles.td} ${styles.textTd}`} title={c.assignedOfficer || "Unassigned"}>
                       {c.assignedOfficer || (
-                        <span className={styles.muted}>Unassigned</span>
+                        <span className={styles.muted}>—</span>
                       )}
                     </td>
 
@@ -423,20 +439,37 @@ export default function CasesTable({
 
                     {/* Extra: Primary Category */}
                     {showPrimaryCategory && (
-                      <td className={styles.td}>
+                      <td className={`${styles.td} ${styles.textTd}`} title={c.primaryCategory || "Not specified"}>
                         {c.primaryCategory || <span className={styles.muted}>—</span>}
                       </td>
                     )}
 
                     {/* Extra: City */}
                     {showCity && (
-                      <td className={styles.td}>
+                      <td className={`${styles.td} ${styles.narrowTextTd}`} title={c.incident_city || c.city || "Not specified"}>
                         {c.incident_city || c.city || <span className={styles.muted}>—</span>}
                       </td>
                     )}
 
-                    {/* Empty column under the columns button */}
-                    <td className={styles.td} />
+                    {/* View action under the columns button */}
+                    <td
+                      className={`${styles.td} ${styles.actionsTd}`}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => onRowClick && onRowClick(c)}
+                        aria-label={`View case ${c.caseId}`}
+                        title="View case"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path d="M1.5 8s2.25-4 6.5-4 6.5 4 6.5 4-2.25 4-6.5 4-6.5-4-6.5-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                          <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
+                        </svg>
+                        <span className={styles.viewBtnLabel}>View</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })

@@ -20,7 +20,6 @@ const GENDER_OPTIONS = [
   "Male",
   "Female",
   "LGBTQIA+ member",
-  "Prefer not to say",
 ];
 
 const DATE_RANGE_OPTIONS = [
@@ -142,8 +141,15 @@ function DateRangeDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const getDisplayLabel = () => {
@@ -161,6 +167,8 @@ function DateRangeDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "" ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => { setOpen(o => !o); setDateSearch(""); setCustomMode(false); }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{getDisplayLabel()}</span>
@@ -283,8 +291,15 @@ function SelectDropdown({ field, value, onChange }) {
     function outside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const displayValue = value && value !== "All" ? value : "All";
@@ -298,6 +313,8 @@ function SelectDropdown({ field, value, onChange }) {
       <button
         className={`${styles.defaultFilterBtn} ${value && value !== "All" ? styles.defaultFilterBtnActive : ""}`}
         onClick={() => { setOpen(o => !o); setSelectSearch(""); }}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className={styles.defaultFilterLabel}>{field.label}</span>
         <span className={styles.defaultFilterValue}>{displayValue}</span>
@@ -371,8 +388,15 @@ export default function FilterMenu({ activeFilters, onFilterChange, onSearch, se
     function outside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const activeFilterCount = Object.values(activeFilters || {}).filter(
@@ -461,8 +485,11 @@ export default function FilterMenu({ activeFilters, onFilterChange, onSearch, se
             onClick={() => setMenuOpen(o => !o)}
             title="Add more filters"
             aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
           >
             <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
             {activeFilterCount > 0 && (
               <span className={styles.filterBadge}>{activeFilterCount}</span>
             )}
@@ -479,6 +506,32 @@ export default function FilterMenu({ activeFilters, onFilterChange, onSearch, se
                   <FiX size={15} />
                 </button>
               </div>
+              <div className={styles.mobileSheetFilters}>
+                {DEFAULT_FILTERS.map(field => (
+                  <DefaultFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={(activeFilters || {})[field.key] || ""}
+                    onChange={val => onFilterChange({ ...(activeFilters || {}), [field.key]: val })}
+                  />
+                ))}
+
+                {extraFieldDefs.map(field => (
+                  <div key={`mobile-${field.key}`} className={styles.extraFilterWrap}>
+                    <DefaultFilterDropdown
+                      field={field}
+                      value={(activeFilters || {})[field.key] || ""}
+                      onChange={val => onFilterChange({ ...(activeFilters || {}), [field.key]: val })}
+                    />
+                    <button
+                      className={styles.removeExtraBtn}
+                      onClick={() => toggleExtraField(field.key)}
+                      title={`Remove ${field.label} filter`}
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ))}
               <p className={styles.filterDropdownHint}>
                 Select a field to add as a filter column.
               </p>
@@ -500,6 +553,8 @@ export default function FilterMenu({ activeFilters, onFilterChange, onSearch, se
                   );
                 })}
               </div>
+              </div>
+
               <div className={styles.filterDropdownFooter}>
                 <button className={styles.filterClearBtn} onClick={handleClearAll}>
                   Clear All

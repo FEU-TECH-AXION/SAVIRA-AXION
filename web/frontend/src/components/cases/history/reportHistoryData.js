@@ -66,13 +66,13 @@ function getNestedOfficerName(assignments = []) {
 
 export function normalizeReport(report) {
   const createdAt = report.created_at || report.dateSubmitted || null;
-  const id = report.case_report_id || report.id;
-  const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
+  const id = report.public_id || report.case_report_id || report.id;
 
   return {
     reportData: report,
     id,
-    caseId: report.caseId || `${year}-${String(id).padStart(3, "0")}`,
+    publicCaseId: report.public_id || id,
+    caseId: report.caseId || report.case_code || (id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : "CASE"),
     statusName: getStatusName(report),
     assignedPersonnel: getAssignedPersonnel(report),
     createdAt,

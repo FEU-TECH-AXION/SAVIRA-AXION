@@ -1,0 +1,12 @@
+{
+  "name": "savira-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node ../node_modules/concurrently/dist/bin/concurrently.js \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\" \"npm run dev --prefix internal\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:internal": "npm run dev --prefix internal"
+  }
+}

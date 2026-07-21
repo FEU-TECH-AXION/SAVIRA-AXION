@@ -1,7 +1,11 @@
 const supabase = require('../config/supabase')
+const { getResolvedVolunteerApplicationId } = require('../utils/volunteerApplicationPublicIds')
 
 const getApplicationId = (req) =>
-  req.params.id || req.params.applicationId || req.body?.volunteer_application_id
+  getResolvedVolunteerApplicationId(req) ||
+  req.params.id ||
+  req.params.applicationId ||
+  req.body?.volunteer_application_id
 
 const getAuthenticatedUserId = (req) =>
   req.user?.id || req.user?.user_id || req.user?.sub || null
@@ -28,6 +32,9 @@ const requireVolunteerApplicationAccess = async (req, res, next) => {
 
     if (req.user.role === 'Admin') return next()
 
+    const applicationId = getApplicationId(req)
+    if (!applicationId) return res.status(400).json({ error: 'Application id is required.' })
+
     if (req.user.role === 'Staff') {
       const { data, error } = await supabase
         .from('staff')
@@ -35,11 +42,22 @@ const requireVolunteerApplicationAccess = async (req, res, next) => {
         .eq('user_id', userId)
         .maybeSingle()
 
-      if (!error && data?.committee_id === 2) return next()
-    }
+      if (error) throw error
 
-    const applicationId = getApplicationId(req)
-    if (!applicationId) return res.status(400).json({ error: 'Application id is required.' })
+      if (data?.committee_id === 2) {
+        const { data: assignment, error: assignmentError } = await supabase
+          .from('volunteer_application_assignments')
+          .select('assignment_id')
+          .eq('volunteer_application_id', applicationId)
+          .eq('assessor_id', userId)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle()
+
+        if (assignmentError) throw assignmentError
+        if (assignment) return next()
+      }
+    }
 
     const { data: application, error: applicationError } = await supabase
       .from('volunteer_applications')

@@ -1,6 +1,8 @@
 const supabase = require('../config/supabase')
+const { getResolvedCaseReportId } = require('../utils/casePublicIds')
 
 const getCaseReportId = (req) =>
+  getResolvedCaseReportId(req) ||
   req.params.caseReportId ||
   req.params.caseId ||
   req.params.id ||

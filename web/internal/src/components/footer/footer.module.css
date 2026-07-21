@@ -166,6 +166,15 @@
   .footerBottom {
     padding: 1rem 1.25rem;
   }
+
+  .heatmapFooterCompact .footerInner {
+    display: none;
+  }
+
+  .heatmapFooterCompact .footerBottom {
+    border-top: none;
+    padding: 0.85rem 1rem;
+  }
 }
 
 @media (max-width: 480px) {

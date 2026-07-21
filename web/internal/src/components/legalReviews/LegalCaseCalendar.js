@@ -65,7 +65,7 @@ export default function LegalCaseCalendar() {
             const review = reviews[report.case_report_id] || null;
             return {
               id: report.case_report_id,
-              caseId: `${new Date(report.created_at).getFullYear()}-${String(report.case_report_id).padStart(3, "0")}`,
+              caseId: report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
               status: STATUS_STEP[report.case_status_id],
               endorsementDetails: review?.endorsement_details || null,
               paralegalRecord: review?.paralegal_record || null,

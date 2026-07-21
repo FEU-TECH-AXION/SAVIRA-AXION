@@ -366,11 +366,13 @@
   background: var(--sasha-white);
   border-radius: var(--sasha-card-radius);
   border: 1px solid var(--sasha-border);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .table {
   width: 100%;
+  min-width: 620px;
   border-collapse: collapse;
   font-size: 0.88rem;
 }
@@ -390,6 +392,7 @@
 
 .table tbody tr {
   border-bottom: 1px solid var(--sasha-border);
+  height: 56px;
   transition: background 0.12s;
 }
 
@@ -402,9 +405,32 @@
 }
 
 .table tbody td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.65rem 1rem;
   color: var(--sasha-text);
   font-size: 0.84rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.truncateCell {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  color: var(--sasha-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .table thead th,
+  .table tbody td {
+    padding: 0.6rem 0.55rem;
+  }
 }
 
 /* ── Status badges ── */
@@ -1013,7 +1039,37 @@
 @media (max-width: 767.98px) {
   .heroBanner  { padding: 2rem 0; }
   .heroTitle   { font-size: 1.5rem; margin-bottom: 1.25rem; }
+  .heroContent { padding: 2.5rem 1.25rem; }
+  .statsGrid   { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .statCard    { min-height: 108px; padding: 1.35rem 1.1rem; }
+  .statNum     { font-size: 2.35rem; }
+  .statLabel   { font-size: 0.92rem; }
   .footerInner { grid-template-columns: 1fr; gap: 1.5rem; }
   .footerBrand { grid-column: auto; }
   .overviewCount { font-size: 2.25rem; }
+}
+
+@media (max-width: 575.98px) {
+  .heroBanner  { padding: 0.75rem 0 0.85rem; margin-bottom: 0.75rem; }
+  .heroContent { padding: 1.35rem 1rem 1.15rem; margin-top: 0.5rem; }
+  .heroTitle {
+    font-size: 1.35rem;
+    line-height: 1.15;
+    margin-bottom: 0.85rem;
+  }
+  .statsGrid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .statCard {
+    gap: 0.42rem;
+    min-height: 0;
+    min-width: 8.25rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 14px;
+  }
+  .statNum { font-size: 0.95rem; line-height: 1; margin: 0; }
+  .statLabel { font-size: 0.68rem; line-height: 1.15; margin: 0; text-align: left; }
 }

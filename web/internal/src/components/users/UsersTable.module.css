@@ -106,7 +106,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  min-width: 700px;
+  min-width: 760px;
 }
 
 /* ── Header row ── */
@@ -148,9 +148,17 @@
 /* Checkbox column */
 .checkTh,
 .checkTd {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
   width: 44px;
   padding-left: 1rem;
   padding-right: 0.5rem;
+}
+
+.checkTh {
+  z-index: 3;
 }
 
 /* Columns toggle column */
@@ -165,6 +173,7 @@
   border-bottom: 1px solid #f1f3f5;
   transition: background 0.1s;
   cursor: pointer;
+  height: 56px;
 }
 
 .row:last-child {
@@ -179,11 +188,34 @@
   background: #e1f5f5 !important;
 }
 
+.rowSelected .checkTd {
+  background: #e1f5f5;
+}
+
+.row:hover .checkTd {
+  background: #f0fffe;
+}
+
 /* ── Cells ── */
 .td {
+  height: 56px;
+  max-height: 56px;
   padding: 0.7rem 0.9rem;
   color: #292929;
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.textTd {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.narrowTextTd {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .caseIdTd {
@@ -224,6 +256,7 @@
 .statusBadge {
   display: inline-flex;
   align-items: center;
+  width: fit-content;
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 0.76rem;
@@ -368,6 +401,21 @@
 }
 
 /* ── Responsive ── */
+@media (max-width: 900px) {
+  .table {
+    min-width: 560px;
+  }
+
+  .table th:nth-child(5):not(:last-child),
+  .table td:nth-child(5):not(:last-child),
+  .table th:nth-child(6):not(:last-child),
+  .table td:nth-child(6):not(:last-child),
+  .table th:nth-child(7):not(:last-child),
+  .table td:nth-child(7):not(:last-child) {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   .bulkActions {
     flex-wrap: wrap;

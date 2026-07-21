@@ -10,6 +10,7 @@ const {
   fireAndForget,
   notifyCaseOwner,
 } = require('../services/notificationService')
+const { exposeCasePublicIds, getPublicIdByCaseReportId } = require('../utils/casePublicIds')
 
 const PUBLIC_MESSAGE_REQUIRED = 'A public message is required when an update is marked visible to the complainant.'
 const PUBLIC_MESSAGE_MAX_LENGTH = 280
@@ -32,10 +33,12 @@ function getActorUserId(req) {
   return (
     req.user?.user_id ||
     req.user?.id ||
-    req.body?.performed_by_user_id ||
-    req.query?.performed_by_user_id ||
     null
   )
+}
+
+function getActorRole(req) {
+  return req.user?.role || req.user?.role_name || null
 }
 
 async function getLegalPersonnelType(userId) {
@@ -63,11 +66,11 @@ function missingColumnsMessage(err) {
   return 'Legal review detail columns are missing. Run the legal review improvements migration.'
 }
 
-function toClientPayload(review, logs = []) {
+function toClientPayload(review, logs = [], publicId = null) {
   if (!review) return null
   return {
     legal_review_id: review.legal_review_id,
-    case_report_id: review.case_report_id,
+    case_report_id: publicId || review.case_report_id,
     legal_personnel_id: review.legal_personnel_id,
     review_type: review.review_type,
     review_status: review.review_status,
@@ -81,11 +84,11 @@ function toClientPayload(review, logs = []) {
   }
 }
 
-function toManagementPayload(review) {
+function toManagementPayload(review, publicId = null) {
   if (!review) return null
   return {
     legal_review_id: review.legal_review_id,
-    case_report_id: review.case_report_id,
+    case_report_id: publicId || review.case_report_id,
     legal_personnel_id: review.legal_personnel_id,
     review_type: review.review_type,
     review_status: review.review_status,
@@ -194,6 +197,57 @@ const ENDORSEMENT_DETAIL_SCHEMAS = {
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stampObject(value, fields) {
+  if (!isPlainObject(value)) return value
+  return {
+    ...value,
+    ...fields,
+  }
+}
+
+function documentSignature(document) {
+  if (!isPlainObject(document)) return ''
+  return [
+    document.id,
+    document.documentId,
+    document.path,
+    document.url,
+    document.fileName,
+    document.filename,
+    document.name,
+    document.label,
+    document.addedAt,
+  ]
+    .filter(Boolean)
+    .map(String)
+    .join('|')
+}
+
+function findPreviousDocumentSnapshot(document, previousDocuments, index) {
+  const indexed = previousDocuments[index]
+  if (indexed?.uploadedById || indexed?.uploadedByRole) return indexed
+
+  const signature = documentSignature(document)
+  if (!signature) return null
+  return previousDocuments.find((previous) =>
+    documentSignature(previous) === signature &&
+    (previous.uploadedById || previous.uploadedByRole)
+  ) || null
+}
+
+function stampDocumentRepository(documents, previousDocuments = [], actor) {
+  if (!Array.isArray(documents)) return documents
+  return documents.map((document, index) => {
+    if (!isPlainObject(document)) return document
+    const previous = findPreviousDocumentSnapshot(document, previousDocuments, index)
+    return {
+      ...document,
+      uploadedById: previous?.uploadedById || actor.id,
+      uploadedByRole: previous?.uploadedByRole || actor.role,
+    }
+  })
 }
 
 function validateDateString(value) {
@@ -309,7 +363,7 @@ function addObjectDateEvents(events, object, { source, prefix = '' } = {}) {
 
 function buildLegalDeadlinesForCase({ report, review, statusHistory = [] }) {
   const events = []
-  const caseId = `${new Date(report.created_at).getFullYear()}-${String(report.case_report_id).padStart(3, '0')}`
+  const caseId = report.case_code || (report.public_id ? `CASE-${String(report.public_id).slice(0, 8).toUpperCase()}` : 'Case')
 
   addObjectDateEvents(events, review?.endorsement_details, { source: 'endorsement' })
 
@@ -358,8 +412,8 @@ function buildLegalDeadlinesForCase({ report, review, statusHistory = [] }) {
     .filter((item) => item.value && !Number.isNaN(new Date(item.value).getTime()))
     .map((item, index) => ({
       ...item,
-      id: `${report.case_report_id}-${item.type}-${item.value}-${index}`,
-      caseReportId: report.case_report_id,
+      id: `${report.public_id || report.case_report_id}-${item.type}-${item.value}-${index}`,
+      caseReportId: report.public_id || report.case_report_id,
       caseId,
       status: STATUS_NAME_BY_ID[report.case_status_id] || null,
       date: new Date(item.value).toISOString(),
@@ -467,17 +521,17 @@ async function getManagement(req, res) {
     ])
 
     const reviews = {}
-    for (const caseId of caseIds) {
-      const review = reviewsByCase[caseId]
-      reviews[caseId] = toManagementPayload(review)
+    for (const report of legalReports) {
+      const review = reviewsByCase[report.case_report_id]
+      reviews[report.public_id || report.case_report_id] = toManagementPayload(review, report.public_id)
     }
 
     return res.json({
       data: {
-        cases: legalReports.map((report) => ({
+        cases: exposeCasePublicIds(legalReports.map((report) => ({
           ...report,
           status_history: pendingHistoryByCase[report.case_report_id] || report.status_history || [],
-        })),
+        }))),
         legal_personnels: legalPersonnels,
         reviews,
         total: usePagination ? reportResult.total : legalReports.length,
@@ -506,7 +560,7 @@ async function getDeadlines(req, res) {
 
     let reportQuery = supabase
       .from('case_reports')
-      .select('case_report_id, case_status_id, created_at')
+        .select('case_report_id, public_id, case_code, case_status_id, created_at')
       .eq('is_current', true)
       .in('case_status_id', LEGAL_STATUS_ID_VALUES)
 
@@ -567,7 +621,7 @@ async function getByCase(req, res) {
     const { caseReportId } = req.params
     const review = await LegalReviews.getLatestByCase(caseReportId)
     const logs = await LegalReviews.getLogsByReview(review?.legal_review_id)
-    return res.json({ data: toClientPayload(review, logs) })
+    return res.json({ data: toClientPayload(review, logs, req.casePublicId) })
   } catch (err) {
     console.error('[legalReviews.getByCase]', err)
     return res.status(500).json({ error: missingColumnsMessage(err) || err.message })
@@ -605,8 +659,10 @@ async function updateByCase(req, res) {
 
     const performedByUserId = getActorUserId(req)
     if (!performedByUserId) {
-      return res.status(400).json({ error: 'performed_by_user_id is required for legal review logs.' })
+      return res.status(400).json({ error: 'Authenticated user is required for legal review logs.' })
     }
+    const performedByRole = getActorRole(req)
+    const actor = { id: performedByUserId, role: performedByRole }
 
     const requesterRole = String(req.user?.role || req.user?.role_name || '').toLowerCase()
     if (requesterRole === 'legal personnel') {
@@ -678,23 +734,50 @@ async function updateByCase(req, res) {
       review = await LegalReviews.createForCase({
         caseReportId,
         legalPersonnelId: resolvedLegalPersonnelId,
+        createdById: performedByUserId,
+        createdByRole: performedByRole,
       })
     }
 
     const patch = {}
-    if (paralegal_record !== undefined) patch.paralegal_record = paralegal_record
-    if (lawyer_record !== undefined) patch.lawyer_record = lawyer_record
+    if (paralegal_record !== undefined) {
+      patch.paralegal_record = stampObject(paralegal_record, {
+        organizedById: actor.id,
+        organizedByRole: actor.role,
+      })
+    }
+    if (lawyer_record !== undefined) {
+      patch.lawyer_record = stampObject(lawyer_record, {
+        assessedById: actor.id,
+        assessedByRole: actor.role,
+      })
+    }
     if (endorsed_to !== undefined) {
       patch.endorsed_to = endorsed_to || null
       if (!endorsed_to && endorsement_details === undefined) patch.endorsement_details = null
     }
     if (endorsement_details !== undefined) {
-      patch.endorsement_details = normalizedEndorsementDetails
+      patch.endorsement_details = stampObject(normalizedEndorsementDetails, {
+        endorsedById: actor.id,
+        endorsedByRole: actor.role,
+      })
     }
-    if (document_repository !== undefined) patch.document_repository = document_repository
+    if (document_repository !== undefined) {
+      patch.document_repository = stampDocumentRepository(
+        document_repository,
+        review.document_repository || [],
+        actor
+      )
+    }
     if (review_status !== undefined) patch.review_status = review_status
     if (monitoring_entry) {
-      patch.monitoring_log = [...(review.monitoring_log || []), monitoring_entry]
+      patch.monitoring_log = [
+        ...(review.monitoring_log || []),
+        stampObject(monitoring_entry, {
+          byUserId: actor.id,
+          byRole: actor.role,
+        }),
+      ]
     }
 
     if (Object.keys(patch).length > 0) {
@@ -714,18 +797,20 @@ async function updateByCase(req, res) {
       actionType: action_type || 'legal_review_updated',
       remarks,
       performedByUserId,
+      performedByRole,
       isPublic: publicFields.isPublic,
       publicMessage: publicFields.publicMessage,
     })
 
     if (wasCreated) {
+      const publicId = await getPublicIdByCaseReportId(caseReportId)
       fireAndForget(
         notifyCaseOwner(caseReportId, {
           title: 'Legal review update',
           body: 'Your case has been referred for legal review.',
           data: {
             type: 'legal_review',
-            case_report_id: caseReportId,
+            case_report_id: publicId,
             legal_review_id: review.legal_review_id,
             link: '/cases/history',
             priority: 'normal',
@@ -740,13 +825,14 @@ async function updateByCase(req, res) {
       review_status !== undefined &&
       String(previousReviewStatus || '') !== String(review.review_status || '')
     ) {
+      const publicId = await getPublicIdByCaseReportId(caseReportId)
       fireAndForget(
         notifyCaseOwner(caseReportId, {
           title: 'Legal review update',
           body: 'There is an update on your legal review. Please check your account for details.',
           data: {
             type: 'legal_review',
-            case_report_id: caseReportId,
+            case_report_id: publicId,
             legal_review_id: review.legal_review_id,
             link: '/cases/history',
             priority: 'normal',
@@ -757,7 +843,7 @@ async function updateByCase(req, res) {
     }
 
     const logs = await LegalReviews.getLogsByReview(review.legal_review_id)
-    return res.json({ data: toClientPayload(review, logs) })
+    return res.json({ data: toClientPayload(review, logs, req.casePublicId) })
   } catch (err) {
     console.error('[legalReviews.updateByCase]', err)
     return res.status(500).json({ error: missingColumnsMessage(err) || err.message })

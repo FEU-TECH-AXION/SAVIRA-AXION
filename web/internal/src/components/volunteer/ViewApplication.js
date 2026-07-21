@@ -6,6 +6,9 @@ import { FiArrowLeft, FiChevronDown, FiChevronUp, FiAlertCircle, FiClock } from 
 import { IoIosArrowBack, IoIosInformationCircle, IoIosWarning  } from "react-icons/io";
 import styles from "./ViewApplication.module.css";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import ActorByline from "@/components/ui/ActorByline";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import InterviewTab from "../volunteerInterviews/InterviewTab";
 import VolunteerStatusDialog from "./VolunteerStatusDialog";
 import { useAuth } from "@/lib/AuthContext";
 import { internalApiFetch, API_URL } from "@/lib/internalApiFetch";
@@ -18,6 +21,12 @@ function capitalizeStatus(raw) {
     .split("_")
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -463,7 +472,107 @@ function RatingStars({ value, onChange, disabled }) {
   );
 }
 
-function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus }) {
+function hasEssayEvaluation(row) {
+  return ESSAY_CRITERIA.some((criterion) => Number(row?.[criterion.key] || 0) > 0);
+}
+
+function hasInterviewEvaluation(row) {
+  return row?.interview_score !== null && row?.interview_score !== undefined && Number(row.interview_score) > 0;
+}
+
+function upsertEvaluation(list, evaluation) {
+  if (!evaluation) return list;
+  const key = evaluation.volunteer_application_evaluation_id || evaluation.evaluated_by;
+  if (!key) return [evaluation, ...list];
+  const next = [...list];
+  const index = next.findIndex((item) =>
+    String(item.volunteer_application_evaluation_id || item.evaluated_by) === String(key)
+  );
+  if (index >= 0) next[index] = { ...next[index], ...evaluation };
+  else next.unshift(evaluation);
+  return next;
+}
+
+function EvaluationAccordion({ title, subtitle, open, onToggle, children }) {
+  return (
+    <div className={styles.evaluationAccordion}>
+      <button
+        type="button"
+        className={styles.evaluationAccordionHeader}
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        <span>
+          <span className={styles.evaluationAccordionTitle}>{title}</span>
+          {subtitle && <span className={styles.evaluationAccordionSubtitle}>{subtitle}</span>}
+        </span>
+        {open ? <FiChevronUp /> : <FiChevronDown />}
+      </button>
+      {open && <div className={styles.evaluationAccordionBody}>{children}</div>}
+    </div>
+  );
+}
+
+function OtherEssayEvaluationCard({ evaluation }) {
+  const total = weightedEssayScore(evaluation);
+  return (
+    <div className={styles.evaluatorScoreCard}>
+      <div className={styles.evaluatorScoreHeader}>
+        <ActorByline
+          actorName={evaluation?.actorName || evaluation?.evaluated_by_name}
+          actorRole={evaluation?.actorRole || evaluation?.evaluated_by_role}
+          timestamp={evaluation?.updated_at || evaluation?.created_at}
+          fallbackName="Evaluator unavailable"
+        />
+        <span className={styles.evaluatorScoreTotal}>
+          {total.toFixed(1)}<span className={styles.weightedTotalDenom}>/100</span>
+        </span>
+      </div>
+      <div className={styles.evaluatorCriteriaGrid}>
+        {ESSAY_CRITERIA.map((criterion) => (
+          <div key={criterion.key} className={styles.evaluatorCriterionRow}>
+            <span>{criterion.label}</span>
+            <ScoreBar score={Number(evaluation?.[criterion.key] || 0)} max={10} />
+          </div>
+        ))}
+      </div>
+      {evaluation?.essay_notes && (
+        <div className={styles.evalNotesBox}>
+          <p className={styles.evalNotesLabel}>Notes</p>
+          <p className={styles.evalNotesText}>{evaluation.essay_notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OtherInterviewEvaluationCard({ evaluation }) {
+  const score = Number(evaluation?.interview_score || 0);
+  return (
+    <div className={styles.evaluatorScoreCard}>
+      <div className={styles.evaluatorScoreHeader}>
+        <ActorByline
+          actorName={evaluation?.actorName || evaluation?.evaluated_by_name}
+          actorRole={evaluation?.actorRole || evaluation?.evaluated_by_role}
+          timestamp={evaluation?.updated_at || evaluation?.created_at}
+          fallbackName="Evaluator unavailable"
+        />
+        <span className={styles.evaluatorScoreTotal}>
+          {score}<span className={styles.weightedTotalDenom}>/10</span>
+        </span>
+      </div>
+      <ScoreBar score={score} max={10} />
+      {evaluation?.interview_notes && (
+        <div className={styles.evalNotesBox}>
+          <p className={styles.evalNotesLabel}>Notes</p>
+          <p className={styles.evalNotesText}>{evaluation.interview_notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus, onEvaluationSaved, currentUserId }) {
   
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -480,7 +589,10 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
   const [essaySaved, setEssaySaved] = useState(false);
   const [essayLoaded, setEssayLoaded] = useState(false);
   const [essayAggregate, setEssayAggregate] = useState(null);
+  const [essayActor, setEssayActor] = useState(null);
+  const [essayEvaluations, setEssayEvaluations] = useState([]);
   const [nlpEssayScore, setNlpEssayScore] = useState(0);
+  const [essayOpen, setEssayOpen] = useState(true);
 
   // Interview score
   const [interviewScore, setInterviewScore] = useState(0);
@@ -488,6 +600,11 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
   const [interviewSaving, setInterviewSaving] = useState(false);
   const [interviewSaved, setInterviewSaved] = useState(false);
   const [interviewLoaded, setInterviewLoaded] = useState(false);
+  const [interviewActor, setInterviewActor] = useState(null);
+  const [interviewEvaluations, setInterviewEvaluations] = useState([]);
+  const [interviewAggregate, setInterviewAggregate] = useState(null);
+  const [interviewOpen, setInterviewOpen] = useState(true);
+  const [saveDialog, setSaveDialog] = useState(null);
 
   // ── Fetch quantitative scores ──────────────────────────────────────────────
 
@@ -525,9 +642,13 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
           });
           setEssayNotes(d.notes || "");
           setEssayAggregate(d.aggregate || null);
+          setEssayEvaluations(Array.isArray(d.evaluations) ? d.evaluations : []);
+          setEssayActor(d.actorName || d.evaluated_by_name ? d : null);
         }
-      } catch (_) {}
-      finally { setEssayLoaded(true); }
+      } catch (_) {
+      } finally {
+        setEssayLoaded(true);
+      }
     }
     fetchEssay();
   }, [appData?.id]);
@@ -558,9 +679,14 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
           const d = json.data || json;
           setInterviewScore(d.score ?? 0);
           setInterviewNotes(d.notes || "");
+          setInterviewAggregate(d.aggregate || null);
+          setInterviewEvaluations(Array.isArray(d.evaluations) ? d.evaluations : []);
+          setInterviewActor(d.actorName || d.evaluated_by_name ? d : null);
         }
-      } catch (_) {}
-      finally { setInterviewLoaded(true); }
+      } catch (_) {
+      } finally {
+        setInterviewLoaded(true);
+      }
     }
     fetchInterview();
   }, [appData?.id]);
@@ -569,20 +695,28 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
 
   async function saveEssayScores() {
     if (!canEdit) {
-      alert("Only assigned Membership Committee staff can modify this evaluation.");
+      setSaveDialog({ type: "blocked", kind: "essay" });
       return;
     }
     setEssaySaving(true);
     try {
-      await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`, {
+      const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/essay_evaluation`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...essayScores, notes: essayNotes }),
       });
+      if (!res.ok) throw new Error("Failed to save essay scores");
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        const d = json.data || json;
+        setEssayActor(d.actorName || d.evaluated_by_name ? d : essayActor);
+        setEssayEvaluations((prev) => upsertEvaluation(prev, d));
+        onEvaluationSaved?.(d);
+      }
       setEssaySaved(true);
       setTimeout(() => setEssaySaved(false), 2500);
     } catch (_) {
-      alert("Failed to save essay scores. Please try again.");
+      setSaveDialog({ type: "error", kind: "essay" });
     } finally {
       setEssaySaving(false);
     }
@@ -590,22 +724,51 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
 
   async function saveInterviewScore() {
     if (!canEdit) {
-      alert("Only assigned Membership Committee staff can modify this evaluation.");
+      setSaveDialog({ type: "blocked", kind: "interview" });
       return;
     }
     setInterviewSaving(true);
     try {
-      await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`, {
+      const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appData.id}/interview_evaluation`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score: interviewScore, notes: interviewNotes }),
       });
+      if (!res.ok) throw new Error("Failed to save interview score");
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        const d = json.data || json;
+        setInterviewActor(d.actorName || d.evaluated_by_name ? d : interviewActor);
+        setInterviewEvaluations((prev) => upsertEvaluation(prev, d));
+        onEvaluationSaved?.(d);
+      }
       setInterviewSaved(true);
       setTimeout(() => setInterviewSaved(false), 2500);
     } catch (_) {
-      alert("Failed to save interview score. Please try again.");
+      setSaveDialog({ type: "error", kind: "interview" });
     } finally {
       setInterviewSaving(false);
+    }
+  }
+
+  function requestSave(kind) {
+    if (!canEdit) {
+      setSaveDialog({ type: "blocked", kind });
+      return;
+    }
+    const alreadyScored = kind === "essay" ? hasOwnEssayEvaluation : hasOwnInterviewEvaluation;
+    setSaveDialog({ type: "confirm", kind, alreadyScored });
+  }
+
+  async function confirmSave() {
+    const kind = saveDialog?.kind;
+    setSaveDialog(null);
+    if (kind === "essay") {
+      await saveEssayScores();
+      return;
+    }
+    if (kind === "interview") {
+      await saveInterviewScore();
     }
   }
 
@@ -646,6 +809,28 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
   const aggColor = aggregateTotal >= 75 ? "#16a34a" : aggregateTotal >= 50 ? "#d97706" : "#dc2626";
 
   const allEssayFilled  = ESSAY_CRITERIA.every(c => (essayScores[c.key] ?? 0) > 0);
+  const isOwnEvaluation = (evaluation) =>
+    currentUserId && String(evaluation?.evaluated_by) === String(currentUserId);
+  const hasOwnEssayEvaluation = essayEvaluations.some((evaluation) =>
+    isOwnEvaluation(evaluation) && hasEssayEvaluation(evaluation)
+  );
+  const hasOwnInterviewEvaluation = interviewEvaluations.some((evaluation) =>
+    isOwnEvaluation(evaluation) && hasInterviewEvaluation(evaluation)
+  );
+  const otherEssayEvaluations = isAdmin
+    ? essayEvaluations.filter((evaluation) => !isOwnEvaluation(evaluation) && hasEssayEvaluation(evaluation))
+    : [];
+  const otherInterviewEvaluations = isAdmin
+    ? interviewEvaluations.filter((evaluation) => !isOwnEvaluation(evaluation) && hasInterviewEvaluation(evaluation))
+    : [];
+  const essayAccordionSubtitle = isAdmin
+    ? "Your essay rubric score"
+    : "Essay rubric and notes";
+  const interviewAccordionSubtitle = isAdmin
+    ? "Your interview rating and notes"
+    : "Interview rating and notes";
+  const activeSaveBusy = saveDialog?.kind === "essay" ? essaySaving : interviewSaving;
+  const saveKindLabel = saveDialog?.kind === "essay" ? "essay" : "interview";
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -824,6 +1009,60 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
         </div>
       )}
 
+      {isAdmin && (
+        <div className={styles.evalBlock}>
+          <h3 className={styles.evalBlockTitle}>
+            Other Evaluator Scores
+          </h3>
+          <p className={styles.evalBlockDesc}>
+            Read-only scores from evaluators other than you. Your own admin scores are entered separately below.
+          </p>
+          <div className={styles.otherEvaluatorGrid}>
+            <div className={styles.otherEvaluatorPanel}>
+              <div className={styles.otherEvaluatorHeader}>
+                <p className={styles.otherEvaluatorTitle}>Essay Scores</p>
+                <span>{otherEssayEvaluations.length}</span>
+              </div>
+              {otherEssayEvaluations.length > 0 ? (
+                <div className={styles.evaluatorScoreList}>
+                  {otherEssayEvaluations.map((evaluation, index) => (
+                    <OtherEssayEvaluationCard
+                      key={evaluation.volunteer_application_evaluation_id || evaluation.evaluated_by || index}
+                      evaluation={evaluation}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.otherEvaluatorEmpty}>
+                  No other evaluator has saved essay scores for this applicant yet.
+                </p>
+              )}
+            </div>
+
+            <div className={styles.otherEvaluatorPanel}>
+              <div className={styles.otherEvaluatorHeader}>
+                <p className={styles.otherEvaluatorTitle}>Interview Scores</p>
+                <span>{otherInterviewEvaluations.length}</span>
+              </div>
+              {otherInterviewEvaluations.length > 0 ? (
+                <div className={styles.evaluatorScoreList}>
+                  {otherInterviewEvaluations.map((evaluation, index) => (
+                    <OtherInterviewEvaluationCard
+                      key={evaluation.volunteer_application_evaluation_id || evaluation.evaluated_by || index}
+                      evaluation={evaluation}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.otherEvaluatorEmpty}>
+                  No other evaluator has saved interview scores for this applicant yet.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ════════════════════════════════════════════
           SECTION 2 – QUALITATIVE: Essay Rubric
           ════════════════════════════════════════════ */}
@@ -831,6 +1070,18 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
         <h3 className={styles.evalBlockTitle}>
           Qualitative Assessment — Essay Rubric
         </h3>
+        <EvaluationAccordion
+          title={isAdmin ? "Admin Essay Rubric Score" : "Essay Rubric Scores"}
+          subtitle={essayAccordionSubtitle}
+          open={essayOpen}
+          onToggle={() => setEssayOpen((open) => !open)}
+        >
+        <ActorByline
+          actorName={essayActor?.actorName || essayActor?.evaluated_by_name}
+          actorRole={essayActor?.actorRole || essayActor?.evaluated_by_role}
+          timestamp={essayActor?.updated_at || essayActor?.created_at}
+          fallbackName="Evaluator unavailable"
+        />
         <p className={styles.evalBlockDesc}>
           Rate each criterion from <strong>1 (lowest)</strong> to <strong>10 (highest)</strong>.
           Scores are weighted and automatically compute the essay total.
@@ -905,13 +1156,14 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
             <span className={styles.saveHint}>Score all criteria to save.</span>
           )}
           <button
-            onClick={saveEssayScores}
+            onClick={() => requestSave("essay")}
             disabled={!canEdit || essaySaving || !allEssayFilled}
             className={canEdit && allEssayFilled ? styles.btnPrimary : styles.btnDisabled}
           >
             {essaySaving ? "Saving…" : "Save Essay Scores"}
           </button>
         </div>
+      </EvaluationAccordion>
       </div>
 
       {/* ════════════════════════════════════════════
@@ -921,6 +1173,18 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
         <h3 className={styles.evalBlockTitle}>
           Interview Score
         </h3>
+        <EvaluationAccordion
+          title={isAdmin ? "Admin Interview Score" : "Interview Score Details"}
+          subtitle={interviewAccordionSubtitle}
+          open={interviewOpen}
+          onToggle={() => setInterviewOpen((open) => !open)}
+        >
+        <ActorByline
+          actorName={interviewActor?.actorName || interviewActor?.evaluated_by_name}
+          actorRole={interviewActor?.actorRole || interviewActor?.evaluated_by_role}
+          timestamp={interviewActor?.updated_at || interviewActor?.created_at}
+          fallbackName="Evaluator unavailable"
+        />
         <p className={styles.evalBlockDesc}>
           If the applicant was interviewed, rate the overall interview performance from <strong>1–10</strong>.
           Leave at 0 if the interview has not yet taken place or is not applicable.
@@ -964,13 +1228,14 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
             <span className={styles.savedConfirm}>Saved!</span>
           )}
           <button
-            onClick={saveInterviewScore}
+            onClick={() => requestSave("interview")}
             disabled={!canEdit || interviewSaving}
             className={canEdit ? styles.btnPrimary : styles.btnDisabled}
           >
             {interviewSaving ? "Saving…" : "Save Interview Score"}
           </button>
         </div>
+        </EvaluationAccordion>
       </div>
 
       {/* ════════════════════════════════════════════
@@ -1042,6 +1307,34 @@ function ApplicationEvaluationTab({ appData, isAdmin, canEdit, onUpdateStatus })
           Weights: Non-Negotiables 20 pts · Negotiables 10 pts · Essay 50 pts · Interview 20 pts.
         </p>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(saveDialog)}
+        title={
+          saveDialog?.type === "blocked"
+            ? "Scoring is restricted"
+            : saveDialog?.type === "error"
+            ? "Score was not saved"
+            : saveDialog?.alreadyScored
+            ? `Update existing ${saveKindLabel} score?`
+            : `Save ${saveKindLabel} score?`
+        }
+        description={
+          saveDialog?.type === "blocked"
+            ? "Only an admin or assigned Membership Committee evaluator can save scores for this applicant."
+            : saveDialog?.type === "error"
+            ? `Failed to save the ${saveKindLabel} score. Please try again.`
+            : saveDialog?.alreadyScored
+            ? `You already scored this applicant. Saving will replace only your previous ${saveKindLabel} score. Other evaluators' scores will stay unchanged.`
+            : `This will record your ${saveKindLabel} score for this applicant.`
+        }
+        confirmLabel={saveDialog?.type === "confirm" ? "Save Score" : "OK"}
+        hideCancel={saveDialog?.type !== "confirm"}
+        busy={activeSaveBusy}
+        dismissible={!activeSaveBusy}
+        onCancel={() => setSaveDialog(null)}
+        onConfirm={saveDialog?.type === "confirm" ? confirmSave : () => setSaveDialog(null)}
+      />
 
     </div>
   );
@@ -1125,11 +1418,14 @@ function VolunteerStatusHistorySection({ applicationId, isStaff }) {
                 </div>
                 <div style={{ paddingBottom: "1.25rem" }}>
                   <StatusBadge status={capitalizeStatus(h.status)} />
-                  <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "#6b7280" }}>
-                    {new Date(h.created_at).toLocaleDateString("en-PH", {
+                  <ActorByline
+                    actorName={h.actorName || h.changed_by_name}
+                    actorRole={h.actorRole || h.changed_by_role}
+                    timestamp={h.created_at}
+                    timestampFormatter={(value) => new Date(value).toLocaleDateString("en-PH", {
                       month: "numeric", day: "numeric", year: "numeric",
-                    })} · {h.changed_by_name || "System"}
-                  </p>
+                    })}
+                  />
                   {h.notes && (
                     <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#374151", lineHeight: 1.5 }}>
                       {h.notes}
@@ -1361,6 +1657,7 @@ export default function ViewApplication() {
   const [toast,       setToast]       = useState(null);
   const [modal,       setModal]       = useState(null);
   const [activeTab,   setActiveTab]   = useState(requestedTab || "details");
+  const [hasInterviewRecord, setHasInterviewRecord] = useState(false);
 
   const user = {
     id: authUser?.user_id || authUser?.id || null,
@@ -1388,6 +1685,13 @@ export default function ViewApplication() {
 
         if (!data) throw new Error("Application not found.");
 
+        const interviewsRes = await internalApiFetch(
+          `${API_URL}/api/interviews?type=volunteer&volunteer_application_id=${data.volunteer_application_id}`
+        );
+        const interviewsJson = interviewsRes.ok ? await interviewsRes.json().catch(() => ({})) : {};
+        const interviews = Array.isArray(interviewsJson?.data) ? interviewsJson.data : [];
+        setHasInterviewRecord(interviews.length > 0);
+
         const computedAge = (() => {
           if (data.age) return String(data.age);
           if (!data.birthday) return "—";
@@ -1411,7 +1715,7 @@ export default function ViewApplication() {
 
         setAppData({
           id:                    data.volunteer_application_id,
-          appRefId:              `APP-${String(data.volunteer_application_id).padStart(4, "0")}`,
+          appRefId:              formatApplicationRef(data.volunteer_application_id, data.application_ref),
           applicantUserId:       data.applicant_user_id || data.user_id || null,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.status_notes || data.notes || "",
@@ -1516,6 +1820,7 @@ export default function ViewApplication() {
   const isAssignedEvaluator = (appData?.assignedEvaluatorIds || [])
     .some((id) => String(id) === String(user.id));
   const canManageVolunteerApplication = isAdmin || isAssignedEvaluator;
+  const showInterviewTab = appData?.isWillingForInterview && (isStaff || hasInterviewRecord);
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -1546,11 +1851,15 @@ export default function ViewApplication() {
 
   const tabs = [
     { id: "details",    label: " Application Details" },
+    ...(showInterviewTab ? [
+      { id: "interview", label: "Interview" },
+    ] : []),
     ...(isStaff ? [
       { id: "evaluation", label: "Application Evaluation" },
       { id: "nlp",        label: "NLP Analysis" },
     ] : []),
   ];
+  const displayedActiveTab = activeTab === "interview" && !showInterviewTab ? "details" : activeTab;
 
   // tabStyle removed — using CSS classes with active state below
 
@@ -1576,7 +1885,7 @@ export default function ViewApplication() {
         <div className={styles.headerCard}>
           <div className={styles.headerTop}>
             <div>
-              <h1 className={styles.caseTitle}>APP-{String(appData.id).padStart(4, "0")}</h1>
+              <h1 className={styles.caseTitle}>{appData.appRefId}</h1>
               <p className={styles.caseSubtitle}>
                 Date Applied: {appData.dateApplied}
               </p>
@@ -1599,22 +1908,43 @@ export default function ViewApplication() {
           {/* Tab bar */}
           <div className={styles.tabBar}>
             {tabs.map((t) => (
-              <button key={t.id} className={activeTab === t.id ? styles.tabBtnActive : styles.tabBtn} onClick={() => setActiveTab(t.id)}>
+              <button key={t.id} className={displayedActiveTab === t.id ? styles.tabBtnActive : styles.tabBtn} onClick={() => setActiveTab(t.id)}>
                 {t.label}
               </button>
             ))}
           </div>
 
           {/* Tab content */}
-          {activeTab === "details" && userLoaded && (
+          {displayedActiveTab === "details" && userLoaded && (
             <ApplicationDetailsTab appData={appData} isStaff={isStaff} />
           )}
 
-          {activeTab === "evaluation" && isStaff && userLoaded && (
+          {displayedActiveTab === "interview" && showInterviewTab && userLoaded && (
+            <InterviewTab
+              appData={appData}
+              isStaff={isStaff}
+              isApplicationOfficer={isApplicationOfficer}
+              showToast={showToast}
+              userId={user.id}
+              actorName={`${user.firstName || ""} ${user.lastName || ""}`.trim()}
+              userRole={user.role}
+              canManageInterview={canManageVolunteerApplication}
+            />
+          )}
+
+          {displayedActiveTab === "evaluation" && isStaff && userLoaded && (
             <ApplicationEvaluationTab
               appData={appData}
               isAdmin={isAdmin}
               canEdit={canManageVolunteerApplication}
+              currentUserId={user.id}
+              onEvaluationSaved={(evaluation) => {
+                if (String(evaluation?.application_status || "").toLowerCase() !== "reviewing") return;
+                setAppData((current) => ({
+                  ...current,
+                  applicationStatus: "Reviewing",
+                }));
+              }}
               onUpdateStatus={() => {
                 if (!canManageVolunteerApplication) {
                   showToast("Only assigned Membership Committee staff can update this application.", "error");
@@ -1625,7 +1955,7 @@ export default function ViewApplication() {
             />
           )}
 
-          {activeTab === "nlp" && isStaff && userLoaded && (
+          {displayedActiveTab === "nlp" && isStaff && userLoaded && (
             <NLPEssayTab appId={appData.id} isAdmin={isAdmin} />
           )}
 

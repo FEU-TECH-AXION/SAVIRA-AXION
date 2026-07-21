@@ -200,7 +200,7 @@ const LONG_TEXT_MAX_LENGTH = 1000;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
 const REPORT_TYPE_OPTIONS = ["Me (Myself)", "Someone else"];
-const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female", "LGBTQIA+ member"];
 const ORGANIZATION_OPTIONS = [
   "Boy Scouts of the Philippines (BSP)",
   "Girl Scouts of the Philippines (GSP)",
@@ -758,7 +758,6 @@ function StepComplainantInfo({ data, onChange, errors, clearError, setFieldError
             <option value="Male">Male</option>
             <option value="Female">Female</option>
             <option value="LGBTQIA+ member">LGBTQIA+ member</option>
-            <option value="Prefer not to say">Prefer not to say</option>
           </Select>
         </Field>
 
@@ -1837,7 +1836,7 @@ function ReportStatusCard({ reportData, reportNumber, onView }) {
     statusName        = "For Verification",
   } = reportData ?? {};
 
-  const displayId      = caseId ?? `CASE-${String(id).padStart(5, "0")}`;
+  const displayId      = caseId ?? (id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : "CASE");
   const personnelLabel = assignedPersonnel ?? "Unassigned";
   const updatedAgo     = timeAgo(lastUpdated);
 
@@ -2362,6 +2361,7 @@ export default function CreateReport({
                       reportNumber={i + 1}
                       reportData={{
                         id:                report.case_report_id,
+                        caseId:            report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
                         dateSubmitted:     report.created_at
                           ? new Date(report.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
                           : '—',

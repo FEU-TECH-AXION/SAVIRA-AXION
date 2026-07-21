@@ -1523,7 +1523,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 760px;
+  min-width: 640px;
 }
 
 .table th {
@@ -1534,9 +1534,30 @@
 }
 
 .table td {
+  height: 56px;
+  max-height: 56px;
   border-bottom: 1px solid var(--sasha-border);
   padding: 0.75rem;
   color: var(--sasha-text);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  height: 56px;
+}
+
+.truncateCell {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .table th,
+  .table td {
+    padding: 0.6rem 0.5rem;
+  }
 }
 
 .longText {

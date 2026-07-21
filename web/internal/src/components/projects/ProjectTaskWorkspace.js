@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { FiArrowLeft, FiExternalLink } from "react-icons/fi"
+import { FiArrowLeft, FiEye } from "react-icons/fi"
 import { fetchAllProjectTasks, fetchStaff } from "@/lib/api"
 import Tooltip from "@/components/ui/Tooltip"
 import TaskStatusBadge from "./TaskStatusBadge"
@@ -96,8 +96,8 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
   useEffect(() => {
     if (authLoading || !user) return
     const role = normalizeRole(user?.role_name)
-    if (scope === "all" && role && role !== "admin") router.replace("/projectTasks")
-    if (scope === "mine" && role === "admin") router.replace("/projectTasks/admin")
+    if (scope === "all" && role && !["admin", "project_officer"].includes(role)) router.replace("/projectTasks")
+    if (scope === "mine" && ["admin", "project_officer"].includes(role)) router.replace("/projectTasks/admin")
   }, [authLoading, router, scope, user])
 
   useEffect(() => {
@@ -272,12 +272,12 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
               <tbody>
                 {visibleTasks.map((task) => (
                   <tr key={task.task_id}>
-                    <td>
+                    <td className={styles.truncateText} title={[task.title, task.description].filter(Boolean).join(" - ")}>
                       <strong>{task.title}</strong>
                       {task.description && <span>{task.description}</span>}
                     </td>
-                    <td>{task.project?.title || `Project #${task.project_id}`}</td>
-                    <td>
+                    <td className={styles.truncateText} title={task.project?.title || `Project #${task.project_id}`}><strong>{task.project?.title || `Project #${task.project_id}`}</strong></td>
+                    <td className={styles.truncateText} title={[task.assignee?.name || "Unassigned", task.assignee?.committee_name].filter(Boolean).join(" - ")}>
                       <strong>{task.assignee?.name || "Unassigned"}</strong>
                       {task.assignee?.committee_name && <span>{task.assignee.committee_name}</span>}
                     </td>
@@ -285,13 +285,13 @@ export default function ProjectTaskWorkspace({ scope = "mine" }) {
                     <td>{task.priority || "Medium"}</td>
                     <td>{formatDate(task.due_date)}</td>
                     <td>
-                      <Tooltip text="Open the parent project and manage its tasks" position="left">
+                      <Tooltip text="Open the parent project tasks" position="left">
                         <button
                           className={styles.iconBtn}
                           onClick={() => router.push(`/projects/view?projectId=${task.project_id}`)}
                           aria-label={`Open project ${task.project_id}`}
                         >
-                          <FiExternalLink />
+                          <FiEye />
                         </button>
                       </Tooltip>
                     </td>

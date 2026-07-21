@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 // ── Uses its own dedicated stylesheet ─────────────────────────────────────────
 import styles from "./VolunteerHistory.module.css";
@@ -22,6 +22,7 @@ const STATUS_COLORS = {
 const REAPPLICATION_WAIT_DAYS = 15;
 const REAPPLICATION_WAIT_MS = REAPPLICATION_WAIT_DAYS * 24 * 60 * 60 * 1000;
 const VOLUNTEER_APPLICATION_DRAFT_KEY = "savira_volunteer_application_draft";
+const REAPPLICATION_ALLOWED_STATUSES = new Set(["rejected", "withdrawn"]);
 
 function getUserDraftKey(user) {
   return user?.id || user?.user_id || user?.email || "anonymous";
@@ -38,6 +39,21 @@ function formatDate(value) {
     month: "long",
     day: "numeric",
   });
+}
+
+function getApplicationDecisionDate(application = {}) {
+  return (
+    application.resolved_at ||
+    application.updated_at ||
+    application.created_at ||
+    null
+  );
+}
+
+function formatStatus(status) {
+  return String(status || "application")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function HistoryCard({ title, status, date, description, action }) {
@@ -82,30 +98,52 @@ function HistoryCard({ title, status, date, description, action }) {
  *   { allowed: false, reason: "cooldown", unlocksAt: Date }
  */
 function getSubmissionEligibility(applications) {
-  // Active statuses that block a new submission
-  const ACTIVE_STATUSES = new Set(["pending", "reviewing"]);
+  if (!applications.length) return { allowed: true };
 
-  for (const app of applications) {
+  const approvedApplication = applications.find(
+    (app) => (app.application_status || "").toLowerCase() === "approved"
+  );
+  if (approvedApplication) {
+    return {
+      allowed: false,
+      reason: "approved",
+      applicationId: approvedApplication.volunteer_application_id,
+    };
+  }
+
+  const blockingApplication = applications.find((app) => {
     const status = (app.application_status || "").toLowerCase();
+    return !REAPPLICATION_ALLOWED_STATUSES.has(status);
+  });
+  if (blockingApplication) {
+    return {
+      allowed: false,
+      reason: "active",
+      applicationId: blockingApplication.volunteer_application_id,
+      status: blockingApplication.application_status,
+    };
+  }
 
-    // Has an active (pending/reviewing) application → must withdraw first
-    if (ACTIVE_STATUSES.has(status)) {
+  const latestTerminalApplication = applications
+    .filter((app) =>
+      REAPPLICATION_ALLOWED_STATUSES.has((app.application_status || "").toLowerCase())
+    )
+    .sort(
+      (a, b) =>
+        new Date(getApplicationDecisionDate(b) || 0) -
+        new Date(getApplicationDecisionDate(a) || 0)
+    )[0];
+
+  const decisionAt = new Date(getApplicationDecisionDate(latestTerminalApplication));
+  if (!Number.isNaN(decisionAt.getTime())) {
+    const unlocksAt = new Date(decisionAt.getTime() + REAPPLICATION_WAIT_MS);
+    if (Date.now() < unlocksAt.getTime()) {
       return {
-        allowed:       false,
-        reason:        "active",
-        applicationId: app.volunteer_application_id,
+        allowed: false,
+        reason: "cooldown",
+        unlocksAt,
+        status: latestTerminalApplication.application_status,
       };
-    }
-
-    // Was rejected — check if the 15-day cooldown has elapsed
-    if (status === "rejected") {
-      const rejectedAt = new Date(
-        app.resolved_at || app.updated_at || app.created_at
-      ).getTime();
-      const unlocksAt  = new Date(rejectedAt + REAPPLICATION_WAIT_MS);
-      if (Date.now() < unlocksAt) {
-        return { allowed: false, reason: "cooldown", unlocksAt };
-      }
     }
   }
 
@@ -216,7 +254,20 @@ export default function ApplicationHistoryPage() {
   };
 
   // Eligibility is derived from the fetched list (cheap, client-side)
-  const eligibility = loading ? null : getSubmissionEligibility(applications);
+  const eligibility = useMemo(
+    () => (loading ? null : getSubmissionEligibility(applications)),
+    [loading, applications]
+  );
+
+  useEffect(() => {
+    if (loading || !eligibility || eligibility.allowed) return;
+    const cleanupTimer = window.setTimeout(() => {
+      localStorage.removeItem(draftStorageKey);
+      localStorage.removeItem(VOLUNTEER_APPLICATION_DRAFT_KEY);
+      setDraft(null);
+    }, 0);
+    return () => window.clearTimeout(cleanupTimer);
+  }, [loading, eligibility, draftStorageKey]);
 
   return (
     <main className={styles.pageWrapper}>
@@ -241,19 +292,26 @@ export default function ApplicationHistoryPage() {
 
           {/* ── Eligibility banners ── */}
           {!loading && eligibility && !eligibility.allowed && (
-            eligibility.reason === "active" ? (
+            eligibility.reason === "approved" ? (
               <div className={styles.infoBanner}>
                 <span><IoIosInformationCircle /></span>
                 <span>
-                  You already have an active application under review. You can&apos;t submit a new application unless you {" "}
-                  <strong>withdraw your current application</strong>.
+                  Your volunteer application has already been approved. You can&apos;t submit another application.
+                </span>
+              </div>
+            ) : eligibility.reason === "active" ? (
+              <div className={styles.infoBanner}>
+                <span><IoIosInformationCircle /></span>
+                <span>
+                  You already have an application marked{" "}
+                  <strong>{formatStatus(eligibility.status)}</strong>. You can&apos;t submit another application while it is under review.
                 </span>
               </div>
             ) : (
               <div className={styles.warningBanner}>
                 <span><IoIosWarning /></span>
                 <span>
-                  Your previous application was rejected. You may submit a new
+                  Your previous application was {String(eligibility.status || "").toLowerCase()}. You may submit a new
                   application after{" "}
                   <strong>
                     {eligibility.unlocksAt.toLocaleDateString("en-PH", {
@@ -268,7 +326,7 @@ export default function ApplicationHistoryPage() {
 
           <div className="row g-3">
             {/* Draft card */}
-            {draft && (
+            {draft && (!eligibility || eligibility.allowed) && (
               <div className="col-12">
                 <HistoryCard
                   title="Draft Application"
@@ -278,6 +336,7 @@ export default function ApplicationHistoryPage() {
                   action={
                     <button
                       className={styles.submitBtn}
+                      disabled={eligibility && !eligibility.allowed}
                       onClick={() => router.push("/volunteer/apply")}
                     >
                       Continue Draft

@@ -16,7 +16,8 @@ const createAssignment = async (req, res) => {
         }
 
         const assignment = await assignCaseToOfficer(case_report_id, case_officer_id, assignedBy);
-        return res.status(201).json({ data: assignment });
+        const publicId = await getPublicIdByCaseReportId(case_report_id);
+        return res.status(201).json({ data: { ...assignment, case_report_id: publicId } });
     } catch (err) {
         console.error('[createAssignment]', err.message);
         return res.status(500).json({ error: 'Failed to assign case.' });
@@ -50,6 +51,7 @@ const getOfficerAssignments = async (req, res) => {
 
 const CaseAssignmentsModel = require('../models/case_assignments.model');
 const supabase = require('../config/supabase');
+const { getPublicIdByCaseReportId } = require('../utils/casePublicIds');
 
 // POST /api/case_assignments/bulk-assign — assign multiple cases to multiple officers
 const bulkAssignOfficers = async (req, res) => {
@@ -123,13 +125,14 @@ const bulkAssignOfficers = async (req, res) => {
                 
                 // Notify the assigned officer
                 if (officerData.user_id) {
+                    const publicId = await getPublicIdByCaseReportId(case_report_id);
                     console.log('[notifyUser] sending to:', officerData.user_id);
                     notifyUser(officerData.user_id, {
                         title: 'New Case Assigned',
                         body: `You have been assigned to case ${case_report_id}.`,
                         data: {
-                            case_report_id,
-                            link: `/cases/${case_report_id}`,
+                            case_report_id: publicId,
+                            link: `/cases/view?caseId=${publicId}`,
                         },
                     }).catch(err => console.error('[notifyUser] Failed to notify officer:', err.message));
                 }
@@ -142,8 +145,14 @@ const bulkAssignOfficers = async (req, res) => {
         }
 
         return res.status(201).json({
-            data: results.assigned,
-            failed: results.failed,
+            data: await Promise.all(results.assigned.map(async (row) => ({
+                ...row,
+                case_report_id: await getPublicIdByCaseReportId(row.case_report_id),
+            }))),
+            failed: await Promise.all(results.failed.map(async (row) => ({
+                ...row,
+                case_report_id: await getPublicIdByCaseReportId(row.case_report_id),
+            }))),
             message: results.failed.length > 0 ? 'Some assignments failed.' : 'All assignments saved successfully.',
         });
     } catch (err) {

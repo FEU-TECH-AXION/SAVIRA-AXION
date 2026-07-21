@@ -36,6 +36,7 @@ import FollowUpsPanel, {
   FollowUpComposer,
 } from "./FollowUps";
 import Tooltip from "@/components/ui/Tooltip";
+import ActorByline from "@/components/ui/ActorByline";
 import { useAuth, authFetch } from "@/lib/AuthContext";
 import { API_URL } from "@/lib/internalApiFetch";
 import StatusGuide from "./StatusGuide";
@@ -59,6 +60,9 @@ const STATUS_STEP = {
   12: "Resolved",
   13: "Withdrawn",
 };
+
+const formatPublicCaseId = (id, fallback = "CASE") =>
+  id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : fallback;
 
 const ALL_STATUSES = [
   "Submitted",
@@ -89,11 +93,10 @@ const STATUS_MODAL_MAP = {
 };
 
 const mapCaseReportToViewData = (data) => {
-  const caseYear = new Date(data.created_at).getFullYear();
   return {
     reportData:           data,
     id:                   data.case_report_id,
-    caseId:               `${caseYear}-` + String(data.case_report_id).padStart(3, "0"),
+    caseId:               data.case_code || formatPublicCaseId(data.public_id || data.case_report_id),
     reporterId:           data.complainant_user_id,
     region:               data.incident_province || data.incident_city || "Not provided",
     status:               STATUS_STEP[data.case_status_id] || "For Verification",
@@ -188,36 +191,16 @@ const ENDORSEMENT_BODIES = [
   "School/Workplace CODI",
 ];
 
-const REFERRAL_ALLOWED_FROM_STATUS_INDEX = 2;
-const CASE_WORKFLOW_STATUSES = [
-  "Submitted",
-  "For Verification",
-  "Undergoing Review",
-  "Verified - True",
-  "Verified - False",
-  "Under Case Evaluation",
-  "Case Filed",
-  "Investigation Ongoing",
-  "Hearing Ongoing",
-  "Dismissed",
-  "Perpetrator Convicted",
-  "Resolved",
-  "Withdrawn",
-];
-
 function canFlagPreliminaryReferral(caseItem) {
   const statusId = Number(caseItem?.caseStatusId ?? caseItem?.case_status_id);
-  if (Number.isFinite(statusId) && statusId > 0) return statusId >= 3;
+  if (Number.isFinite(statusId) && statusId > 0) return statusId === 4;
 
   const normalizedStatus = String(caseItem?.status || "")
     .trim()
     .toLowerCase()
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
-  const index = CASE_WORKFLOW_STATUSES.findIndex(
-    (status) => status.toLowerCase() === normalizedStatus
-  );
-  return index >= REFERRAL_ALLOWED_FROM_STATUS_INDEX;
+  return normalizedStatus === "verified true";
 }
 
 const VIOLENCE_TYPES = [
@@ -293,7 +276,12 @@ function StatusHistorySection({ caseData }) {
                   <StatusBadge status={h.status} />
                   {h.isOverride && <span className={styles.overrideBadge}>Override</span>}
                 </div>
-                <p className={styles.historyMeta}>{h.date} - {h.by}</p>
+                <ActorByline
+                  actorName={h.actorName || h.changed_by_name || h.by}
+                  actorRole={h.actorRole || h.changed_by_role}
+                  timestamp={h.date}
+                  className={styles.historyMeta}
+                />
                 {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
                 {h.isOverride && h.overrideReason && (
                   <p className={styles.overrideReason}>
@@ -487,11 +475,13 @@ function AssessmentActionGroup({ title, records, fields, emptyText }) {
       ) : (
         records.map((record, index) => (
           <div key={record.case_assessment_id || `${title}-${record.created_at}-${index}`} className={styles.reviewDetailBlock}>
-            <p className={styles.historyMeta}>
-              {record.created_at
-                ? new Date(record.created_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })
-                : "Date unavailable"}
-            </p>
+            <ActorByline
+              actorName={record.actorName || record.changed_by_name}
+              actorRole={record.actorRole || record.changed_by_role}
+              timestamp={record.created_at}
+              fallbackName="Unknown user"
+              className={styles.historyMeta}
+            />
             <div className={styles.detailGrid}>
               {fields(record).map(([label, value]) => {
                 const formatted = Array.isArray(value) ? value.filter(Boolean).join(", ") : value;
@@ -508,6 +498,16 @@ function AssessmentActionGroup({ title, records, fields, emptyText }) {
         ))
       )}
     </DetailAccordion>
+  );
+}
+
+function isReferralAssessment(record) {
+  if (!record) return false;
+  return (
+    record.assessment_stage === "referral_endorsement" ||
+    Boolean(record.endorsement) ||
+    Boolean(record.referral_body) ||
+    record.referral_required === true
   );
 }
 
@@ -563,6 +563,9 @@ function CaseManagementTab({
             status: proposedStatus,
             date: new Date().toLocaleDateString("en-PH"),
             by: actorName,
+            actorName,
+            actorRole: userRole,
+            changed_by_role: userRole,
             notes: changeDetails.notes,
             formData: changeDetails.formData,
             approvalStatus: payload.requiresApproval ? "pending" : "approved",
@@ -602,6 +605,9 @@ function CaseManagementTab({
             status: proposedStatus,
             date: new Date().toLocaleDateString("en-PH"),
             by: actorName,
+            actorName,
+            actorRole: userRole,
+            changed_by_role: userRole,
             notes: payload.historyRow?.notes || `Admin override to ${proposedStatus}.`,
             formData: payload.historyRow?.form_data || {
               override_from_status: prev.status,
@@ -797,13 +803,22 @@ function CaseManagementTab({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to save.");
+      const savedAssessment = body.data
+        ? {
+            ...body.data,
+            actorName: body.data.actorName || body.data.changed_by_name || actorName,
+            changed_by_name: body.data.changed_by_name || body.data.actorName || actorName,
+            actorRole: body.data.actorRole || body.data.changed_by_role || userRole,
+            changed_by_role: body.data.changed_by_role || body.data.actorRole || userRole,
+          }
+        : null;
       setCaseData((current) => ({
         ...current,
-        assessmentHistory: body.data
-          ? [body.data, ...(current.assessmentHistory || [])]
+        assessmentHistory: savedAssessment
+          ? [savedAssessment, ...(current.assessmentHistory || [])]
           : current.assessmentHistory || [],
       }));
-      onSuccess(body.data);
+      onSuccess(savedAssessment);
       setModal(null);
     } catch (err) {
       showToast(err.message, "error");
@@ -812,10 +827,16 @@ function CaseManagementTab({
 
   async function saveReferralEndorsement() {
     try {
+      if (!canFlagReferral) {
+        showToast("Referral / Endorse Case is only available after the case is Verified True.", "error");
+        setModal(null);
+        return;
+      }
       const referralRequired = referralReq === "yes";
       const selectedBody = referralRequired ? referralVal : null;
 
       await saveAssessment({
+        assessment_stage: "referral_endorsement",
         referral_required: referralRequired,
         referral_body: selectedBody,
         endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null,
@@ -925,10 +946,7 @@ function CaseManagementTab({
 
         <AssessmentActionGroup
           title="Referral / Endorse"
-          records={(caseData.assessmentHistory || []).filter((record) =>
-            record.referral_required !== null &&
-            record.referral_required !== undefined
-          )}
+          records={(caseData.assessmentHistory || []).filter(isReferralAssessment)}
           emptyText="No referral or endorsement changes have been saved yet."
           fields={(record) => [
             ["Referral Required", record.referral_required ? "Yes" : "No"],
@@ -959,7 +977,16 @@ function CaseManagementTab({
             return (
               <div key={id || `${log.performed_at}-${log.remarks}`} className={styles.noteLogItem}>
                 <div className={styles.noteLogHeader}>
-                  <div><p className={styles.noteLogAuthor}>{log.performed_by_name || log.performed_by || actorName || "Unknown user"}</p><p className={styles.noteLogMeta}>{formatLogDate(getLogDate(log))}</p></div>
+                  <div>
+                    <ActorByline
+                      actorName={log.actorName || log.performed_by_name || log.performed_by || actorName}
+                      actorRole={log.actorRole || log.performed_by_role}
+                      timestamp={getLogDate(log)}
+                      fallbackName="Unknown user"
+                      className={styles.noteLogMeta}
+                      timestampFormatter={formatLogDate}
+                    />
+                  </div>
                   <div className={styles.noteLogActions}>
                     <Tooltip text="Edit this internal note">
                       <button type="button" className={styles.noteIconBtn} aria-label="Edit note" onClick={() => { setEditingNoteId(id); setEditingNoteText(log.remarks || ""); }}><FiEdit2 /></button>
@@ -1110,7 +1137,7 @@ function CaseManagementTab({
         <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, primaryCategory: caseCatVal, alsoInvolves: alsoCatVal, additionalCategories: alsoCatVal })); showToast(hasSuggestedCategory && !hasSavedCategory ? "Category approved and saved." : "Category saved."); })}>{hasSavedCategory ? "Save Changes" : hasSuggestedCategory ? "Approve Classification" : "Save"}</button></div>
       </Modal>
 
-      <Modal open={modal === "referralEndorse"} onClose={() => setModal(null)} title="Referral / Endorse Case">
+      <Modal open={modal === "referralEndorse" && canFlagReferral} onClose={() => setModal(null)} title="Referral / Endorse Case">
         <div className={styles.formGrid}>
           <FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup>
           <FormGroup label="Referral required?"><FSelect value={referralReq} onChange={(e) => { setReferralReq(e.target.value); if (e.target.value === "no") setReferralVal(""); }}><option value="no">No</option><option value="yes">Yes</option></FSelect></FormGroup>
@@ -1555,50 +1582,54 @@ export default function ViewCase() {
               <p className={styles.caseSubtitle}>Submitted: {caseData.dateSubmitted}</p>
             </div>
             <div className={styles.headerActions}>
-              <StatusBadge status={caseData.status} />
-              <button
-                type="button"
-                className={styles.statusGuideBtn}
-                onClick={() => setStatusGuideOpen(true)}
-              >
-                <FiHelpCircle />
-                Guide
-              </button>
-              <FollowUpBadge summary={caseData.followUpSummary} />
-              {caseData.possibleDuplicates?.length > 0 && (
+              <div className={styles.headerActionsTop}>
                 <button
                   type="button"
-                  className={styles.duplicateHeaderButton}
-                  onClick={goToDuplicateTab}
+                  className={styles.statusGuideBtn}
+                  onClick={() => setStatusGuideOpen(true)}
                 >
-                  Duplicate Check
-                  <span>{caseData.possibleDuplicates.length}</span>
+                  <FiHelpCircle />
+                  Guide
                 </button>
-              )}
-              {canManageFollowUps &&
-                !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
-                <Tooltip text={
-                    caseData.followUpSummary?.type ===
-                      ("officer_clarification_request") &&
-                    ["open", "responded"].includes(caseData.followUpSummary?.status)
-                      ? "A follow-up is already in progress."
-                      : isStaff
-                        ? "Request additional information from the complainant."
-                        : "Request a correction or provide more case information."
-                }>
+              </div>
+              <div className={styles.headerActionsBottom}>
+                <StatusBadge status={caseData.status} />
+                <FollowUpBadge summary={caseData.followUpSummary} />
+                {caseData.possibleDuplicates?.length > 0 && (
                   <button
-                    className={styles.followUpButton}
-                    disabled={
+                    type="button"
+                    className={styles.duplicateHeaderButton}
+                    onClick={goToDuplicateTab}
+                  >
+                    Duplicate Check
+                    <span>{caseData.possibleDuplicates.length}</span>
+                  </button>
+                )}
+                {canManageFollowUps &&
+                  !["Dismissed", "Perpetrator Convicted", "Resolved", "Withdrawn"].includes(caseData.status) && (
+                  <Tooltip text={
                       caseData.followUpSummary?.type ===
                         ("officer_clarification_request") &&
                       ["open", "responded"].includes(caseData.followUpSummary?.status)
-                    }
-                    onClick={() => setFollowUpComposerOpen(true)}
-                  >
-                    {isStaff ? "Request Clarification" : "Follow Up"}
-                  </button>
-                </Tooltip>
-              )}
+                        ? "A follow-up is already in progress."
+                        : isStaff
+                          ? "Request additional information from the complainant."
+                          : "Request a correction or provide more case information."
+                  }>
+                    <button
+                      className={styles.followUpButton}
+                      disabled={
+                        caseData.followUpSummary?.type ===
+                          ("officer_clarification_request") &&
+                        ["open", "responded"].includes(caseData.followUpSummary?.status)
+                      }
+                      onClick={() => setFollowUpComposerOpen(true)}
+                    >
+                      {isStaff ? "Request Clarification" : "Follow Up"}
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
         </div>

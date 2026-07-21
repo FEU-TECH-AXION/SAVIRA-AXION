@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./heatmap.module.css";
 import { IoIosWarning } from "react-icons/io";
+import { FiChevronDown, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import { internalApiFetch } from "@/lib/internalApiFetch";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -21,6 +22,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MapContainer({ heatmapData, reportCount, aggregation }) {
+  const [legendOpen, setLegendOpen] = useState(false);
   const mapContainer = useRef(null);
   const map = useRef(null);
   const heatmapDataRef = useRef(heatmapData);
@@ -89,6 +91,7 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
     <div ref={mapContainer} className={styles.mapInner}>
       {/* Reports count badge */}
       <div
+        className={styles.mapReportBadge}
         style={{
           position: "absolute",
           bottom: "1rem",
@@ -109,6 +112,9 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
 
       {/* Legend */}
       <div
+        className={`${styles.mapLegend} ${
+          legendOpen ? styles.mapLegendOpen : ""
+        }`}
         style={{
           position: "absolute",
           bottom: "1rem",
@@ -123,6 +129,16 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
           boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
         }}
       >
+        <button
+          type="button"
+          className={styles.mapLegendToggle}
+          onClick={() => setLegendOpen((current) => !current)}
+          aria-expanded={legendOpen}
+        >
+          Density
+          <FiChevronDown size={13} />
+        </button>
+        <div className={styles.mapLegendContent}>
         <div
           style={{ marginBottom: "0.5rem", fontWeight: 700, color: "#1a1a1a" }}
         >
@@ -156,6 +172,7 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
             <span>{label}</span>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
@@ -179,7 +196,117 @@ function StatCard({ title, value, subtext }) {
 // FILTER SECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
+function HeatmapFilterDropdown({ field, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [selectSearch, setSelectSearch] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function outside(event) {
+      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  const selectedOption = field.options.find((option) => option.value === value);
+  const displayValue = selectedOption?.label || field.placeholder;
+  const filteredOptions = field.options.filter((option) =>
+    option.label.toLowerCase().includes(selectSearch.toLowerCase()),
+  );
+
+  return (
+    <div className={styles.defaultFilter} ref={ref}>
+      <button
+        type="button"
+        className={`${styles.defaultFilterBtn} ${
+          value ? styles.defaultFilterBtnActive : ""
+        }`}
+        onClick={() => {
+          setOpen((current) => !current);
+          setSelectSearch("");
+        }}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className={styles.defaultFilterLabel}>{field.label}</span>
+        <span className={styles.defaultFilterValue}>{displayValue}</span>
+        <FiChevronDown size={13} />
+      </button>
+      {open && (
+        <div className={styles.defaultFilterDropdown} role="listbox">
+          <div className={styles.filterSearchWrap}>
+            <FiSearch size={13} className={styles.filterSearchIcon} />
+            <input
+              type="text"
+              className={styles.filterSearchInput}
+              placeholder={`Search ${field.label}...`}
+              value={selectSearch}
+              onChange={(event) => setSelectSearch(event.target.value)}
+              autoFocus
+            />
+          </div>
+          <button
+            type="button"
+            className={`${styles.filterOption} ${
+              !value ? styles.filterOptionActive : ""
+            }`}
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            {field.placeholder}
+          </button>
+          {filteredOptions.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              className={`${styles.filterOption} ${
+                value === option.value ? styles.filterOptionActive : ""
+              }`}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+          {filteredOptions.length === 0 && (
+            <div className={styles.filterEmpty}>No options found</div>
+          )}
+          <div className={styles.defaultFilterFooter}>
+            <button
+              type="button"
+              className={styles.clearBtn}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FilterSection({ filters, onChange, meta }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [filterBarSearch, setFilterBarSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [defaultFilterLimit, setDefaultFilterLimit] = useState(4);
+  const menuRef = useRef(null);
   const { regions = [], cities = [], caseTypes = [] } = meta;
   const ALL_STATUSES = [
     "For Verification",
@@ -203,97 +330,308 @@ function FilterSection({ filters, onChange, meta }) {
   const citiesInRegion = filters.region
     ? regions.find((r) => r.key === filters.region)?.cities || []
     : cities;
+  const filterDefinitions = [
+    {
+      label: "City",
+      key: "city",
+      options: citiesInRegion.map((c) => ({ value: c, label: c })),
+      placeholder: "All Cities",
+    },
+    {
+      label: "Status",
+      key: "status",
+      options: STATUS_OPTIONS,
+      placeholder: "All",
+    },
+    {
+      label: "Case Type",
+      key: "case_type",
+      options: caseTypes.map((type) => ({ value: type, label: type })),
+      placeholder: "All",
+    },
+    {
+      label: "Verification",
+      key: "verification",
+      options: [
+        { value: "verified", label: "Verified" },
+        { value: "unverified", label: "Unverified" },
+      ],
+      placeholder: "All",
+    },
+    {
+      label: "Victim Gender",
+      key: "victim_gender",
+      options: [
+        { value: "Male", label: "Male" },
+        { value: "Female", label: "Female" },
+        { value: "LGBTQIA+ member", label: "LGBTQIA+ member" },
+      ],
+      placeholder: "All",
+    },
+    {
+      label: "Perpetrator Gender",
+      key: "perpetrator_gender",
+      options: [
+        { value: "Male", label: "Male" },
+        { value: "Female", label: "Female" },
+        { value: "Unable to tell", label: "Unable to tell" },
+      ],
+      placeholder: "All",
+    },
+  ];
+  const activeFilterCount = filterDefinitions.filter(
+    ({ key }) => filters[key],
+  ).length;
+  const normalizedFilterSearch = filterBarSearch.trim().toLowerCase();
+  const getFilterSearchScore = (field) => {
+    if (!normalizedFilterSearch) return 0;
+    const matchingOptions = field.options.filter((option) =>
+      option.label.toLowerCase().includes(normalizedFilterSearch),
+    );
+    if (field.label.toLowerCase().startsWith(normalizedFilterSearch)) return 4;
+    if (matchingOptions.some((option) =>
+      option.label.toLowerCase() === normalizedFilterSearch
+    )) {
+      return 3;
+    }
+    if (matchingOptions.length > 0) return 2;
+    if (
+      [field.label, field.placeholder]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedFilterSearch)
+    ) {
+      return 1;
+    }
+    return 0;
+  };
+  const rankedFilterDefinitions = normalizedFilterSearch
+    ? [...filterDefinitions].sort((a, b) => {
+        const scoreDifference = getFilterSearchScore(b) - getFilterSearchScore(a);
+        return scoreDifference || filterDefinitions.indexOf(a) - filterDefinitions.indexOf(b);
+      })
+    : filterDefinitions;
+  const desktopFilterDefinitions = rankedFilterDefinitions.slice(0, defaultFilterLimit);
+  const desktopAdditionalFilterDefinitions = rankedFilterDefinitions.slice(defaultFilterLimit);
+  const mobileVisibleFilterDefinitions = normalizedFilterSearch
+    ? filterDefinitions.filter((field) => {
+        const searchableText = [
+          field.label,
+          field.placeholder,
+          ...field.options.map((option) => option.label),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return searchableText.includes(normalizedFilterSearch);
+      })
+    : filterDefinitions;
+  const searchSuggestions = normalizedFilterSearch
+    ? filterDefinitions
+        .flatMap((field) => {
+          const fieldMatch = [field.label, field.placeholder]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedFilterSearch)
+            ? [{ type: "field", label: field.label, field }]
+            : [];
+          const optionMatches = field.options
+            .filter((option) =>
+              option.label.toLowerCase().includes(normalizedFilterSearch),
+            )
+            .slice(0, 4)
+            .map((option) => ({
+              type: "option",
+              label: option.label,
+              field,
+              option,
+            }));
+          return [...fieldMatch, ...optionMatches];
+        })
+        .slice(0, 6)
+    : [];
+  const showSearchSuggestions = searchFocused && searchSuggestions.length > 0;
+
+  useEffect(() => {
+    function updateDefaultFilterLimit() {
+      const width = window.innerWidth;
+
+      if (width <= 900) {
+        setDefaultFilterLimit(2);
+      } else if (width <= 1180) {
+        setDefaultFilterLimit(3);
+      } else if (width <= 1679) {
+        setDefaultFilterLimit(4);
+      } else if (width <= 1919) {
+        setDefaultFilterLimit(5);
+      } else {
+        setDefaultFilterLimit(filterDefinitions.length);
+      }
+    }
+
+    updateDefaultFilterLimit();
+    window.addEventListener("resize", updateDefaultFilterLimit);
+
+    return () => window.removeEventListener("resize", updateDefaultFilterLimit);
+  }, [filterDefinitions.length]);
+
+  useEffect(() => {
+    function outside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   return (
     <div className={styles.filterContainer}>
-      {[
-        // {
-        //   label: "Region",
-        //   key: "region",
-        //   options: regions.map((r) => ({ value: r.key, label: r.label })),
-        //   placeholder: "All Regions",
-        //   onChange: (v) => {
-        //     onChange("region", v);
-        //     onChange("city", "");
-        //   },
-        // },
-        {
-          label: "City",
-          key: "city",
-          options: citiesInRegion.map((c) => ({ value: c, label: c })),
-          placeholder: "All Cities",
-        },
-        {
-          label: "Status",
-          key: "status",
-          options: STATUS_OPTIONS,
-          placeholder: "All",
-        },
-        {
-          label: "Case Type",
-          key: "case_type",
-          options: caseTypes.map((type) => ({ value: type, label: type })),
-          placeholder: "All",
-        },
-        {
-          label: "Verification",
-          key: "verification",
-          options: [
-            { value: "verified", label: "Verified" },
-            { value: "unverified", label: "Unverified" },
-          ],
-          placeholder: "All",
-        },
-        {
-          label: "Victim Gender",
-          key: "victim_gender",
-          options: [
-            { value: "Male", label: "Male" },
-            { value: "Female", label: "Female" },
-            { value: "LGBTQIA+ member", label: "LGBTQIA+ member" },
-            { value: "Prefer not to say", label: "Prefer not to say" },
-          ],
-          placeholder: "All",
-        },
-        {
-          label: "Perpetrator Gender",
-          key: "perpetrator_gender",
-          options: [
-            { value: "Male", label: "Male" },
-            { value: "Female", label: "Female" },
-            { value: "Unable to tell", label: "Unable to tell" },
-          ],
-          placeholder: "All",
-        },
-      ].map(
-        ({ label, key, options, placeholder, onChange: customOnChange }) => (
-          <div key={key} className={styles.filterGroup}>
-            <label className={styles.filterLabel}>{label}</label>
-            <select
-              className={styles.filterSelect}
-              value={filters[key]}
-              onChange={(e) =>
-                customOnChange
-                  ? customOnChange(e.target.value)
-                  : onChange(key, e.target.value)
-              }
-            >
-              <option value="">{placeholder}</option>
-              {options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
+      <div className={styles.filterBarWrap}>
+        <div className={styles.searchWrap}>
+          <input
+            className={styles.searchInput}
+            type="text"
+            placeholder="Search filters..."
+            value={filterBarSearch}
+            onChange={(event) => setFilterBarSearch(event.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+          />
+          <span className={styles.searchIcon}>
+            <FiSearch />
+          </span>
+          {showSearchSuggestions && (
+            <div className={styles.searchSuggestions}>
+              {searchSuggestions.map((suggestion) => (
+                <button
+                  type="button"
+                  key={`${suggestion.field.key}-${suggestion.type}-${suggestion.label}`}
+                  className={styles.searchSuggestion}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    if (suggestion.type === "option") {
+                      onChange(suggestion.field.key, suggestion.option.value);
+                      setFilterBarSearch(suggestion.option.label);
+                    } else {
+                      setFilterBarSearch(suggestion.field.label);
+                    }
+                    setSearchFocused(false);
+                  }}
+                >
+                  <span>{suggestion.label}</span>
+                  <small>{suggestion.field.label}</small>
+                </button>
               ))}
-            </select>
-          </div>
-        ),
-      )}
-      <button
-        className={styles.resetBtn}
-        onClick={() => onChange("reset", true)}
-      >
-        Reset Filters
-      </button>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.defaultFiltersRow}>
+          {desktopFilterDefinitions.map((field) => (
+            <HeatmapFilterDropdown
+              key={field.key}
+              field={field}
+              value={filters[field.key]}
+              onChange={(value) => onChange(field.key, value)}
+            />
+          ))}
+          <button
+            type="button"
+            className={styles.resetBtn}
+            onClick={() => onChange("reset", true)}
+          >
+            Reset Filters
+          </button>
+        </div>
+
+        <div className={styles.filterMenuWrapper} ref={menuRef}>
+          <button
+            type="button"
+            className={`${styles.filterMenuBtn} ${
+              menuOpen ? styles.filterMenuBtnOpen : ""
+            }`}
+            onClick={() => setMenuOpen((current) => !current)}
+            aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="dialog"
+          >
+            <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className={styles.filterBadge}>{activeFilterCount}</span>
+            )}
+          </button>
+
+          {menuOpen && (
+            <div className={styles.filterDropdown}>
+              <div className={styles.filterDropdownHeader}>
+                <h4 className={styles.filterDropdownTitle}>Filters</h4>
+                <button
+                  type="button"
+                  className={styles.filterDropdownClose}
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Close filters"
+                >
+                  <FiX size={15} />
+                </button>
+              </div>
+              <div className={styles.desktopAdditionalFilters}>
+                <p className={styles.filterDropdownHint}>
+                  Additional filters stay here to keep the bar compact.
+                </p>
+                {desktopAdditionalFilterDefinitions.map((field) => (
+                  <HeatmapFilterDropdown
+                    key={`desktop-${field.key}`}
+                    field={field}
+                    value={filters[field.key]}
+                    onChange={(value) => onChange(field.key, value)}
+                  />
+                ))}
+              </div>
+              <div className={styles.mobileSheetFilters}>
+                {mobileVisibleFilterDefinitions.map((field) => (
+                  <HeatmapFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={filters[field.key]}
+                    onChange={(value) => onChange(field.key, value)}
+                  />
+                ))}
+                {mobileVisibleFilterDefinitions.length === 0 && (
+                  <div className={styles.filterNoMatches}>
+                    No filters found
+                  </div>
+                )}
+              </div>
+              <div className={styles.filterDropdownFooter}>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    className={styles.filterClearBtn}
+                    onClick={() => onChange("reset", true)}
+                  >
+                    Clear All
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.filterDoneBtn}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -455,6 +793,15 @@ export default function HeatmapPage() {
     );
   }
 
+  const positiveLocations = heatmapData
+    .filter((d) => d.density > 0)
+    .sort((a, b) => b.density - a.density);
+  const highestDensity = Math.max(
+    0,
+    ...positiveLocations.map((location) => location.density || 0),
+  );
+  const barMaxDensity = Math.max(1, highestDensity);
+
   return (
     <div className={styles.container}>
       {/* ── Hero Banner ── */}
@@ -472,7 +819,7 @@ export default function HeatmapPage() {
               <div >
                 <div className={styles.heroStatCard}>
                   <p className={styles.heroStatNum}>
-                    {heatmapData.filter((d) => d.density > 0).length}
+                    {positiveLocations.length}
                   </p>
                   <p className={styles.heroStatLabel}>Locations with Cases</p>
                 </div>
@@ -480,7 +827,7 @@ export default function HeatmapPage() {
               <div >
                 <div className={styles.heroStatCard}>
                   <p className={styles.heroStatNum}>
-                    {Math.max(...heatmapData.map((d) => d.density), 0)}
+                    {highestDensity}
                   </p>
                   <p className={styles.heroStatLabel}>Highest Density</p>
                 </div>
@@ -555,12 +902,12 @@ export default function HeatmapPage() {
               by Density
             </h3>
             <div className={styles.breakdownList}>
-              {heatmapData
-                .filter((d) => d.density > 0)
-                .sort((a, b) => b.density - a.density)
+              {positiveLocations
                 .slice(0, 10)
-                .map((location) => (
-                  <div key={location.name} className={styles.breakdownItem}>
+                .map((location) => {
+                  const relativeDensity = location.density / barMaxDensity;
+                  return (
+                    <div key={location.name} className={styles.breakdownItem}>
                     <span>{location.name}</span>
                     <div className={styles.bar}>
                       <div
@@ -570,12 +917,16 @@ export default function HeatmapPage() {
                           backgroundColor: getColorForIntensity(
                             location.intensity,
                           ),
+                          "--mobile-bar-width": `${relativeDensity * 100}%`,
+                          "--mobile-bar-color":
+                            getColorForIntensity(relativeDensity),
                         }}
                       />
                     </div>
                     <span className={styles.count}>{location.density}</span>
                   </div>
-                ))}
+                  );
+                })}
             </div>
           </div>
         </div>

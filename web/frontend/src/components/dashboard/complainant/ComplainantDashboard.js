@@ -156,7 +156,7 @@ export default function ComplainantDashboard({
           </div>
         </section>
 
-        <div className="container-xl py-5">
+        <div className="container-xl py-3">
 
           {/* ── What would you like to do? ── */}
           <div className={styles.sectionHeading}>

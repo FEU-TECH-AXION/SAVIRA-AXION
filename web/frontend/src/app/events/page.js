@@ -17,7 +17,8 @@
 
 import Link from "next/link";
 import styles from "./events.module.css";
-import { FaSearch, FaCalendarAlt } from "react-icons/fa";
+import EventFilters from "./EventFilters";
+import { FaCalendarAlt } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
 import { computeProjectStatus } from "@/lib/projectStatus";
@@ -118,7 +119,8 @@ export default async function EventsPage({ searchParams }) {
       ? params.category.split(",").map(c => c.trim())
       : [params.category];
   }
-  const searchQuery = (params?.search || "").toLowerCase();
+  const searchValue = typeof params?.search === "string" ? params.search : "";
+  const searchQuery = searchValue.toLowerCase();
 
   const PUBLIC_EVENTS = await fetchProjectEvents();
   
@@ -192,6 +194,12 @@ export default async function EventsPage({ searchParams }) {
       <section className={styles.content}>
         <div className={styles.contentInner}>
           <h2 className={styles.latestHeading}>Our Latest Events</h2>
+
+          <EventFilters
+            categories={CATEGORIES}
+            activeCategories={activeCategories}
+            searchValue={searchValue}
+          />
 
           <div className={styles.contentGrid}>
             {/* Events list */}
@@ -301,59 +309,8 @@ export default async function EventsPage({ searchParams }) {
               )}
             </div>
 
-            {/* Sidebar */}
+            {/* Recent posts */}
             <aside className={styles.sidebar}>
-              {/* Search */}
-              <div className={styles.sidebarBlock}>
-                <h4 className={styles.sidebarTitle}>Search</h4>
-                <form action="/events" method="GET" className={styles.searchBox}>
-                  {activeCategories.map((cat) => (
-                    <input key={cat} type="hidden" name="category" value={cat} />
-                  ))}
-                  <input type="text" name="search" defaultValue={params?.search || ""} placeholder="Search events…" className={styles.searchInput} />
-                  <button type="submit" className={styles.searchBtn} aria-label="Search">
-                    <FaSearch />
-                  </button>
-                </form>
-              </div>
-
-              {/* Categories */}
-              <div className={styles.sidebarBlock}>
-                <h4 className={styles.sidebarTitle}>Categories</h4>
-                <ul className={styles.categoryList}>
-                  {CATEGORIES.map((cat) => {
-                    const query = new URLSearchParams();
-                    if (searchQuery) query.set("search", searchQuery);
-                    
-                    let isActive = false;
-                    let nextCategories = [];
-                    
-                    if (cat === "All") {
-                      isActive = activeCategories.length === 0;
-                    } else {
-                      isActive = activeCategories.includes(cat);
-                      if (isActive) {
-                        nextCategories = activeCategories.filter(c => c !== cat);
-                      } else {
-                        nextCategories = [...activeCategories, cat];
-                      }
-                    }
-                    
-                    nextCategories.forEach(c => query.append("category", c));
-                    const href = `/events${query.toString() ? `?${query.toString()}` : ""}`;
-                    
-                    return (
-                    <li key={cat}>
-                      <Link href={href} scroll={false}
-                        className={`${styles.categoryItem} ${isActive ? styles.categoryActive : ""}`}>
-                        {cat}
-                      </Link>
-                    </li>
-                  )})}
-                </ul>
-              </div>
-
-              {/* Recent Posts */}
               <div className={styles.sidebarBlock}>
                 <h4 className={styles.sidebarTitle}>Recent Events</h4>
                 <ul className={styles.recentList}>

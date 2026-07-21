@@ -100,6 +100,19 @@ function Pagination({ current, total, totalRecords, pageSize, onChange }) {
   );
 }
 
+function ColumnsBtn() {
+  return (
+    <button className={styles.columnsBtn} title="Toggle columns" aria-label="Manage columns">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.7" />
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.7" />
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.3" />
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.3" />
+      </svg>
+    </button>
+  );
+}
+
 export default function InterviewsTable({
   interviews = [],
   selectedIds = [],
@@ -232,23 +245,20 @@ useEffect(() => {
             <th className={styles.colType}>Interview Type</th>
             <th className={styles.colDateTime}>Date & Time</th>
             <th className={styles.colStatus}>Status</th>
+            <th className={`${styles.colActions} ${styles.columnsTh}`}>
+              <ColumnsBtn />
+            </th>
           </tr>
         </thead>
         <tbody>
           {paginatedInterviews.map((interview, idx) => {
             const isSelected = selectedIds.includes(interview.id);
             const status = interview.interviewStatus || "Invited";
-            const rowBg = isSelected
-              ? "#e1f5f5"
-              : idx % 2 === 1
-              ? "#f7f9fb"
-              : "#ffffff";
 
             return (
               <tr
                 key={interview.id}
-                className={`${styles.tableRow} ${isSelected ? styles.tableRowSelected : ""}`}
-                style={{ backgroundColor: rowBg }}
+                className={`${styles.tableRow} ${idx % 2 === 1 ? styles.tableRowAlt : ""} ${isSelected ? styles.tableRowSelected : ""}`}
                 onDoubleClick={() => onViewDetails(interview)}
               >
                 <td className={styles.colCheckbox}>
@@ -264,10 +274,10 @@ useEffect(() => {
                 <td className={styles.colCaseId}>
                   <span className={styles.caseIdBadge}>{interview.caseId}</span>
                 </td>
-                <td className={styles.colInterviewee}>
+                <td className={styles.colInterviewee} title={interview.intervieweeName || ""}>
                   {interview.intervieweeName}
                   {interview.availabilityRequest && (
-                    <div style={{ marginTop: 4, color: "#92400e", fontSize: "0.72rem", lineHeight: 1.35, whiteSpace: "pre-line" }}>
+                    <div className={styles.availabilityRequest} title={interview.availabilityRequest}>
                       <strong>New slots requested:</strong>{" "}
                       {interview.availabilityRequest}
                       <div>
@@ -282,7 +292,7 @@ useEffect(() => {
                     </div>
                   )}
                 </td>
-                <td className={styles.colType}>{interview.interviewType || "Initial"}</td>
+                <td className={styles.colType} title={interview.interviewType || "Initial"}>{interview.interviewType || "Initial"}</td>
                 <td className={styles.colDateTime}>
                   {interview.scheduledDate && interview.scheduledTime
                     ? `${new Date(interview.scheduledDate).toLocaleDateString()} ${interview.scheduledTime}`
@@ -290,6 +300,24 @@ useEffect(() => {
                 </td>
                 <td className={styles.colStatus}>
                   <InterviewStatusBadge status={status} />
+                </td>
+                <td
+                  className={styles.colActions}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    className={styles.viewBtn}
+                    onClick={() => onViewDetails(interview)}
+                    aria-label={`View interview ${interview.id}`}
+                    title="View interview"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M1.5 8s2.25-4 6.5-4 6.5 4 6.5 4-2.25 4-6.5 4-6.5-4-6.5-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
+                    </svg>
+                    <span className={styles.viewBtnLabel}>View</span>
+                  </button>
                 </td>
               </tr>
             );
