@@ -612,6 +612,9 @@
 }
 
 @media (max-width: 768px) {
+  .latestHeading{
+    font-size: 1.2rem;
+  }
   .filtersPanel {
     gap: 0.5rem;
     margin-bottom: 1.5rem;
