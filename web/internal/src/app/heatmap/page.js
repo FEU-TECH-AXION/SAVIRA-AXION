@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./heatmap.module.css";
 import { IoIosWarning } from "react-icons/io";
+import { FiChevronDown, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import { internalApiFetch } from "@/lib/internalApiFetch";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -179,7 +180,115 @@ function StatCard({ title, value, subtext }) {
 // FILTER SECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
+function HeatmapFilterDropdown({ field, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [selectSearch, setSelectSearch] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function outside(event) {
+      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  const selectedOption = field.options.find((option) => option.value === value);
+  const displayValue = selectedOption?.label || field.placeholder;
+  const filteredOptions = field.options.filter((option) =>
+    option.label.toLowerCase().includes(selectSearch.toLowerCase()),
+  );
+
+  return (
+    <div className={styles.defaultFilter} ref={ref}>
+      <button
+        type="button"
+        className={`${styles.defaultFilterBtn} ${
+          value ? styles.defaultFilterBtnActive : ""
+        }`}
+        onClick={() => {
+          setOpen((current) => !current);
+          setSelectSearch("");
+        }}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className={styles.defaultFilterLabel}>{field.label}</span>
+        <span className={styles.defaultFilterValue}>{displayValue}</span>
+        <FiChevronDown size={13} />
+      </button>
+      {open && (
+        <div className={styles.defaultFilterDropdown} role="listbox">
+          <div className={styles.filterSearchWrap}>
+            <FiSearch size={13} className={styles.filterSearchIcon} />
+            <input
+              type="text"
+              className={styles.filterSearchInput}
+              placeholder={`Search ${field.label}...`}
+              value={selectSearch}
+              onChange={(event) => setSelectSearch(event.target.value)}
+              autoFocus
+            />
+          </div>
+          <button
+            type="button"
+            className={`${styles.filterOption} ${
+              !value ? styles.filterOptionActive : ""
+            }`}
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            {field.placeholder}
+          </button>
+          {filteredOptions.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              className={`${styles.filterOption} ${
+                value === option.value ? styles.filterOptionActive : ""
+              }`}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+          {filteredOptions.length === 0 && (
+            <div className={styles.filterEmpty}>No options found</div>
+          )}
+          <div className={styles.defaultFilterFooter}>
+            <button
+              type="button"
+              className={styles.clearBtn}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FilterSection({ filters, onChange, meta }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [filterBarSearch, setFilterBarSearch] = useState("");
+  const menuRef = useRef(null);
   const { regions = [], cities = [], caseTypes = [] } = meta;
   const ALL_STATUSES = [
     "For Verification",
@@ -203,96 +312,194 @@ function FilterSection({ filters, onChange, meta }) {
   const citiesInRegion = filters.region
     ? regions.find((r) => r.key === filters.region)?.cities || []
     : cities;
+  const filterDefinitions = [
+    {
+      label: "City",
+      key: "city",
+      options: citiesInRegion.map((c) => ({ value: c, label: c })),
+      placeholder: "All Cities",
+    },
+    {
+      label: "Status",
+      key: "status",
+      options: STATUS_OPTIONS,
+      placeholder: "All",
+    },
+    {
+      label: "Case Type",
+      key: "case_type",
+      options: caseTypes.map((type) => ({ value: type, label: type })),
+      placeholder: "All",
+    },
+    {
+      label: "Verification",
+      key: "verification",
+      options: [
+        { value: "verified", label: "Verified" },
+        { value: "unverified", label: "Unverified" },
+      ],
+      placeholder: "All",
+    },
+    {
+      label: "Victim Gender",
+      key: "victim_gender",
+      options: [
+        { value: "Male", label: "Male" },
+        { value: "Female", label: "Female" },
+        { value: "LGBTQIA+ member", label: "LGBTQIA+ member" },
+      ],
+      placeholder: "All",
+    },
+    {
+      label: "Perpetrator Gender",
+      key: "perpetrator_gender",
+      options: [
+        { value: "Male", label: "Male" },
+        { value: "Female", label: "Female" },
+        { value: "Unable to tell", label: "Unable to tell" },
+      ],
+      placeholder: "All",
+    },
+  ];
+  const activeFilterCount = filterDefinitions.filter(
+    ({ key }) => filters[key],
+  ).length;
+  const normalizedFilterSearch = filterBarSearch.trim().toLowerCase();
+  const visibleFilterDefinitions = normalizedFilterSearch
+    ? filterDefinitions.filter((field) => {
+        const searchableText = [
+          field.label,
+          field.placeholder,
+          ...field.options.map((option) => option.label),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return searchableText.includes(normalizedFilterSearch);
+      })
+    : filterDefinitions;
+
+  useEffect(() => {
+    function outside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   return (
     <div className={styles.filterContainer}>
-      {[
-        // {
-        //   label: "Region",
-        //   key: "region",
-        //   options: regions.map((r) => ({ value: r.key, label: r.label })),
-        //   placeholder: "All Regions",
-        //   onChange: (v) => {
-        //     onChange("region", v);
-        //     onChange("city", "");
-        //   },
-        // },
-        {
-          label: "City",
-          key: "city",
-          options: citiesInRegion.map((c) => ({ value: c, label: c })),
-          placeholder: "All Cities",
-        },
-        {
-          label: "Status",
-          key: "status",
-          options: STATUS_OPTIONS,
-          placeholder: "All",
-        },
-        {
-          label: "Case Type",
-          key: "case_type",
-          options: caseTypes.map((type) => ({ value: type, label: type })),
-          placeholder: "All",
-        },
-        {
-          label: "Verification",
-          key: "verification",
-          options: [
-            { value: "verified", label: "Verified" },
-            { value: "unverified", label: "Unverified" },
-          ],
-          placeholder: "All",
-        },
-        {
-          label: "Victim Gender",
-          key: "victim_gender",
-          options: [
-            { value: "Male", label: "Male" },
-            { value: "Female", label: "Female" },
-            { value: "LGBTQIA+ member", label: "LGBTQIA+ member" },
-          ],
-          placeholder: "All",
-        },
-        {
-          label: "Perpetrator Gender",
-          key: "perpetrator_gender",
-          options: [
-            { value: "Male", label: "Male" },
-            { value: "Female", label: "Female" },
-            { value: "Unable to tell", label: "Unable to tell" },
-          ],
-          placeholder: "All",
-        },
-      ].map(
-        ({ label, key, options, placeholder, onChange: customOnChange }) => (
-          <div key={key} className={styles.filterGroup}>
-            <label className={styles.filterLabel}>{label}</label>
-            <select
-              className={styles.filterSelect}
-              value={filters[key]}
-              onChange={(e) =>
-                customOnChange
-                  ? customOnChange(e.target.value)
-                  : onChange(key, e.target.value)
-              }
-            >
-              <option value="">{placeholder}</option>
-              {options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        ),
-      )}
-      <button
-        className={styles.resetBtn}
-        onClick={() => onChange("reset", true)}
-      >
-        Reset Filters
-      </button>
+      <div className={styles.filterBarWrap}>
+        <div className={styles.searchWrap}>
+          <input
+            className={styles.searchInput}
+            type="text"
+            placeholder="Search filters..."
+            value={filterBarSearch}
+            onChange={(event) => setFilterBarSearch(event.target.value)}
+          />
+          <span className={styles.searchIcon}>
+            <FiSearch />
+          </span>
+        </div>
+
+        <div className={styles.defaultFiltersRow}>
+          {visibleFilterDefinitions.map((field) => (
+            <HeatmapFilterDropdown
+              key={field.key}
+              field={field}
+              value={filters[field.key]}
+              onChange={(value) => onChange(field.key, value)}
+            />
+          ))}
+          <button
+            type="button"
+            className={styles.resetBtn}
+            onClick={() => onChange("reset", true)}
+          >
+            Reset Filters
+          </button>
+          {visibleFilterDefinitions.length === 0 && (
+            <span className={styles.filterNoMatches}>No filters found</span>
+          )}
+        </div>
+
+        <div className={styles.filterMenuWrapper} ref={menuRef}>
+          <button
+            type="button"
+            className={`${styles.filterMenuBtn} ${
+              menuOpen ? styles.filterMenuBtnOpen : ""
+            }`}
+            onClick={() => setMenuOpen((current) => !current)}
+            aria-label="Open filter menu"
+            aria-expanded={menuOpen}
+            aria-haspopup="dialog"
+          >
+            <FiFilter size={15} />
+            <span className={styles.filterMenuBtnLabel}>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className={styles.filterBadge}>{activeFilterCount}</span>
+            )}
+          </button>
+
+          {menuOpen && (
+            <div className={styles.filterDropdown}>
+              <div className={styles.filterDropdownHeader}>
+                <h4 className={styles.filterDropdownTitle}>Filters</h4>
+                <button
+                  type="button"
+                  className={styles.filterDropdownClose}
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Close filters"
+                >
+                  <FiX size={15} />
+                </button>
+              </div>
+              <div className={styles.mobileSheetFilters}>
+                {visibleFilterDefinitions.map((field) => (
+                  <HeatmapFilterDropdown
+                    key={`mobile-${field.key}`}
+                    field={field}
+                    value={filters[field.key]}
+                    onChange={(value) => onChange(field.key, value)}
+                  />
+                ))}
+                {visibleFilterDefinitions.length === 0 && (
+                  <div className={styles.filterNoMatches}>
+                    No filters found
+                  </div>
+                )}
+              </div>
+              <div className={styles.filterDropdownFooter}>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    className={styles.filterClearBtn}
+                    onClick={() => onChange("reset", true)}
+                  >
+                    Clear All
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.filterDoneBtn}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
