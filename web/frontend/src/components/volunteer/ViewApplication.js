@@ -741,8 +741,8 @@ export default function ViewApplication() {
   if (error || !appData) {
     return (
       <div className={styles.pageWrapper}>
-        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
-          <IoIosArrowBack /> Back to Volunteer Management
+        <button className={styles.backBtn} onClick={() => router.push("/volunteer/history")}>
+          <IoIosArrowBack /> Back to Application History
         </button>
         <div className={styles.errorBox}>
           {error || "Application not found."}
@@ -786,8 +786,8 @@ export default function ViewApplication() {
       <div className={styles.pageInner}>
 
         {/* ── Header card ── */}
-        <button className={styles.backBtn} onClick={() => router.push("/volunteer")}>
-          <FiArrowLeft /> Back to Volunteer Management
+        <button className={styles.backBtn} onClick={() => router.push("/volunteer/history")}>
+          <FiArrowLeft /> Back to Application History
         </button>
 
         <div className={styles.headerCard}>
