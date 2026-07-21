@@ -1,5 +1,6 @@
 const {
     createAnalysis,
+    getAnalysisByApplicationId,
     updateAnalysisByApplicationId,
     updateAnalysisByPrimaryKey,
 } = require('../models/volunteer_application_analysis.model');
@@ -33,6 +34,20 @@ async function updateWithSchemaFallback(updateFn, updates) {
     throw new Error('Failed to save volunteer NLP analysis after removing missing columns.');
 }
 
+async function createOrResetPendingAnalysis(volunteer_application_id) {
+    const pendingPayload = {
+        status: 'pending',
+        analyzed_at: new Date().toISOString(),
+    };
+
+    try {
+        const existingAnalysis = await getAnalysisByApplicationId(volunteer_application_id);
+        return await updateAnalysisByPrimaryKey(existingAnalysis, pendingPayload);
+    } catch (_) {
+        return await createAnalysis({ volunteer_application_id, ...pendingPayload });
+    }
+}
+
 /**
  * Calls the Python NLP service and saves the result to the DB.
  * Runs in the background and does not block application submission.
@@ -52,7 +67,7 @@ async function runVolunteerEssayAnalysis(application) {
     let pendingAnalysis = null;
 
     try {
-        pendingAnalysis = await createAnalysis({ volunteer_application_id, status: 'pending' });
+        pendingAnalysis = await createOrResetPendingAnalysis(volunteer_application_id);
 
         const response = await fetch(`${NLP_URL}/analyze/essay`, {
             method: 'POST',
@@ -81,7 +96,6 @@ async function runVolunteerEssayAnalysis(application) {
             essay_weighted_total:      result.essay_weighted_total      ?? null,
             essay_score_out_of_50:     result.essay_score_out_of_50     ?? null,
             recommendation:            result.recommendation            || null,
-            recommendation_notes:      result.recommendation_notes?.trim() || null,
             threshold_passed:          result.threshold_passed          ?? null,
             model_used:                result.model_used                || null,
             language_detected:         result.language_detected         || null,

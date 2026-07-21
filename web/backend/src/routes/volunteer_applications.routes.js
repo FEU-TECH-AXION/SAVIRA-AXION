@@ -10,7 +10,7 @@ const {
   resolveVolunteerApplicationBodyArray,
   resolveVolunteerApplicationParam,
 } = require('../utils/volunteerApplicationPublicIds')
-const { getAnalysis } = require('../controllers/volunteer_application_analysis.controller');
+const { getAnalysis, retryAnalysis } = require('../controllers/volunteer_application_analysis.controller');
 const { getEssayEvaluation, saveEssayEvaluation, getInterviewEvaluation, saveInterviewEvaluation } = require('../controllers/volunteer_application_evaluations.controller')
 const { resolveActors, withActor } = require('../utils/actor')
 const requireMembershipCommittee = requireCommittee(2)
@@ -25,6 +25,7 @@ router.get('/:id/interview_evaluation', verifyToken, resolveVolunteerApplication
 router.put('/:id/interview_evaluation', verifyToken, resolveVolunteerApplicationParam('id'), requireMembershipCommittee, requireVolunteerApplicationAccess, saveInterviewEvaluation)
 router.get('/:id/scores',               verifyToken, resolveVolunteerApplicationParam('id'), requireVolunteerApplicationAccess, getScores)
 router.get('/:id/nlp',                  verifyToken, resolveVolunteerApplicationParam('id'), requireVolunteerApplicationAccess, getAnalysis)
+router.post('/:id/nlp/retry',           verifyToken, resolveVolunteerApplicationParam('id'), requireMembershipCommittee, requireVolunteerApplicationAccess, retryAnalysis)
 router.post('/:id/withdraw',            verifyToken, resolveVolunteerApplicationParam('id'), requireVolunteerApplicationAccess, withdrawApplication)
 router.post('/:id/undo_withdraw',       verifyToken, resolveVolunteerApplicationParam('id'), requireVolunteerApplicationAccess, undoWithdrawApplication)
 router.get('/:id/status-history', verifyToken, resolveVolunteerApplicationParam('id'), requireVolunteerApplicationAccess, async (req, res) => {

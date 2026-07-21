@@ -27,11 +27,11 @@ async function updateAnalysisByApplicationId(volunteerApplicationId, updates) {
         .from('volunteer_application_analysis')
         .update(updates)
         .eq('volunteer_application_id', volunteerApplicationId)
-        .select()
-        .single();
+        .select();
 
     if (error) throw error;
-    return data;
+    if (!data?.length) throw new Error('No volunteer application analysis found to update');
+    return data[0];
 }
 
 function getAnalysisPrimaryKey(row = {}) {
@@ -65,9 +65,12 @@ async function getAnalysisByApplicationId(volunteerApplicationId) {
         .from('volunteer_application_analysis')
         .select('*')
         .eq('volunteer_application_id', volunteerApplicationId)
-        .single();
+        .order('analyzed_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
 
     if (error) throw error;
+    if (!data) throw new Error('No analysis found');
     return data;
 }
 

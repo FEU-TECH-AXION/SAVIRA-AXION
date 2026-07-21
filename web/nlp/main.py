@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from pipeline.preprocessor import detect_language, preprocess
+from pipeline.preprocessor import detect_language
 from pipeline.anonymizer import anonymize
 from pipeline.groq_client import analyze
 from pipeline.essay_grader import grade_essay
@@ -199,7 +199,7 @@ async def analyze_essay(request: EssayRequest):
         # Step 2 — Language detection only (no anonymization for essays)
         # Essays are voluntary self-disclosures — anonymizing them corrupts
         # the text and produces unfairly low Groq scores
-        preprocessed = preprocess(clean_essay)
+        language_detected = detect_language(clean_essay)
 
         # Step 3 — Grade essay via Groq using the original clean text
         result = await asyncio.get_event_loop().run_in_executor(
@@ -232,7 +232,7 @@ async def analyze_essay(request: EssayRequest):
             recommendation_notes      = result.get("recommendation_notes", ""),
             threshold_passed          = threshold_passed,
             anonymized_essay          = clean_essay,  # ← store clean essay, not mangled one
-            language_detected         = preprocessed["language"],
+            language_detected         = language_detected,
             model_used                = result.get("model_used", "unknown"),
         )
 

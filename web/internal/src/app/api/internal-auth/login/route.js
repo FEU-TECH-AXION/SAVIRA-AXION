@@ -6,14 +6,30 @@ import { getRoleHome, isInternalRole, normalizeRole } from "@/lib/roles";
 export async function POST(request) {
   const credentials = await request.json();
 
-  const backendResponse = await fetch(`${getBackendUrl()}/api/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(credentials),
-    cache: "no-store",
-  });
+  let backendResponse;
+  try {
+    backendResponse = await fetch(`${getBackendUrl()}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(credentials),
+      cache: "no-store",
+    });
+  } catch (error) {
+    console.error("[internal auth] Backend login request failed:", {
+      backendUrl: getBackendUrl(),
+      message: error?.message,
+      code: error?.cause?.code,
+    });
+    await clearInternalSession();
+    return NextResponse.json(
+      {
+        error: "Unable to reach the SAVIRA backend. Make sure the backend server is running on port 5000.",
+      },
+      { status: 503 }
+    );
+  }
 
   const data = await backendResponse.json().catch(() => ({}));
 

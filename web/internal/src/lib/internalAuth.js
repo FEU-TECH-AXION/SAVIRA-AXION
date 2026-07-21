@@ -49,9 +49,16 @@ export async function fetchBackendSession(token) {
       Authorization: `Bearer ${token}`,
     },
     cache: "no-store",
+  }).catch((error) => {
+    console.error("[internal auth] Backend session request failed:", {
+      backendUrl: getBackendUrl(),
+      message: error?.message,
+      code: error?.cause?.code,
+    });
+    return null;
   });
 
-  if (!response.ok) return null;
+  if (!response?.ok) return null;
 
   const data = await response.json();
   const role = normalizeRole(data?.user?.role_name || data?.user?.role);

@@ -1447,13 +1447,14 @@ function NLPEssayTab({ appId, isAdmin }) {
   const [nlpData,    setNlpData]    = useState(null);
   const [nlpLoading, setNlpLoading] = useState(false);
   const [nlpStatus,  setNlpStatus]  = useState(null); // "processing" | "error" | null
+  const [retrying,   setRetrying]   = useState(false);
 
   useEffect(() => {
     if (!appId) return;
     const fetchNlp = async () => {
       setNlpLoading(true);
       try {
-                const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appId}/nlp`);
+        const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appId}/nlp`);
         if (res.status === 404) { setNlpStatus("processing"); return; }
         if (!res.ok)            { setNlpStatus("error");      return; }
         const json = await res.json();
@@ -1472,6 +1473,29 @@ function NLPEssayTab({ appId, isAdmin }) {
     };
     fetchNlp();
   }, [appId]);
+
+  const retryNlpAnalysis = async () => {
+    if (!appId || retrying) return;
+
+    setRetrying(true);
+    try {
+      const res = await internalApiFetch(`${API_URL}/api/volunteer_applications/${appId}/nlp/retry`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        setNlpStatus("error");
+        return;
+      }
+
+      setNlpData(null);
+      setNlpStatus("processing");
+    } catch {
+      setNlpStatus("error");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   // ── Sub-components ─────────────────────────────────────────────────────────
 
@@ -1510,7 +1534,15 @@ function NLPEssayTab({ appId, isAdmin }) {
       {nlpStatus === "processing" && !nlpLoading && (
         <div className={styles.nlpProcessing}>
           <FiClock className={styles.noticeIconSm} />
-          NLP analysis is still processing. Refresh in a moment.
+          <span>NLP analysis is still processing. Refresh in a moment.</span>
+          <button
+            type="button"
+            className={styles.nlpRetryButton}
+            onClick={retryNlpAnalysis}
+            disabled={retrying}
+          >
+            {retrying ? "Retrying..." : "Retry analysis"}
+          </button>
         </div>
       )}
 
@@ -1518,7 +1550,15 @@ function NLPEssayTab({ appId, isAdmin }) {
       {nlpStatus === "error" && !nlpLoading && (
         <div className={styles.nlpError}>
           <FiAlertCircle className={styles.noticeIconSm} />
-          Could not load NLP analysis. Make sure the NLP service is running.
+          <span>Could not load NLP analysis. Make sure the NLP service is running.</span>
+          <button
+            type="button"
+            className={styles.nlpRetryButton}
+            onClick={retryNlpAnalysis}
+            disabled={retrying}
+          >
+            {retrying ? "Retrying..." : "Retry analysis"}
+          </button>
         </div>
       )}
 
