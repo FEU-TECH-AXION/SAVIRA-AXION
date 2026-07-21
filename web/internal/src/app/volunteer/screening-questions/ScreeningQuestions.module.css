@@ -914,11 +914,39 @@
   }
 
   .hero {
-    padding: 1.5rem;
+    gap: 1rem;
+    padding: 1.35rem 1rem 1.15rem;
+    border-radius: 14px;
   }
 
-  .heroActions,
-  .heroActions button,
+  .hero h1 {
+    font-size: 1.35rem;
+    line-height: 1.15;
+  }
+
+  .hero p {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .hero small {
+    margin-top: 0.6rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+  }
+
+  .heroActions {
+    align-items: flex-start;
+    flex-direction: column;
+    width: auto;
+  }
+
+  .heroActions button {
+    width: auto;
+    max-width: max-content;
+  }
+
   .editBanner button,
   .addSectionButton,
   .emptySection button,

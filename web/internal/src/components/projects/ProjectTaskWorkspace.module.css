@@ -505,6 +505,71 @@
 }
 
 @media (max-width: 640px) {
+  .hero {
+    gap: 1rem;
+    padding: 1.35rem 1rem 1.15rem;
+    border-radius: 14px;
+  }
+
+  .hero h1 {
+    font-size: 1.35rem;
+    line-height: 1.15;
+  }
+
+  .hero p {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .hero small {
+    margin-top: 0.6rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(2, 8.85rem);
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .summary div {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    width: 100%;
+    height: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 14px;
+    white-space: nowrap;
+  }
+
+  .summary div:nth-last-child(1):nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 8.85rem;
+  }
+
+  .summary strong {
+    display: inline;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .summary span {
+    display: inline;
+    margin-top: 0.2rem;
+    font-size: 0.64rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
   .tableWrap {
     width: 100%;
     max-width: 100%;
