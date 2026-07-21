@@ -197,6 +197,20 @@ async function getCaseAssessmentDetails(caseReportId) {
     .order('created_at', { ascending: false })
   if (error) throw error
 
+  const userIds = [...new Set((assessments || []).map((row) => row.changed_by_id).filter(Boolean))]
+  const actorById = await getHistoryActorMap(userIds)
+  const enrichedAssessments = (assessments || []).map((row) => {
+    const actor = actorById[row.changed_by_id]
+    return {
+      ...row,
+      by: formatHistoryActor(actor, row.changed_by_role),
+      actorName: formatHistoryActorName(actor),
+      actorRole: actor?.roles?.role_name || row.changed_by_role || null,
+      changed_by_name: formatHistoryActorName(actor),
+      changed_by_role: actor?.roles?.role_name || row.changed_by_role || null,
+    }
+  })
+
   const merged = {
     case_type: null,
     primary_category: null,
@@ -206,7 +220,7 @@ async function getCaseAssessmentDetails(caseReportId) {
     endorsement: null,
   }
 
-  for (const row of assessments || []) {
+  for (const row of enrichedAssessments) {
     if (!merged.case_type && row.case_type?.length > 0) merged.case_type = row.case_type
     if (!merged.primary_category && row.primary_category) merged.primary_category = row.primary_category
     if (!merged.additional_categories && row.additional_categories?.length > 0) merged.additional_categories = row.additional_categories
@@ -214,7 +228,7 @@ async function getCaseAssessmentDetails(caseReportId) {
     if (!merged.endorsement && row.endorsement) merged.endorsement = row.endorsement
   }
 
-  return { merged: stripAssessmentMergeFlags(merged), assessmentHistory: assessments || [] }
+  return { merged: stripAssessmentMergeFlags(merged), assessmentHistory: enrichedAssessments }
 }
 
 async function getCaseAssignmentsForDetail(caseReportId) {

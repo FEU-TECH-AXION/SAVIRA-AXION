@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { FiAlertCircle, FiInfo, FiX } from "react-icons/fi";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import styles from "./VolunteerStatusDialog.module.css";
 
 const APPLICATION_STATUSES = ["Pending", "Reviewing", "Approved", "Rejected"];
@@ -35,6 +36,7 @@ export default function VolunteerStatusDialog({ open, applicants, onCancel, onSa
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pendingUpdate, setPendingUpdate] = useState(null);
 
   if (!open || applicationList.length === 0) return null;
 
@@ -47,17 +49,26 @@ export default function VolunteerStatusDialog({ open, applicants, onCancel, onSa
       setError("A rejection reason is required.");
       return;
     }
+    setError("");
+    setPendingUpdate({ applicants: applicationList, status, notes: cleanedNotes });
+  }
+
+  async function confirmUpdate() {
+    if (!pendingUpdate) return;
     setSaving(true);
     setError("");
     try {
-      await onSave({ applicants: applicationList, status, notes: cleanedNotes });
+      await onSave(pendingUpdate);
     } catch (saveError) {
       setError(saveError.message || "Failed to update application status.");
       setSaving(false);
+      setPendingUpdate(null);
     }
   }
 
   return (
+    <>
+    {!pendingUpdate && (
     <div className={styles.overlay} onMouseDown={saving ? undefined : onCancel}>
       <form
         className={styles.dialog}
@@ -164,10 +175,37 @@ export default function VolunteerStatusDialog({ open, applicants, onCancel, onSa
             className={isRejected ? styles.dangerButton : styles.primaryButton}
             disabled={saving}
           >
-            {saving ? "Updating..." : "Update Status"}
+            {saving ? "Updating..." : "Review Update"}
           </button>
         </div>
       </form>
     </div>
+    )}
+    <ConfirmDialog
+      open={Boolean(pendingUpdate)}
+      title={`Update application status to ${pendingUpdate?.status}?`}
+      description={
+        pendingUpdate?.applicants?.length > 1
+          ? `This will update ${pendingUpdate.applicants.length} selected applications to ${pendingUpdate.status}.`
+          : `This will update this application to ${pendingUpdate?.status}.`
+      }
+      detail={
+        pendingUpdate?.status === "Rejected"
+          ? "The rejection reason will be saved to the application record and may be visible in the applicant's status history."
+          : pendingUpdate?.notes
+          ? "The evaluator notes will be saved with this status change."
+          : "No evaluator notes were added for this status change."
+      }
+      confirmLabel="Update Status"
+      tone={pendingUpdate?.status === "Rejected" ? "danger" : "default"}
+      busy={saving}
+      dismissible={!saving}
+      onCancel={() => {
+        if (saving) return;
+        setPendingUpdate(null);
+      }}
+      onConfirm={confirmUpdate}
+    />
+    </>
   );
 }

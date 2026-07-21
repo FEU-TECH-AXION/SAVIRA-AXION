@@ -823,13 +823,22 @@ function CaseManagementTab({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to save.");
+      const savedAssessment = body.data
+        ? {
+            ...body.data,
+            actorName: body.data.actorName || body.data.changed_by_name || actorName,
+            changed_by_name: body.data.changed_by_name || body.data.actorName || actorName,
+            actorRole: body.data.actorRole || body.data.changed_by_role || userRole,
+            changed_by_role: body.data.changed_by_role || body.data.actorRole || userRole,
+          }
+        : null;
       setCaseData((current) => ({
         ...current,
-        assessmentHistory: body.data
-          ? [body.data, ...(current.assessmentHistory || [])]
+        assessmentHistory: savedAssessment
+          ? [savedAssessment, ...(current.assessmentHistory || [])]
           : current.assessmentHistory || [],
       }));
-      onSuccess(body.data);
+      onSuccess(savedAssessment);
       setModal(null);
     } catch (err) {
       showToast(err.message, "error");
