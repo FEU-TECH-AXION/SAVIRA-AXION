@@ -9,7 +9,7 @@ const PRELIMINARY_REFERRAL_BODIES = new Set([
   'BSP/GSP Mechanism',
   'School/Workplace CODI',
 ])
-const REFERRAL_ALLOWED_MIN_STATUS_ID = 3 // Undergoing Review
+const REFERRAL_ALLOWED_STATUS_ID = 4 // Verified - True
 
 const getItems = async (req, res) => {
   try {
@@ -123,9 +123,9 @@ const recordAssessmentAction  = async (req, res) => {
 
       if (reportError) throw reportError
       if (!report) return res.status(404).json({ error: 'Case report not found.' })
-      if (Number(report.case_status_id) < REFERRAL_ALLOWED_MIN_STATUS_ID) {
+      if (Number(report.case_status_id) !== REFERRAL_ALLOWED_STATUS_ID) {
         return res.status(400).json({
-          error: 'Case must complete initial verification before referral can be flagged.',
+          error: 'Case must be Verified True before referral or endorsement can be flagged.',
         })
       }
 

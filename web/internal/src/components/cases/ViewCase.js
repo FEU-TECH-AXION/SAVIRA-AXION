@@ -191,36 +191,16 @@ const ENDORSEMENT_BODIES = [
   "School/Workplace CODI",
 ];
 
-const REFERRAL_ALLOWED_FROM_STATUS_INDEX = 2;
-const CASE_WORKFLOW_STATUSES = [
-  "Submitted",
-  "For Verification",
-  "Undergoing Review",
-  "Verified - True",
-  "Verified - False",
-  "Under Case Evaluation",
-  "Case Filed",
-  "Investigation Ongoing",
-  "Hearing Ongoing",
-  "Dismissed",
-  "Perpetrator Convicted",
-  "Resolved",
-  "Withdrawn",
-];
-
 function canFlagPreliminaryReferral(caseItem) {
   const statusId = Number(caseItem?.caseStatusId ?? caseItem?.case_status_id);
-  if (Number.isFinite(statusId) && statusId > 0) return statusId >= 3;
+  if (Number.isFinite(statusId) && statusId > 0) return statusId === 4;
 
   const normalizedStatus = String(caseItem?.status || "")
     .trim()
     .toLowerCase()
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
-  const index = CASE_WORKFLOW_STATUSES.findIndex(
-    (status) => status.toLowerCase() === normalizedStatus
-  );
-  return index >= REFERRAL_ALLOWED_FROM_STATUS_INDEX;
+  return normalizedStatus === "verified true";
 }
 
 const VIOLENCE_TYPES = [
@@ -847,6 +827,11 @@ function CaseManagementTab({
 
   async function saveReferralEndorsement() {
     try {
+      if (!canFlagReferral) {
+        showToast("Referral / Endorse Case is only available after the case is Verified True.", "error");
+        setModal(null);
+        return;
+      }
       const referralRequired = referralReq === "yes";
       const selectedBody = referralRequired ? referralVal : null;
 
@@ -1152,7 +1137,7 @@ function CaseManagementTab({
         <div className={styles.modalFooter}><button className={styles.btnSecondary} onClick={() => setModal(null)}>Cancel</button><button className={styles.btnPrimary} disabled={!caseCatVal} onClick={() => saveAssessment({ primary_category: caseCatVal, additional_categories: alsoCatVal }, () => { setCaseData((p) => ({ ...p, caseCategory: caseCatVal, primaryCategory: caseCatVal, alsoInvolves: alsoCatVal, additionalCategories: alsoCatVal })); showToast(hasSuggestedCategory && !hasSavedCategory ? "Category approved and saved." : "Category saved."); })}>{hasSavedCategory ? "Save Changes" : hasSuggestedCategory ? "Approve Classification" : "Save"}</button></div>
       </Modal>
 
-      <Modal open={modal === "referralEndorse"} onClose={() => setModal(null)} title="Referral / Endorse Case">
+      <Modal open={modal === "referralEndorse" && canFlagReferral} onClose={() => setModal(null)} title="Referral / Endorse Case">
         <div className={styles.formGrid}>
           <FormGroup label="Case ID"><FInput value={caseData.caseId} disabled /></FormGroup>
           <FormGroup label="Referral required?"><FSelect value={referralReq} onChange={(e) => { setReferralReq(e.target.value); if (e.target.value === "no") setReferralVal(""); }}><option value="no">No</option><option value="yes">Yes</option></FSelect></FormGroup>
