@@ -244,11 +244,11 @@ export default function Navbar() {
               )}
             </div>
 
-            <button className={styles.iconBtn} aria-label={t("navHelp")}>
+            <button className={`${styles.iconBtn} ${styles.helpBtn}`} aria-label={t("navHelp")}>
               <FiHelpCircle size={20} />
             </button>
 
-            <UserMenu key={pathname} user={user} logout={logout} t={t} />
+            <UserMenu key={pathname} user={user} setUser={setUser} logout={logout} t={t} />
           </div>
         </div>
       </nav>
@@ -353,9 +353,11 @@ function AvailabilityQuickToggle({ user, setUser, open, setOpen, wrapperRef }) {
   );
 }
 
-function UserMenu({ user, logout, t }) {
+function UserMenu({ user, setUser, logout, t }) {
   const [open, setOpen] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const menuRef = useRef(null);
+  const mobileAvailabilityRef = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -363,12 +365,14 @@ function UserMenu({ user, logout, t }) {
     const handlePointerDown = (event) => {
       if (!menuRef.current?.contains(event.target)) {
         setOpen(false);
+        setAvailabilityOpen(false);
       }
     };
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setOpen(false);
+        setAvailabilityOpen(false);
       }
     };
 
@@ -400,6 +404,28 @@ function UserMenu({ user, logout, t }) {
         <div className={styles.userDropdown}>
           <p className={styles.dropdownName}>{getDisplayName(user)}</p>
           <p className={styles.dropdownRole}>{getRoleLabel(user, t)}</p>
+
+          <div className={styles.mobileDropdownControls}>
+            <div className={styles.dropdownSearchWrapper}>
+              <FiSearch className={styles.dropdownSearchIcon} size={15} />
+              <input
+                type="text"
+                className={styles.dropdownSearchInput}
+                placeholder={t("navSearchPlaceholder")}
+                aria-label={t("navSearch")}
+              />
+            </div>
+
+            {user && isInternalRole(user.role_name || user.role) && (
+              <AvailabilityQuickToggle
+                user={user}
+                setUser={setUser}
+                open={availabilityOpen}
+                setOpen={setAvailabilityOpen}
+                wrapperRef={mobileAvailabilityRef}
+              />
+            )}
+          </div>
 
           <hr className={styles.dropdownDivider} />
 

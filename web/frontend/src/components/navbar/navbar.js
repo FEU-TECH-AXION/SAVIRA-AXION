@@ -221,7 +221,7 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-                <button className={styles.iconBtn} aria-label={t("navHelp")}>
+                <button className={`${styles.iconBtn} ${styles.helpBtn}`} aria-label={t("navHelp")}>
                   <FiHelpCircle size={20} />
                 </button>
                 <UserMenu key={pathname} user={user} logout={logout} t={t} />
@@ -400,6 +400,18 @@ function UserMenu({ user, logout, t }) {
           <p className={styles.dropdownRole}>
             {getRoleLabel(user, t)}
           </p>
+
+          <div className={styles.mobileDropdownControls}>
+            <div className={styles.dropdownSearchWrapper}>
+              <FiSearch className={styles.dropdownSearchIcon} size={15} />
+              <input
+                type="text"
+                className={styles.dropdownSearchInput}
+                placeholder={t("navSearchPlaceholder")}
+                aria-label={t("navSearch")}
+              />
+            </div>
+          </div>
 
           <hr className={styles.dropdownDivider} />
 
