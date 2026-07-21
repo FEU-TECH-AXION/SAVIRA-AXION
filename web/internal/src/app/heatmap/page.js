@@ -22,6 +22,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MapContainer({ heatmapData, reportCount, aggregation }) {
+  const [legendOpen, setLegendOpen] = useState(false);
   const mapContainer = useRef(null);
   const map = useRef(null);
   const heatmapDataRef = useRef(heatmapData);
@@ -90,6 +91,7 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
     <div ref={mapContainer} className={styles.mapInner}>
       {/* Reports count badge */}
       <div
+        className={styles.mapReportBadge}
         style={{
           position: "absolute",
           bottom: "1rem",
@@ -110,6 +112,9 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
 
       {/* Legend */}
       <div
+        className={`${styles.mapLegend} ${
+          legendOpen ? styles.mapLegendOpen : ""
+        }`}
         style={{
           position: "absolute",
           bottom: "1rem",
@@ -124,6 +129,16 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
           boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
         }}
       >
+        <button
+          type="button"
+          className={styles.mapLegendToggle}
+          onClick={() => setLegendOpen((current) => !current)}
+          aria-expanded={legendOpen}
+        >
+          Density
+          <FiChevronDown size={13} />
+        </button>
+        <div className={styles.mapLegendContent}>
         <div
           style={{ marginBottom: "0.5rem", fontWeight: 700, color: "#1a1a1a" }}
         >
@@ -157,6 +172,7 @@ function MapContainer({ heatmapData, reportCount, aggregation }) {
             <span>{label}</span>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
@@ -288,6 +304,7 @@ function HeatmapFilterDropdown({ field, value, onChange }) {
 function FilterSection({ filters, onChange, meta }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterBarSearch, setFilterBarSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const menuRef = useRef(null);
   const { regions = [], cities = [], caseTypes = [] } = meta;
   const ALL_STATUSES = [
@@ -365,7 +382,37 @@ function FilterSection({ filters, onChange, meta }) {
     ({ key }) => filters[key],
   ).length;
   const normalizedFilterSearch = filterBarSearch.trim().toLowerCase();
-  const visibleFilterDefinitions = normalizedFilterSearch
+  const getFilterSearchScore = (field) => {
+    if (!normalizedFilterSearch) return 0;
+    const matchingOptions = field.options.filter((option) =>
+      option.label.toLowerCase().includes(normalizedFilterSearch),
+    );
+    if (field.label.toLowerCase().startsWith(normalizedFilterSearch)) return 4;
+    if (matchingOptions.some((option) =>
+      option.label.toLowerCase() === normalizedFilterSearch
+    )) {
+      return 3;
+    }
+    if (matchingOptions.length > 0) return 2;
+    if (
+      [field.label, field.placeholder]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedFilterSearch)
+    ) {
+      return 1;
+    }
+    return 0;
+  };
+  const rankedFilterDefinitions = normalizedFilterSearch
+    ? [...filterDefinitions].sort((a, b) => {
+        const scoreDifference = getFilterSearchScore(b) - getFilterSearchScore(a);
+        return scoreDifference || filterDefinitions.indexOf(a) - filterDefinitions.indexOf(b);
+      })
+    : filterDefinitions;
+  const desktopFilterDefinitions = rankedFilterDefinitions.slice(0, 4);
+  const desktopAdditionalFilterDefinitions = rankedFilterDefinitions.slice(4);
+  const mobileVisibleFilterDefinitions = normalizedFilterSearch
     ? filterDefinitions.filter((field) => {
         const searchableText = [
           field.label,
@@ -377,6 +424,31 @@ function FilterSection({ filters, onChange, meta }) {
         return searchableText.includes(normalizedFilterSearch);
       })
     : filterDefinitions;
+  const searchSuggestions = normalizedFilterSearch
+    ? filterDefinitions
+        .flatMap((field) => {
+          const fieldMatch = [field.label, field.placeholder]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedFilterSearch)
+            ? [{ type: "field", label: field.label, field }]
+            : [];
+          const optionMatches = field.options
+            .filter((option) =>
+              option.label.toLowerCase().includes(normalizedFilterSearch),
+            )
+            .slice(0, 4)
+            .map((option) => ({
+              type: "option",
+              label: option.label,
+              field,
+              option,
+            }));
+          return [...fieldMatch, ...optionMatches];
+        })
+        .slice(0, 6)
+    : [];
+  const showSearchSuggestions = searchFocused && searchSuggestions.length > 0;
 
   useEffect(() => {
     function outside(event) {
@@ -405,14 +477,40 @@ function FilterSection({ filters, onChange, meta }) {
             placeholder="Search filters..."
             value={filterBarSearch}
             onChange={(event) => setFilterBarSearch(event.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
           />
           <span className={styles.searchIcon}>
             <FiSearch />
           </span>
+          {showSearchSuggestions && (
+            <div className={styles.searchSuggestions}>
+              {searchSuggestions.map((suggestion) => (
+                <button
+                  type="button"
+                  key={`${suggestion.field.key}-${suggestion.type}-${suggestion.label}`}
+                  className={styles.searchSuggestion}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    if (suggestion.type === "option") {
+                      onChange(suggestion.field.key, suggestion.option.value);
+                      setFilterBarSearch(suggestion.option.label);
+                    } else {
+                      setFilterBarSearch(suggestion.field.label);
+                    }
+                    setSearchFocused(false);
+                  }}
+                >
+                  <span>{suggestion.label}</span>
+                  <small>{suggestion.field.label}</small>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className={styles.defaultFiltersRow}>
-          {visibleFilterDefinitions.map((field) => (
+          {desktopFilterDefinitions.map((field) => (
             <HeatmapFilterDropdown
               key={field.key}
               field={field}
@@ -427,9 +525,6 @@ function FilterSection({ filters, onChange, meta }) {
           >
             Reset Filters
           </button>
-          {visibleFilterDefinitions.length === 0 && (
-            <span className={styles.filterNoMatches}>No filters found</span>
-          )}
         </div>
 
         <div className={styles.filterMenuWrapper} ref={menuRef}>
@@ -463,8 +558,21 @@ function FilterSection({ filters, onChange, meta }) {
                   <FiX size={15} />
                 </button>
               </div>
+              <div className={styles.desktopAdditionalFilters}>
+                <p className={styles.filterDropdownHint}>
+                  Additional filters stay here to keep the bar compact.
+                </p>
+                {desktopAdditionalFilterDefinitions.map((field) => (
+                  <HeatmapFilterDropdown
+                    key={`desktop-${field.key}`}
+                    field={field}
+                    value={filters[field.key]}
+                    onChange={(value) => onChange(field.key, value)}
+                  />
+                ))}
+              </div>
               <div className={styles.mobileSheetFilters}>
-                {visibleFilterDefinitions.map((field) => (
+                {mobileVisibleFilterDefinitions.map((field) => (
                   <HeatmapFilterDropdown
                     key={`mobile-${field.key}`}
                     field={field}
@@ -472,7 +580,7 @@ function FilterSection({ filters, onChange, meta }) {
                     onChange={(value) => onChange(field.key, value)}
                   />
                 ))}
-                {visibleFilterDefinitions.length === 0 && (
+                {mobileVisibleFilterDefinitions.length === 0 && (
                   <div className={styles.filterNoMatches}>
                     No filters found
                   </div>
@@ -661,6 +769,15 @@ export default function HeatmapPage() {
     );
   }
 
+  const positiveLocations = heatmapData
+    .filter((d) => d.density > 0)
+    .sort((a, b) => b.density - a.density);
+  const highestDensity = Math.max(
+    0,
+    ...positiveLocations.map((location) => location.density || 0),
+  );
+  const barMaxDensity = Math.max(1, highestDensity);
+
   return (
     <div className={styles.container}>
       {/* ── Hero Banner ── */}
@@ -678,7 +795,7 @@ export default function HeatmapPage() {
               <div >
                 <div className={styles.heroStatCard}>
                   <p className={styles.heroStatNum}>
-                    {heatmapData.filter((d) => d.density > 0).length}
+                    {positiveLocations.length}
                   </p>
                   <p className={styles.heroStatLabel}>Locations with Cases</p>
                 </div>
@@ -686,7 +803,7 @@ export default function HeatmapPage() {
               <div >
                 <div className={styles.heroStatCard}>
                   <p className={styles.heroStatNum}>
-                    {Math.max(...heatmapData.map((d) => d.density), 0)}
+                    {highestDensity}
                   </p>
                   <p className={styles.heroStatLabel}>Highest Density</p>
                 </div>
@@ -761,12 +878,12 @@ export default function HeatmapPage() {
               by Density
             </h3>
             <div className={styles.breakdownList}>
-              {heatmapData
-                .filter((d) => d.density > 0)
-                .sort((a, b) => b.density - a.density)
+              {positiveLocations
                 .slice(0, 10)
-                .map((location) => (
-                  <div key={location.name} className={styles.breakdownItem}>
+                .map((location) => {
+                  const relativeDensity = location.density / barMaxDensity;
+                  return (
+                    <div key={location.name} className={styles.breakdownItem}>
                     <span>{location.name}</span>
                     <div className={styles.bar}>
                       <div
@@ -776,12 +893,16 @@ export default function HeatmapPage() {
                           backgroundColor: getColorForIntensity(
                             location.intensity,
                           ),
+                          "--mobile-bar-width": `${relativeDensity * 100}%`,
+                          "--mobile-bar-color":
+                            getColorForIntensity(relativeDensity),
                         }}
                       />
                     </div>
                     <span className={styles.count}>{location.density}</span>
                   </div>
-                ))}
+                  );
+                })}
             </div>
           </div>
         </div>
