@@ -9,6 +9,7 @@ import {
   fetchTaskActivity,
   updateProjectTask,
 } from "@/lib/api"
+import { useAuth } from "@/lib/AuthContext"
 import ActorByline from "@/components/ui/ActorByline"
 import TaskStatusBadge from "./TaskStatusBadge"
 import styles from "./TaskPanel.module.css"
@@ -18,16 +19,27 @@ const EMPTY = {
   due_date: "", status: "Pending",
 }
 
-export default function TaskPanel({ projectId, readOnly = false }) {
+function friendlyTaskError(error) {
+  const message = error?.message || ""
+  if (error?.status === 403 || /forbidden|access denied|insufficient permissions/i.test(message)) {
+    return "You can only update tasks assigned to you. Project details, task assignments, due dates, and cancellations are limited to admins and project officers."
+  }
+  return message || "Unable to update task."
+}
+
+export default function TaskPanel({ projectId, readOnly = false, allowAssignedTaskEdits = false }) {
+  const { user } = useAuth()
   const [tasks, setTasks] = useState([])
   const [staff, setStaff] = useState([])
   const [form, setForm] = useState(EMPTY)
   const [editing, setEditing] = useState(null)
+  const [editingAccess, setEditingAccess] = useState("manager")
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [filter, setFilter] = useState("All")
   const [activity, setActivity] = useState({})
+  const canManageTasks = !readOnly
 
   useEffect(() => {
     let cancelled = false
@@ -37,11 +49,11 @@ export default function TaskPanel({ projectId, readOnly = false }) {
       try {
         const [taskRows, staffRows] = await Promise.all([
           fetchProjectTasks(projectId),
-          readOnly ? Promise.resolve([]) : fetchStaffAvailability(),
+          canManageTasks ? fetchStaffAvailability() : Promise.resolve([]),
         ])
         if (!cancelled) {
           setTasks(taskRows)
-          if (!readOnly) {
+          if (canManageTasks) {
             setStaff(staffRows.filter((person) =>
               person.role === "Staff" &&
               person.staff_id &&
@@ -57,7 +69,7 @@ export default function TaskPanel({ projectId, readOnly = false }) {
     }
     loadData()
     return () => { cancelled = true }
-  }, [projectId, readOnly])
+  }, [canManageTasks, projectId])
 
   const summary = useMemo(() => ({
     total: tasks.filter((task) => task.status !== "Cancelled").length,
@@ -69,16 +81,31 @@ export default function TaskPanel({ projectId, readOnly = false }) {
     filter === "All" || task.display_status === filter
   ), [tasks, filter])
 
+  function isAssignedToCurrentUser(task) {
+    const userId = user?.user_id || user?.id
+    return Boolean(userId && task?.assignee?.user_id && String(task.assignee.user_id) === String(userId))
+  }
+
+  function canEditTask(task) {
+    return canManageTasks || (
+      allowAssignedTaskEdits &&
+      task?.status !== "Cancelled" &&
+      isAssignedToCurrentUser(task)
+    )
+  }
+
   function openCreate() {
-    if (readOnly) return
+    if (!canManageTasks) return
     setEditing(null)
+    setEditingAccess("manager")
     setForm(EMPTY)
     setShowForm(true)
   }
 
   function openEdit(task) {
-    if (readOnly) return
+    if (!canEditTask(task)) return
     setEditing(task)
+    setEditingAccess(canManageTasks ? "manager" : "assignee")
     setForm({
       title: task.title || "",
       description: task.description || "",
@@ -92,15 +119,21 @@ export default function TaskPanel({ projectId, readOnly = false }) {
 
   async function save(event) {
     event.preventDefault()
-    if (readOnly) return
-    if (!form.title.trim()) return
+    const managerEdit = editingAccess === "manager"
+    if (managerEdit && !form.title.trim()) return
+    if (!managerEdit && !editing) return
     setError("")
     try {
-      const payload = {
-        ...form,
-        assigned_to: form.assigned_to ? Number(form.assigned_to) : null,
-        due_date: form.due_date || null,
-      }
+      const payload = managerEdit
+        ? {
+            ...form,
+            assigned_to: form.assigned_to ? Number(form.assigned_to) : null,
+            due_date: form.due_date || null,
+          }
+        : {
+            description: form.description,
+            status: form.status,
+          }
       const saved = editing
         ? await updateProjectTask(editing.task_id, payload)
         : await createProjectTask(projectId, payload)
@@ -109,29 +142,30 @@ export default function TaskPanel({ projectId, readOnly = false }) {
         : [saved, ...current])
       setShowForm(false)
       setEditing(null)
+      setEditingAccess("manager")
       setForm(EMPTY)
     } catch (err) {
-      setError(err.message)
+      setError(friendlyTaskError(err))
     }
   }
 
   async function changeStatus(task, status) {
-    if (readOnly) return
+    if (!canEditTask(task)) return
     try {
       const saved = await updateProjectTask(task.task_id, { status })
       setTasks((current) => current.map((item) => item.task_id === saved.task_id ? saved : item))
     } catch (err) {
-      setError(err.message)
+      setError(friendlyTaskError(err))
     }
   }
 
   async function cancel(task) {
-    if (readOnly) return
+    if (!canManageTasks) return
     try {
       const saved = await cancelProjectTask(task.task_id)
       setTasks((current) => current.map((item) => item.task_id === saved.task_id ? saved : item))
     } catch (err) {
-      setError(err.message)
+      setError(friendlyTaskError(err))
     }
   }
 
@@ -155,8 +189,10 @@ export default function TaskPanel({ projectId, readOnly = false }) {
           <p className={styles.eyebrow}>Project Tasks</p>
           <p>{summary.completed} of {summary.total} completed · {summary.overdue} overdue</p>
         </div>
-        {readOnly ? (
-          <span className={styles.readOnlyBadge}>View only</span>
+        {!canManageTasks ? (
+          <span className={styles.readOnlyBadge}>
+            {allowAssignedTaskEdits ? "Assigned tasks only" : "View only"}
+          </span>
         ) : (
           <button className={styles.primary} onClick={openCreate}>+ Add task</button>
         )}
@@ -181,53 +217,70 @@ export default function TaskPanel({ projectId, readOnly = false }) {
         <div className={styles.empty}>No tasks in this view yet.</div>
       ) : (
         <div className={styles.taskList}>
-          {visible.map((task) => (
-            <article key={task.task_id} className={`${styles.task} ${task.display_status === "Overdue" ? styles.taskOverdue : ""}`}>
-              <div className={styles.taskMain}>
-                <div className={styles.taskTitleRow}>
-                  <h3>{task.title}</h3>
-                  <TaskStatusBadge status={task.display_status} />
-                  <span className={styles.priority}>{task.priority}</span>
-                </div>
-                {task.description && <p>{task.description}</p>}
-                <div className={styles.meta}>
-                  <span>Assigned: {task.assignee?.name || "Unassigned"}</span>
-                  <span>Due: {task.due_date ? new Date(`${task.due_date}T00:00:00`).toLocaleDateString("en-PH") : "No due date"}</span>
-                </div>
-                {activity[task.task_id] && (
-                  <div className={styles.activity}>
-                    {activity[task.task_id].length === 0 ? <span>No activity recorded.</span> : activity[task.task_id].map((item) => (
-                      <span key={item.activity_id}>
-                        {item.action.replaceAll("_", " ")}
-                        <ActorByline
-                          actorName={item.actorName || item.changed_by_name}
-                          actorRole={item.actorRole || item.changed_by_role}
-                          timestamp={item.created_at}
-                        />
-                      </span>
-                    ))}
+          {visible.map((task) => {
+            const canEditThisTask = canEditTask(task)
+            return (
+              <article key={task.task_id} className={`${styles.task} ${task.display_status === "Overdue" ? styles.taskOverdue : ""}`}>
+                <div className={styles.taskMain}>
+                  <div className={styles.taskTitleRow}>
+                    <h3>{task.title}</h3>
+                    <TaskStatusBadge status={task.display_status} />
+                    <span className={styles.priority}>{task.priority}</span>
                   </div>
-                )}
-              </div>
-              <div className={styles.actions}>
-                {!readOnly && task.status === "Pending" && <button onClick={() => changeStatus(task, "In Progress")}>Start</button>}
-                {!readOnly && task.status === "In Progress" && <button onClick={() => changeStatus(task, "Completed")}>Complete</button>}
-                {!readOnly && <button onClick={() => openEdit(task)}>Edit</button>}
-                <button onClick={() => toggleActivity(task.task_id)}>History</button>
-                {!readOnly && !["Completed", "Cancelled"].includes(task.status) && <button className={styles.danger} onClick={() => cancel(task)}>Cancel</button>}
-              </div>
-            </article>
-          ))}
+                  {task.description && <p>{task.description}</p>}
+                  <div className={styles.meta}>
+                    <span>Assigned: {task.assignee?.name || "Unassigned"}</span>
+                    <span>Due: {task.due_date ? new Date(`${task.due_date}T00:00:00`).toLocaleDateString("en-PH") : "No due date"}</span>
+                  </div>
+                  {activity[task.task_id] && (
+                    <div className={styles.activity}>
+                      {activity[task.task_id].length === 0 ? <span>No activity recorded.</span> : activity[task.task_id].map((item) => (
+                        <span key={item.activity_id}>
+                          {item.action.replaceAll("_", " ")}
+                          <ActorByline
+                            actorName={item.actorName || item.changed_by_name}
+                            actorRole={item.actorRole || item.changed_by_role}
+                            timestamp={item.created_at}
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.actions}>
+                  {canEditThisTask && task.status === "Pending" && <button onClick={() => changeStatus(task, "In Progress")}>Start</button>}
+                  {canEditThisTask && task.status === "In Progress" && <button onClick={() => changeStatus(task, "Completed")}>Complete</button>}
+                  {canEditThisTask && <button onClick={() => openEdit(task)}>Edit</button>}
+                  <button onClick={() => toggleActivity(task.task_id)}>History</button>
+                  {canManageTasks && !["Completed", "Cancelled"].includes(task.status) && <button className={styles.danger} onClick={() => cancel(task)}>Cancel</button>}
+                </div>
+              </article>
+            )
+          })}
         </div>
       )}
 
-      {!readOnly && showForm && (
+      {showForm && (
         <div className={styles.overlay} onClick={() => setShowForm(false)}>
           <form className={styles.modal} onSubmit={save} onClick={(event) => event.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>{editing ? "Edit task" : "Create task"}</h2>
+              <h2>{editingAccess === "assignee" ? "Update assigned task" : editing ? "Edit task" : "Create task"}</h2>
               <button type="button" onClick={() => setShowForm(false)}>×</button>
             </div>
+            {editingAccess === "assignee" ? (
+              <>
+                <div className={styles.taskContext}>
+                  <span>Task</span>
+                  <strong>{editing?.title || "Assigned task"}</strong>
+                  <small>Assigned to you. You can update the description and progress status.</small>
+                </div>
+                <label>Description<textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+                <label>Status<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  {["Pending", "In Progress", "Completed"].map((value) => <option key={value}>{value}</option>)}
+                </select></label>
+              </>
+            ) : (
+              <>
             <label>Title<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
             <label>Description<textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
             <div className={styles.formGrid}>
@@ -247,6 +300,8 @@ export default function TaskPanel({ projectId, readOnly = false }) {
                 {["Pending", "In Progress", "Completed", "Cancelled"].map((value) => <option key={value}>{value}</option>)}
               </select></label>}
             </div>
+              </>
+            )}
             <div className={styles.modalActions}>
               <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
               <button className={styles.primary} type="submit">{editing ? "Save changes" : "Create task"}</button>

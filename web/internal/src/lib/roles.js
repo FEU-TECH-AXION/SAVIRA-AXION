@@ -1,14 +1,15 @@
-export const INTERNAL_ROLES = ["admin", "case_officer", "legal", "staff"];
+export const INTERNAL_ROLES = ["admin", "case_officer", "legal", "staff", "project_officer"];
 
 export const ROLE_HOME = {
   admin: "/dashboard",
   case_officer: "/dashboard",
   legal: "/dashboard",
   staff: "/dashboard",
+  project_officer: "/dashboard",
 };
 
 export const ROUTE_PERMISSIONS = {
-  "/dashboard": ["admin", "case_officer", "legal", "staff"],
+  "/dashboard": ["admin", "case_officer", "legal", "staff", "project_officer"],
   "/admin": ["admin"],
   "/caseInterviews": ["case_officer", "admin"],
   "/cases": ["case_officer", "admin"],
@@ -16,8 +17,8 @@ export const ROUTE_PERMISSIONS = {
   "/legalReviews": ["legal", "admin"],
   "/staff": ["staff", "admin"],
   "/users": ["admin"],
-  "/projects": ["staff", "admin"],
-  "/projectTasks": ["staff", "admin"],
+  "/projects": ["staff", "admin", "project_officer"],
+  "/projectTasks": ["staff", "admin", "project_officer"],
   "/staffAvailability": ["admin"],
   "/volunteerRanking": ["staff", "admin"],
   "/volunteer": ["staff", "admin"],
@@ -36,6 +37,7 @@ export function normalizeRole(role) {
   if (normalized === "legal") return "legal";
   if (normalized === "staff") return "staff";
   if (normalized === "admin") return "admin";
+  if (normalized === "project_officer") return "project_officer";
 
   return normalized;
 }

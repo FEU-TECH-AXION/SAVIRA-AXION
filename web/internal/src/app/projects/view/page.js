@@ -7,8 +7,10 @@ import CreateEditProject from "@/components/projects/CreateEditProject"
 import TaskPanel from "@/components/projects/TaskPanel"
 import Tooltip from "@/components/ui/Tooltip"
 import ActorByline from "@/components/ui/ActorByline"
-import { fetchProject, updateProject, uploadProjectImage } from "@/lib/api"
+import { useAuth } from "@/lib/AuthContext"
+import { fetchProject, fetchStaff, updateProject, uploadProjectImage } from "@/lib/api"
 import { getProjectDisplayStatus } from "@/lib/projectStatus"
+import { canManageProject, findCurrentStaff, friendlyProjectError } from "@/lib/projectPermissions"
 import styles from "@/components/projects/CreateEditProject.module.css"
 import viewStyles from "./viewProject.module.css"
 
@@ -44,6 +46,22 @@ function formatDate(value) {
   return date.toLocaleDateString("en-PH", { month: "short", day: "2-digit", year: "numeric" })
 }
 
+function formatDateTime(value) {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const dateText = date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+  const timeText = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+  return `${dateText} at ${timeText}`
+}
+
 function formatTime(value) {
   if (!value) return ""
   const date = new Date(`1970-01-01T${value}`)
@@ -74,18 +92,25 @@ function ProjectCreatorByline({ project }) {
 function ProjectView() {
   const params = useSearchParams()
   const router = useRouter()
+  const { user } = useAuth()
   const id = params.get("projectId")
   const [project, setProject] = useState(null)
+  const [staff, setStaff] = useState([])
   const [mode, setMode] = useState("view")
   const [error, setError] = useState("")
-  const [savingError, setSavingError] = useState("")
 
   useEffect(() => {
     let cancelled = false
     if (!id) return undefined
-    fetchProject(id)
-      .then((row) => {
-        if (!cancelled) setProject(row)
+    Promise.all([
+      fetchProject(id),
+      fetchStaff().catch(() => []),
+    ])
+      .then(([row, staffRows]) => {
+        if (!cancelled) {
+          setProject(row)
+          setStaff(Array.isArray(staffRows) ? staffRows : [])
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || "Unable to load project.")
@@ -99,8 +124,12 @@ function ProjectView() {
     return [getProjectDisplayStatus(project), project.visibility, dates || "No event dates"].filter(Boolean).join(" · ")
   }, [project])
 
+  const currentStaff = useMemo(() => findCurrentStaff(staff, user), [staff, user])
+  const canEditProject = useMemo(() => (
+    canManageProject(project, user, currentStaff)
+  ), [currentStaff, project, user])
+
   async function handleSave(data) {
-    setSavingError("")
     try {
       const payload = { ...data }
       if (payload.image && typeof payload.image !== "string") {
@@ -115,8 +144,10 @@ function ProjectView() {
       setMode("view")
       window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (err) {
-      setSavingError(err.message || "Unable to save project.")
-      throw err
+      const message = friendlyProjectError(err)
+      const friendlyError = new Error(message)
+      friendlyError.status = err.status
+      throw friendlyError
     }
   }
 
@@ -152,15 +183,12 @@ function ProjectView() {
 
   if (mode === "edit") {
     return (
-      <>
-        {savingError && <div className={styles.errorBanner}>{savingError}</div>}
-        <CreateEditProject
-          mode="edit"
-          initial={project}
-          onSave={handleSave}
-          onCancel={() => setMode("view")}
-        />
-      </>
+      <CreateEditProject
+        mode="edit"
+        initial={project}
+        onSave={handleSave}
+        onCancel={() => setMode("view")}
+      />
     )
   }
 
@@ -176,13 +204,15 @@ function ProjectView() {
             <h1>{project.title}</h1>
             <p className={styles.heroDescription}>{statusLine}</p>
           </div>
-          <div className={styles.heroActions}>
-            <Tooltip text="Edit this project's details" position="bottom">
-              <button className={styles.btnPrimary} onClick={() => setMode("edit")}>
-                <FiEdit2 /> Edit
-              </button>
-            </Tooltip>
-          </div>
+          {canEditProject && (
+            <div className={styles.heroActions}>
+              <Tooltip text="Edit this project's details" position="bottom">
+                <button className={styles.btnPrimary} onClick={() => setMode("edit")}>
+                  <FiEdit2 /> Edit
+                </button>
+              </Tooltip>
+            </div>
+          )}
         </section>
       </div>
 
@@ -240,7 +270,11 @@ function ProjectView() {
             </div>
           </SectionCard>
 
-          <TaskPanel projectId={id} readOnly />
+          <TaskPanel
+            projectId={id}
+            readOnly={!canEditProject}
+            allowAssignedTaskEdits={!canEditProject}
+          />
         </div>
 
         <aside className={styles.sidebarCol}>
@@ -250,7 +284,7 @@ function ProjectView() {
           </SectionCard>
           <SectionCard title="Creation">
             <Field label="Created By" value={<ProjectCreatorByline project={project} />} />
-            <Field label="Created At" value={formatDate(project.createdAt)} />
+            <Field label="Created At" value={formatDateTime(project.createdAt)} />
           </SectionCard>
           <SectionCard title="Status & Schedule">
             <Field label="Project Status" value={getProjectDisplayStatus(project)} />

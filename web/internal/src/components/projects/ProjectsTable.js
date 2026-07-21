@@ -151,13 +151,18 @@ export default function ProjectsTable({
   onEdit,
   onView,
   onDelete,
+  canEditProject = () => true,
+  canDeleteProject = () => true,
   sortField,
   sortDir,
   onSort,
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  const pageIds = useMemo(() => paginated.map(p => p.id), [paginated]);
+  const canSelectRows = Boolean(onDeleteSelected);
+  const pageIds = useMemo(() => (
+    canSelectRows ? paginated.map(p => p.id) : []
+  ), [canSelectRows, paginated]);
   const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
   const someSelected = pageIds.some(id => selectedIds.has(id));
 
@@ -185,7 +190,7 @@ export default function ProjectsTable({
     });
   }
 
-  const selectedProjects = paginated.filter(p => selectedIds.has(p.id));
+  const selectedProjects = canSelectRows ? paginated.filter(p => selectedIds.has(p.id)) : [];
   const selectionCount = selectedProjects.length;
 
   function formatDate(dateStr) {
@@ -237,16 +242,18 @@ export default function ProjectsTable({
         <table className={styles.table}>
           <thead>
             <tr className={styles.headerRow}>
-              <th className={`${styles.th} ${styles.checkTh}`}>
-                <input
-                  type="checkbox"
-                  className={styles.checkbox}
-                  checked={allSelected}
-                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                  onChange={toggleAll}
-                  aria-label="Select all"
-                />
-              </th>
+              {canSelectRows && (
+                <th className={`${styles.th} ${styles.checkTh}`}>
+                  <input
+                    type="checkbox"
+                    className={styles.checkbox}
+                    checked={allSelected}
+                    ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                    onChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </th>
+              )}
               <th className={`${styles.th} ${styles.sortableTh}`} onClick={() => onSort && onSort("id")}>
                 Project ID {renderSortIcon("id")}
               </th>
@@ -267,7 +274,7 @@ export default function ProjectsTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8} className={styles.emptyState}>
+                <td colSpan={canSelectRows ? 8 : 7} className={styles.emptyState}>
                   No projects found.
                 </td>
               </tr>
@@ -286,20 +293,22 @@ export default function ProjectsTable({
                     className={`${styles.row} ${isSelected ? styles.rowSelected : ""}`}
                     style={{ background: rowBg }}
                     onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(p)}
-                    title="Double-click to edit"
+                    title="Double-click to view"
                   >
-                    <td
-                      className={`${styles.td} ${styles.checkTd}`}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        className={styles.checkbox}
-                        checked={isSelected}
-                        onChange={() => toggleRow(p.id)}
-                        aria-label={`Select project ${p.id}`}
-                      />
-                    </td>
+                    {canSelectRows && (
+                      <td
+                        className={`${styles.td} ${styles.checkTd}`}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          className={styles.checkbox}
+                          checked={isSelected}
+                          onChange={() => toggleRow(p.id)}
+                          aria-label={`Select project ${p.id}`}
+                        />
+                      </td>
+                    )}
 
                     <td className={`${styles.td} ${styles.idTd}`}>
                       <span className={styles.idText}>#{p.id}</span>
@@ -342,7 +351,7 @@ export default function ProjectsTable({
                             <FiEye /> <span>View</span>
                           </button>
                         )}
-                        {onEdit && (
+                        {onEdit && canEditProject(p) && (
                           <button
                             className={styles.rowBtn}
                             title="Edit project"
@@ -352,7 +361,7 @@ export default function ProjectsTable({
                             <FiEdit2 />
                           </button>
                         )}
-                        {onDelete && (
+                        {onDelete && canDeleteProject(p) && (
                           <button
                             className={`${styles.rowBtn} ${styles.rowBtnDelete}`}
                             title="Delete project"

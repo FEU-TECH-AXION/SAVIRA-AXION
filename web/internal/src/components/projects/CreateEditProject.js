@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import TaskPanel from "./TaskPanel";
 import { internalApiFetch } from "@/lib/internalApiFetch";
 import { computeProjectStatus } from "@/lib/projectStatus";
+import { friendlyProjectError } from "@/lib/projectPermissions";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -402,7 +403,7 @@ export default function CreateEditProject({ mode = "create", initial = null, onS
         projectCommitteeMemberIds: (form.projectCommitteeMembers || []).map((person) => person.staff_id),
       });
     } catch (error) {
-      setErrors({ form: error.message || "Unable to save project." });
+      setErrors({ form: friendlyProjectError(error) });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }

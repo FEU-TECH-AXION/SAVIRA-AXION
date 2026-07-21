@@ -4,6 +4,13 @@ async function readJson(response, fallback) {
   return response.json().catch(() => fallback);
 }
 
+function apiError(response, data, fallback) {
+  const error = new Error(data?.error || fallback);
+  error.status = response.status;
+  error.code = data?.code;
+  return error;
+}
+
 export async function fetchUsers() {
   const res = await internalApiFetch("/api/users", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch users");
@@ -86,7 +93,7 @@ export async function updateProject(id, payload) {
     body: JSON.stringify(payload),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update project");
+  if (!res.ok) throw apiError(res, data, "Failed to update project");
   return data;
 }
 
@@ -140,7 +147,7 @@ export async function createProjectTask(projectId, payload) {
     body: JSON.stringify(payload),
   });
   const data = await readJson(res, {});
-  if (!res.ok) throw new Error(data.error || "Failed to create task");
+  if (!res.ok) throw apiError(res, data, "Failed to create task");
   return data.data;
 }
 
@@ -151,7 +158,7 @@ export async function updateProjectTask(taskId, payload) {
     body: JSON.stringify(payload),
   });
   const data = await readJson(res, {});
-  if (!res.ok) throw new Error(data.error || "Failed to update task");
+  if (!res.ok) throw apiError(res, data, "Failed to update task");
   return data.data;
 }
 
@@ -160,7 +167,7 @@ export async function cancelProjectTask(taskId) {
     method: "DELETE",
   });
   const data = await readJson(res, {});
-  if (!res.ok) throw new Error(data.error || "Failed to cancel task");
+  if (!res.ok) throw apiError(res, data, "Failed to cancel task");
   return data.data;
 }
 

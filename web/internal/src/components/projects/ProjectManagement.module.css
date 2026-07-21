@@ -420,6 +420,12 @@
   text-overflow: ellipsis;
 }
 
+.muted {
+  color: var(--sasha-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 @media (max-width: 640px) {
   .table thead th,
   .table tbody td {

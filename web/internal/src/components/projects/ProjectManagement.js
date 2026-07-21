@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import LogoutButton from "@/components/LogoutButton";
 import CreateEditProject from "@/components/projects/CreateEditProject";
 import ProjectsTable from "@/components/projects/ProjectsTable";
 import ProjectFilterMenu from "@/components/projects/ProjectFilterMenu";
 import styles from "./ProjectManagement.module.css";
-import { FiAlertTriangle, FiX, FiSearch, FiCheckSquare } from "react-icons/fi";
+import { FiAlertTriangle, FiX, FiSearch } from "react-icons/fi";
 import {
   fetchProjects,
+  fetchStaff,
   createProject,
   updateProject,
   deleteProject,
@@ -19,6 +18,14 @@ import {
 import { uploadProjectImage } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { getProjectDisplayStatus } from "@/lib/projectStatus";
+import {
+  canManageProject,
+  findCurrentStaff,
+  friendlyProjectError,
+  isProjectAdmin,
+  isProjectManagerRole,
+  projectEditPermissionMessage,
+} from "@/lib/projectPermissions";
 
 const PAGE_SIZE = 10;
 
@@ -118,19 +125,33 @@ function DeleteProjectModal({ open, onClose, project, onConfirm }) {
 }
 
 // ── View All Projects Modal ───────────────────────────────────────────────────
-function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defaultAction }) {
+function ViewAllProjectsModal({
+  open,
+  onClose,
+  projects,
+  onEdit,
+  onDelete,
+  defaultAction,
+  canEditProject = () => false,
+  canDeleteProject = () => false,
+}) {
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
-    if (!q.trim()) return projects;
+    const allowed = (projects || []).filter((project) => {
+      if (defaultAction === "edit") return canEditProject(project);
+      if (defaultAction === "delete") return canDeleteProject(project);
+      return true;
+    });
+    if (!q.trim()) return allowed;
     const lq = q.toLowerCase();
-    return projects.filter(
+    return allowed.filter(
       (p) =>
         (p.title ?? "").toLowerCase().includes(lq) ||
         (p.category ?? "").toLowerCase().includes(lq) ||
         String(p.id ?? "").includes(lq)
     );
-  }, [projects, q]);
+  }, [canDeleteProject, canEditProject, defaultAction, projects, q]);
 
   const modalTitle =
     defaultAction === "delete" ? "Select a Project to Delete"
@@ -160,23 +181,28 @@ function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defau
             {filtered.length === 0 ? (
               <tr><td colSpan={4} className={styles.emptyState}>No projects found.</td></tr>
             ) : (
-              filtered.map((p) => (
-                <tr key={p.id}>
-                  <td>#{p.id}</td>
-                  <td className={styles.truncateCell} title={p.title || ""}>{p.title}</td>
-                  <td>{getProjectDisplayStatus(p)}</td>
-                  <td>
-                    <div className={styles.actionBtns}>
-                      {(!defaultAction || defaultAction === "edit") && (
-                        <button className={styles.tblBtnEdit} onClick={() => { onEdit(p); onClose(); }}>Edit</button>
-                      )}
-                      {(!defaultAction || defaultAction === "delete") && (
-                        <button className={styles.tblBtnDelete} onClick={() => { onDelete(p); onClose(); }}>Delete</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+              filtered.map((p) => {
+                const canEdit = canEditProject(p);
+                const canDelete = canDeleteProject(p);
+                return (
+                  <tr key={p.id}>
+                    <td>#{p.id}</td>
+                    <td className={styles.truncateCell} title={p.title || ""}>{p.title}</td>
+                    <td>{getProjectDisplayStatus(p)}</td>
+                    <td>
+                      <div className={styles.actionBtns}>
+                        {canEdit && (!defaultAction || defaultAction === "edit") && (
+                          <button className={styles.tblBtnEdit} onClick={() => { onEdit(p); onClose(); }}>Edit</button>
+                        )}
+                        {canDelete && (!defaultAction || defaultAction === "delete") && (
+                          <button className={styles.tblBtnDelete} onClick={() => { onDelete(p); onClose(); }}>Delete</button>
+                        )}
+                        {!canEdit && !canDelete && <span className={styles.muted}>View only</span>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -194,16 +220,9 @@ function ViewAllProjectsModal({ open, onClose, projects, onEdit, onDelete, defau
 export default function ProjectManagement() {
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const user = {
-    role: authUser?.role_name || authUser?.role || "",
-    firstName: authUser?.first_name || "",
-    lastName: authUser?.last_name || "",
-  };
-
   // ── State ──────────────────────────────────────────────────────
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  const [staff, setStaff] = useState([]);
   const [search, setSearch]     = useState("");
   const [activeFilters, setActiveFilters] = useState({});
   const [page, setPage]         = useState(1);
@@ -215,15 +234,15 @@ export default function ProjectManagement() {
 
   useEffect(() => {
     async function loadProjects() {
-      setLoading(true);
-      setFetchError(null);
       try {
-        const data = await fetchProjects();
+        const [data, staffRows] = await Promise.all([
+          fetchProjects(),
+          fetchStaff().catch(() => []),
+        ]);
         setProjects(data);
+        setStaff(Array.isArray(staffRows) ? staffRows : []);
       } catch (err) {
-        setFetchError(err.message || 'Unable to load projects.');
-      } finally {
-        setLoading(false);
+        showToast(err.message || "Unable to load projects.", "danger");
       }
     }
 
@@ -236,12 +255,31 @@ export default function ProjectManagement() {
   const [viewAllAction, setViewAllAction] = useState(null);
 
   // ── Helpers ────────────────────────────────────────────────────
+  const currentStaff = useMemo(() => findCurrentStaff(staff, authUser), [authUser, staff]);
+  const canCreateProjects = isProjectManagerRole(authUser);
+  const canDeleteProjects = isProjectAdmin(authUser);
+  const canEditProject = useCallback(
+    (project) => canManageProject(project, authUser, currentStaff),
+    [authUser, currentStaff]
+  );
+  const hasEditableProjects = useMemo(
+    () => (projects || []).some((project) => canEditProject(project)),
+    [canEditProject, projects]
+  );
+
   function showToast(msg, type = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
   function closeModal() { setModal(null); setViewAllAction(null); }
-  function openDelete(p) { setSelectedProject(p); setModal("delete"); }
+  function openDelete(p) {
+    if (!canDeleteProjects) {
+      showToast("Only admins can delete projects.", "danger");
+      return;
+    }
+    setSelectedProject(p);
+    setModal("delete");
+  }
   function openViewAll(action = null) { setViewAllAction(action); setModal("viewAll"); }
 
   // ── Sort handler ───────────────────────────────────────────────
@@ -257,10 +295,18 @@ export default function ProjectManagement() {
 
   // ── Full-page handlers ─────────────────────────────────────────
   function openCreate() {
+    if (!canCreateProjects) {
+      showToast("Only admins and project officers can create projects.", "danger");
+      return;
+    }
     setEditingProject(null);
     setFormMode("create");
   }
   function openEdit(p) {
+    if (!canEditProject(p)) {
+      showToast(projectEditPermissionMessage(), "danger");
+      return;
+    }
     setEditingProject(p);
     setFormMode("edit");
   }
@@ -293,8 +339,11 @@ export default function ProjectManagement() {
       setFormMode(null);
       setEditingProject(null);
     } catch (err) {
-      showToast(err.message || 'Unable to save project.', 'danger');
-      throw err;
+      const message = friendlyProjectError(err);
+      const friendlyError = new Error(message);
+      friendlyError.status = err.status;
+      showToast(message, 'danger');
+      throw friendlyError;
     }
   }
   function handleFormCancel() {
@@ -316,6 +365,10 @@ export default function ProjectManagement() {
 
   // ── Bulk delete ────────────────────────────────────────────────────────
   async function handleBulkDelete(selected) {
+    if (!canDeleteProjects) {
+      showToast("Only admins can delete projects.", "danger");
+      return;
+    }
     try {
       const list = Array.isArray(selected) ? selected : [];
       const ids = list.map(p => p.id);
@@ -485,30 +538,36 @@ export default function ProjectManagement() {
             <div className={styles.headingLine} />
           </div>
           <div className={styles.actionGrid}>
-            <div>
-              <ActionCard
-                icon={<img src="ProjectIconCreate.png" alt="" className={styles.actionIconImg} />}
-                title="Create a Project"
-                description="Start a new SASHA project or campaign with full details."
-                onView={openCreate}
-              />
-            </div>
-            <div>
-              <ActionCard
-                icon={<img src="ProjectIconDelete.png" alt="" className={styles.actionIconImg} />}
-                title="Delete a Project"
-                description="Permanently remove an existing project."
-                onView={() => openViewAll("delete")}
-              />
-            </div>
-            <div>
-              <ActionCard
-                icon={<img src="ProjectIconEdit.png" alt="" className={styles.actionIconImg} />}
-                title="Update Project Information"
-                description="Edit all details of an existing project or event."
-                onView={() => openViewAll("edit")}
-              />
-            </div>
+            {canCreateProjects && (
+              <div>
+                <ActionCard
+                  icon={<img src="ProjectIconCreate.png" alt="" className={styles.actionIconImg} />}
+                  title="Create a Project"
+                  description="Start a new SASHA project or campaign with full details."
+                  onView={openCreate}
+                />
+              </div>
+            )}
+            {canDeleteProjects && (
+              <div>
+                <ActionCard
+                  icon={<img src="ProjectIconDelete.png" alt="" className={styles.actionIconImg} />}
+                  title="Delete a Project"
+                  description="Permanently remove an existing project."
+                  onView={() => openViewAll("delete")}
+                />
+              </div>
+            )}
+            {hasEditableProjects && (
+              <div>
+                <ActionCard
+                  icon={<img src="ProjectIconEdit.png" alt="" className={styles.actionIconImg} />}
+                  title="Update Project Information"
+                  description="Edit details for projects you manage."
+                  onView={() => openViewAll("edit")}
+                />
+              </div>
+            )}
             <div>
               <ActionCard
                 icon={<img src="ProjectIconView.png" alt="" className={styles.actionIconImg} />}
@@ -526,7 +585,7 @@ export default function ProjectManagement() {
               <ActionCard
                 icon={<img src="LegalIconEndorse.png" alt="" className={styles.actionIconImg} />}
                 title="Manage Project Tasks"
-                description="Assign project work, monitor deadlines, update progress, and review overdue tasks."
+                description={canCreateProjects ? "Assign project work, monitor deadlines, update progress, and review overdue tasks." : "Review project work and update tasks assigned to you."}
                 onView={() => router.push("/projectTasks")}
               />
             </div>
@@ -564,8 +623,10 @@ export default function ProjectManagement() {
                   onRowDoubleClick={goToView}
                   onEdit={openEdit}
                   onView={goToView}
-                  onDelete={openDelete}
-                  onDeleteSelected={handleBulkDelete}
+                  onDelete={canDeleteProjects ? openDelete : null}
+                  onDeleteSelected={canDeleteProjects ? handleBulkDelete : null}
+                  canEditProject={canEditProject}
+                  canDeleteProject={() => canDeleteProjects}
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
@@ -587,6 +648,8 @@ export default function ProjectManagement() {
         onEdit={openEdit}
         onDelete={openDelete}
         defaultAction={viewAllAction}
+        canEditProject={canEditProject}
+        canDeleteProject={() => canDeleteProjects}
       />
     </>
   );
