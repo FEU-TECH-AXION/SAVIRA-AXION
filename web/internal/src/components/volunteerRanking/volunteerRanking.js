@@ -21,12 +21,33 @@ function displayTotalScore(row = {}) {
   return Math.max(0, total - (Number(row.priority_bonus) || 0));
 }
 
-function formatPriorityText(row = {}) {
-  if (!(Number(row.priority_bonus) > 0)) return "None";
-  const details = [row.gender_identity, row.pronouns]
-    .map((value) => String(value || "").trim())
-    .filter(Boolean);
-  return details.length > 0 ? details.join(" / ") : "Priority applied";
+function getCommitmentPriorityLabel(hoursPerWeek) {
+  const value = String(hoursPerWeek || "").trim().toLowerCase();
+  if (!value) return "";
+
+  const numericValue = Number(value.match(/\d+/)?.[0]);
+
+  if (value.includes("more than 15") || value.includes(">15") || numericValue > 15) return "Highest priority";
+  if (value.includes("10-15") || value.includes("10 to 15") || (numericValue >= 10 && numericValue <= 15)) {
+    return "Highly acceptable";
+  }
+  if (value.includes("6-10") || value.includes("6 to 10") || (numericValue >= 6 && numericValue <= 10)) {
+    return "Reasonable";
+  }
+  if (value.includes("less than 5") || value.includes("<5") || numericValue < 5) return "Very low";
+  return "";
+}
+
+function getPriorityParts(row = {}) {
+  const gender = String(row.gender_identity || "").trim() || "Gender not specified";
+  const hours = String(row.hours_per_week || "").trim() || "Hours not specified";
+  const priorityLabel = getCommitmentPriorityLabel(row.hours_per_week);
+  const commitment = `${hours}${priorityLabel ? ` (${priorityLabel})` : ""}`;
+  return {
+    gender,
+    commitment,
+    text: `${gender} / ${commitment}`,
+  };
 }
 
 function StatusPill({ value }) {
@@ -377,6 +398,7 @@ export default function VolunteerRanking() {
                 <tbody>
                   {paginated.map((row) => {
                     const isSelected = selectedIds.has(row.application_id);
+                    const priority = getPriorityParts(row);
                     return (
                     <tr
                       key={row.application_id}
@@ -414,7 +436,12 @@ export default function VolunteerRanking() {
                       <td className={styles.scoreDetailCell}>{formatScore(row.nlp_essay_score, "/100")}</td>
                       <td className={styles.scoreDetailCell}>{formatScore(row.hybrid_essay_score, "/100")}</td>
                       <td className={styles.scoreDetailCell}>{formatScore(row.interview_score, "/10")}</td>
-                      <td className={styles.priorityTd} title={formatPriorityText(row)}>{formatPriorityText(row)}</td>
+                      <td className={styles.priorityTd} title={priority.text}>
+                        <span className={styles.priorityStack}>
+                          <strong>{priority.gender}</strong>
+                          <span>{priority.commitment}</span>
+                        </span>
+                      </td>
                       <td className={styles.totalCell}>{formatScore(displayTotalScore(row), "/100")}</td>
                       <td className={styles.evaluatorCell}>{row.evaluator_count || 0}</td>
                       <td className={styles.actionsTd} onClick={(event) => event.stopPropagation()}>

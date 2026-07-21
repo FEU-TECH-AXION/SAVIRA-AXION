@@ -97,10 +97,19 @@ function calculateScreeningScore(app = {}) {
 
 function priorityBonus(app = {}) {
     const gender = String(app.gender_identity || '').toLowerCase()
-    const pronouns = String(app.pronouns || '').toLowerCase()
-    const female = gender.includes('female') || gender.includes('woman') || pronouns.includes('she')
+    const female = gender.includes('female') || gender.includes('woman')
     const lgbtq = gender.includes('lgbtqia+ member') || gender.includes('lgbt') || gender.includes('queer') || gender.includes('non-binary') || gender.includes('trans')
-    return (female ? 3 : 0) + (lgbtq ? 3 : 0)
+    return (female ? 3 : 0) + (lgbtq ? 3 : 0) + commitmentPriorityBonus(app.hours_per_week)
+}
+
+function commitmentPriorityBonus(hoursPerWeek) {
+    const value = String(hoursPerWeek || '').toLowerCase()
+    const numericValue = Number(value.match(/\d+/)?.[0])
+
+    if (value.includes('more than 15') || value.includes('>15') || numericValue > 15) return 6
+    if (value.includes('10-15') || value.includes('10 to 15') || (numericValue >= 10 && numericValue <= 15)) return 4
+    if (value.includes('6-10') || value.includes('6 to 10') || (numericValue >= 6 && numericValue <= 10)) return 2
+    return 0
 }
 
 const getItems = async (req, res) => {
@@ -319,7 +328,7 @@ const getRankings = async (req, res) => {
                 name,
                 email,
                 gender_identity,
-                pronouns,
+                hours_per_week,
                 city,
                 fields_with_background,
                 fields_of_interest,
@@ -368,7 +377,7 @@ const getRankings = async (req, res) => {
                 name: app.name,
                 email: app.email,
                 gender_identity: app.gender_identity,
-                pronouns: app.pronouns,
+                hours_per_week: app.hours_per_week,
                 city: app.city,
                 fields_with_background: Array.isArray(app.fields_with_background) ? app.fields_with_background : [],
                 fields_of_interest: Array.isArray(app.fields_of_interest) ? app.fields_of_interest : [],

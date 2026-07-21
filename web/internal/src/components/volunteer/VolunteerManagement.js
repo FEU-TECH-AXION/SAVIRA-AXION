@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./VolunteerManagement.module.css";
-import { FiX } from "react-icons/fi";
+import { FiBarChart2, FiUsers, FiX } from "react-icons/fi";
 import ApplicationsTable from "./ApplicationsTable";
 import FilterMenu from "./FilterMenu";
 import Link from "next/link";
@@ -994,6 +994,26 @@ export default function VolunteerManagement() {
                 onView={() => { setActiveFilters({}); setSearch(""); setPage(1); }}
               />
             </div> */}
+            {isAdmin && (
+              <>
+                <div className={styles.actionCell}>
+                  <ActionCard
+                    icon={<img src="VolunteerIconRankA.png" alt="" className={styles.actionIconImg} />}
+                    title="Applicant Ranking"
+                    description="Review ranked applicants using screening, essay, interview, and priority scores."
+                    onView={() => router.push("/volunteerRanking")}
+                  />
+                </div>
+                <div className={styles.actionCell}>
+                  <ActionCard
+                    icon={<img src="VolunteerIconChapter.png" alt="" className={styles.actionIconImg} />}
+                    title="Chapter Formation"
+                    description="Build and manage chapters, organizing groups, officers, and recognition readiness."
+                    onView={() => router.push("/volunteer/chapters")}
+                  />
+                </div>
+              </>
+            )}
             <div className={styles.actionCell}>
                 <Link href="/volunteerInterviews" style={{ textDecoration: 'none' }}>
                   <ActionCard

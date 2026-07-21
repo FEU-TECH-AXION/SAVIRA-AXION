@@ -247,8 +247,8 @@
   display: none;
 }
 
-.checkTh,
-.checkTd {
+.table .checkTh,
+.table .checkTd {
   width: 44px;
   padding-left: 1rem;
   padding-right: 0.5rem;
@@ -258,8 +258,10 @@
 }
 
 .checkbox {
+  display: block;
   width: 16px;
   height: 16px;
+  margin: 0 auto;
   accent-color: #037F81;
   cursor: pointer;
 }
@@ -298,6 +300,34 @@
 .priorityTh,
 .priorityTd {
   width: 16%;
+}
+
+.table .priorityTd {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.priorityStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.18;
+}
+
+.priorityStack strong,
+.priorityStack span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.priorityStack span {
+  color: var(--sasha-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .totalTh,
