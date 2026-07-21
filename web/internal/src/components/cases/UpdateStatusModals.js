@@ -209,6 +209,36 @@ function hydrateCurrentStatusForm(defaults, caseData, status) {
   return { ...defaults, ...(getSavedCurrentStatusFormData(caseData, status) || {}) };
 }
 
+function getLatestReferralAssessment(caseData) {
+  const assessments = Array.isArray(caseData?.assessmentHistory) ? caseData.assessmentHistory : [];
+  return assessments.find((record) =>
+    record?.assessment_stage === "referral_endorsement" ||
+    Boolean(record?.endorsement) ||
+    Boolean(record?.referral_body) ||
+    record?.referral_required === true
+  ) || null;
+}
+
+function mapReferralBodyToPathway(referralBody) {
+  const normalized = String(referralBody || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized === "school/workplace codi" || normalized.includes("codi")) return "CODI (school/workplace)";
+  if (normalized.includes("bsp") || normalized.includes("gsp")) return "BSP/GSP mechanism";
+  if (normalized.includes("pnp")) return "PNP Women and Children Protection Desk";
+  if (normalized.includes("dswd")) return "DSWD";
+  if (normalized.includes("court") || normalized.includes("prosecutor")) return "Prosecutor / Court";
+  return referralBody;
+}
+
+function hydrateCaseEvaluationForm(defaults, caseData) {
+  const current = hydrateCurrentStatusForm(defaults, caseData, "Under Case Evaluation");
+  const referralAssessment = getLatestReferralAssessment(caseData);
+  const referralBody = caseData?.referralBody || referralAssessment?.referral_body || referralAssessment?.endorsement?.endorsed_to || "";
+  const referralPathway = mapReferralBodyToPathway(referralBody);
+  if (!referralPathway || current.pathways.includes(referralPathway)) return current;
+  return { ...current, pathways: [referralPathway, ...current.pathways] };
+}
+
 // ─── Internal UI Primitives ───────────────────────────────────────────────────
 
 function Modal({ open, onClose, title, children, wide }) {
@@ -613,8 +643,11 @@ function CaseEvaluationModal({ open, onClose, caseData, onSubmit, actorName }) {
     "Prosecutor / Court",
   ];
   const defaultForm = { pathways: [], evidenceGaps: "", survivorInformed: "", legalRisks: "", notes: "" };
-  const [form, setForm] = useState(() => hydrateCurrentStatusForm(defaultForm, caseData, "Under Case Evaluation"));
+  const [form, setForm] = useState(() => hydrateCaseEvaluationForm(defaultForm, caseData));
   const [errors, setErrors] = useState({});
+  const referralAssessment = getLatestReferralAssessment(caseData);
+  const referralBody = caseData?.referralBody || referralAssessment?.referral_body || referralAssessment?.endorsement?.endorsed_to || "";
+  const referralPathway = mapReferralBodyToPathway(referralBody);
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const togglePathway = (p) => setForm((prev) => ({
     ...prev,
@@ -643,6 +676,15 @@ function CaseEvaluationModal({ open, onClose, caseData, onSubmit, actorName }) {
   return (
     <StatusChangeShell open={open} onClose={onClose} title="Move to: Under Case Evaluation" proposedStatus="Under Case Evaluation" caseData={caseData} onSubmitForApproval={handleSubmit}>
       <p className={styles.formDesc}>The full case file is being assessed to determine the best pathway for the survivor.</p>
+      {referralBody && (
+        <div className={styles.duplicateHintRow}>
+          <FiAlertTriangle className={styles.duplicateHintIcon} />
+          <span className={styles.duplicateHintText}>
+            Saved Referral / Endorse choice: <strong>{referralBody}</strong>
+            {referralPathway && referralPathway !== referralBody ? `, reflected as ${referralPathway}` : ""}.
+          </span>
+        </div>
+      )}
       <div className={styles.formGrid}>
         <FormGroup label="Case ID"><FInput value={caseData?.caseId} disabled /></FormGroup>
         <FormGroup label="Recommended pathways (select all that apply)" required error={errors.pathways}>
