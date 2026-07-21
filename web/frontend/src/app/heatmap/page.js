@@ -305,6 +305,7 @@ function FilterSection({ filters, onChange, meta }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterBarSearch, setFilterBarSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [defaultFilterLimit, setDefaultFilterLimit] = useState(4);
   const menuRef = useRef(null);
   const { regions = [], cities = [], caseTypes = [] } = meta;
   const ALL_STATUSES = [
@@ -410,8 +411,8 @@ function FilterSection({ filters, onChange, meta }) {
         return scoreDifference || filterDefinitions.indexOf(a) - filterDefinitions.indexOf(b);
       })
     : filterDefinitions;
-  const desktopFilterDefinitions = rankedFilterDefinitions.slice(0, 4);
-  const desktopAdditionalFilterDefinitions = rankedFilterDefinitions.slice(4);
+  const desktopFilterDefinitions = rankedFilterDefinitions.slice(0, defaultFilterLimit);
+  const desktopAdditionalFilterDefinitions = rankedFilterDefinitions.slice(defaultFilterLimit);
   const mobileVisibleFilterDefinitions = normalizedFilterSearch
     ? filterDefinitions.filter((field) => {
         const searchableText = [
@@ -449,6 +450,29 @@ function FilterSection({ filters, onChange, meta }) {
         .slice(0, 6)
     : [];
   const showSearchSuggestions = searchFocused && searchSuggestions.length > 0;
+
+  useEffect(() => {
+    function updateDefaultFilterLimit() {
+      const width = window.innerWidth;
+
+      if (width <= 900) {
+        setDefaultFilterLimit(2);
+      } else if (width <= 1180) {
+        setDefaultFilterLimit(3);
+      } else if (width <= 1679) {
+        setDefaultFilterLimit(4);
+      } else if (width <= 1919) {
+        setDefaultFilterLimit(5);
+      } else {
+        setDefaultFilterLimit(filterDefinitions.length);
+      }
+    }
+
+    updateDefaultFilterLimit();
+    window.addEventListener("resize", updateDefaultFilterLimit);
+
+    return () => window.removeEventListener("resize", updateDefaultFilterLimit);
+  }, [filterDefinitions.length]);
 
   useEffect(() => {
     function outside(event) {

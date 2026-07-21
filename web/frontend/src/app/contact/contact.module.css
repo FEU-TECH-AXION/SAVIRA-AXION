@@ -404,8 +404,12 @@
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────────────── */
-@media (max-width: 768px) {
+@media (max-width: 820px) {
   .formCard {
+    grid-template-columns: 1fr;
+  }
+
+  .formRow {
     grid-template-columns: 1fr;
   }
 
@@ -435,7 +439,7 @@
   padding-bottom: 3rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 820px) {
   .footerInner {
     grid-template-columns: 1fr;
     gap: 2rem;
