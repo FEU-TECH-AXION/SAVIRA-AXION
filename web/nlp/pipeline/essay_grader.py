@@ -2,7 +2,7 @@ import json
 from pipeline.groq_client import MAX_TOKENS, get_client, parse_json_response
 
 MODEL = "llama-3.1-8b-instant"
-ESSAY_PASS_THRESHOLD = 60.0
+ESSAY_PASS_THRESHOLD = 70.0
 
 CRITERIA = {
     "mission_alignment": {
