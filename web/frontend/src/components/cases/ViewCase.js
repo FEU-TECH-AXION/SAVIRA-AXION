@@ -40,10 +40,12 @@ const formatPublicCaseId = (id, fallback = "CASE") =>
   id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : fallback;
 
 function mapCaseReportToViewData(data) {
+  const publicCaseId = data.public_id || data.case_report_id || data.id;
   return {
     reportData: data,
-    id: data.case_report_id,
-    caseId: data.case_code || formatPublicCaseId(data.public_id || data.case_report_id),
+    id: publicCaseId,
+    publicCaseId,
+    caseId: data.case_code || formatPublicCaseId(publicCaseId),
     reporterId: data.complainant_user_id,
     region: data.incident_province || data.incident_city || "Not provided",
     status: STATUS_STEP[data.case_status_id] || "For Verification",
@@ -367,7 +369,7 @@ export default function ViewCase() {
           {displayedActiveTab === "interview" && showInterviewTab && userLoaded && <InterviewTab caseData={caseData} isStaff={false} isCaseOfficer={false} showToast={showToast} userId={user.id} />}
           {displayedActiveTab === "follow-ups" && userLoaded && (
             <FollowUpsPanel
-              caseId={caseData.id}
+              caseId={caseData.publicCaseId}
               caseStatus={caseData.status}
               isStaff={false}
               canManage={false}
@@ -404,7 +406,7 @@ export default function ViewCase() {
         <FollowUpComposer
           open={followUpComposerOpen}
           onClose={() => setFollowUpComposerOpen(false)}
-          caseId={caseData.id}
+          caseId={caseData.publicCaseId}
           isStaff={false}
           reportData={caseData.reportData}
           activeFollowUp={caseData.followUpSummary?.type === "user_change_request" && ["open", "responded"].includes(caseData.followUpSummary?.status) ? caseData.followUpSummary : null}

@@ -1,9 +1,14 @@
 const supabase = require('../config/supabase')
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const INTEGER_PATTERN = /^\d+$/
 
 function isUuid(value) {
   return UUID_PATTERN.test(String(value || '').trim())
+}
+
+function isIntegerId(value) {
+  return INTEGER_PATTERN.test(String(value || '').trim())
 }
 
 function getResolvedCaseReportId(req) {
@@ -11,12 +16,27 @@ function getResolvedCaseReportId(req) {
 }
 
 async function getCaseByPublicId(publicId) {
-  if (!isUuid(publicId)) return null
+  const identifier = String(publicId || '').trim()
+  if (!identifier) return null
+
+  if (isIntegerId(identifier)) {
+    const { data, error } = await supabase
+      .from('case_reports')
+      .select('case_report_id, public_id, complainant_id')
+      .eq('case_report_id', Number(identifier))
+      .eq('is_current', true)
+      .maybeSingle()
+
+    if (error) throw error
+    return data || null
+  }
+
+  if (!isUuid(identifier)) return null
 
   const { data, error } = await supabase
     .from('case_reports')
     .select('case_report_id, public_id, complainant_id')
-    .eq('public_id', String(publicId).trim())
+    .eq('public_id', identifier)
     .maybeSingle()
 
   if (error) throw error
@@ -158,6 +178,7 @@ module.exports = {
   exposeCasePublicIds,
   getPublicIdByCaseReportId,
   getResolvedCaseReportId,
+  isIntegerId,
   isUuid,
   resolveCaseBody,
   resolveCaseBodyArray,

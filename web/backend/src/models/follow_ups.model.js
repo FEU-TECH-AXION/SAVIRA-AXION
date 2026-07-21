@@ -14,6 +14,17 @@ function isFieldChangeCaseIdConstraintError(error) {
   )
 }
 
+function isMissingRpcError(error, rpcName) {
+  const message = String(error?.message || error?.details || '')
+  return (
+    error?.code === 'PGRST202' ||
+    error?.code === '42883' ||
+    message.includes(rpcName) ||
+    message.includes('Could not find the function') ||
+    message.includes('function') && message.includes('does not exist')
+  )
+}
+
 async function getCurrentCaseReport(caseId) {
   const { data, error } = await supabase
     .from('case_reports')
@@ -150,7 +161,12 @@ async function createRequestWithChanges(payload, changes) {
     p_changes: changes,
   })
   if (error) {
-    if (!isFieldChangeCaseIdConstraintError(error)) throw error
+    if (
+      !isFieldChangeCaseIdConstraintError(error) &&
+      !isMissingRpcError(error, 'create_follow_up_with_pending_field_changes_v2')
+    ) {
+      throw error
+    }
 
     const request = await createRequest(payload)
     try {

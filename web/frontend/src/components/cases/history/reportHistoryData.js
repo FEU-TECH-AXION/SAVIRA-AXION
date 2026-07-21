@@ -71,6 +71,7 @@ export function normalizeReport(report) {
   return {
     reportData: report,
     id,
+    publicCaseId: report.public_id || id,
     caseId: report.caseId || report.case_code || (id ? `CASE-${String(id).slice(0, 8).toUpperCase()}` : "CASE"),
     statusName: getStatusName(report),
     assignedPersonnel: getAssignedPersonnel(report),
