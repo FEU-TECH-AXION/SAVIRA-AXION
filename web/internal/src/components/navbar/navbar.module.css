@@ -427,6 +427,18 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
+.userAvatar:disabled {
+  cursor: default;
+}
+
+.userAvatar:disabled:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.userAvatarPlaceholder {
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .userAvatarImage {
   width: 100%;
   height: 100%;

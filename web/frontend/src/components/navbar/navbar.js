@@ -10,6 +10,7 @@ import {
   FiChevronDown,
   FiHelpCircle,
   FiSearch,
+  FiUser,
   FiX,
 } from "react-icons/fi";
 import Sidebar from "@/components/sidebar/sidebar";
@@ -45,6 +46,26 @@ function getRoleLabel(user, t) {
     Object.values(ROLE_LABELS).find((key) => key.toLowerCase() === roleKey);
 
   return labelKey ? t(labelKey) : prettifyRole(role);
+}
+
+function getInitials(user) {
+  const nameInitials = [user?.first_name || user?.firstName, user?.last_name || user?.lastName]
+    .map((value) => value?.trim()?.[0])
+    .filter(Boolean)
+    .join("");
+
+  if (nameInitials) return nameInitials.toUpperCase();
+
+  const fallbackIdentity = user?.user_name || user?.email || "";
+  return fallbackIdentity.trim().slice(0, 1).toUpperCase();
+}
+
+function getDisplayName(user) {
+  const name = [user?.first_name || user?.firstName, user?.last_name || user?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  return name || user?.user_name || user?.email || "User";
 }
 
 export default function Navbar() {
@@ -346,6 +367,7 @@ export default function Navbar() {
 function UserMenu({ user, logout, t }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
+  const initials = getInitials(user);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -379,20 +401,19 @@ function UserMenu({ user, logout, t }) {
         aria-label={t("navMyProfile")}
         aria-expanded={open}
       >
-        {user.profile_img ? (
+        {user?.profile_img ? (
           <img src={user.profile_img} alt="" className={styles.userAvatarImage} />
+        ) : initials ? (
+          initials
         ) : (
-          <>
-            {user.first_name?.[0] ?? "U"}
-            {user.last_name?.[0] ?? ""}
-          </>
+          <FiUser size={17} aria-hidden="true" />
         )}
       </button>
 
       {open && (
         <div className={styles.userDropdown}>
           <p className={styles.dropdownName}>
-            {user.first_name} {user.last_name}
+            {getDisplayName(user)}
           </p>
           <p className={styles.dropdownRole}>
             {getRoleLabel(user, t)}

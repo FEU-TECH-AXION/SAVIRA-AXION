@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiBell, FiHelpCircle, FiMenu, FiSearch, FiX } from "react-icons/fi";
+import { FiBell, FiHelpCircle, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import { useAuth } from "@/lib/AuthContext";
 import { fetchAvailabilityFor, updateStaffAvailability } from "@/lib/api";
@@ -15,11 +15,19 @@ import { isInternalRole } from "@/lib/roles";
 import styles from "./navbar.module.css";
 
 function getInitials(user) {
-  return `${user?.first_name?.[0] || "U"}${user?.last_name?.[0] || ""}`.toUpperCase();
+  const nameInitials = [user?.first_name || user?.firstName, user?.last_name || user?.lastName]
+    .map((value) => value?.trim()?.[0])
+    .filter(Boolean)
+    .join("");
+
+  if (nameInitials) return nameInitials.toUpperCase();
+
+  const fallbackIdentity = user?.user_name || user?.email || "";
+  return fallbackIdentity.trim().slice(0, 1).toUpperCase();
 }
 
 function getDisplayName(user) {
-  const name = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
+  const name = `${user?.first_name || user?.firstName || ""} ${user?.last_name || user?.lastName || ""}`.trim();
   return name || user?.user_name || "Internal User";
 }
 
@@ -244,7 +252,7 @@ export default function Navbar() {
               )}
             </div>
 
-            <UserMenu key={pathname} user={user} setUser={setUser} logout={logout} t={t} />
+            <UserMenu key={pathname} user={user} setUser={setUser} logout={logout} t={t} loading={loading} />
           </div>
         </div>
       </nav>
@@ -349,14 +357,18 @@ function AvailabilityQuickToggle({ user, setUser, open, setOpen, wrapperRef }) {
   );
 }
 
-function UserMenu({ user, setUser, logout, t }) {
+function UserMenu({ user, setUser, logout, t, loading }) {
   const [open, setOpen] = useState(false);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const menuRef = useRef(null);
   const mobileAvailabilityRef = useRef(null);
+  const initials = getInitials(user);
+  const hasAvatarContent = Boolean(user?.profile_img || initials);
+  const canOpenMenu = Boolean(user) && !loading;
+  const menuOpen = open && canOpenMenu;
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!menuOpen) return undefined;
 
     const handlePointerDown = (event) => {
       if (!menuRef.current?.contains(event.target)) {
@@ -379,24 +391,30 @@ function UserMenu({ user, setUser, logout, t }) {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [menuOpen]);
 
   return (
     <div className={styles.userMenu} ref={menuRef}>
       <button
-        className={styles.userAvatar}
-        onClick={() => setOpen((current) => !current)}
+        className={`${styles.userAvatar} ${!hasAvatarContent ? styles.userAvatarPlaceholder : ""}`}
+        onClick={() => {
+          if (!canOpenMenu) return;
+          setOpen((current) => !current);
+        }}
         aria-label={t("navMyProfile")}
-        aria-expanded={open}
+        aria-expanded={menuOpen}
+        disabled={!canOpenMenu}
       >
         {user?.profile_img ? (
           <img src={user.profile_img} alt="" className={styles.userAvatarImage} />
+        ) : initials ? (
+          initials
         ) : (
-          getInitials(user)
+          <FiUser size={17} aria-hidden="true" />
         )}
       </button>
 
-      {open && (
+      {menuOpen && (
         <div className={styles.userDropdown}>
           <p className={styles.dropdownName}>{getDisplayName(user)}</p>
           <p className={styles.dropdownRole}>{getRoleLabel(user, t)}</p>
