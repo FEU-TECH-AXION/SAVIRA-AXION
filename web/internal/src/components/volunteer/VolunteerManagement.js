@@ -27,6 +27,12 @@ function capitalizeStatus(raw) {
     .join(" ");
 }
 
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
 function getDateRangeFromFilter(filterValue) {
   if (!filterValue) return null;
   const today = new Date();
@@ -308,7 +314,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
         {applicants.length === 1 ? (
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Application ID</label>
-            <input className={styles.formInput} value={`APP-${String(applicants[0].id).padStart(4, "0")}`} disabled />
+            <input className={styles.formInput} value={formatApplicationRef(applicants[0].id, applicants[0].applicationRef)} disabled />
           </div>
         ) : (
           <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
@@ -316,7 +322,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
             <div style={{ background: "#f3f4f6", borderRadius: 6, padding: 10, fontSize: "0.875rem", maxHeight: 120, overflowY: "auto" }}>
               {applicants.map((a, i) => (
                 <div key={i} style={{ padding: "3px 0" }}>
-                  <strong>APP-{String(a.id).padStart(4, "0")}</strong> — {a.name}
+                  <strong>{formatApplicationRef(a.id, a.applicationRef)}</strong> — {a.name}
                 </div>
               ))}
             </div>
@@ -351,7 +357,7 @@ function AssignApplicationModal({ open, onClose, applicantsData, onSave, staff =
                     borderBottom: "1px solid #eef2f7",
                   }}>
                     <strong style={{ minWidth: 90, fontSize: "0.8rem", color: "#374151" }}>
-                      APP-{String(applicant.id).padStart(4, "0")}
+                      {formatApplicationRef(applicant.id, applicant.applicationRef)}
                     </strong>
                     {currentAssignments.length === 0 ? (
                       <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
@@ -685,6 +691,7 @@ export default function VolunteerManagement() {
                       .filter((aa) => aa.is_active === true)
                       .map((aa) => aa.assessor_id),
                   id:                   app.volunteer_application_id,
+                  applicationRef:       app.application_ref,
                   name:                 app.name || "—",
                   email:                app.email || "—",
                   contact:              app.contact_number || "—",
@@ -765,7 +772,7 @@ export default function VolunteerManagement() {
         applicationId: applicant.id,
         assessorId,
         label: names[index] || `Staff #${assessorId}`,
-        context: `APP-${String(applicant.id).padStart(4, "0")}`,
+        context: formatApplicationRef(applicant.id, applicant.applicationRef),
         detail: applicant.name,
       }));
     });
@@ -1186,7 +1193,7 @@ export default function VolunteerManagement() {
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
               throw new Error(
-                body.error || `Failed to update APP-${String(applicant.id).padStart(4, "0")}.`
+                body.error || `Failed to update ${formatApplicationRef(applicant.id, applicant.applicationRef)}.`
               );
             }
             updatedApplicants.push({ ...applicant, status, notes });

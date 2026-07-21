@@ -1,11 +1,15 @@
 const VolunteerApplicationEvaluationsModel = require('../models/volunteer_application_evaluations.model')
 const supabase = require('../config/supabase')
 const { resolveActors, withActor } = require('../utils/actor')
+const {
+    replaceVolunteerApplicationId,
+    replaceVolunteerApplicationIdsFromDatabase,
+} = require('../utils/volunteerApplicationPublicIds')
 
 const getItems = async (req, res) => {
     try {
         const data = await VolunteerApplicationEvaluationsModel.getAll()
-        res.json(data)
+        res.json(await replaceVolunteerApplicationIdsFromDatabase(data))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -14,7 +18,7 @@ const getItems = async (req, res) => {
 const createItem = async (req, res) => {
     try {
         const item = await VolunteerApplicationEvaluationsModel.create(req.body)
-        res.status(201).json(item)
+        res.status(201).json(await replaceVolunteerApplicationIdsFromDatabase(item))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -97,12 +101,12 @@ const getEssayEvaluation = async (req, res) => {
             ? enriched.find((row) => row.evaluated_by === evaluatorId)
             : enriched[0]
 
-        res.status(200).json({
+        res.status(200).json(replaceVolunteerApplicationId({
             ...(current || {}),
             notes: current?.essay_notes || '',
             aggregate: aggregateEssay(data || []),
             evaluations: enriched,
-        })
+        }, req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -123,7 +127,7 @@ const saveEssayEvaluation = async (req, res) => {
             essay_notes: notes,
             updated_at: new Date(),
         })
-        res.status(200).json(await enrichEvaluations(data))
+        res.status(200).json(replaceVolunteerApplicationId(await enrichEvaluations(data), req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -145,7 +149,7 @@ const getInterviewEvaluation = async (req, res) => {
             : enriched[0]
 
         const scoredRows = (data || []).filter((row) => row.interview_score !== null && row.interview_score !== undefined)
-        res.status(200).json({
+        res.status(200).json(replaceVolunteerApplicationId({
             score: current?.interview_score || 0,
             notes: current?.interview_notes || '',
             aggregate: {
@@ -153,7 +157,7 @@ const getInterviewEvaluation = async (req, res) => {
                 evaluator_count: scoredRows.length,
             },
             evaluations: enriched,
-        })
+        }, req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -170,7 +174,7 @@ const saveInterviewEvaluation = async (req, res) => {
             interview_notes: notes,
             updated_at: new Date(),
         })
-        res.status(200).json(await enrichEvaluations(data))
+        res.status(200).json(replaceVolunteerApplicationId(await enrichEvaluations(data), req.volunteerApplicationPublicId))
     } catch (error) {
         res.status(500).json({ error: error.message })
     }

@@ -421,6 +421,12 @@ function ScoreBar({ score, max = 10, color }) {
     </div>
   );
 }
+
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
 function VolunteerStatusHistorySection({ applicationId, isStaff }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -596,7 +602,7 @@ export default function ViewApplication() {
 
         setAppData({
           id:                    data.volunteer_application_id,
-          appRefId:              `APP-${String(data.volunteer_application_id).padStart(4, "0")}`,
+          appRefId:              formatApplicationRef(data.volunteer_application_id, data.application_ref),
           applicantUserId:       data.applicant_user_id || data.user_id || null,
           applicationStatus:     capitalizeStatus(data.application_status),
           reviewNotes:           data.status_notes || data.notes || "",
@@ -793,7 +799,7 @@ export default function ViewApplication() {
         <div className={styles.headerCard}>
           <div className={styles.headerTop}>
             <div>
-              <h1 className={styles.caseTitle}>APP-{String(appData.id).padStart(4, "0")}</h1>
+              <h1 className={styles.caseTitle}>{appData.appRefId}</h1>
               <p className={styles.caseSubtitle}>
                 Date Applied: {appData.dateApplied}
               </p>

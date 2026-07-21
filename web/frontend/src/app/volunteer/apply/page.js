@@ -1389,7 +1389,7 @@ function ApplicationStatusCard({ applicationData, applicationNumber }) {
     lastUpdated         = null,
   } = applicationData ?? {};
 
-  const displayId       = `APP-${String(id).padStart(5, "0")}`;
+  const displayId       = applicationId || `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
   const evaluatorLabel  = assignedEvaluator ?? "Unassigned";
   const updatedAgo      = timeAgo(lastUpdated);
 
@@ -1958,6 +1958,7 @@ export default function CreateApplication({
                   applicationNumber={i + 1}
                   applicationData={{
                     id: app.volunteer_application_id,
+                    applicationId: app.application_ref,
                     applicationStatus: app.application_status || "pending",
                     dateApplied: app.created_at
                       ? new Date(app.created_at).toLocaleDateString("en-PH", {

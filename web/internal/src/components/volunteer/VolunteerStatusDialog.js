@@ -12,6 +12,12 @@ const REJECTION_REASONS = [
   "Required applicant information could not be verified.",
 ];
 
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
 export default function VolunteerStatusDialog({ open, applicants, onCancel, onSave }) {
   const applicationList = useMemo(
     () => (Array.isArray(applicants) ? applicants : applicants ? [applicants] : []),
@@ -79,7 +85,7 @@ export default function VolunteerStatusDialog({ open, applicants, onCancel, onSa
           {applicationList.length === 1 ? (
             <>
               <strong>{applicationList[0].name}</strong>
-              <span>APP-{String(applicationList[0].id).padStart(4, "0")}</span>
+              <span>{formatApplicationRef(applicationList[0].id, applicationList[0].applicationRef)}</span>
             </>
           ) : (
             <strong>{applicationList.length} selected applicants</strong>

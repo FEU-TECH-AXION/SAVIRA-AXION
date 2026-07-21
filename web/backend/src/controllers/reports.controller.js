@@ -11,6 +11,7 @@
  */
 
 const { createClient } = require("@supabase/supabase-js");
+const { publicVolunteerApplicationRef } = require("../utils/volunteerApplicationPublicIds");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -128,6 +129,7 @@ async function fetchVolunteers(rangeStart) {
     .from("volunteer_applications")
     .select(`
       volunteer_application_id,
+      public_id,
       application_status,
       negotiable_score,
       fields_with_background,
@@ -143,7 +145,8 @@ async function fetchVolunteers(rangeStart) {
   }
 
   return (data || []).map((r) => ({
-    id:                  r.volunteer_application_id,
+    id:                  r.public_id,
+    application_ref:     publicVolunteerApplicationRef(r.public_id),
     status:              mapVolunteerStatus(r.application_status),
     score:               r.negotiable_score          ?? null,
     field_of_background: r.fields_with_background    || null,

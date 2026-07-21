@@ -1,9 +1,10 @@
 const ScreeningAnswersModel = require('../models/screening_answers.model')
+const { replaceVolunteerApplicationIdsFromDatabase } = require('../utils/volunteerApplicationPublicIds')
 
 const getItems = async (req, res) => {
     try {
         const data = await ScreeningAnswersModel.getAll()
-        res.json(data)
+        res.json(await replaceVolunteerApplicationIdsFromDatabase(data))
     } catch (err) {
         // 500 here because the failure is on our side (DB/Supabase), not the client's
         res.status(500).json({ error: err.message })
@@ -17,7 +18,7 @@ const createItem = async (req, res) => {
         const item = await ScreeningAnswersModel.create(req.body)
 
         // 201 instead of 200 to explicitly signal a resource was created
-        res.status(201).json(item)
+        res.status(201).json(await replaceVolunteerApplicationIdsFromDatabase(item))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }

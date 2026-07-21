@@ -3,6 +3,7 @@ const router  = express.Router();
 const { createClient } = require("@supabase/supabase-js");
 const { verifyToken } = require("../middleware/auth.middleware");
 const authorize = require("../middleware/authorize.middleware");
+const { publicVolunteerApplicationRef } = require("../utils/volunteerApplicationPublicIds");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -247,6 +248,7 @@ router.get("/aggregate", async (req, res) => {
       .from("volunteer_applications")
       .select(`
         volunteer_application_id,
+        public_id,
         application_status,
         negotiable_score,
         fields_with_background,
@@ -260,7 +262,8 @@ router.get("/aggregate", async (req, res) => {
 
     // Normalize: frontend buildVolunteerSummary() reads a.status and a.score
     const volunteers = (volunteersRaw || []).map((r) => ({
-      id:                 r.volunteer_application_id,
+      id:                 r.public_id,
+      application_ref:    publicVolunteerApplicationRef(r.public_id),
       // Map snake_case DB values to Title Case to match VOLUNTEER_STATUSES constant
       status:             mapVolunteerStatus(r.application_status),
       score:              r.negotiable_score             || null,
@@ -383,14 +386,15 @@ router.get("/volunteers", async (req, res) => {
     const rangeStart = getRangeStart(req.query.dateRange || "all");
     let query = supabase
       .from("volunteer_applications")
-      .select("volunteer_application_id, application_status, negotiable_score, fields_with_background, fields_of_interest, created_at");
+      .select("volunteer_application_id, public_id, application_status, negotiable_score, fields_with_background, fields_of_interest, created_at");
     query = applyDateFilter(query, rangeStart, "created_at");
 
     const { data, error } = await query;
     if (error) throw error;
 
     const normalized = (data || []).map((r) => ({
-      id:                  r.volunteer_application_id,
+      id:                  r.public_id,
+      application_ref:     publicVolunteerApplicationRef(r.public_id),
       status:              mapVolunteerStatus(r.application_status),
       score:               r.negotiable_score    || null,
       field_of_background: r.fields_with_background || null,

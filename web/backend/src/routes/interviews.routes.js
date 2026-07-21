@@ -20,13 +20,17 @@ const {
 const { verifyToken } = require('../middleware/auth.middleware')
 const requireCommittee = require('../middleware/requireCommittee.middleware')
 const { resolveCaseBody, resolveCaseQuery } = require('../utils/casePublicIds')
+const {
+    resolveVolunteerApplicationBody,
+    resolveVolunteerApplicationQuery,
+} = require('../utils/volunteerApplicationPublicIds')
 const requireMembershipCommittee = requireCommittee(2)
 
-router.get('/',              verifyToken, resolveCaseQuery('case_report_id'), getItems)
+router.get('/',              verifyToken, resolveCaseQuery('case_report_id'), resolveVolunteerApplicationQuery('volunteer_application_id'), resolveVolunteerApplicationQuery('application_id'), getItems)
 router.get('/case-management', verifyToken, getCaseManagementItems)
 router.post('/expire',       verifyToken, requireMembershipCommittee, expireStale)
 router.get('/:id',           verifyToken, getItem)
-router.post('/',             verifyToken, resolveCaseBody('case_report_id'), createItem)
+router.post('/',             verifyToken, resolveCaseBody('case_report_id'), resolveVolunteerApplicationBody('volunteer_application_id'), resolveVolunteerApplicationBody('application_id'), createItem)
 router.patch('/:id/select-slot', verifyToken, selectSlot)
 router.patch('/:id/reschedule',  verifyToken, reschedule)
 router.patch('/:id/accept-reschedule', verifyToken, acceptReschedule)

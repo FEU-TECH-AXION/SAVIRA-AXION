@@ -20,6 +20,12 @@ const SLOT_STATUS = {
   disabled:   { label: "Disabled",         bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" },
 };
 
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
 function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -427,10 +433,10 @@ export default function VolunteerApplicationInterviewManagement() {
             id: iv.interview_id,
             volunteerApplicationId: iv.volunteer_application_id,
             appRefId: iv.volunteer_application_id
-              ? `APP-${String(iv.volunteer_application_id).padStart(4, "0")}`
+              ? formatApplicationRef(iv.volunteer_application_id, iv.application_ref)
               : "—",
             appId: iv.volunteer_application_id
-              ? `APP-${String(iv.volunteer_application_id).padStart(4, "0")}`
+              ? formatApplicationRef(iv.volunteer_application_id, iv.application_ref)
               : "—",
             intervieweeName: iv.interviewee
               ? `${iv.interviewee.first_name} ${iv.interviewee.last_name}`

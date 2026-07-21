@@ -8,6 +8,10 @@ const {
     notifyVolunteerApplicationOwner,
 } = require('../services/notificationService')
 const { getPublicIdByCaseReportId } = require('../utils/casePublicIds')
+const {
+    getPublicIdByVolunteerApplicationId,
+    replaceVolunteerApplicationId,
+} = require('../utils/volunteerApplicationPublicIds')
 
 const normalizeInterviewType = (type) =>
     type === 'volunteer_application' ? 'volunteer' : type
@@ -60,15 +64,42 @@ async function exposeInterviewCasePublicIds(payload) {
     return Array.isArray(payload) ? shaped : shaped[0]
 }
 
+async function exposeInterviewVolunteerApplicationPublicIds(payload) {
+    const items = Array.isArray(payload) ? payload : [payload]
+    const ids = [...new Set(items.map((item) => item?.volunteer_application_id).filter(Boolean))]
+    if (ids.length === 0) return payload
+
+    const { data, error } = await supabase
+        .from('volunteer_applications')
+        .select('volunteer_application_id, public_id')
+        .in('volunteer_application_id', ids)
+    if (error) throw error
+
+    const publicIdsByInternalId = Object.fromEntries(
+        (data || []).map((row) => [row.volunteer_application_id, row.public_id])
+    )
+    const shaped = items.map((item) =>
+        replaceVolunteerApplicationId(item, publicIdsByInternalId[item?.volunteer_application_id])
+    )
+    return Array.isArray(payload) ? shaped : shaped[0]
+}
+
+async function exposeInterviewPublicIds(payload) {
+    return exposeInterviewVolunteerApplicationPublicIds(await exposeInterviewCasePublicIds(payload))
+}
+
 const notifyInterviewParticipants = async (interview, { title, body, label }) => {
     const publicId = interview.case_report_id
         ? await getPublicIdByCaseReportId(interview.case_report_id)
+        : ''
+    const volunteerPublicId = interview.volunteer_application_id
+        ? await getPublicIdByVolunteerApplicationId(interview.volunteer_application_id)
         : ''
     const baseData = {
         type: 'interview',
         interview_id: interview.interview_id,
         case_report_id: publicId || '',
-        volunteer_application_id: interview.volunteer_application_id || '',
+        volunteer_application_id: volunteerPublicId || '',
         priority: 'normal',
     }
 
@@ -442,10 +473,10 @@ const getItems = async (req, res) => {
         }
         if (isAdmin(req)) {
             const result = await InterviewModel.getAll(filters)
-            if (Array.isArray(result)) return res.json({ data: await exposeInterviewCasePublicIds(result) })
+            if (Array.isArray(result)) return res.json({ data: await exposeInterviewPublicIds(result) })
             return res.json({
                 ...result,
-                data: await exposeInterviewCasePublicIds(result.data || []),
+                data: await exposeInterviewPublicIds(result.data || []),
             })
         }
 
@@ -457,7 +488,7 @@ const getItems = async (req, res) => {
         const paginated = getPaginatedSlice(visible, req.query)
         res.json({
             ...paginated,
-            data: await exposeInterviewCasePublicIds(paginated.data || []),
+            data: await exposeInterviewPublicIds(paginated.data || []),
         })
     } catch (err) {
         res.status(500).json({ error: err.message })
@@ -491,7 +522,7 @@ const getCaseManagementItems = async (req, res) => {
         res.json({
             data: {
                 slots,
-                interviews: await exposeInterviewCasePublicIds(visibleInterviews),
+                interviews: await exposeInterviewPublicIds(visibleInterviews),
             },
         })
     } catch (err) {
@@ -504,7 +535,7 @@ const getItem = async (req, res) => {
         const data = await InterviewModel.getById(req.params.id)
         if (!data) return res.status(404).json({ error: 'Interview not found' })
         if (!await canAccessInterview(req, data)) return res.status(403).json({ error: 'Forbidden' })
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -561,7 +592,7 @@ const createItem = async (req, res) => {
 
         const item = await InterviewModel.create(payload)
 
-        res.status(201).json({ data: await exposeInterviewCasePublicIds(item) })
+        res.status(201).json({ data: await exposeInterviewPublicIds(item) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -603,7 +634,7 @@ const selectSlot = async (req, res) => {
             label: 'scheduled interview',
         })
 
-        res.json({ data: await exposeInterviewCasePublicIds(interview) })
+        res.json({ data: await exposeInterviewPublicIds(interview) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -661,7 +692,7 @@ const reschedule = async (req, res) => {
             label: 'rescheduled interview',
         })
 
-        res.json({ data: await exposeInterviewCasePublicIds(updatedInterview) })
+        res.json({ data: await exposeInterviewPublicIds(updatedInterview) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -680,7 +711,7 @@ const acceptReschedule = async (req, res) => {
         }
 
         const data = await InterviewModel.acceptReschedule(req.params.id)
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -706,7 +737,7 @@ const requestNewSlots = async (req, res) => {
         )
         if (previousSlotId) await InterviewSlotsModel.markAvailable(previousSlotId)
 
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -732,7 +763,7 @@ const reopenSelection = async (req, res) => {
         const expiryDays = Math.min(Math.max(Number(req.body.expiry_days) || 7, 1), 30)
         const slotExpiresAt = new Date(Date.now() + expiryDays * 86400000).toISOString()
         const data = await InterviewModel.reopenSelection(req.params.id, slotExpiresAt)
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -749,7 +780,7 @@ const confirm = async (req, res) => {
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
 
         const data = await InterviewModel.confirm(req.params.id, meeting_link)
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -777,7 +808,7 @@ const complete = async (req, res) => {
         }
 
         const data = await InterviewModel.complete(req.params.id)
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -807,7 +838,7 @@ const cancel = async (req, res) => {
             body: 'An interview has been cancelled. Please check your account for details.',
             label: 'cancelled interview',
         })
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -828,7 +859,7 @@ const unassignStaff = async (req, res) => {
         }
 
         const data = await InterviewModel.unassignStaff(req.params.id)
-        res.json({ data: await exposeInterviewCasePublicIds(data), message: 'Interview staff assignment removed successfully.' })
+        res.json({ data: await exposeInterviewPublicIds(data), message: 'Interview staff assignment removed successfully.' })
     } catch (err) {
         res.status(500).json({ error: err.message || 'Failed to remove interview staff assignment.' })
     }
@@ -843,7 +874,7 @@ const reject = async (req, res) => {
         if (!await canAccessInterview(req, interview)) return res.status(403).json({ error: 'Forbidden' })
 
         const data = await InterviewModel.reject(req.params.id, rejection_reason || null)
-        res.json({ data: await exposeInterviewCasePublicIds(data) })
+        res.json({ data: await exposeInterviewPublicIds(data) })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }

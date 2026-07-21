@@ -12,6 +12,11 @@ const {
     notifyUser,
     notifyVolunteerApplicationOwner,
 } = require('../services/notificationService')
+const {
+    exposeVolunteerApplicationPublicIds,
+    getPublicIdByVolunteerApplicationId,
+    publicVolunteerApplicationRef,
+} = require('../utils/volunteerApplicationPublicIds')
 
 
 // Maps your form keys to question_key values in the database
@@ -127,7 +132,7 @@ const getItems = async (req, res) => {
         }
 
         const data = await VolunteerApplicationsModel.getAll({ userId, role })
-        res.json(data)
+        res.json(exposeVolunteerApplicationPublicIds(data))
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
@@ -224,11 +229,11 @@ const getItem = async (req, res) => {
             .maybeSingle()
         if (historyError) throw historyError
 
-        res.status(200).json({
+        res.status(200).json(exposeVolunteerApplicationPublicIds({
             ...data,
             applicant_user_id: data.volunteer_applicants?.user_id || null,
             status_notes: latestStatusHistory?.notes || null,
-        })
+        }))
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -297,14 +302,24 @@ const assignAssessors = async (req, res) => {
             .update({ application_status: 'reviewing', updated_at: new Date() })
             .in('volunteer_application_id', applicationIds)
 
+        const { data: assignedApplications, error: assignedApplicationsError } = await supabase
+            .from('volunteer_applications')
+            .select('volunteer_application_id, public_id')
+            .in('volunteer_application_id', applicationIds)
+        if (assignedApplicationsError) throw assignedApplicationsError
+        const publicIdsByInternalId = Object.fromEntries(
+            (assignedApplications || []).map((row) => [row.volunteer_application_id, row.public_id])
+        )
+
         for (const applicationId of applicationIds) {
+            const publicId = publicIdsByInternalId[applicationId]
             fireAndForget(
                 notifyVolunteerApplicationOwner(applicationId, {
                     title: 'Volunteer application under review',
                     body: 'Your volunteer application is now being reviewed.',
                     data: {
                         type: 'volunteer_application',
-                        volunteer_application_id: applicationId,
+                        volunteer_application_id: publicId || '',
                         link: '/volunteer/apply',
                         priority: 'normal',
                     },
@@ -313,7 +328,7 @@ const assignAssessors = async (req, res) => {
             )
         }
 
-        res.status(200).json({ data })
+        res.status(200).json({ data: exposeVolunteerApplicationPublicIds(data) })
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
@@ -321,10 +336,13 @@ const assignAssessors = async (req, res) => {
 
 const getRankings = async (req, res) => {
     try {
-        const { data: applications, error: appError } = await supabase
+        const userId = getAuthenticatedUserId(req)
+        const roleName = req.user?.role || req.user?.role_name
+        let query = supabase
             .from('volunteer_applications')
             .select(`
                 volunteer_application_id,
+                public_id,
                 name,
                 email,
                 gender_identity,
@@ -355,6 +373,20 @@ const getRankings = async (req, res) => {
                     status
                 )
             `)
+        if (roleName === 'Staff') {
+            const { data: assignments, error: assignmentError } = await supabase
+                .from('volunteer_application_assignments')
+                .select('volunteer_application_id')
+                .eq('assessor_id', userId)
+                .eq('is_active', true)
+            if (assignmentError) throw assignmentError
+
+            const assignedIds = (assignments || []).map((row) => row.volunteer_application_id)
+            if (assignedIds.length === 0) return res.status(200).json({ data: [] })
+            query = query.in('volunteer_application_id', assignedIds)
+        }
+
+        const { data: applications, error: appError } = await query
         if (appError) throw appError
 
         const ranked = (applications || []).map((app) => {
@@ -373,7 +405,9 @@ const getRankings = async (req, res) => {
             const totalScore = screeningScore + (hybridEssay / 100 * 50) + (interviewScore / 10 * 20) + bonus
 
             return {
-                application_id: app.volunteer_application_id,
+                application_id: app.public_id,
+                id: app.public_id,
+                application_ref: publicVolunteerApplicationRef(app.public_id),
                 name: app.name,
                 email: app.email,
                 gender_identity: app.gender_identity,
@@ -652,8 +686,9 @@ const createItem = async (req, res) => {
                     : 'Your volunteer application has been submitted, but it did not pass the initial screening.',
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: application.volunteer_application_id,
-                    link: '/volunteer/apply',
+                        volunteer_application_id: application.public_id,
+                        application_ref: publicVolunteerApplicationRef(application.public_id),
+                        link: '/volunteer/apply',
                     priority: nonNegotiablePassed ? 'normal' : 'high',
                 },
             }),
@@ -666,8 +701,9 @@ const createItem = async (req, res) => {
                 body: `${application.name || 'A user'} submitted a volunteer application.`,
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: application.volunteer_application_id,
-                    link: `/volunteer/view?id=${application.volunteer_application_id}`,
+                    volunteer_application_id: application.public_id,
+                    application_ref: publicVolunteerApplicationRef(application.public_id),
+                    link: `/volunteer/view?id=${application.public_id}`,
                     priority: 'high',
                 },
             }),
@@ -676,7 +712,7 @@ const createItem = async (req, res) => {
 
         res.status(201).json({
             message:            'Application submitted successfully.',
-            application,
+            application: exposeVolunteerApplicationPublicIds(application),
             nonNegotiablePassed,
             negotiableScore,
         })
@@ -755,6 +791,7 @@ const updateItem = async (req, res) => {
         }
 
         const updated = await VolunteerApplicationsModel.update(id, updatePayload)
+        const publicId = updated?.public_id || await getPublicIdByVolunteerApplicationId(id)
 
         const { error: historyError } = await supabase
             .from('volunteer_application_status_history')
@@ -774,7 +811,8 @@ const updateItem = async (req, res) => {
                     : `Your volunteer application is now ${statusLabel(normalizedStatus)}.`,
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: id,
+                    volunteer_application_id: publicId || '',
+                    application_ref: publicVolunteerApplicationRef(publicId),
                     link: '/volunteer/apply',
                     priority: ['approved', 'rejected'].includes(normalizedStatus) ? 'high' : 'normal',
                 },
@@ -782,7 +820,7 @@ const updateItem = async (req, res) => {
             'Failed to notify applicant about application status'
         )
 
-        res.status(200).json(updated)
+        res.status(200).json(exposeVolunteerApplicationPublicIds(updated))
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -857,7 +895,7 @@ const getMyApplications = async (req, res) => {
         const applications = Array.from(applicationsById.values())
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 
-        res.status(200).json(applications)
+        res.status(200).json(exposeVolunteerApplicationPublicIds(applications))
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -883,14 +921,15 @@ const withdrawApplication = async (req, res) => {
                 body: 'Your volunteer application has been withdrawn.',
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: id,
+                    volunteer_application_id: data.public_id || '',
+                    application_ref: publicVolunteerApplicationRef(data.public_id),
                     link: '/volunteer/apply',
                     priority: 'normal',
                 },
             }),
             'Failed to notify applicant about withdrawn application'
         )
-        res.json({ message: 'Application withdrawn successfully', data });
+        res.json({ message: 'Application withdrawn successfully', data: exposeVolunteerApplicationPublicIds(data) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -925,14 +964,15 @@ const undoWithdrawApplication = async (req, res) => {
                 body: `Your volunteer application is back to ${statusLabel(newStatus)}.`,
                 data: {
                     type: 'volunteer_application',
-                    volunteer_application_id: id,
+                    volunteer_application_id: data.public_id || '',
+                    application_ref: publicVolunteerApplicationRef(data.public_id),
                     link: '/volunteer/apply',
                     priority: 'normal',
                 },
             }),
             'Failed to notify applicant about restored application'
         )
-        res.json({ message: 'Withdrawal undone successfully', data });
+        res.json({ message: 'Withdrawal undone successfully', data: exposeVolunteerApplicationPublicIds(data) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

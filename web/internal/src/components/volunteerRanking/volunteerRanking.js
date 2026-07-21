@@ -21,6 +21,12 @@ function displayTotalScore(row = {}) {
   return Math.max(0, total - (Number(row.priority_bonus) || 0));
 }
 
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
 function getCommitmentPriorityLabel(hoursPerWeek) {
   const value = String(hoursPerWeek || "").trim().toLowerCase();
   if (!value) return "";
@@ -415,7 +421,7 @@ export default function VolunteerRanking() {
                         />
                       </td>
                       <td className={styles.rankCell}>#{row.rank}</td>
-                      <td className={styles.appIdTd}>APP-{String(row.application_id).padStart(4, "0")}</td>
+                      <td className={styles.appIdTd}>{formatApplicationRef(row.application_id, row.application_ref)}</td>
                       <td className={styles.applicantTd} title={[row.name, row.email].filter(Boolean).join(" - ")}>
                         <div className={styles.nameStack}>
                           <strong>{row.name || "—"}</strong>

@@ -20,6 +20,12 @@ function formatAssignees(applicant) {
   return "—";
 }
 
+function formatApplicationRef(id, fallback) {
+  if (fallback) return fallback;
+  if (!id) return "APP";
+  return `APP-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
 const EXTRA_COLUMN_DEFS = {
   city:                { label: "City",                    render: a => a.city || "—" },
   fieldsWithBackground:{ label: "Fields with Background",    render: a => Array.isArray(a.fieldsWithBackground) ? a.fieldsWithBackground.join(", ") || "—" : "—" },
@@ -336,7 +342,7 @@ export default function ApplicationsTable({
                     </td>
 
                     <td className={`${styles.td} ${styles.appIdTd}`}>
-                      <span className={styles.appIdText}>{a.id}</span>
+                      <span className={styles.appIdText}>{formatApplicationRef(a.id, a.applicationRef)}</span>
                     </td>
 
                     <td className={`${styles.td} ${styles.nameTd}`} title={[a.name, a.email].filter(Boolean).join(" - ")}>
