@@ -209,7 +209,7 @@ async def analyze_essay(request: EssayRequest):
         notes  = result.get("notes", {})
 
         # Step 4 — Determine threshold
-        threshold_passed = result["essay_weighted_total"] >= 50.0
+        threshold_passed = result.get("threshold_passed", False)
 
         # Step 5 — Return structured result
         return EssayAnalysisResponse(

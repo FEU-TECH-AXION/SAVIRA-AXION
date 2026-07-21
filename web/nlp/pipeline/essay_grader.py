@@ -2,6 +2,7 @@ import json
 from pipeline.groq_client import MAX_TOKENS, get_client, parse_json_response
 
 MODEL = "llama-3.1-8b-instant"
+ESSAY_PASS_THRESHOLD = 60.0
 
 CRITERIA = {
     "mission_alignment": {
@@ -126,6 +127,7 @@ def grade_essay(processed_essay: str) -> dict:
 
     # Always recompute weighted total server-side
     essay_weighted_total = compute_weighted_total(scores)
+    threshold_passed = essay_weighted_total >= ESSAY_PASS_THRESHOLD
 
     # Build the flat response shape that NLPEssayTab expects
     return {
@@ -136,6 +138,7 @@ def grade_essay(processed_essay: str) -> dict:
         "notes":                   result.get("notes", {}),
         "essay_weighted_total":    essay_weighted_total,
         "essay_score_out_of_50":   round(essay_weighted_total / 2, 2),
+        "threshold_passed":        threshold_passed,
 
         # NLPEssayTab fields
         "summary":                 result.get("recommendation_notes", ""),
@@ -152,5 +155,5 @@ def grade_essay(processed_essay: str) -> dict:
         "concerns":                result.get("concerns", []),
         "recommendation":          result.get("recommendation_notes", ""),
         "recommendation_notes":    result.get("recommendation_notes", ""),
-        "recommend_approve":       result.get("recommend_approve", False),
+        "recommend_approve":       threshold_passed,
     }
