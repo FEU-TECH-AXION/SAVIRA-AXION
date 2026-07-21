@@ -521,6 +521,16 @@ function AssessmentActionGroup({ title, records, fields, emptyText }) {
   );
 }
 
+function isReferralAssessment(record) {
+  if (!record) return false;
+  return (
+    record.assessment_stage === "referral_endorsement" ||
+    Boolean(record.endorsement) ||
+    Boolean(record.referral_body) ||
+    record.referral_required === true
+  );
+}
+
 function CaseManagementTab({
   caseData,
   setCaseData,
@@ -573,6 +583,9 @@ function CaseManagementTab({
             status: proposedStatus,
             date: new Date().toLocaleDateString("en-PH"),
             by: actorName,
+            actorName,
+            actorRole: userRole,
+            changed_by_role: userRole,
             notes: changeDetails.notes,
             formData: changeDetails.formData,
             approvalStatus: payload.requiresApproval ? "pending" : "approved",
@@ -612,6 +625,9 @@ function CaseManagementTab({
             status: proposedStatus,
             date: new Date().toLocaleDateString("en-PH"),
             by: actorName,
+            actorName,
+            actorRole: userRole,
+            changed_by_role: userRole,
             notes: payload.historyRow?.notes || `Admin override to ${proposedStatus}.`,
             formData: payload.historyRow?.form_data || {
               override_from_status: prev.status,
@@ -826,6 +842,7 @@ function CaseManagementTab({
       const selectedBody = referralRequired ? referralVal : null;
 
       await saveAssessment({
+        assessment_stage: "referral_endorsement",
         referral_required: referralRequired,
         referral_body: selectedBody,
         endorsement: selectedBody ? { endorsed_to: selectedBody, notes: endorseNotes, date: new Date().toISOString() } : null,
@@ -935,10 +952,7 @@ function CaseManagementTab({
 
         <AssessmentActionGroup
           title="Referral / Endorse"
-          records={(caseData.assessmentHistory || []).filter((record) =>
-            record.referral_required !== null &&
-            record.referral_required !== undefined
-          )}
+          records={(caseData.assessmentHistory || []).filter(isReferralAssessment)}
           emptyText="No referral or endorsement changes have been saved yet."
           fields={(record) => [
             ["Referral Required", record.referral_required ? "Yes" : "No"],

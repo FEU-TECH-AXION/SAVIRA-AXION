@@ -69,6 +69,14 @@ function formatValue(value) {
   return value;
 }
 
+function formatUpdatedBy(entry) {
+  const name = entry?.actorName || entry?.changed_by_name || entry?.by;
+  const role = entry?.actorRole || entry?.changed_by_role;
+  if (!name) return role || "";
+  if (!role || String(name).includes(role)) return name;
+  return `${name} - ${role}`;
+}
+
 export default function StatusDetailsSection({
   caseData,
   styles,
@@ -98,7 +106,7 @@ export default function StatusDetailsSection({
             <div className={styles.detailGrid}>
               {[
                 ["Date", entry.date],
-                ["Updated By", entry.by],
+                ["Updated By", formatUpdatedBy(entry)],
                 ...Object.entries(entry.formData).map(([fieldKey, value]) => [STATUS_DETAIL_LABELS[fieldKey] || humanize(fieldKey), formatValue(value)]),
               ].map(([label, value]) => {
                 if (value === undefined || value === null || String(value).trim() === "") return null;

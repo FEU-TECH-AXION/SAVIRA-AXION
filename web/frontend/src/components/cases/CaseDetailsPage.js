@@ -116,6 +116,13 @@ function formatIncidentTime(value) {
   return parsed.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
+function formatHistoryMeta(entry) {
+  const name = entry.actorName || entry.changed_by_name || entry.by || "System";
+  const role = entry.actorRole || entry.changed_by_role;
+  const actor = role && !String(name).includes(role) ? `${name} - ${role}` : name;
+  return [entry.date, actor].filter(Boolean).join(" - ");
+}
+
 function StatusHistorySection({ caseData }) {
   const [showHistory, setShowHistory] = useState(false);
   const historyEntries = [...(caseData.statusHistory || [])].reverse();
@@ -137,7 +144,7 @@ function StatusHistorySection({ caseData }) {
               </div>
               <div style={{ paddingTop: 2 }}>
                 <StatusBadge status={h.status} />
-                <p className={styles.historyMeta}>{h.date} - {h.by}</p>
+                <p className={styles.historyMeta}>{formatHistoryMeta(h)}</p>
                 {h.notes && <p className={styles.historyNotes}>{h.notes}</p>}
               </div>
             </div>

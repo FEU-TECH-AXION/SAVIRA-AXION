@@ -115,11 +115,14 @@ function mapCaseReportToViewData(data) {
     statusHistory: data.status_history?.length
       ? data.status_history
       : [{
-          status: STATUS_STEP[data.case_status_id] || "For Verification",
-          date: new Date(data.created_at).toLocaleDateString("en-PH"),
-          by: data.assigned_officer || "System",
-          notes: "Report received and logged.",
-        }],
+        status: STATUS_STEP[data.case_status_id] || "For Verification",
+        date: new Date(data.created_at).toLocaleDateString("en-PH"),
+        by: data.assigned_officer || "System",
+        actorName: data.assigned_officer || "System",
+        actorRole: data.assigned_officer ? "Case Officer" : null,
+        changed_by_role: data.assigned_officer ? "Case Officer" : null,
+        notes: "Report received and logged.",
+      }],
   };
 }
 

@@ -559,13 +559,17 @@ async function getStatusHistoryMap(caseIds, { staffView = true } = {}) {
   const actorById = await getHistoryActorMap(userIds)
 
   return (data || []).reduce((map, row) => {
+    const actor = actorById[row.changed_by_id]
     if (!map[row.case_report_id]) map[row.case_report_id] = []
     map[row.case_report_id].push({
       historyId: row.history_id,
       displayId: row.display_id,
       status: row.case_status?.case_status_name || STATUS_NAME_BY_ID[row.case_status_id] || null,
       date: new Date(row.approved_at || row.created_at).toLocaleDateString('en-PH'),
-      by: formatHistoryActor(actorById[row.changed_by_id], row.changed_by_role),
+      by: formatHistoryActor(actor, row.changed_by_role),
+      actorName: formatHistoryActorName(actor),
+      actorRole: actor?.roles?.role_name || row.changed_by_role || null,
+      changed_by_role: actor?.roles?.role_name || row.changed_by_role || null,
       notes: row.notes,
       formData: row.form_data,
       approvalStatus: row.approval_status,
@@ -596,15 +600,19 @@ async function getHistoryActorMap(userIds) {
 
 function formatHistoryActor(user, fallbackRole) {
   const role = user?.roles?.role_name || fallbackRole || ''
-  const name = user
+  const name = formatHistoryActorName(user)
+
+  if (name && role) return `${name} - ${role}`
+  return name || role || 'System'
+}
+
+function formatHistoryActorName(user) {
+  return user
     ? [user.first_name, user.middle_name, user.last_name, user.extension_name]
         .filter(Boolean)
         .join(' ')
         .trim()
     : ''
-
-  if (name && role) return `${name} - ${role}`
-  return name || role || 'System'
 }
 
 function withStatusHistory(report, statusHistoryMap) {
