@@ -27,7 +27,7 @@
 .dashboardContainer {
   margin: 0 auto;
   max-width: 1320px;
-  padding: 0 1.5rem 3rem !important;
+  padding: 0 1.5rem 3rem;
 }
 
 .statGrid {
@@ -551,6 +551,28 @@
 }
 
 @media (max-width: 575.98px) {
+  .dashboardContainer { padding: 0 1rem 2rem; }
+  .heroBanner  { padding: 0.75rem 0 0.85rem; margin-bottom: 0.75rem; }
+  .heroContent { padding: 1.35rem 1rem 1.15rem; margin-top: 0.5rem; }
+  .heroTitle {
+    font-size: clamp(1.1rem, 5vw, 1.35rem);
+    line-height: 1.18;
+    margin-bottom: 0.85rem;
+  }
+  .statGrid    { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+  .statGridItem { min-width: 0; width: auto; flex: 0 1 auto; }
+  .statCard {
+    min-height: 34px;
+    height: auto;
+    display: inline-flex;
+    gap: 0.4rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .statDot { display: none; }
+  .statNum { font-size: 0.95rem; line-height: 1; margin: 0; }
+  .statLabel { font-size: 0.68rem; line-height: 1.15; margin: 0; text-align: left; }
   .moduleOverviewGrid {
     grid-template-columns: 1fr;
   }
