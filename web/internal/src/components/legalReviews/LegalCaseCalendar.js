@@ -63,11 +63,12 @@ export default function LegalCaseCalendar() {
           .filter((report) => requestedIds.size === 0 || requestedIds.has(String(report.case_report_id)))
           .map((report) => {
             const review = reviews[report.case_report_id] || null;
+            const endorsementDetails = review?.endorsement_details || report.endorsement || null;
             return {
               id: report.case_report_id,
               caseId: report.case_code || `CASE-${String(report.public_id || report.case_report_id).slice(0, 8).toUpperCase()}`,
               status: STATUS_STEP[report.case_status_id],
-              endorsementDetails: review?.endorsement_details || null,
+              endorsementDetails,
               paralegalRecord: review?.paralegal_record || null,
               lawyerRecord: review?.lawyer_record || null,
               monitoringLog: review?.monitoring_log || [],

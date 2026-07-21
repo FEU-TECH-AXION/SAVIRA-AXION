@@ -36,7 +36,6 @@ export const PUBLIC_UPDATE_TEMPLATES = {
     { id: "custom", label: "Write a custom message", build: null },
   ],
   paralegal_record_saved: [
-    { id: "assigned", label: "Paralegal assigned", build: () => "A paralegal has been assigned to help prepare your case." },
     { id: "ready", label: "File ready for lawyer review", build: () => "Your case file has been reviewed and is now ready for legal review." },
     { id: "custom", label: "Write a custom message", build: null },
   ],

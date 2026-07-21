@@ -205,9 +205,9 @@ async function getCaseAssessmentDetails(caseReportId) {
       ...row,
       by: formatHistoryActor(actor, row.changed_by_role),
       actorName: formatHistoryActorName(actor),
-      actorRole: actor?.roles?.role_name || row.changed_by_role || null,
+      actorRole: formatHistoryActorRole(actor, row.changed_by_role),
       changed_by_name: formatHistoryActorName(actor),
-      changed_by_role: actor?.roles?.role_name || row.changed_by_role || null,
+      changed_by_role: formatHistoryActorRole(actor, row.changed_by_role),
     }
   })
 
@@ -582,8 +582,8 @@ async function getStatusHistoryMap(caseIds, { staffView = true } = {}) {
       date: new Date(row.approved_at || row.created_at).toLocaleDateString('en-PH'),
       by: formatHistoryActor(actor, row.changed_by_role),
       actorName: formatHistoryActorName(actor),
-      actorRole: actor?.roles?.role_name || row.changed_by_role || null,
-      changed_by_role: actor?.roles?.role_name || row.changed_by_role || null,
+      actorRole: formatHistoryActorRole(actor, row.changed_by_role),
+      changed_by_role: formatHistoryActorRole(actor, row.changed_by_role),
       notes: row.notes,
       formData: row.form_data,
       approvalStatus: row.approval_status,
@@ -598,7 +598,7 @@ async function getHistoryActorMap(userIds) {
 
   const { data, error } = await supabase
     .from('users')
-    .select('user_id, first_name, middle_name, last_name, extension_name, roles(role_name)')
+    .select('user_id, first_name, middle_name, last_name, extension_name, roles(role_name), legal_personnels(legal_personnel_type)')
     .in('user_id', userIds)
 
   if (error) {
@@ -613,11 +613,18 @@ async function getHistoryActorMap(userIds) {
 }
 
 function formatHistoryActor(user, fallbackRole) {
-  const role = user?.roles?.role_name || fallbackRole || ''
+  const role = formatHistoryActorRole(user, fallbackRole)
   const name = formatHistoryActorName(user)
 
   if (name && role) return `${name} - ${role}`
   return name || role || 'System'
+}
+
+function formatHistoryActorRole(user, fallbackRole) {
+  const legalPersonnel = Array.isArray(user?.legal_personnels)
+    ? user.legal_personnels[0]
+    : user?.legal_personnels
+  return legalPersonnel?.legal_personnel_type || fallbackRole || user?.roles?.role_name || null
 }
 
 function formatHistoryActorName(user) {

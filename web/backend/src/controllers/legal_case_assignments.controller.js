@@ -25,6 +25,16 @@ async function requireParalegalForLegalPersonnel(req, res) {
     return true
 }
 
+function getPublicAssignmentMessage(assignmentRole, assignedName) {
+    if (assignmentRole === 'lawyer') {
+        return `${assignedName || 'A lawyer'} has been assigned as your lawyer to review your case and provide legal guidance to the team.`
+    }
+    if (assignmentRole === 'paralegal') {
+        return `${assignedName || 'A paralegal'} has been assigned as your paralegal to help prepare your case.`
+    }
+    return null
+}
+
 const getItems = async (req, res) => {
     try {
         const data = await LegalCaseAssignmentsModel.getAll()
@@ -115,6 +125,8 @@ const assignCase = async (req, res) => {
       case_report_id,
       action_type:          `${assignment_role}_assigned`,
       remarks:              `${personnelData.legal_personnel_type} assigned: ${name}.${notes ? ' Notes: ' + notes : ''}`,
+      is_public:            Boolean(getPublicAssignmentMessage(assignment_role, name)),
+      public_message:       getPublicAssignmentMessage(assignment_role, name),
       performed_by_user_id: performed_by,
       performed_at:         new Date().toISOString(),
     }])
@@ -247,6 +259,8 @@ const bulkAssignCase = async (req, res) => {
                 case_report_id,
                 action_type:          `${r.assignment_role}_assigned`,
                 remarks:              `${r.assignment_role === 'lawyer' ? 'Lawyer' : 'Paralegal'} assigned: ${r._name}.${notes ? ' Notes: ' + notes : ''}`,
+                is_public:            Boolean(getPublicAssignmentMessage(r.assignment_role, r._name)),
+                public_message:       getPublicAssignmentMessage(r.assignment_role, r._name),
                 performed_by_user_id: performed_by,
                 performed_at:         new Date().toISOString(),
             }))

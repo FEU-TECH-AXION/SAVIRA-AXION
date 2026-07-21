@@ -27,8 +27,15 @@ const STATUS_NAME_BY_ID = {
 
 function formatActorName(user, role) {
   const name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim()
-  const label = role || 'System'
+  const label = formatActorRole(user, role) || 'System'
   return name ? `${name} - ${label}` : label
+}
+
+function formatActorRole(user, fallbackRole) {
+  const legalPersonnel = Array.isArray(user?.legal_personnels)
+    ? user.legal_personnels[0]
+    : user?.legal_personnels
+  return legalPersonnel?.legal_personnel_type || fallbackRole || user?.roles?.role_name || null
 }
 
 async function getLatestByCase(caseReportId) {
@@ -65,13 +72,36 @@ async function getCaseIdsByEndorsedTo(endorsedTo) {
   const text = String(endorsedTo || '').trim()
   if (!text || text === 'All') return null
 
-  const { data, error } = await supabase
+  const [{ data, error }, assessmentIds] = await Promise.all([
+    supabase
     .from('legal_reviews')
     .select('case_report_id')
-    .eq('endorsed_to', text)
+      .eq('endorsed_to', text),
+    getAssessmentEndorsedCaseIds(text),
+  ])
   if (error) throw error
 
-  return [...new Set((data || []).map((review) => review.case_report_id))]
+  return [...new Set([
+    ...(data || []).map((review) => review.case_report_id),
+    ...assessmentIds,
+  ])]
+}
+
+async function getAssessmentEndorsedCaseIds(endorsedTo = null) {
+  const { data, error } = await supabase
+    .from('case_assessments')
+    .select('case_report_id, referral_body, endorsement')
+  if (error) throw error
+
+  const text = String(endorsedTo || '').trim()
+  return [...new Set((data || [])
+    .filter((row) => {
+      const rowEndorsedTo = row.endorsement?.endorsed_to || row.referral_body || null
+      if (!rowEndorsedTo || rowEndorsedTo === 'None') return false
+      return !text || rowEndorsedTo === text
+    })
+    .map((row) => row.case_report_id)
+    .filter(Boolean))]
 }
 
 async function countCurrentCasesByStatuses(statusIds = []) {
@@ -107,6 +137,7 @@ async function getManagementStats({ legalStatusIds = [], activeStatusIds = [], u
     underEvaluation,
     activeCases,
     endorsedRows,
+    assessmentEndorsedIds,
     pendingRows,
   ] = await Promise.all([
     countCurrentCasesByStatuses([underEvaluationStatusId]),
@@ -115,6 +146,7 @@ async function getManagementStats({ legalStatusIds = [], activeStatusIds = [], u
       .from('legal_reviews')
       .select('case_report_id')
       .not('endorsed_to', 'is', null),
+    getAssessmentEndorsedCaseIds(),
     supabase
       .from('case_status_history')
       .select('case_report_id')
@@ -126,7 +158,10 @@ async function getManagementStats({ legalStatusIds = [], activeStatusIds = [], u
 
   const [endorsedCases, pendingApprovals] = await Promise.all([
     countCurrentCasesByIdsAndStatuses(
-      (endorsedRows.data || []).map((review) => review.case_report_id),
+      [
+        ...(endorsedRows.data || []).map((review) => review.case_report_id),
+        ...assessmentEndorsedIds,
+      ],
       legalStatusIds
     ),
     countCurrentCasesByIdsAndStatuses(
@@ -203,7 +238,7 @@ async function getPendingStatusHistoryByCaseIds(caseReportIds = []) {
   if (userIds.length > 0) {
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('user_id, first_name, last_name')
+      .select('user_id, first_name, last_name, roles(role_name), legal_personnels(legal_personnel_type)')
       .in('user_id', userIds)
     if (usersError) throw usersError
     usersById = (users || []).reduce((map, user) => {
@@ -220,6 +255,9 @@ async function getPendingStatusHistoryByCaseIds(caseReportIds = []) {
       status: row.case_status?.case_status_name || STATUS_NAME_BY_ID[row.case_status_id] || null,
       date: new Date(row.approved_at || row.created_at).toLocaleDateString('en-PH'),
       by: formatActorName(usersById[row.changed_by_id], row.changed_by_role),
+      actorName: `${usersById[row.changed_by_id]?.first_name || ''} ${usersById[row.changed_by_id]?.last_name || ''}`.trim(),
+      actorRole: formatActorRole(usersById[row.changed_by_id], row.changed_by_role),
+      changed_by_role: formatActorRole(usersById[row.changed_by_id], row.changed_by_role),
       notes: row.notes,
       formData: row.form_data,
       approvalStatus: row.approval_status,

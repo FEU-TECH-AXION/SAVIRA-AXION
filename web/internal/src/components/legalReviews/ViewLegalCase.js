@@ -179,20 +179,35 @@ function StatusHistorySection({ caseData }) {
 
 function mergeLegalReviewData(caseData, review) {
   if (!review) return caseData;
+  const endorsedTo = review.endorsed_to || getExistingEndorsedTo(caseData);
   return {
     ...caseData,
     legalReviewId: review.legal_review_id,
     legalReviewLogs: review.logs || [],
     paralegalRecord: review.paralegal_record || null,
     lawyerRecord: review.lawyer_record || null,
-    endorsedTo: review.endorsed_to || caseData.endorsedTo || null,
-    referralBody: review.endorsed_to || caseData.referralBody || null,
-    referralRequired: !!(review.endorsed_to || caseData.referralRequired),
-    endorsementStatus: review.endorsed_to ? `Endorsed to ${review.endorsed_to}` : caseData.endorsementStatus,
-    endorsementDetails: review.endorsement_details || null,
+    endorsedTo,
+    referralBody: review.endorsed_to || caseData.referralBody || endorsedTo || null,
+    referralRequired: Boolean(review.endorsed_to || caseData.referralRequired || endorsedTo),
+    endorsementStatus: endorsedTo ? `Endorsed to ${endorsedTo}` : caseData.endorsementStatus,
+    endorsementDetails: review.endorsement_details || getExistingEndorsementDetails(caseData),
     monitoringLog: review.monitoring_log || [],
     documentRepository: review.document_repository || [],
   };
+}
+
+function getExistingEndorsedTo(caseData = {}) {
+  const value =
+    caseData.endorsedTo ||
+    caseData.endorsementDetails?.endorsed_to ||
+    caseData.endorsement?.endorsed_to ||
+    caseData.referralBody ||
+    null;
+  return value && value !== "None" ? value : null;
+}
+
+function getExistingEndorsementDetails(caseData = {}) {
+  return caseData.endorsementDetails || caseData.endorsement || null;
 }
 
 function safeDocumentUrl(value) {
@@ -245,6 +260,14 @@ function formatLegalReviewDate(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("en-PH");
+}
+
+function formatCalendarDateText(deadline) {
+  const dateText = deadline.date.toLocaleDateString("en-PH");
+  if (deadline.type === "status") return dateText;
+
+  const dayDelta = Math.ceil((deadline.date - new Date(new Date().toDateString())) / 86400000);
+  return `${dateText} (${dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})`;
 }
 
 function LegalActorByline({ actorName, actorRole, timestamp, fallbackName = "" }) {
@@ -426,13 +449,10 @@ function LegalReviewDetailsSection({ caseData }) {
             <p className={styles.emptyState}>No structured hearing or follow-up dates have been recorded yet.</p>
           ) : <div className={styles.detailGrid}>
             {deadlines.map((deadline, index) => {
-              const dayDelta = Math.ceil((deadline.date - new Date(new Date().toDateString())) / 86400000);
               return (
                 <div key={`${deadline.label}-${deadline.value}-${index}`} className={styles.detailItem}>
                   <p className={styles.detailKey}>{deadline.label}</p>
-                  <p className={styles.detailVal}>
-                    {deadline.date.toLocaleDateString("en-PH")} ({dayDelta < 0 ? `${Math.abs(dayDelta)} day(s) overdue` : dayDelta === 0 ? "today" : `in ${dayDelta} day(s)`})
-                  </p>
+                  <p className={styles.detailVal}>{formatCalendarDateText(deadline)}</p>
                 </div>
               );
             })}
@@ -710,6 +730,9 @@ function CaseManagementTab({ caseData, setCaseData, isAdmin, isCaseOfficer, isLe
             status: proposedStatus,
             date:   new Date().toLocaleDateString('en-PH'),
             by:     changeDetails.submittedBy,
+            actorName: changeDetails.submittedBy,
+            actorRole: userRole || "Legal Personnel",
+            changed_by_role: userRole || "Legal Personnel",
             notes:  changeDetails.notes,
             formData: changeDetails.formData,
             historyId: body.historyRow.history_id,
@@ -898,6 +921,7 @@ export default function ViewLegalCase() {
   const canViewNlp   = isStaff && !isLawyer;
 
   const actorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Officer";
+  const actorRole = isLegal && user.legalPersonnelType ? user.legalPersonnelType : user.role || "Officer";
 
   const backRoute = "/legalReviews";
   const backLabel = "Back to Legal Review";
@@ -958,6 +982,13 @@ export default function ViewLegalCase() {
           record.referral_required !== null &&
           record.referral_required !== undefined
         );
+        const existingEndorsedTo =
+          latestReferral?.endorsement?.endorsed_to ||
+          latestReferral?.referral_body ||
+          data.endorsement?.endorsed_to ||
+          data.referral_body ||
+          null;
+        const existingEndorsementDetails = latestReferral?.endorsement || data.endorsement || null;
         const defaultStatusHistory = {
           status: STATUS_STEP[data.case_status_id] || "For Verification",
           date:   new Date(data.created_at).toLocaleDateString("en-PH"),
@@ -1019,18 +1050,19 @@ export default function ViewLegalCase() {
           additionalCategories:    latestCategory?.additional_categories || data.additional_categories || [],
           alsoInvolves:            latestCategory?.additional_categories || data.additional_categories || [],
           referralRequired:        latestReferral?.referral_required ?? data.referral_required ?? false,
-          referralBody:            latestReferral?.referral_body ?? (data.referral_body || null),
+          referralBody:            latestReferral?.referral_body ?? data.referral_body ?? existingEndorsedTo,
           assignedParalegal:       data.assigned_paralegal || null,
           assignedLegal:           (data.assigned_legal || []).map((person) => ({
             ...person,
             assignment_role: person.assignment_role === "legal_officer" ? "lawyer" : person.assignment_role,
           })),
-          endorsedTo:              latestReferral?.endorsement?.endorsed_to || null,
-          endorsementStatus:       latestReferral
-            ? latestReferral.endorsement?.endorsed_to
-              ? `Endorsed to ${latestReferral.endorsement.endorsed_to}`
+          endorsedTo:              existingEndorsedTo,
+          endorsementStatus:       latestReferral || existingEndorsedTo
+            ? existingEndorsedTo
+              ? `Endorsed to ${existingEndorsedTo}`
               : null
             : data.endorsement_status || null,
+          endorsementDetails:      existingEndorsementDetails,
           internalNotes:           data.internal_notes || null,
           followUpSummary:         data.follow_up_summary || null,
           followUps:               followUpsResult.data || [],
@@ -1195,7 +1227,7 @@ export default function ViewLegalCase() {
               isLawyer={isLawyer}
               actorName={actorName}
               userId={user.id}
-              userRole={user.role}
+              userRole={actorRole}
               showToast={showToast}
             />
           )}
