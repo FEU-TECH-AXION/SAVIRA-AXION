@@ -180,12 +180,7 @@
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
-.filterMenuBtn::-webkit-details-marker {
-  display: none;
-}
-
 .filterMenuBtn:hover,
-.filterMenuWrapper[open] .filterMenuBtn,
 .filterMenuBtnActive {
   background: #f5fffe;
   border-color: var(--teal);
@@ -226,6 +221,10 @@
 }
 
 .filterDropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--gray-200);
 }
@@ -235,6 +234,61 @@
   color: var(--text);
   font-size: 0.92rem;
   font-weight: 800;
+}
+
+.filterDropdownClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.filterDropdownClose:hover {
+  background: #e1f5f5;
+  color: var(--teal);
+}
+
+.filterDropdownFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+.filterClearBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.filterClearBtn:hover:not(:disabled) {
+  background: #fff7ed;
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.filterClearBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .contentGrid {

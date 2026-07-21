@@ -17,7 +17,8 @@
 
 import Link from "next/link";
 import styles from "./events.module.css";
-import { FaSearch, FaCalendarAlt, FaFilter } from "react-icons/fa";
+import EventFilters from "./EventFilters";
+import { FaCalendarAlt } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
 import { computeProjectStatus } from "@/lib/projectStatus";
@@ -118,7 +119,8 @@ export default async function EventsPage({ searchParams }) {
       ? params.category.split(",").map(c => c.trim())
       : [params.category];
   }
-  const searchQuery = (params?.search || "").toLowerCase();
+  const searchValue = typeof params?.search === "string" ? params.search : "";
+  const searchQuery = searchValue.toLowerCase();
 
   const PUBLIC_EVENTS = await fetchProjectEvents();
   
@@ -193,67 +195,11 @@ export default async function EventsPage({ searchParams }) {
         <div className={styles.contentInner}>
           <h2 className={styles.latestHeading}>Our Latest Events</h2>
 
-          <div className={styles.filtersPanel}>
-            <div className={styles.searchWrap}>
-              <form action="/events" method="GET" className={styles.searchBox}>
-                {activeCategories.map((cat) => (
-                  <input key={cat} type="hidden" name="category" value={cat} />
-                ))}
-                <input type="text" name="search" defaultValue={params?.search || ""} placeholder="Search events…" className={styles.searchInput} />
-                <button type="submit" className={styles.searchBtn} aria-label="Search">
-                  <FaSearch />
-                </button>
-              </form>
-            </div>
-
-            <details className={styles.filterMenuWrapper}>
-              <summary className={`${styles.filterMenuBtn} ${activeCategories.length > 0 ? styles.filterMenuBtnActive : ""}`}>
-                <FaFilter className={styles.filterIcon} aria-hidden="true" />
-                <span className={styles.filterMenuBtnLabel}>Filters</span>
-                {activeCategories.length > 0 && (
-                  <span className={styles.filterBadge}>{activeCategories.length}</span>
-                )}
-              </summary>
-
-              <div className={styles.categoryDropdown}>
-                <div className={styles.filterDropdownHeader}>
-                  <h4 className={styles.filterDropdownTitle}>Categories</h4>
-                </div>
-                <ul className={styles.categoryList}>
-                  {CATEGORIES.map((cat) => {
-                    const query = new URLSearchParams();
-                    if (searchQuery) query.set("search", searchQuery);
-                    
-                    let isActive = false;
-                    let nextCategories = [];
-                    
-                    if (cat === "All") {
-                      isActive = activeCategories.length === 0;
-                    } else {
-                      isActive = activeCategories.includes(cat);
-                      if (isActive) {
-                        nextCategories = activeCategories.filter(c => c !== cat);
-                      } else {
-                        nextCategories = [...activeCategories, cat];
-                      }
-                    }
-                    
-                    nextCategories.forEach(c => query.append("category", c));
-                    const href = `/events${query.toString() ? `?${query.toString()}` : ""}`;
-                    
-                    return (
-                      <li key={cat}>
-                        <Link href={href} scroll={false}
-                          className={`${styles.categoryItem} ${isActive ? styles.categoryActive : ""}`}>
-                          {cat}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </details>
-          </div>
+          <EventFilters
+            categories={CATEGORIES}
+            activeCategories={activeCategories}
+            searchValue={searchValue}
+          />
 
           <div className={styles.contentGrid}>
             {/* Events list */}
