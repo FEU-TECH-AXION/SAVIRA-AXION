@@ -6,7 +6,7 @@ ESSAY_PASS_THRESHOLD = 70.0
 
 CRITERIA = {
     "mission_alignment": {
-        "weight": 0.30,
+        "weight": 0.25,
         "label": "Alignment with SASHA's Mission",
         "description": (
             "Does the applicant understand survivor-centered, "
@@ -22,7 +22,7 @@ CRITERIA = {
         ),
     },
     "commitment": {
-        "weight": 0.20,
+        "weight": 0.33,
         "label": "Commitment and Reliability",
         "description": (
             "Does the applicant show realistic availability and "
@@ -37,7 +37,7 @@ CRITERIA = {
         ),
     },
     "relevant_experience": {
-        "weight": 0.15,
+        "weight": 0.07,
         "label": "Relevant Experience / Transferable Skills",
         "description": (
             "Advocacy, community work, peer support, writing, research, "

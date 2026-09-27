@@ -149,11 +149,11 @@ function ApplicantScoresTab({ appData }) {
         <div className={styles.evalBlock}>
           <h3 className={styles.evalBlockTitle}>Essay Evaluation</h3>
           {[
-            { key: "alignment",  label: "Alignment with SASHA's Mission",        weight: 30 },
+            { key: "alignment",  label: "Alignment with SASHA's Mission",        weight: 25 },
             { key: "maturity",   label: "Maturity and Judgment",                  weight: 20 },
-            { key: "commitment", label: "Commitment and Reliability",              weight: 20 },
+            { key: "commitment", label: "Commitment and Reliability",              weight: 33 },
             { key: "clarity",    label: "Writing Clarity and Thoughtfulness",      weight: 15 },
-            { key: "experience", label: "Relevant Experience / Transferable Skills", weight: 15 },
+            { key: "experience", label: "Relevant Experience / Transferable Skills", weight: 7 },
           ].map(c => scores.essay[c.key] > 0 ? (
             <div key={c.key} className={styles.evalCriterionItem}>
               <div className={styles.evalCriterionHeader}>

@@ -86,11 +86,11 @@ function average(values) {
 
 function weightedEssayScore(row = {}) {
     return (
-        ((Number(row.alignment) || 0) / 10) * 30 +
+        ((Number(row.alignment) || 0) / 10) * 25 +
         ((Number(row.maturity) || 0) / 10) * 20 +
-        ((Number(row.commitment) || 0) / 10) * 20 +
+        ((Number(row.commitment) || 0) / 10) * 33 +
         ((Number(row.clarity) || 0) / 10) * 15 +
-        ((Number(row.experience) || 0) / 10) * 15
+        ((Number(row.experience) || 0) / 10) * 7
     )
 }
 

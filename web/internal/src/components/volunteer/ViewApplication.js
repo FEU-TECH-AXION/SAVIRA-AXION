@@ -159,11 +159,11 @@ function ApplicantScoresTab({ appData }) {
         <div className={styles.evalBlock}>
           <h3 className={styles.evalBlockTitle}>Essay Evaluation</h3>
           {[
-            { key: "alignment",  label: "Alignment with SASHA's Mission",        weight: 30 },
+            { key: "alignment",  label: "Alignment with SASHA's Mission",        weight: 25 },
             { key: "maturity",   label: "Maturity and Judgment",                  weight: 20 },
-            { key: "commitment", label: "Commitment and Reliability",              weight: 20 },
+            { key: "commitment", label: "Commitment and Reliability",              weight: 33 },
             { key: "clarity",    label: "Writing Clarity and Thoughtfulness",      weight: 15 },
-            { key: "experience", label: "Relevant Experience / Transferable Skills", weight: 15 },
+            { key: "experience", label: "Relevant Experience / Transferable Skills", weight: 7 },
           ].map(c => scores.essay[c.key] > 0 ? (
             <div key={c.key} className={styles.evalCriterionItem}>
               <div className={styles.evalCriterionHeader}>
@@ -422,11 +422,11 @@ function ApplicationDetailsTab({ appData, isStaff }) {
 // ─── Application Evaluation Tab (staff only) ─────────────────────────────────
 
 const ESSAY_CRITERIA = [
-  { key: "alignment",    label: "Alignment with SASHA's Mission",       weight: 30, hint: "Does the applicant understand survivor-centered, gender-sensitive, and accountability-based work?" },
+  { key: "alignment",    label: "Alignment with SASHA's Mission",       weight: 25, hint: "Does the applicant understand survivor-centered, gender-sensitive, and accountability-based work?" },
   { key: "maturity",     label: "Maturity and Judgment",                 weight: 20, hint: "Does the essay show discretion, empathy, and seriousness in handling sensitive matters?" },
-  { key: "commitment",   label: "Commitment and Reliability",            weight: 20, hint: "Does the applicant show realistic availability and willingness to do sustained work?" },
+  { key: "commitment",   label: "Commitment and Reliability",            weight: 33, hint: "Does the applicant show realistic availability and willingness to do sustained work?" },
   { key: "clarity",      label: "Writing Clarity and Thoughtfulness",    weight: 15, hint: "Is the essay coherent, reflective, and understandable?" },
-  { key: "experience",   label: "Relevant Experience / Transferable Skills", weight: 15, hint: "Advocacy, community work, peer support, writing, research, documentation, legal or psychosocial exposure." },
+  { key: "experience",   label: "Relevant Experience / Transferable Skills", weight: 7, hint: "Advocacy, community work, peer support, writing, research, documentation, legal or psychosocial exposure." },
 ];
 
 // Scoring helpers
@@ -1503,11 +1503,11 @@ function NLPEssayTab({ appId, isAdmin }) {
 
   // ── Dimension config — maps flat DB columns → display labels + weights ─────
   const DIMENSIONS = [
-    { scoreKey: "mission_alignment_score",   noteKey: "mission_alignment_notes",   label: "Alignment with SASHA's Mission",          weight: 30 },
+    { scoreKey: "mission_alignment_score",   noteKey: "mission_alignment_notes",   label: "Alignment with SASHA's Mission",          weight: 25 },
     { scoreKey: "maturity_judgment_score",   noteKey: "maturity_judgment_notes",   label: "Maturity and Judgment",                    weight: 20 },
-    { scoreKey: "commitment_score",          noteKey: "commitment_notes",          label: "Commitment and Reliability",               weight: 20 },
+    { scoreKey: "commitment_score",          noteKey: "commitment_notes",          label: "Commitment and Reliability",               weight: 33 },
     { scoreKey: "writing_clarity_score",     noteKey: "writing_clarity_notes",     label: "Writing Clarity and Thoughtfulness",       weight: 15 },
-    { scoreKey: "relevant_experience_score", noteKey: "relevant_experience_notes", label: "Relevant Experience / Transferable Skills", weight: 15 },
+    { scoreKey: "relevant_experience_score", noteKey: "relevant_experience_notes", label: "Relevant Experience / Transferable Skills", weight: 7 },
   ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
