@@ -195,12 +195,6 @@ export default async function EventsPage({ searchParams }) {
         <div className={styles.contentInner}>
           <h2 className={styles.latestHeading}>Our Latest Events</h2>
 
-          <EventFilters
-            categories={CATEGORIES}
-            activeCategories={activeCategories}
-            searchValue={searchValue}
-          />
-
           <div className={styles.contentGrid}>
             {/* Events list */}
             <div className={styles.eventsList}>
@@ -311,6 +305,11 @@ export default async function EventsPage({ searchParams }) {
 
             {/* Recent posts */}
             <aside className={styles.sidebar}>
+              <EventFilters
+                categories={CATEGORIES}
+                activeCategories={activeCategories}
+                searchValue={searchValue}
+              />
               <div className={styles.sidebarBlock}>
                 <h4 className={styles.sidebarTitle}>Recent Events</h4>
                 <ul className={styles.recentList}>
