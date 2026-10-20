@@ -242,10 +242,6 @@ function phDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-function phDayEndFromKey(key) {
-  return new Date(`${key}T23:59:59.999+08:00`);
-}
-
 function formatPhDateLabel(key) {
   return new Date(`${key}T00:00:00+08:00`).toLocaleDateString("en-US", {
     month: "short",
@@ -422,51 +418,6 @@ function bucketCasesByDay(cases) {
     }));
 }
 
-function getLastDayKeys(days = 30) {
-  return Array.from({ length: days }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (days - 1 - index));
-    const key = phDateKey(date);
-    return {
-      key,
-      end: phDayEndFromKey(key),
-      label: formatPhDateLabel(key),
-    };
-  });
-}
-
-function groupStatusHistoryByCase(rows = []) {
-  return rows.reduce((map, row) => {
-    const caseId = row.case_report_id || row.caseReportId;
-    if (!caseId) return map;
-    if (!map[caseId]) map[caseId] = [];
-    map[caseId].push({
-      status: row.status || CASE_STATUS_BY_ID[row.case_status_id] || null,
-      created_at: row.created_at,
-      approved_at: row.approved_at,
-      effective_at: row.approved_at || row.created_at,
-    });
-    return map;
-  }, {});
-}
-
-async function fetchApprovedStatusHistoryMap(cases = []) {
-  const caseIds = [...new Set(cases.map((c) => c.id).filter(Boolean))];
-  if (caseIds.length === 0) return {};
-
-  const chunks = [];
-  for (let index = 0; index < caseIds.length; index += 50) chunks.push(caseIds.slice(index, index + 50));
-  const payloads = await Promise.all(chunks.map(async (chunk) => {
-    const params = new URLSearchParams({ caseIds: chunk.join(",") });
-    const response = await internalApiFetch(`/api/case_status_history/batch/approved?${params.toString()}`, {
-      credentials: "include",
-    });
-    if (!response.ok) throw new Error("Failed to load case status history");
-    return response.json();
-  }));
-  return groupStatusHistoryByCase(payloads.flatMap(toArray));
-}
-
 async function fetchAllCaseReportPages() {
   const rows = [];
   let page = 1;
@@ -485,66 +436,6 @@ async function fetchAllCaseReportPages() {
   } while (rows.length < total);
 
   return rows;
-}
-
-function getStatusBucket(status) {
-  const submittedStatuses = new Set(["Submitted"]);
-  const reviewStatuses = new Set([
-    "For Verification",
-    "Undergoing Review",
-    "Verified - True",
-    "Under Case Evaluation",
-    "Case Filed",
-    "Investigation Ongoing",
-    "Hearing Ongoing",
-  ]);
-  const closedStatuses = new Set(["Resolved", "Dismissed", "Withdrawn", "Perpetrator Convicted", "Verified - False"]);
-  if (closedStatuses.has(status)) return "Closed";
-  if (reviewStatuses.has(status)) return "Undergoing Review";
-  if (submittedStatuses.has(status)) return "Submitted";
-  return "Submitted";
-}
-
-function getStatusAsOfDay(caseItem, historyRows = [], dayEnd) {
-  const filedDate = recordDate(caseItem, "date_filed", "created_at");
-  if (!filedDate || filedDate > dayEnd) return null;
-
-  let status = "Submitted";
-  let statusDate = filedDate;
-  const sortedRows = [...historyRows].sort((a, b) => {
-    const aDate = recordDate(a, "effective_at", "approved_at", "created_at");
-    const bDate = recordDate(b, "effective_at", "approved_at", "created_at");
-    return (aDate?.getTime() || 0) - (bDate?.getTime() || 0);
-  });
-  for (const row of sortedRows) {
-    const transitionDate = recordDate(row, "effective_at", "approved_at", "created_at");
-    if (!transitionDate || transitionDate > dayEnd) break;
-    if (row.status) {
-      status = row.status;
-      statusDate = transitionDate;
-    }
-  }
-
-  if (getStatusBucket(status) === "Closed") {
-    return phDateKey(statusDate) === phDateKey(dayEnd) ? status : null;
-  }
-
-  return status;
-}
-
-function bucketCaseStatusesByDay(cases, statusHistoryByCaseId = {}) {
-  return getLastDayKeys(30).map(({ label, end }) => {
-    const values = { Submitted: 0, "Undergoing Review": 0, Closed: 0 };
-
-    for (const c of cases) {
-      const historyRows = statusHistoryByCaseId[c.id] || [];
-      const status = getStatusAsOfDay(c, historyRows, end);
-      if (!status) continue;
-      values[getStatusBucket(status)] += 1;
-    }
-
-    return { label, ...values };
-  });
 }
 
 function topEntries(data, limit = 6) {
@@ -768,7 +659,7 @@ function buildUserSummary(users = []) {
   };
 }
 
-function buildAnalytics(cases, volunteers, projects, users, statusHistoryByCaseId = {}) {
+function buildAnalytics(cases, volunteers, projects, users) {
   const caseSummary       = buildCaseSummary(cases);
   const volunteerSummary  = buildVolunteerSummary(volunteers);
   const projectSummary    = buildProjectSummary(projects);
@@ -791,9 +682,7 @@ function buildAnalytics(cases, volunteers, projects, users, statusHistoryByCaseI
       (volunteerSummary.byStatus?.Pending || 0) +
       (projectSummary.activeProjects || 0) +
       (userSummary.deactivated || 0),
-    trend:        bucketCasesByDay(cases),
-    stackedTrend: bucketCaseStatusesByDay(cases, statusHistoryByCaseId),
-    topCities:    topEntries(caseSummary.byCity, 6),
+    trend:        bucketCasesByDay(cases),    topCities:    topEntries(caseSummary.byCity, 6),
     topTypes:     topEntries(caseSummary.byType, 5),
     caseSummary,
     volunteerSummary,
@@ -1832,92 +1721,6 @@ function TrendLineChart({ data, color = "#037F81", height = 120 }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STACKED AREA CHART (SVG)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StackedAreaChart({ data, height = 120 }) {
-  if (!data || data.length === 0) return <p className={styles.noData}>No trend data available.</p>;
-
-  const W = 700, H = height;
-  const PAD = { top: 10, right: 10, bottom: 28, left: 28 };
-  const chartW = W - PAD.left - PAD.right;
-  const chartH = H - PAD.top - PAD.bottom;
-
-  const series = ["Submitted", "Undergoing Review", "Closed"];
-  const colors = { Submitted: "#14b8a6", "Undergoing Review": "#60a5fa", Closed: "#fbbf24" };
-  const fillAlpha = { Submitted: "0.55", "Undergoing Review": "0.45", Closed: "0.35" };
-  const gradientIdFor = (name) => `stackGrad_${String(name).replace(/[^A-Za-z0-9_-]+/g, "_")}`;
-
-  const maxVal = Math.max(...data.map((d) => (d.Submitted || 0) + (d["Undergoing Review"] || 0) + (d.Closed || 0)), 1);
-  const xStep = chartW / Math.max(data.length - 1, 1);
-
-  // Stacked cumulative
-  function getStacked(key, idx) {
-    let sum = 0;
-    for (const s of series) {
-      if (s === key) break;
-      sum += data[idx][s] || 0;
-    }
-    return sum + (data[idx][key] || 0);
-  }
-
-  function ptY(val) {
-    return PAD.top + chartH - (val / maxVal) * chartH;
-  }
-
-  const labelIdxs = new Set([0, Math.floor(data.length / 2), data.length - 1]);
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={styles.trendSvg}>
-      <defs>
-        {series.map((s) => (
-          <linearGradient key={s} id={gradientIdFor(s)} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={colors[s]} stopOpacity={fillAlpha[s]} />
-            <stop offset="100%" stopColor={colors[s]} stopOpacity="0.05" />
-          </linearGradient>
-        ))}
-      </defs>
-
-      {/* Grid */}
-      {[0, 0.5, 1].map((pct, i) => {
-        const y = PAD.top + chartH * (1 - pct);
-        return <line key={i} x1={PAD.left} y1={y} x2={PAD.left + chartW} y2={y} stroke="#e5e7eb" strokeWidth="0.8" />;
-      })}
-
-      {/* Areas (drawn in reverse so topmost series shows on top) */}
-      {[...series].reverse().map((s) => {
-        const topPts  = data.map((d, i) => ({ x: PAD.left + i * xStep, y: ptY(getStacked(s, i)) }));
-        const prevKey = series[series.indexOf(s) - 1];
-        const botPts  = prevKey
-          ? data.map((d, i) => ({ x: PAD.left + i * xStep, y: ptY(getStacked(prevKey, i)) }))
-          : data.map((d, i) => ({ x: PAD.left + i * xStep, y: PAD.top + chartH }));
-
-        const d = `M ${botPts[0].x},${botPts[0].y} ` +
-          topPts.map((p) => `L ${p.x},${p.y}`).join(" ") +
-          " " + [...botPts].reverse().map((p) => `L ${p.x},${p.y}`).join(" ") + " Z";
-        const line = topPts.map((p) => `${p.x},${p.y}`).join(" ");
-
-        return (
-          <g key={s}>
-            <path d={d} fill={`url(#${gradientIdFor(s)})`} />
-            <polyline points={line} fill="none" stroke={colors[s]} strokeWidth="1.5" strokeLinejoin="round" />
-          </g>
-        );
-      })}
-
-      {/* X labels */}
-      {data.map((d, i) => (
-        labelIdxs.has(i) && (
-          <text key={i} x={PAD.left + i * xStep} y={PAD.top + chartH + 16} fontSize="9" textAnchor="middle" fill="#9ca3af">
-            {d.label}
-          </text>
-        )
-      ))}
-    </svg>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // HORIZONTAL BAR CHART (for city/type breakdowns like the image)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2353,7 +2156,7 @@ export default function ReportGenerator() {
   const [pdfPreview, setPdfPreview]         = useState(null);
   const [error, setError]                   = useState(null);
   const exportMenuRef                       = useRef(null);
-  const rawRef = useRef({ cases: [], legalCases: [], volunteers: [], projects: [], users: [], endorsements: [], statusHistoryByCaseId: {} });
+  const rawRef = useRef({ cases: [], legalCases: [], volunteers: [], projects: [], users: [], endorsements: [] });
   const [filterOptionsSource, setFilterOptionsSource] = useState({ cases: [], volunteers: [], users: [] });
 
   const [caseData,      setCaseData]      = useState(null);
@@ -2386,7 +2189,7 @@ export default function ReportGenerator() {
     setVolunteerData(buildVolunteerSummary(volunteers));
     setProjectData(buildProjectSummary(projects));
     setUserData(buildUserSummary(users));
-    setAnalyticsData(buildAnalytics(cases, volunteers, projects, users, raw.statusHistoryByCaseId));
+    setAnalyticsData(buildAnalytics(cases, volunteers, projects, users));
     setLastGenerated(new Date());
   }, []);
 
@@ -2421,7 +2224,6 @@ export default function ReportGenerator() {
         ...caseItem,
         ...(legalReviews[caseItem.public_id || caseItem.id || caseItem.case_report_id] || {}),
       }));
-      const statusHistoryByCaseId = await fetchApprovedStatusHistoryMap(normalizedCases);
 
       rawRef.current = {
         cases:      normalizedCases,
@@ -2429,9 +2231,7 @@ export default function ReportGenerator() {
         volunteers: toArray(volunteersRaw).map(normalizeVolunteerApplication),
         projects:   toArray(projectsRaw).map(normalizeProject),
         users:      toArray(usersRaw).map(normalizeUser),
-        endorsements: toArray(endorsementsRaw).map(normalizeCaseReport),
-        statusHistoryByCaseId,
-      };
+        endorsements: toArray(endorsementsRaw).map(normalizeCaseReport),      };
       setFilterOptionsSource(rawRef.current);
 
       buildSummaries(rawRef.current, dateRange, advancedFilters);
@@ -2678,27 +2478,13 @@ export default function ReportGenerator() {
                 <StatCard label="Total Cases"         value={caseData.total}             sub="In selected period"               border="#E8663A" />
               </div>
 
-              {/* Trend charts */}
+              {/* Case report trend */}
               <div className={styles.trendSection}>
                 <div className={styles.trendCard}>
                   <div className={styles.trendCardHeader}>
                     <h3 className={styles.chartTitle}>Case Reports (Last 30 Days)</h3>
                   </div>
                   <TrendLineChart data={analyticsData.trend} color="#037F81" height={130} />
-                </div>
-
-                <div className={styles.trendCard}>
-                  <div className={styles.trendCardHeader}>
-                    <h3 className={styles.chartTitle}>Report Status Composition Over Time</h3>
-                    <div className={styles.stackedLegend}>
-                      {[{ label: "Submitted", color: "#14b8a6" }, { label: "Undergoing Review", color: "#60a5fa" }, { label: "Closed", color: "#fbbf24" }].map((l) => (
-                        <span key={l.label} className={styles.stackedLegendItem}>
-                          <span className={styles.stackedLegendDot} style={{ background: l.color }} />{l.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <StackedAreaChart data={analyticsData.stackedTrend} height={130} />
                 </div>
               </div>
 
