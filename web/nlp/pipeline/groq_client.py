@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = os.getenv("GROQ_MODEL")
+if not MODEL:
+    raise ValueError("GROQ_MODEL not set in environment")
 MAX_TOKENS = 2500
 
 # ── Initialize Groq client (lazy-loaded on first use) ──────────────

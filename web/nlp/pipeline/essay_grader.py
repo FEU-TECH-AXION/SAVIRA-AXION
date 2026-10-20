@@ -1,7 +1,5 @@
 import json
-from pipeline.groq_client import MAX_TOKENS, get_client, parse_json_response
-
-MODEL = "llama-3.1-8b-instant"
+from pipeline.groq_client import MAX_TOKENS, MODEL, get_client, parse_json_response
 ESSAY_PASS_THRESHOLD = 70.0
 
 CRITERIA = {
